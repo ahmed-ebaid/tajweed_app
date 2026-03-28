@@ -89,9 +89,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
 
-    // Save last read surah
-    context.read<BookmarkProvider>().saveLastRead(_selectedSurah, 1);
-
     try {
       final allVerses = <Map<String, dynamic>>[];
       int page = 1;
@@ -205,7 +202,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void _playAyah(Ayah ayah) {
     final verseKey = '${ayah.surahNumber}:${ayah.ayahNumber}';
     final url = _audioUrls[verseKey] ?? ayah.audioUrl ?? '';
-    _audio.playUrl(url);
+    debugPrint('Playing ayah: $verseKey, URL: $url');
+    if (url.isNotEmpty) {
+      try {
+        _audio.playUrl(url);
+      } catch (e) {
+        debugPrint('Error playing URL for $verseKey: $e');
+      }
+    } else {
+      debugPrint('URL is empty for $verseKey');
+    }
     setState(() { _playingAyahNumber = ayah.ayahNumber; });
 
     // Update last read position
