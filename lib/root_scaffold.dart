@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'core/l10n/app_localizations.dart';
 import 'core/providers/locale_provider.dart';
 import 'features/home/home_screen.dart';
 import 'features/reader/reader_screen.dart';
@@ -46,16 +45,19 @@ class _RootScaffoldState extends State<RootScaffold> {
           currentIndex: _currentIndex,
           onTap: _switchTab,
         ),
-        // Settings accessible via floating button
-        floatingActionButton: FloatingActionButton.small(
-          heroTag: 'settings',
-          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-          foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-          elevation: 0,
-          onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsScreen())),
-          child: const Icon(Icons.settings_outlined, size: 20),
-        ),
+        // Keep floating settings on other tabs, but hide on reader where
+        // settings is shown directly in the app bar actions.
+        floatingActionButton: _currentIndex == 1
+            ? null
+            : FloatingActionButton.small(
+                heroTag: 'settings',
+                backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                elevation: 0,
+                onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                child: const Icon(Icons.settings_outlined, size: 20),
+              ),
         floatingActionButtonLocation: FloatingActionButtonLocation.miniEndTop,
       ),
     );

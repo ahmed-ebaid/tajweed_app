@@ -8,6 +8,7 @@ class TajweedText extends StatelessWidget {
   final Ayah ayah;
   final double fontSize;
   final bool highlightEnabled;
+  final int highlightedWordIndex;
   final void Function(TajweedRule rule, String word)? onRuleTapped;
 
   const TajweedText({
@@ -15,6 +16,7 @@ class TajweedText extends StatelessWidget {
     required this.ayah,
     this.fontSize = 26,
     this.highlightEnabled = true,
+    this.highlightedWordIndex = -1,
     this.onRuleTapped,
   });
 
@@ -36,7 +38,9 @@ class TajweedText extends StatelessWidget {
 
   List<InlineSpan> _buildSpans(BuildContext context, Color baseColor) {
     // Prefer verse-level tajweed segments from the uthmani_tajweed API
-    if (highlightEnabled && ayah.tajweedSegments.isNotEmpty) {
+    // When syncing playback to words, prefer word rendering so active word
+    // can be highlighted.
+    if (highlightEnabled && ayah.tajweedSegments.isNotEmpty && highlightedWordIndex < 0) {
       return _buildSegmentSpans(baseColor);
     }
 
@@ -44,6 +48,7 @@ class TajweedText extends StatelessWidget {
 
     for (int wi = 0; wi < ayah.words.length; wi++) {
       final word = ayah.words[wi];
+      final isActiveWord = wi == highlightedWordIndex;
 
       if (!highlightEnabled || word.spans.isEmpty) {
         // No tajweed spans — render entire word in base color
@@ -54,14 +59,23 @@ class TajweedText extends StatelessWidget {
             fontSize: fontSize,
             color: baseColor,
             height: 2.0,
+            backgroundColor: isActiveWord
+                ? const Color(0xFFFFE08A).withOpacity(0.65)
+                : null,
           ),
         ));
       } else {
         // Build per-character colored spans within the word
-        spans.addAll(_buildWordSpans(word, baseColor));
+        spans.addAll(_buildWordSpans(word, baseColor, isActiveWord));
         spans.add(TextSpan(
           text: ' ',
-          style: TextStyle(fontFamily: 'UthmanicHafs', fontSize: fontSize),
+          style: TextStyle(
+            fontFamily: 'UthmanicHafs',
+            fontSize: fontSize,
+            backgroundColor: isActiveWord
+                ? const Color(0xFFFFE08A).withOpacity(0.45)
+                : null,
+          ),
         ));
       }
     }
@@ -69,7 +83,7 @@ class TajweedText extends StatelessWidget {
     return spans;
   }
 
-  List<InlineSpan> _buildWordSpans(TajweedWord word, Color baseColor) {
+  List<InlineSpan> _buildWordSpans(TajweedWord word, Color baseColor, bool isActiveWord) {
     final result = <InlineSpan>[];
     final text = word.arabic;
     int cursor = 0;
@@ -78,35 +92,51 @@ class TajweedText extends StatelessWidget {
     final sorted = [...word.spans]..sort((a, b) => a.start.compareTo(b.start));
 
     for (final span in sorted) {
+      final start = span.start.clamp(0, text.length);
+      final end = span.end.clamp(0, text.length);
+
+      if (end <= start) {
+        // Skip malformed span ranges from upstream data.
+        continue;
+      }
+
       // Uncolored text before this span
-      if (cursor < span.start) {
-        result.add(_plain(text.substring(cursor, span.start), baseColor));
+      if (cursor < start) {
+        result.add(_plain(
+          text.substring(cursor, start),
+          baseColor,
+          isActiveWord: isActiveWord,
+        ));
       }
 
       // Colored span
-      final spanText = text.substring(span.start, span.end);
+      final spanText = text.substring(start, end);
       final rule = span.rule;
 
       if (onRuleTapped != null) {
         result.add(TextSpan(
           text: spanText,
-          style: _styleFor(rule, baseColor),
+          style: _styleFor(rule, baseColor, isActiveWord: isActiveWord),
           recognizer: TapGestureRecognizer()
             ..onTap = () => onRuleTapped!(rule, spanText),
         ));
       } else {
         result.add(TextSpan(
           text: spanText,
-          style: _styleFor(rule, baseColor),
+          style: _styleFor(rule, baseColor, isActiveWord: isActiveWord),
         ));
       }
 
-      cursor = span.end;
+      cursor = end;
     }
 
     // Remaining text after last span
     if (cursor < text.length) {
-      result.add(_plain(text.substring(cursor), baseColor));
+      result.add(_plain(
+        text.substring(cursor),
+        baseColor,
+        isActiveWord: isActiveWord,
+      ));
     }
 
     return result;
@@ -141,21 +171,27 @@ class TajweedText extends StatelessWidget {
     }).toList();
   }
 
-  TextSpan _plain(String text, Color color) => TextSpan(
+  TextSpan _plain(String text, Color color, {bool isActiveWord = false}) => TextSpan(
         text: text,
         style: TextStyle(
           fontFamily: 'UthmanicHafs',
           fontSize: fontSize,
           color: color,
           height: 2.0,
+          backgroundColor: isActiveWord
+              ? const Color(0xFFFFE08A).withOpacity(0.65)
+              : null,
         ),
       );
 
-  TextStyle _styleFor(TajweedRule rule, Color baseColor) => TextStyle(
+  TextStyle _styleFor(TajweedRule rule, Color baseColor, {bool isActiveWord = false}) => TextStyle(
         fontFamily: 'UthmanicHafs',
         fontSize: fontSize,
         color: highlightEnabled ? rule.color : baseColor,
         height: 2.0,
+        backgroundColor: isActiveWord
+            ? const Color(0xFFFFE08A).withOpacity(0.65)
+            : null,
         // Subtle underline for madd rules to indicate elongation
         decoration: rule == TajweedRule.maddTabeei ||
                 rule == TajweedRule.maddMuttasil ||

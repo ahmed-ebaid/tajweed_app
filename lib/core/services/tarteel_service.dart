@@ -10,6 +10,7 @@ class TarteelService {
   // Set your key via --dart-define=TARTEEL_API_KEY=your_key at build time,
   // or inject it from a secure config.
   static const _apiKey = String.fromEnvironment('TARTEEL_API_KEY', defaultValue: '');
+  static bool get isConfigured => _apiKey.isNotEmpty;
 
   final Dio _dio;
 

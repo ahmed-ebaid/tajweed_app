@@ -82,7 +82,9 @@ class BookmarkProvider extends ChangeNotifier {
   }
 
   Future<void> saveLastRead(int surah, int ayah, {double? scrollOffset}) async {
-    if (surah == _lastReadSurah && ayah == _lastReadAyah) return;
+    final sameReference = surah == _lastReadSurah && ayah == _lastReadAyah;
+    final sameOffset = scrollOffset == null || scrollOffset == _lastScrollOffset;
+    if (sameReference && sameOffset) return;
     _lastReadSurah = surah;
     _lastReadAyah = ayah;
     if (scrollOffset != null) {

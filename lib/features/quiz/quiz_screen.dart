@@ -5,6 +5,7 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/streak_provider.dart';
+import 'quiz_repository.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -16,67 +17,8 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   int _current = 0;
   int? _selectedIndex;
-  int _score = 0;
 
-  // Sample questions — in production, load from rules_repository or an API
-  static final List<QuizQuestion> _questions = [
-    QuizQuestion(
-      arabicText: 'مِنْ بَعْدِ',
-      questionText: {
-        'en': 'What tajweed rule applies to the noon sakinah here?',
-        'ar': 'ما حكم النون الساكنة في هذا المثال؟',
-        'ur': 'یہاں نون ساکن کا کیا حکم ہے؟',
-        'tr': 'Bu örnekte sükûnlu nun için hangi kural geçerlidir?',
-        'fr': 'Quelle règle de tajweed s\'applique au noon sakinah ici?',
-        'id': 'Apa hukum tajwid nun sukun di sini?',
-        'de': 'Welche Tajweed-Regel gilt hier für das Noon Sakinah?',
-      },
-      options: [
-        {'en': 'Ikhfa', 'ar': 'إخفاء', 'ur': 'اخفاء', 'tr': 'İhfa', 'fr': 'Ikhfa', 'id': 'Ikhfa', 'de': 'Ikhfa'},
-        {'en': 'Iqlab — noon changes to meem', 'ar': 'إقلاب — تتحول النون ميماً', 'ur': 'اقلاب — نون میم بن جاتی ہے', 'tr': 'İklab — nun mim olur', 'fr': 'Iqlab — noon devient meem', 'id': 'Iqlab — nun berubah menjadi mim', 'de': 'Iqlab — Noon wird zu Meem'},
-        {'en': 'Idgham without ghunnah', 'ar': 'إدغام بلا غنة', 'ur': 'ادغام بلا غنہ', 'tr': 'Günnesiz idğam', 'fr': 'Idgham sans ghounna', 'id': 'Idgham bilaghunnah', 'de': 'Idgham ohne Ghunna'},
-        {'en': 'Izhar — clear pronunciation', 'ar': 'إظهار', 'ur': 'اظہار', 'tr': 'İzhar', 'fr': 'Izhar', 'id': 'Izhar', 'de': 'Izhar'},
-      ],
-      correctIndex: 1,
-      explanation: {
-        'en': 'Before the letter ب, noon sakinah transforms into a meem sound with ghunnah. This is Iqlab.',
-        'ar': 'النون الساكنة قبل الباء تُقلب ميماً مخفاة مع الغنة.',
-        'ur': 'حرف ب سے پہلے نون ساکن میم بن جاتی ہے اور غنہ ادا ہوتا ہے۔ یہ اقلاب ہے۔',
-        'tr': 'ب harfinden önce sükûnlu nun, gizli mim sesine dönüşür. Bu İklab\'dır.',
-        'fr': 'Devant ب, le noon sakinah se transforme en son meem avec ghounna. C\'est l\'Iqlab.',
-        'id': 'Di hadapan ب, nun sukun berubah menjadi suara mim dengan ghunnah. Ini adalah Iqlab.',
-        'de': 'Vor ب verwandelt sich Noon Sakinah in einen Meem-Laut mit Ghunna. Das ist Iqlab.',
-      },
-    ),
-    QuizQuestion(
-      arabicText: 'إِنَّا',
-      questionText: {
-        'en': 'What rule applies to the shaddah on noon?',
-        'ar': 'ما حكم النون المشددة في هذه الكلمة؟',
-        'ur': 'نون پر تشدید کا کیا حکم ہے؟',
-        'tr': 'Şeddeli nun için hangi kural geçerlidir?',
-        'fr': 'Quelle règle s\'applique au noon avec shaddah?',
-        'id': 'Apa hukum nun bertasydid di sini?',
-        'de': 'Welche Regel gilt für das Noon mit Shaddah?',
-      },
-      options: [
-        {'en': 'Ghunnah — 2-count nasalization', 'ar': 'غنة — مقدار حركتين', 'ur': 'غنہ — دو حرکات', 'tr': 'Günne — 2 hareke', 'fr': 'Ghounna — 2 temps', 'id': 'Ghunnah — 2 harakat', 'de': 'Ghunna — 2 Zählzeiten'},
-        {'en': 'Qalqalah', 'ar': 'قلقلة', 'ur': 'قلقلہ', 'tr': 'Kalkale', 'fr': 'Qalqala', 'id': 'Qalqalah', 'de': 'Qalqala'},
-        {'en': 'Madd Tabee\'i', 'ar': 'مد طبيعي', 'ur': 'مد طبعی', 'tr': 'Meddi Tabii', 'fr': 'Madd Tabii', 'id': 'Mad Thabi\'i', 'de': 'Madd Tabii'},
-        {'en': 'Ikhfa', 'ar': 'إخفاء', 'ur': 'اخفاء', 'tr': 'İhfa', 'fr': 'Ikhfa', 'id': 'Ikhfa', 'de': 'Ikhfa'},
-      ],
-      correctIndex: 0,
-      explanation: {
-        'en': 'A noon with shaddah always requires ghunnah for 2 counts. The shaddah means the noon is doubled, activating the ghunnah.',
-        'ar': 'النون المشددة توجب الغنة مقدار حركتين دائماً.',
-        'ur': 'نون مشدد پر ہمیشہ دو حرکات کا غنہ واجب ہے۔',
-        'tr': 'Şeddeli nun her zaman 2 hareke günne gerektirir.',
-        'fr': 'Un noon avec shaddah nécessite toujours une ghounna de 2 temps.',
-        'id': 'Nun bertasydid selalu memerlukan ghunnah selama 2 harakat.',
-        'de': 'Ein Noon mit Shaddah erfordert immer Ghunna für 2 Zählzeiten.',
-      },
-    ),
-  ];
+  static final List<QuizQuestion> _questions = QuizRepository.all;
 
   bool get _answered => _selectedIndex != null;
   bool get _isCorrect =>
@@ -86,7 +28,6 @@ class _QuizScreenState extends State<QuizScreen> {
     if (_answered) return;
     setState(() {
       _selectedIndex = index;
-      if (index == _questions[_current].correctIndex) _score++;
     });
     context.read<StreakProvider>().recordActivity();
   }
