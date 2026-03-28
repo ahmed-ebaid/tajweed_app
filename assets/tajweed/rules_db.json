@@ -1,0 +1,165 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "ghunnah",
+      "color": "#1D9E75",
+      "arabic_name": "غُنَّة",
+      "trigger_letters": ["ن", "م"],
+      "duration_harakaat": 2,
+      "names": {
+        "en": "Ghunnah",
+        "ar": "غُنَّة",
+        "ur": "غُنَّہ",
+        "tr": "Ğunne",
+        "fr": "Ghounna",
+        "id": "Ghunnah",
+        "de": "Ghunna"
+      }
+    },
+    {
+      "id": "qalqalah",
+      "color": "#A32D2D",
+      "arabic_name": "قَلْقَلَة",
+      "trigger_letters": ["ق", "ط", "ب", "ج", "د"],
+      "duration_harakaat": null,
+      "names": {
+        "en": "Qalqalah",
+        "ar": "قَلْقَلَة",
+        "ur": "قلقلہ",
+        "tr": "Kalkale",
+        "fr": "Qalqala",
+        "id": "Qalqalah",
+        "de": "Qalqala"
+      }
+    },
+    {
+      "id": "madd_tabeei",
+      "color": "#185FA5",
+      "arabic_name": "مَدّ طَبِيعِيّ",
+      "trigger_letters": ["ا", "و", "ي"],
+      "duration_harakaat": 2,
+      "names": {
+        "en": "Madd Tabee'i",
+        "ar": "مَدّ طَبِيعِيّ",
+        "ur": "مد طبعی",
+        "tr": "Meddi Tabii",
+        "fr": "Madd Tabii",
+        "id": "Mad Thabi'i",
+        "de": "Madd Tabii"
+      }
+    },
+    {
+      "id": "madd_muttasil",
+      "color": "#185FA5",
+      "arabic_name": "مَدّ مُتَّصِل",
+      "trigger_letters": ["ا", "و", "ي"],
+      "duration_harakaat": 5,
+      "names": {
+        "en": "Madd Muttasil",
+        "ar": "مَدّ مُتَّصِل",
+        "ur": "مد متصل",
+        "tr": "Meddi Muttasıl",
+        "fr": "Madd Muttasil",
+        "id": "Mad Wajib Muttasil",
+        "de": "Madd Muttasil"
+      }
+    },
+    {
+      "id": "madd_munfasil",
+      "color": "#185FA5",
+      "arabic_name": "مَدّ مُنْفَصِل",
+      "trigger_letters": ["ا", "و", "ي"],
+      "duration_harakaat": 5,
+      "names": {
+        "en": "Madd Munfasil",
+        "ar": "مَدّ مُنْفَصِل",
+        "ur": "مد منفصل",
+        "tr": "Meddi Munfasıl",
+        "fr": "Madd Munfasil",
+        "id": "Mad Jaiz Munfasil",
+        "de": "Madd Munfasil"
+      }
+    },
+    {
+      "id": "idgham_ghunnah",
+      "color": "#B8860B",
+      "arabic_name": "إِدْغَام بِغُنَّة",
+      "trigger_letters": ["ي", "ن", "م", "و"],
+      "duration_harakaat": 2,
+      "names": {
+        "en": "Idgham with Ghunnah",
+        "ar": "إِدْغَام بِغُنَّة",
+        "ur": "ادغام بغنہ",
+        "tr": "Günne ile İdğam",
+        "fr": "Idgham avec Ghounna",
+        "id": "Idgham Bighunnah",
+        "de": "Idgham mit Ghunna"
+      }
+    },
+    {
+      "id": "idgham_no_ghunnah",
+      "color": "#B8860B",
+      "arabic_name": "إِدْغَام بِلَا غُنَّة",
+      "trigger_letters": ["ل", "ر"],
+      "duration_harakaat": null,
+      "names": {
+        "en": "Idgham without Ghunnah",
+        "ar": "إِدْغَام بِلَا غُنَّة",
+        "ur": "ادغام بلا غنہ",
+        "tr": "Günnesiz İdğam",
+        "fr": "Idgham sans Ghounna",
+        "id": "Idgham Bilaghunnah",
+        "de": "Idgham ohne Ghunna"
+      }
+    },
+    {
+      "id": "ikhfa",
+      "color": "#8B008B",
+      "arabic_name": "إِخْفَاء",
+      "trigger_letters": ["ص","ذ","ث","ك","ج","ش","ق","س","د","ط","ز","ف","ت","ض","ظ"],
+      "duration_harakaat": 2,
+      "names": {
+        "en": "Ikhfa",
+        "ar": "إِخْفَاء",
+        "ur": "اخفاء",
+        "tr": "İhfa",
+        "fr": "Ikhfa",
+        "id": "Ikhfa",
+        "de": "Ikhfa"
+      }
+    },
+    {
+      "id": "iqlab",
+      "color": "#D85A30",
+      "arabic_name": "إِقْلَاب",
+      "trigger_letters": ["ب"],
+      "duration_harakaat": 2,
+      "names": {
+        "en": "Iqlab",
+        "ar": "إِقْلَاب",
+        "ur": "اقلاب",
+        "tr": "İklab",
+        "fr": "Iqlab",
+        "id": "Iqlab",
+        "de": "Iqlab"
+      }
+    },
+    {
+      "id": "izhar",
+      "color": "#0F6E56",
+      "arabic_name": "إِظْهَار حَلْقِيّ",
+      "trigger_letters": ["ء", "ه", "ع", "ح", "غ", "خ"],
+      "duration_harakaat": null,
+      "names": {
+        "en": "Izhar Halqi",
+        "ar": "إِظْهَار حَلْقِيّ",
+        "ur": "اظہار حلقی",
+        "tr": "İzhar-ı Halkî",
+        "fr": "Izhar Halqi",
+        "id": "Izhar Halqi",
+        "de": "Izhar Halqi"
+      }
+    }
+  ]
+}

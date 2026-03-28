@@ -1,0 +1,63 @@
+name: tajweed_practice
+description: A multilingual Quran tajweed practice application
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.1
+  riverpod: ^2.4.10            # optional – swap provider for riverpod if preferred
+
+  # Audio playback & recording
+  just_audio: ^0.9.36          # Quran audio streaming (Quran.com CDN)
+  record: ^5.2.1               # Recitation recording (microphone)
+  audio_waveforms: ^1.0.5      # Waveform visualizer during playback/recording
+
+  # Networking & data
+  dio: ^5.4.1                  # HTTP client for Quran.com API & Tarteel AI
+  cached_network_image: ^3.3.1
+  connectivity_plus: ^5.0.2
+
+  # Local storage & caching
+  hive_flutter: ^1.1.0         # Offline verse cache, progress, streak data
+  path_provider: ^2.1.2
+
+  # Arabic text & Quranic fonts
+  google_fonts: ^6.1.0         # Fallback; Uthmanic Hafs loaded as asset font
+
+  # Internationalisation
+  intl: ^0.20.2
+
+  # UI utilities
+  lottie: ^3.0.0               # Animations (e.g., celebration on quiz completion)
+  flutter_svg: ^2.0.9
+  shimmer: ^3.0.0              # Loading skeletons
+  go_router: ^13.2.0           # Declarative routing
+
+  # Permissions
+  permission_handler: ^11.3.0
+
+dependency_overrides:
+  record_linux: ^1.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.8
+  flutter_gen_runner: ^5.4.0   # Asset code generation
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/tajweed/            # Local tajweed rule JSON database
