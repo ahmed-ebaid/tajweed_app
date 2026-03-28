@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +15,7 @@ import '../../core/services/audio_service.dart';
 import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_api_service.dart';
 import '../reader/widgets/audio_player_bar.dart';
+import '../reader/widgets/jump_ayah_sheet.dart';
 import '../reader/widgets/tajweed_text.dart';
 import '../reader/widgets/tafseer_sheet.dart';
 import '../reader/widgets/word_detail_sheet.dart';
@@ -35,6 +39,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _allSurahs = [];
   Map<String, String> _audioUrls = {};
+  
+  // Debounce timer for scroll position saving
+  Timer? _scrollSaveTimer;
 
   // Audio state
   bool _isPlayingAll = false;
@@ -43,6 +50,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   // Juz boundaries: ayahNumber → juz number (only for first ayah of each juz in this surah)
   Map<int, int> _juzBoundaries = {};
+
+  // Target ayah to scroll to after loading a surah (e.g., from bookmark tap)
+  int? _pendingScrollAyah;
+
+  // Target scroll offset to restore after loading a surah
+  double _pendingScrollOffset = 0.0;
+
+  // Flag to avoid saving scroll position while automatic jump is in progress
+  bool _isProgrammaticScroll = false;
 
   // GlobalKeys for scrolling to specific ayahs
   final Map<int, GlobalKey> _ayahKeys = {};
@@ -54,9 +70,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
     // Restore last read position
     final bookmarks = context.read<BookmarkProvider>();
     _selectedSurah = bookmarks.lastReadSurah;
+    print('📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
 
     _initData();
 
+    // Listen for audio completion
     _audio.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         if (_isPlayingAll && mounted) {
@@ -66,6 +84,66 @@ class _ReaderScreenState extends State<ReaderScreen> {
         }
       }
     });
+
+    // Debounced scroll tracking - save every 1 second while scrolling
+    _scrollController.addListener(() {
+      _scrollSaveTimer?.cancel();
+      _scrollSaveTimer = Timer(const Duration(milliseconds: 500), _saveScrollPosition);
+    });
+  }
+
+  void _saveScrollPosition() {
+    try {
+      if (_ayahs.isEmpty || !mounted) return;
+
+      int? topVisibleAyah;
+      double bestDistance = double.infinity;
+      final screenHeight = MediaQuery.of(context).size.height;
+
+      for (final ayah in _ayahs) {
+        final key = _ayahKeys[ayah.ayahNumber];
+        if (key?.currentContext == null) continue;
+
+        try {
+          final renderObject = key!.currentContext!.findRenderObject();
+          if (renderObject is! RenderBox) continue;
+          final renderBox = renderObject;
+          if (!renderBox.hasSize) continue;
+
+          final offset = renderBox.localToGlobal(Offset.zero).dy;
+          final distance = (offset - 0).abs();
+
+          if (distance < bestDistance && offset < screenHeight * 0.8) {
+            bestDistance = distance;
+            topVisibleAyah = ayah.ayahNumber;
+          }
+        } catch (e) {
+          print('⚠️ Error processing ayah ${ayah.ayahNumber} in scroll save: $e');
+          continue;
+        }
+      }
+
+      if (topVisibleAyah == null && _playingAyahNumber != null) {
+        topVisibleAyah = _playingAyahNumber;
+      }
+
+      if (_isProgrammaticScroll) {
+        // Ignore automatic jump positions until the final scroll settle.
+        return;
+      }
+
+      if (topVisibleAyah != null && mounted) {
+        try {
+          final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+          context.read<BookmarkProvider>().saveLastRead(_selectedSurah, topVisibleAyah, scrollOffset: scrollOffset);
+          print('✅ Saved scroll position: surah=$_selectedSurah, ayah=$topVisibleAyah, offset=$scrollOffset');
+        } catch (e) {
+          print('❌ Error saving to BookmarkProvider: $e');
+        }
+      }
+    } catch (e) {
+      print('❌ Error in _saveScrollPosition: $e');
+    }
   }
 
   Future<void> _initData() async {
@@ -79,6 +157,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   void dispose() {
+    // Cancel the scroll save timer
+    _scrollSaveTimer?.cancel();
+    // Save position one final time before closing
+    _saveScrollPosition();
     _audio.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -112,6 +194,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
       final audioMap = results[0] as Map<String, String>;
       final tajweedMap = results[1] as Map<String, String>;
 
+      print('📻 AUDIO MAP KEYS: ${audioMap.keys.toList()}');
+      print('📻 AUDIO MAP SIZE: ${audioMap.length}');
+      if (audioMap.isNotEmpty) {
+        print('📻 FIRST ENTRY: ${audioMap.entries.first}');
+      } else {
+        print('❌ AUDIO MAP IS EMPTY!');
+      }
+
       if (mounted) {
         setState(() {
           _loading = false;
@@ -122,9 +212,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
             _ayahKeys[a.ayahNumber] = GlobalKey();
           }
         });
-        _scrollToLastReadAyah();
+        print('📻 AFTER SETSTATE: _audioUrls.length=${_audioUrls.length}');
+        // Defer scroll until widgets are rendered
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_pendingScrollOffset > 0) {
+            _restoreScrollOffset(_pendingScrollOffset);
+            _pendingScrollOffset = 0.0;
+          } else {
+            _scrollToLastReadAyah();
+          }
+        });
       }
-    } catch (_) {
+    } catch (e) {
+      print('❌ ERROR IN LOAD SURAH: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -159,30 +259,184 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _scrollToLastReadAyah() {
-    final bookmarks = context.read<BookmarkProvider>();
-    if (bookmarks.lastReadSurah == _selectedSurah && bookmarks.lastReadAyah > 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final key = _ayahKeys[bookmarks.lastReadAyah];
-        if (key?.currentContext != null) {
-          Scrollable.ensureVisible(
-            key!.currentContext!,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOut,
-          );
-        }
-      });
+    try {
+      final bookmarks = context.read<BookmarkProvider>();
+      if (bookmarks.lastReadSurah != _selectedSurah || _ayahs.isEmpty) {
+        print('⚠️ Not scrolling: mismatch/empty (lastReadSurah=${bookmarks.lastReadSurah}, _selectedSurah=$_selectedSurah, count=${_ayahs.length})');
+        return;
+      }
+
+      final savedOffset = bookmarks.lastScrollOffset;
+      print('🎯 _scrollToLastReadAyah using saved offset=$savedOffset in surah $_selectedSurah');
+      _restoreScrollOffset(savedOffset);
+    } catch (e) {
+      print('❌ Error in _scrollToLastReadAyah: $e');
     }
   }
+
+  void _restoreScrollOffset(double offset) {
+    if (!_scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreScrollOffset(offset);
+      });
+      return;
+    }
+
+    // Clamp offset to valid range
+    final validOffset = offset.clamp(0.0, _scrollController.position.maxScrollExtent);
+    _isProgrammaticScroll = true;
+    
+    print('🔄 Restoring scroll to offset=$validOffset');
+    _scrollController.jumpTo(validOffset);
+    
+    // Save the position
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        try {
+          final bookmarks = context.read<BookmarkProvider>();
+          context.read<BookmarkProvider>().saveLastRead(_selectedSurah, bookmarks.lastReadAyah, scrollOffset: validOffset);
+          print('✅ Restored scroll position at offset=$validOffset');
+        } catch (e) {
+          print('❌ Error saving during restore: $e');
+        }
+      }
+      _isProgrammaticScroll = false;
+    });
+  }
+
+  void jumpToAyah(int ayahNumber) {
+    if (_ayahs.isEmpty) {
+      _pendingScrollAyah = ayahNumber;
+      return;
+    }
+
+    final target = ayahNumber.clamp(1, _ayahs.length);
+    _pendingScrollAyah = target;
+    _isProgrammaticScroll = true;
+    _scrollToAyahByIndex(target);
+  }
+
+  void _ensureAyahVisible(int ayahNumber, [int attempt = 0]) {
+    if (!_scrollController.hasClients) {
+      if (attempt >= 20) {
+        print('❌ _ensureAyahVisible: controller still no clients after retries');
+        _isProgrammaticScroll = false;
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => _ensureAyahVisible(ayahNumber, attempt + 1));
+      return;
+    }
+
+    if (_scrollController.position.isScrollingNotifier.value) {
+      // Wait until the programmatic animation completes.
+      Future.delayed(const Duration(milliseconds: 120), () => _ensureAyahVisible(ayahNumber, attempt));
+      return;
+    }
+
+    final key = _ayahKeys[ayahNumber];
+    if (key?.currentContext != null) {
+      try {
+        print('✨ ensureVisible for ayah $ayahNumber (attempt $attempt)');
+        Scrollable.ensureVisible(
+          key!.currentContext!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.1,
+        );
+        print('✨ ensureVisible success for ayah $ayahNumber');
+
+        // Programmatic jump finished.
+        _isProgrammaticScroll = false;
+        if (mounted) {
+          try {
+            context.read<BookmarkProvider>().saveLastRead(_selectedSurah, ayahNumber);
+            print('✅ SAVE LAST READ: surah=$_selectedSurah, ayah=$ayahNumber');
+          } catch (e) {
+            print('❌ Error saving last read during jump: $e');
+          }
+        }
+      } catch (e) {
+        print('❌ ensureVisible failed for ayah $ayahNumber: $e');
+        _isProgrammaticScroll = false;
+      }
+      return;
+    }
+
+    if (attempt < 12) {
+      // Retry more times with longer delays to let ListView lazily build widgets
+      print('⏳ key.currentContext null for ayah $ayahNumber; retrying (attempt ${attempt + 1})');
+      Future.delayed(const Duration(milliseconds: 300), () => _ensureAyahVisible(ayahNumber, attempt + 1));
+    } else {
+      print('⚠️ Widget for ayah $ayahNumber not found after retries, but scroll position should be close');
+      _isProgrammaticScroll = false;
+    }
+  }
+
+  void _scrollToAyahByIndex(int ayahNumber, {int attempt = 0}) {
+    final index = ayahNumber - 1;
+    if (index < 0 || index >= _ayahs.length) {
+      print('❌ _scrollToAyahByIndex: invalid index $index for ayah $ayahNumber');
+      return;
+    }
+
+    if (!_scrollController.hasClients) {
+      if (attempt >= 6) {
+        print('❌ _scrollToAyahByIndex: no scroll clients after retry');
+        return;
+      }
+      print('⏳ _scrollController has no clients yet, retrying (attempt ${attempt + 1})');
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToAyahByIndex(ayahNumber, attempt: attempt + 1));
+      return;
+    }
+
+    double itemHeight = 130.0; // Conservative default (adjust for rich ayah content)
+    final firstKey = _ayahKeys[1];
+    if (firstKey?.currentContext != null) {
+      final renderObject = firstKey!.currentContext!.findRenderObject();
+      if (renderObject is RenderBox && renderObject.hasSize) {
+        itemHeight = renderObject.size.height;
+        print('ℹ️ Derived itemHeight=$itemHeight from ayah 1');
+      }
+    }
+
+    final rawOffset = index * itemHeight;
+    final estimatedOffset = (rawOffset + itemHeight * 6).clamp(0.0, _scrollController.position.maxScrollExtent);
+    final targetOffset = estimatedOffset;
+
+    print('🔧 Fallback animateTo offset=$targetOffset (raw=$rawOffset, max=${_scrollController.position.maxScrollExtent}) for ayah $ayahNumber');
+
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+    ).then((_) {
+      // Scroll position is set, let ListView lazily build widgets
+      _isProgrammaticScroll = false;
+      if (mounted) {
+        try {
+          context.read<BookmarkProvider>().saveLastRead(_selectedSurah, ayahNumber);
+          print('✅ SAVE LAST READ: surah=$_selectedSurah, ayah=$ayahNumber');
+        } catch (e) {
+          print('❌ Error saving last read: $e');
+        }
+      }
+    });
+  }
+
 
   // ─── Audio Controls ───────────────────────────────────────────────────────
 
   /// Double-tap on a single ayah — play just that one.
   void _playSingleAyah(Ayah ayah) {
+    print('🔢 DOUBLE TAP: ayah ${ayah.ayahNumber}');
+    context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+
     if (_playingAyahNumber == ayah.ayahNumber) {
       _audio.pause();
       setState(() { _playingAyahNumber = null; _isPlayingAll = false; });
     } else {
       _isPlayingAll = false;
+      print('🎵 CALLING _playAyah FOR ${ayah.ayahNumber}');
       _playAyah(ayah);
     }
   }
@@ -195,37 +449,77 @@ class _ReaderScreenState extends State<ReaderScreen> {
     } else if (_ayahs.isNotEmpty) {
       _isPlayingAll = true;
       _currentPlayIndex = 0;
-      _playAyah(_ayahs[_currentPlayIndex]);
+      final firstAyah = _ayahs[_currentPlayIndex];
+      context.read<BookmarkProvider>().saveLastRead(firstAyah.surahNumber, firstAyah.ayahNumber);
+      _playAyah(firstAyah);
     }
   }
 
   void _playAyah(Ayah ayah) {
+    final reciterId = context.read<RecitationProvider>().selectedReciterId;
     final verseKey = '${ayah.surahNumber}:${ayah.ayahNumber}';
-    final url = _audioUrls[verseKey] ?? ayah.audioUrl ?? '';
-    debugPrint('Playing ayah: $verseKey, URL: $url');
-    if (url.isNotEmpty) {
-      try {
-        _audio.playUrl(url);
-      } catch (e) {
-        debugPrint('Error playing URL for $verseKey: $e');
+    final giveFromMap = _audioUrls[verseKey];
+    final fallbackUrl = _api.audioUrl(
+      reciterId: reciterId,
+      surahNumber: ayah.surahNumber,
+      ayahNumber: ayah.ayahNumber,
+    );
+    final rawUrl = giveFromMap ?? ayah.audioUrl ?? fallbackUrl;
+    final url = rawUrl.startsWith('http') ? rawUrl : 'https://verses.quran.com/$rawUrl';
+
+    print('🎵 PLAY AYAH: verseKey=$verseKey, mapHas=${giveFromMap != null}, raw=$rawUrl, url=$url');
+
+    if (url.isEmpty) {
+      print('❌ ERROR: EMPTY URL FOR $verseKey');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audio not available for this ayah'),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
-    } else {
-      debugPrint('URL is empty for $verseKey');
+      return;
     }
-    setState(() { _playingAyahNumber = ayah.ayahNumber; });
+    
+    print('📂 PLAYING URL: ${url.substring(0, 50)}...');
+    try {
+      _audio.playUrl(url);
+      print('✅ playUrl succeeded');
+      setState(() { _playingAyahNumber = ayah.ayahNumber; });
+    } catch (e) {
+      print('❌ Exception in playUrl: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error playing audio: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
 
     // Update last read position
-    context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+    try {
+      context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+    } catch (e) {
+      print('❌ Error saving last read: $e');
+    }
 
     // Scroll to currently playing ayah
     final key = _ayahKeys[ayah.ayahNumber];
     if (key?.currentContext != null) {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: 0.3,
-      );
+      try {
+        Scrollable.ensureVisible(
+          key!.currentContext!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.3,
+        );
+      } catch (e) {
+        print('❌ Error scrolling: $e');
+      }
     }
   }
 
@@ -234,7 +528,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
     if (_currentPlayIndex < _ayahs.length) {
       _playAyah(_ayahs[_currentPlayIndex]);
     } else {
-      // Reached end
       setState(() { _isPlayingAll = false; _playingAyahNumber = null; });
     }
   }
@@ -279,7 +572,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
           break;
         }
       }
-      bm.addBookmark(ayah.surahNumber, ayah.ayahNumber, label: label);
+      final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+      bm.addBookmark(ayah.surahNumber, ayah.ayahNumber, label: label, scrollOffset: scrollOffset);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Bookmark added'), duration: Duration(seconds: 1)),
@@ -300,9 +594,20 @@ class _ReaderScreenState extends State<ReaderScreen> {
         bookmarks: bm.bookmarks,
         onTap: (bookmark) {
           Navigator.pop(context);
-          setState(() => _selectedSurah = bookmark.surah);
-          // Save so we scroll to the right ayah after load
-          context.read<BookmarkProvider>().saveLastRead(bookmark.surah, bookmark.ayah);
+          if (_selectedSurah == bookmark.surah) {
+            // Same surah: direct scroll without full reload
+            _isProgrammaticScroll = true;
+            _restoreScrollOffset(bookmark.scrollOffset);
+            context.read<BookmarkProvider>().saveLastRead(bookmark.surah, bookmark.ayah, scrollOffset: bookmark.scrollOffset);
+            return;
+          }
+
+          // Different surah: load it then restore offset
+          setState(() {
+            _pendingScrollAyah = bookmark.ayah;
+            _selectedSurah = bookmark.surah;
+            _pendingScrollOffset = bookmark.scrollOffset;
+          });
           _loadSurah();
         },
         onDelete: (bookmark) {
@@ -321,6 +626,23 @@ class _ReaderScreenState extends State<ReaderScreen> {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => WordDetailSheet(rule: rule, word: word),
+    );
+  }
+
+  void _showJumpAyahDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => JumpAyahSheet(
+        maxAyah: _ayahs.length,
+        onJump: (ayahNumber) {
+          print('🎯 Jump to ayah $ayahNumber');
+          jumpToAyah(ayahNumber);
+        },
+      ),
     );
   }
 
@@ -364,6 +686,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
             tooltip: l10n.get('translation'),
             onPressed: () => setState(() => _showTranslation = !_showTranslation),
           ),
+          // Jump to ayah
+          IconButton(
+            icon: const Icon(Icons.numbers, size: 22),
+            tooltip: 'Jump to Ayah',
+            onPressed: _ayahs.isNotEmpty ? _showJumpAyahDialog : null,
+          ),
         ],
       ),
       body: Column(
@@ -373,6 +701,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
             langCode: langCode,
           ),
           const Divider(height: 0.5),
+          // DEBUG: Show audio map status
+          Container(
+            color: const Color(0xFFF5F5F5),
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              '📻 Audio URLs loaded: ${_audioUrls.length} | Last read: $_selectedSurah:${context.watch<BookmarkProvider>().lastReadAyah}',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF666)),
+            ),
+          ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -438,11 +775,9 @@ class _SurahSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     // Arabic name first, English second
     String arabicName = '';
-    String englishName = 'Surah $selected';
     for (final s in surahs) {
       if (s['id'] == selected) {
         arabicName = s['name_arabic'] as String? ?? '';
-        englishName = s['name_simple'] as String? ?? 'Surah $selected';
         break;
       }
     }
@@ -452,16 +787,15 @@ class _SurahSelector extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (arabicName.isNotEmpty) ...[
+          if (arabicName.isNotEmpty)
             Text(arabicName,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontFamily: 'UthmanicHafs',
                       fontSize: 18,
-                    )),
-            const SizedBox(width: 6),
-          ],
-          Text('($englishName)',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12)),
+                    ))
+          else
+            Text('Surah $selected',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 16)),
           const SizedBox(width: 4),
           const Icon(Icons.arrow_drop_down, size: 20),
         ],
@@ -698,6 +1032,9 @@ class _AyahTile extends StatelessWidget {
     return GestureDetector(
       onDoubleTap: onDoubleTap,
       onLongPress: onBookmarkTap,
+      behavior: HitTestBehavior.opaque,
+      // Increase double-tap detection window
+      excludeFromSemantics: false,
       child: Container(
         color: isPlaying ? const Color(0xFF1D9E75).withValues(alpha: 0.08) : null,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

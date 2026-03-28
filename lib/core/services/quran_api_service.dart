@@ -79,18 +79,27 @@ class QuranApiService {
     required int reciterId,
     required int surahNumber,
   }) async {
-    final response = await _dio.get(
-      '/recitations/$reciterId/by_chapter/$surahNumber',
-    );
-    final files = response.data['audio_files'] as List<dynamic>? ?? [];
     final map = <String, String>{};
-    for (final f in files) {
-      final key = f['verse_key'] as String? ?? '';
-      final url = f['url'] as String? ?? '';
-      if (key.isNotEmpty && url.isNotEmpty) {
-        map[key] = url.startsWith('http') ? url : '$_audioBaseUrl/$url';
+    int page = 1;
+
+    while (true) {
+      final response = await _dio.get(
+        '/recitations/$reciterId/by_chapter/$surahNumber',
+        queryParameters: {'page': page, 'per_page': 50},
+      );
+      final files = response.data['audio_files'] as List<dynamic>? ?? [];
+      for (final f in files) {
+        final key = f['verse_key'] as String? ?? '';
+        final url = f['url'] as String? ?? '';
+        if (key.isNotEmpty && url.isNotEmpty) {
+          map[key] = url.startsWith('http') ? url : '$_audioBaseUrl/$url';
+        }
       }
+
+      if (files.length < 50) break;
+      page++;
     }
+
     return map;
   }
 
