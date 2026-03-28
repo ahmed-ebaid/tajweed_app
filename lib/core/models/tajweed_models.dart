@@ -28,7 +28,7 @@ extension TajweedRuleExtension on TajweedRule {
   Color get color {
     switch (this) {
       case TajweedRule.ghunnah:
-        return const Color(0xFF1D9E75);   // teal
+        return const Color(0xFFFFA500);   // orange
       case TajweedRule.qalqalah:
         return const Color(0xFFA32D2D);   // red
       case TajweedRule.maddTabeei:
@@ -36,7 +36,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.maddMunfasil:
         return const Color(0xFF185FA5);   // blue
       case TajweedRule.maddLazim:
-        return const Color(0xFFDD0008);   // bright red
+        return const Color(0xFFFF00FF);   // magenta
       case TajweedRule.idghamWithGhunnah:
       case TajweedRule.idghamWithoutGhunnah:
       case TajweedRule.idghamShafawi:
@@ -48,7 +48,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.iqlab:
         return const Color(0xFFD85A30);   // coral
       case TajweedRule.izhar:
-        return const Color(0xFF0F6E56);   // dark teal
+        return const Color(0xFF00FFFF);   // cyan
       case TajweedRule.shaddah:
         return const Color(0xFF639922);   // green
       case TajweedRule.waqf:
