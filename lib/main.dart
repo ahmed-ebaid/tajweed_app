@@ -11,6 +11,7 @@ import 'core/providers/streak_provider.dart';
 import 'core/providers/recitation_provider.dart';
 import 'core/providers/tafseer_provider.dart';
 import 'core/theme/app_theme.dart';
+import 'features/record/record_view_model.dart';
 import 'root_scaffold.dart';
 
 void main() {
@@ -41,6 +42,7 @@ void main() {
       await Hive.openBox('streak');
       await Hive.openBox('verse_cache');
       await Hive.openBox('bookmarks');
+      await Hive.openBox('audio_cache');
     } catch (e) {
       runApp(_ErrorApp(message: 'Hive init failed: $e'));
       return;
@@ -65,6 +67,11 @@ void main() {
           ChangeNotifierProvider.value(value: streakProvider),
           ChangeNotifierProvider.value(value: bookmarkProvider),
           ChangeNotifierProvider(create: (_) => RecitationProvider()),
+          ChangeNotifierProxyProvider<RecitationProvider, RecordViewModel>(
+            create: (context) => RecordViewModel(context.read<RecitationProvider>()),
+            update: (context, recitationProvider, previous) =>
+                previous ?? RecordViewModel(recitationProvider),
+          ),
           ChangeNotifierProvider(
             create: (_) => TafseerProvider(
               langCode: localeProvider.locale.languageCode,

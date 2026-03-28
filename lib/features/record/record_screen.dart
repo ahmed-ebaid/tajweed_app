@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
-import '../../core/providers/locale_provider.dart';
 import '../../core/providers/recitation_provider.dart';
 import '../../core/providers/streak_provider.dart';
+import '../../core/services/tarteel_service.dart';
+import 'record_view_model.dart';
 
 class RecordScreen extends StatelessWidget {
   const RecordScreen({super.key});
@@ -14,6 +15,7 @@ class RecordScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final provider = context.watch<RecitationProvider>();
+    final vm = context.watch<RecordViewModel>();
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.recordReview)),
@@ -27,10 +29,12 @@ class RecordScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text(l10n.get('ai_feedback'),
                 style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 8),
+            _AnalysisModeBadge(isMock: !TarteelService.isConfigured),
             const SizedBox(height: 16),
-            _AyahSelector(),
+            _AyahSelector(vm: vm),
             const SizedBox(height: 24),
-            _RecordButton(provider: provider),
+            _RecordButton(provider: provider, vm: vm),
             const SizedBox(height: 24),
             if (provider.hasFeedback) _FeedbackPanel(feedback: provider.lastFeedback!),
             if (!provider.hasFeedback) _PlaceholderFeedback(),
@@ -42,6 +46,9 @@ class RecordScreen extends StatelessWidget {
 }
 
 class _AyahSelector extends StatelessWidget {
+  final RecordViewModel vm;
+  const _AyahSelector({required this.vm});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -57,7 +64,7 @@ class _AyahSelector extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Al-Mulk 67:1',
+                Text('Surah ${vm.selectedSurah}:${vm.selectedAyah}',
                     style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 2),
                 Text('Tap to change',
@@ -81,7 +88,8 @@ class _AyahSelector extends StatelessWidget {
 
 class _RecordButton extends StatelessWidget {
   final RecitationProvider provider;
-  const _RecordButton({required this.provider});
+  final RecordViewModel vm;
+  const _RecordButton({required this.provider, required this.vm});
 
   @override
   Widget build(BuildContext context) {
@@ -93,14 +101,18 @@ class _RecordButton extends StatelessWidget {
       child: Column(
         children: [
           GestureDetector(
-            onTap: isProcessing ? null : () {
-              if (isRecording) {
-                provider.stopRecording('/tmp/recording.m4a');
-                context.read<StreakProvider>().recordActivity();
-              } else {
-                provider.startRecording();
-              }
-            },
+            onTap: isProcessing
+                ? null
+                : () async {
+                    if (isRecording) {
+                      await vm.stopAndEvaluate();
+                      if (context.mounted && provider.hasFeedback) {
+                        context.read<StreakProvider>().recordActivity();
+                      }
+                    } else {
+                      await vm.startRecording();
+                    }
+                  },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 80, height: 80,
@@ -147,6 +159,33 @@ class _RecordButton extends StatelessWidget {
   }
 }
 
+class _AnalysisModeBadge extends StatelessWidget {
+  final bool isMock;
+  const _AnalysisModeBadge({required this.isMock});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isMock ? const Color(0xFFFCEBEB) : const Color(0xFFE1F5EE);
+    final fg = isMock ? const Color(0xFFA32D2D) : const Color(0xFF0F6E56);
+    final text = isMock ? 'Mock Analysis (No API Key)' : 'Live Analysis';
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(fontSize: 11, color: fg, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+}
+
 class _FeedbackPanel extends StatelessWidget {
   final RecitationFeedback feedback;
   const _FeedbackPanel({required this.feedback});
@@ -154,7 +193,6 @@ class _FeedbackPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final langCode = context.read<LocaleProvider>().locale.languageCode;
 
     return Container(
       padding: const EdgeInsets.all(16),

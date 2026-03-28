@@ -5,7 +5,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
-import '../../core/models/tajweed_models.dart';
 import '../../core/providers/recitation_provider.dart';
 import '../../core/services/tarteel_service.dart';
 

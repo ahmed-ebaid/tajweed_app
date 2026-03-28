@@ -5,6 +5,8 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/services/audio_service.dart';
+import '../../core/services/ayah_mapper.dart';
+import '../../core/services/quran_api_service.dart';
 import 'package:just_audio/just_audio.dart';
 
 /// Full-screen detail view for a single tajweed rule.
@@ -21,7 +23,10 @@ class RuleDetailScreen extends StatefulWidget {
 
 class _RuleDetailScreenState extends State<RuleDetailScreen> {
   final AudioService _audio = AudioService();
+  final QuranApiService _api = QuranApiService();
   bool _playing = false;
+  Ayah? _exampleAyah;
+  bool _loadingAyah = true;
 
   static const _audioBaseUrl =
       'https://verses.quran.com/AbdulBaset/Mujawwad/mp3';
@@ -52,11 +57,55 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _loadExampleAyah();
     _audio.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         if (mounted) setState(() => _playing = false);
       }
     });
+  }
+
+  Future<void> _loadExampleAyah() async {
+    final code = _exampleAudioCodes[widget.definition.rule];
+    if (code == null || code.length != 6) {
+      if (mounted) setState(() => _loadingAyah = false);
+      return;
+    }
+
+    final surah = int.tryParse(code.substring(0, 3));
+    final ayah = int.tryParse(code.substring(3, 6));
+    if (surah == null || ayah == null) {
+      if (mounted) setState(() => _loadingAyah = false);
+      return;
+    }
+
+    try {
+      final langCode = context.read<LocaleProvider>().locale.languageCode;
+      final verses = await _api.fetchVerses(
+        surahNumber: surah,
+        langCode: langCode,
+        reciterId: 1,
+        page: 1,
+      );
+      final target = verses.where((v) => (v['verse_key'] as String? ?? '') == '$surah:$ayah').toList();
+      if (target.isNotEmpty) {
+        final tajweed = await _api.fetchTajweedText(chapterNumber: surah);
+        final verse = target.first;
+        final mapped = AyahMapper.fromApi(
+          verse,
+          tajweedHtml: tajweed['$surah:$ayah'],
+        );
+        if (mounted) {
+          setState(() {
+            _exampleAyah = mapped;
+            _loadingAyah = false;
+          });
+        }
+        return;
+      }
+    } catch (_) {}
+
+    if (mounted) setState(() => _loadingAyah = false);
   }
 
   @override
@@ -157,10 +206,141 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+
+            _PlaybackAyahPreview(
+              ayah: _exampleAyah,
+              loading: _loadingAyah,
+              selectedRule: rule,
+              isPlaying: _playing,
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _PlaybackAyahPreview extends StatelessWidget {
+  final Ayah? ayah;
+  final bool loading;
+  final TajweedRule selectedRule;
+  final bool isPlaying;
+
+  const _PlaybackAyahPreview({
+    required this.ayah,
+    required this.loading,
+    required this.selectedRule,
+    required this.isPlaying,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(12),
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ));
+    }
+
+    if (ayah == null) {
+      return const SizedBox.shrink();
+    }
+
+    final headerText = isPlaying
+        ? 'Now playing: ${ayah!.surahNumber}:${ayah!.ayahNumber}'
+        : 'Playback ayah: ${ayah!.surahNumber}:${ayah!.ayahNumber}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isPlaying
+            ? selectedRule.color.withValues(alpha: 0.14)
+            : selectedRule.color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: selectedRule.color.withValues(alpha: isPlaying ? 0.85 : 0.35),
+          width: isPlaying ? 1.2 : 0.6,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isPlaying ? Icons.play_circle_fill_rounded : Icons.queue_music_rounded,
+                size: 16,
+                color: selectedRule.color,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                headerText,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: selectedRule.color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Directionality(
+            textDirection: TextDirection.rtl,
+            child: RichText(
+              textAlign: TextAlign.justify,
+              text: TextSpan(
+                style: const TextStyle(
+                  fontFamily: 'UthmanicHafs',
+                  fontSize: 28,
+                  height: 1.9,
+                  color: Color(0xFF1A1A1A),
+                ),
+                children: _buildRuleFocusedSpans(ayah!, selectedRule),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Highlighted: ${selectedRule.arabicName}',
+            style: TextStyle(
+              fontSize: 11,
+              color: selectedRule.color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<InlineSpan> _buildRuleFocusedSpans(Ayah ayah, TajweedRule selectedRule) {
+    if (ayah.tajweedSegments.isEmpty) {
+      return [TextSpan(text: ayah.arabic)];
+    }
+
+    return ayah.tajweedSegments.map<InlineSpan>((segment) {
+      final isSelected = segment.rule == selectedRule;
+      final isUnTagged = segment.rule == null;
+      final color = isSelected
+          ? selectedRule.color
+          : (isUnTagged ? const Color(0xFF1A1A1A) : const Color(0xFF8B8B8B));
+
+      return TextSpan(
+        text: segment.text,
+        style: TextStyle(
+          fontFamily: 'UthmanicHafs',
+          fontSize: 28,
+          height: 1.9,
+          color: color,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+          backgroundColor: isSelected
+              ? selectedRule.color.withValues(alpha: 0.16)
+              : null,
+        ),
+      );
+    }).toList();
   }
 }
 
@@ -178,9 +358,9 @@ class _RuleHeader extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: rule.color.withOpacity(0.08),
+        color: rule.color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: rule.color.withOpacity(0.3), width: 0.5),
+        border: Border.all(color: rule.color.withValues(alpha: 0.3), width: 0.5),
       ),
       child: Column(
         children: [
@@ -249,9 +429,9 @@ class _ExampleChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
       ),
       child: Text(
         text,
@@ -280,7 +460,7 @@ class _LetterBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.5), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
       ),
       alignment: Alignment.center,
       child: Text(
