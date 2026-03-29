@@ -16,7 +16,7 @@ import '../../core/services/audio_service.dart';
 import '../../core/services/audio_cache_service.dart';
 import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_api_service.dart';
-import '../reader/widgets/audio_player_bar.dart';
+import '../../core/services/mushaf_assets_service.dart';
 import '../reader/widgets/tajweed_text.dart';
 import '../reader/widgets/tafseer_sheet.dart';
 import '../reader/widgets/word_detail_sheet.dart';
@@ -33,7 +33,6 @@ enum _ReaderViewMode { page, ayah }
 
 class _ReaderScreenState extends State<ReaderScreen> {
   static const String _readerViewModeKey = 'reader_view_mode';
-  static const String _mushafAssetsDir = 'assets/mushaf_pages/tajweed';
 
   final _api = QuranApiService();
   final _audio = AudioService();
@@ -42,6 +41,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
   final PageController _mushafPageController = PageController();
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<Duration>? _positionSub;
+  
+  // Mushaf pages: downloaded on first launch from GitHub Releases.
+  late Future<String> _mushafPagesDirFuture;
+  int _downloadReceived = 0;
+  int _downloadTotal = 0;
 
   int _selectedSurah = 1;
   bool _tajweedEnabled = true;
@@ -95,6 +99,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _ayahModeAnchorAyah = bookmarks.lastReadAyah;
     print('📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
 
+    _initializeMushafPages();
+
     _initData();
 
     // Listen for audio completion
@@ -146,6 +152,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
     } catch (_) {
       _viewMode = _ReaderViewMode.ayah;
     }
+  }
+
+  void _initializeMushafPages() {
+    _mushafPagesDirFuture = MushafAssetsService.getMushafPagesDir(
+      onProgress: (received, total) {
+        if (mounted && total > 0) {
+          setState(() {
+            _downloadReceived = received;
+            _downloadTotal = total;
+          });
+        }
+      },
+    ).then((dir) => dir.path);
   }
 
   void _persistReaderViewMode(_ReaderViewMode mode) {
@@ -1110,6 +1129,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
     return _ayahs[idx].pageNumber;
   }
 
+  String _getMushafPagePath(int pageNumber) {
+    return 'assets/mushaf_pages/tajweed/$pageNumber.webp';
+  }
+
   Future<void> _updateMushafAnchorForPage(int pageNumber) async {
     if (!mounted) return;
     final cached = _mushafPageAnchorCache[pageNumber];
@@ -1176,91 +1199,85 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
-  String _mushafPageAsset(int pageNumber) {
-    final safePage = pageNumber.clamp(1, 604);
-    return '$_mushafAssetsDir/$safePage.png';
-  }
-
   Widget _buildMushafPageView() {
     return PageView.builder(
       controller: _mushafPageController,
       itemCount: 604,
-      onPageChanged: (index) {
-        final pageNumber = index + 1;
-        setState(() {
-          _currentMushafPageIndex = index;
-        });
+          onPageChanged: (index) {
+            final pageNumber = index + 1;
+            setState(() {
+              _currentMushafPageIndex = index;
+            });
 
-        unawaited(_updateMushafAnchorForPage(pageNumber));
+            unawaited(_updateMushafAnchorForPage(pageNumber));
 
-        final anchorSurah = _currentMushafAnchorSurah();
-        final anchorAyah = _currentMushafAnchorAyah();
-        context.read<BookmarkProvider>().saveLastRead(anchorSurah, anchorAyah);
-      },
-      itemBuilder: (context, index) {
-        final pageNumber = index + 1;
-        final pageAsset = _mushafPageAsset(pageNumber);
-        final pageSurah = _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
-        final surahName = _surahArabicName(pageSurah);
+            final anchorSurah = _currentMushafAnchorSurah();
+            final anchorAyah = _currentMushafAnchorAyah();
+            context.read<BookmarkProvider>().saveLastRead(anchorSurah, anchorAyah);
+          },
+          itemBuilder: (context, index) {
+            final pageNumber = index + 1;
+            final pageSurah = _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
+            final surahName = _surahArabicName(pageSurah);
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: _QuranPageBackground(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _MushafHeaderChip(text: surahName),
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: _QuranPageBackground(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _MushafHeaderChip(text: surahName),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              '۞۞۞',
+                              style: TextStyle(
+                                fontFamily: 'UthmanicHafs',
+                                fontSize: 18,
+                                color: Color(0xFF946E2A),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _MushafHeaderChip(text: 'الصفحة $pageNumber'),
+                          ),
+                        ],
                       ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 6),
-                        child: Text(
-                          '۞۞۞',
-                          style: TextStyle(
-                            fontFamily: 'UthmanicHafs',
-                            fontSize: 18,
-                            color: Color(0xFF946E2A),
+                    ),
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFBF9F4),
+                          border: Border.all(color: const Color(0xFF8E7C58), width: 1.2),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
+                          child: Image.asset(
+                            _getMushafPagePath(pageNumber),
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.none,
+                            alignment: Alignment.center,
+                            isAntiAlias: false,
+                            errorBuilder: (_, __, ___) => _MissingLocalMushafPage(
+                              pageNumber: pageNumber,
+                            ),
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: _MushafHeaderChip(text: 'الصفحة $pageNumber'),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFBF9F4),
-                      border: Border.all(color: const Color(0xFF8E7C58), width: 1.2),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
-                      child: Image.asset(
-                              pageAsset,
-                              fit: BoxFit.contain,
-                              filterQuality: FilterQuality.none,
-                              alignment: Alignment.center,
-                              isAntiAlias: false,
-                              errorBuilder: (_, __, ___) => _MissingLocalMushafPage(
-                                pageNumber: pageNumber,
-                              ),
-                            ),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
-      },
-    );
   }
 }
 
@@ -1301,7 +1318,7 @@ class _MissingLocalMushafPage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Expected asset: $pageNumber.png',
+            'Expected asset: $pageNumber.webp',
             style: const TextStyle(fontSize: 11, color: Color(0xFF7E7158)),
           ),
         ],

@@ -29,6 +29,7 @@ dependencies:
   # Local storage & caching
   hive_flutter: ^1.1.0         # Offline verse cache, progress, streak data
   path_provider: ^2.1.2
+  archive: ^3.4.0              # ZIP extraction for bundled Mushaf pages
 
   # Arabic text & Quranic fonts
   google_fonts: ^8.0.2         # Fallback; Uthmanic Hafs loaded as asset font
