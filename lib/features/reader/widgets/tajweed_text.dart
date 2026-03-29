@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/tajweed_models.dart';
 
 /// Renders an [Ayah] as RTL Arabic text with tajweed color highlighting.
@@ -36,26 +35,24 @@ class TajweedText extends StatelessWidget {
     FontWeight weight = FontWeight.w600,
     Color? backgroundColor,
   }) {
-    return GoogleFonts.getFont(
-      'Amiri Quran',
-      textStyle: TextStyle(
-        color: color,
-        fontSize: size ?? fontSize,
-        fontWeight: weight,
-        height: lineHeight,
-        backgroundColor: backgroundColor,
-        shadows: _diacriticShadows(color),
-        fontFeatures: const [
-          FontFeature.enable('mark'),
-          FontFeature.enable('mkmk'),
-        ],
-        fontFamilyFallback: const [
-          'UthmanicHafs',
-          'Noto Naskh Arabic',
-          'Amiri',
-          'Geeza Pro',
-        ],
-      ),
+    return TextStyle(
+      color: color,
+      fontSize: size ?? fontSize,
+      fontWeight: weight,
+      height: lineHeight,
+      backgroundColor: backgroundColor,
+      shadows: _diacriticShadows(color),
+      fontFeatures: const [
+        FontFeature.enable('mark'),
+        FontFeature.enable('mkmk'),
+      ],
+      fontFamily: 'UthmanicHafs',
+      fontFamilyFallback: const [
+        'Noto Naskh Arabic',
+        'Amiri Quran',
+        'Amiri',
+        'Geeza Pro',
+      ],
     );
   }
 
@@ -76,7 +73,7 @@ class TajweedText extends StatelessWidget {
           applyHeightToLastDescent: false,
         ),
         strutStyle: StrutStyle(
-          fontFamily: 'Amiri Quran',
+          fontFamily: 'UthmanicHafs',
           fontSize: fontSize,
           height: lineHeight,
           leading: 0.15,
@@ -239,21 +236,17 @@ class TajweedText extends StatelessWidget {
     TextStyle style, {
     VoidCallback? onTap,
   }) {
-    final spans = <InlineSpan>[];
-    for (final grapheme in text.characters) {
-      if (onTap != null) {
-        spans.add(
-          TextSpan(
-            text: grapheme,
-            style: style,
-            recognizer: TapGestureRecognizer()..onTap = onTap,
-          ),
-        );
-      } else {
-        spans.add(TextSpan(text: grapheme, style: style));
-      }
+    // Keep each Arabic segment contiguous so glyph shaping remains stable.
+    if (onTap != null) {
+      return [
+        TextSpan(
+          text: text,
+          style: style,
+          recognizer: TapGestureRecognizer()..onTap = onTap,
+        ),
+      ];
     }
-    return spans;
+    return [TextSpan(text: text, style: style)];
   }
 
   List<InlineSpan> _buildSegmentSpans(Color baseColor) {

@@ -37,6 +37,7 @@ void main() {
       const ayah = Ayah(
         surahNumber: 1,
         ayahNumber: 1,
+        pageNumber: 1,
         arabic: 'بِسْمِ اللَّهِ',
         translations: {'en': 'In the name of Allah'},
         words: [],
@@ -49,6 +50,7 @@ void main() {
       const ayah = Ayah(
         surahNumber: 1,
         ayahNumber: 1,
+        pageNumber: 1,
         arabic: 'بِسْمِ اللَّهِ',
         translations: {
           'en': 'In the name of Allah',

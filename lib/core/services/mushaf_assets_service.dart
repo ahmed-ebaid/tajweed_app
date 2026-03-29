@@ -1,15 +1,29 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive_io.dart';
+
+class MushafAssetsStatus {
+  final bool installed;
+  final int pageCount;
+  final String? rootPath;
+
+  const MushafAssetsStatus({
+    required this.installed,
+    required this.pageCount,
+    required this.rootPath,
+  });
+}
 
 class MushafAssetsService {
   /// URL to the pages.zip hosted on GitHub Releases.
   /// Upload /tmp/pages.zip to a GitHub release and paste the asset URL here.
   static const String pagesZipUrl =
-      'https://github.com/YOUR_USERNAME/YOUR_REPO/releases/download/v1.0/pages.zip';
+      'https://github.com/ahmed-ebaid/tajweed_app/releases/download/v1.0.0-assets/images.zip';
 
   static const String _unzipDirName = 'mushaf_pages';
+  static const int expectedPageCount = 604;
 
   /// Returns the directory containing extracted page images.
   /// On first call downloads and extracts pages.zip from [pagesZipUrl].
@@ -20,16 +34,45 @@ class MushafAssetsService {
     final docsDir = await getApplicationDocumentsDirectory();
     final mushafDir = Directory('${docsDir.path}/$_unzipDirName');
 
-    if (await mushafDir.exists()) return mushafDir;
+    final existing = await _countPageImages(mushafDir);
+    if (existing >= expectedPageCount) return mushafDir;
+
+    if (await mushafDir.exists()) {
+      await mushafDir.delete(recursive: true);
+    }
 
     await _downloadAndExtract(mushafDir, onProgress: onProgress);
     return mushafDir;
   }
 
-  /// Returns the asset path for a given page number.
+  /// Returns the local file path for a given page number.
   static Future<String> getPagePath(int pageNumber) async {
     final dir = await getMushafPagesDir();
-    return '${dir.path}/tajweed/$pageNumber.webp';
+    return _pagePathFor(dir.path, pageNumber);
+  }
+
+  /// Forces a full refresh of downloaded pages.
+  static Future<Directory> forceRedownload({
+    void Function(int received, int total)? onProgress,
+  }) async {
+    await clearMushafPages();
+    return getMushafPagesDir(onProgress: onProgress);
+  }
+
+  /// Returns current install status for settings/debug UI.
+  static Future<MushafAssetsStatus> getStatus() async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final mushafDir = Directory('${docsDir.path}/$_unzipDirName');
+    if (!await mushafDir.exists()) {
+      return const MushafAssetsStatus(installed: false, pageCount: 0, rootPath: null);
+    }
+
+    final pageCount = await _countPageImages(mushafDir);
+    return MushafAssetsStatus(
+      installed: pageCount >= expectedPageCount,
+      pageCount: pageCount,
+      rootPath: mushafDir.path,
+    );
   }
 
   static Future<void> _downloadAndExtract(
@@ -38,6 +81,7 @@ class MushafAssetsService {
   }) async {
     final docsDir = await getApplicationDocumentsDirectory();
     final tempZip = File('${docsDir.path}/pages_download.zip');
+    final extractDir = Directory('${docsDir.path}/mushaf_extract_tmp_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(100000)}');
 
     try {
       // Download zip
@@ -49,12 +93,48 @@ class MushafAssetsService {
         options: Options(responseType: ResponseType.bytes),
       );
 
-      // Extract zip to target directory
-      await targetDir.create(recursive: true);
-      await extractFileToDisk(tempZip.path, targetDir.parent.path);
+      if (await targetDir.exists()) {
+        await targetDir.delete(recursive: true);
+      }
+
+      await extractDir.create(recursive: true);
+      await extractFileToDisk(tempZip.path, extractDir.path);
+
+      // The current zip contains images/*.png.
+      final extractedImagesDir = Directory('${extractDir.path}/images');
+      if (await extractedImagesDir.exists()) {
+        await targetDir.create(recursive: true);
+        await extractedImagesDir.rename('${targetDir.path}/images');
+      } else {
+        // Fallback: some packs may already contain the final folder shape.
+        await extractFileToDisk(tempZip.path, targetDir.path);
+      }
+
+      final count = await _countPageImages(targetDir);
+      if (count < expectedPageCount) {
+        throw StateError('Downloaded pack is incomplete: $count pages');
+      }
     } finally {
       if (await tempZip.exists()) await tempZip.delete();
+      if (await extractDir.exists()) await extractDir.delete(recursive: true);
     }
+  }
+
+  static String _pagePathFor(String rootPath, int pageNumber) {
+    return '$rootPath/images/$pageNumber.png';
+  }
+
+  static Future<int> _countPageImages(Directory mushafDir) async {
+    final imagesDir = Directory('${mushafDir.path}/images');
+    if (!await imagesDir.exists()) return 0;
+
+    var count = 0;
+    await for (final entity in imagesDir.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final name = entity.uri.pathSegments.isNotEmpty ? entity.uri.pathSegments.last : '';
+      if (name.endsWith('.png')) count++;
+    }
+    return count;
   }
 
   /// Delete extracted pages (e.g. to force a re-download).

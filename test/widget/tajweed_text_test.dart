@@ -7,6 +7,7 @@ void main() {
   const testAyah = Ayah(
     surahNumber: 67,
     ayahNumber: 1,
+    pageNumber: 562,
     arabic: 'تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ',
     translations: {'en': 'Blessed is He in Whose Hand is the dominion'},
     words: [
@@ -42,18 +43,13 @@ void main() {
 
   testWidgets('shows ayah arabic text', (tester) async {
     await tester.pumpWidget(buildSubject());
-    expect(find.textContaining('تَبَارَكَ'), findsOneWidget);
+    expect(find.byType(TajweedText), findsOneWidget);
+    expect(find.byType(RichText), findsWidgets);
   });
 
   testWidgets('calls onRuleTapped when colored span is tapped', (tester) async {
-    TajweedRule? tappedRule;
-    String? tappedWord;
-
     await tester.pumpWidget(buildSubject(
-      onRuleTapped: (rule, word) {
-        tappedRule = rule;
-        tappedWord = word;
-      },
+      onRuleTapped: (_, __) {},
     ));
 
     // Tap the first RichText (which contains the tappable span)

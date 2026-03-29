@@ -17,6 +17,7 @@ import '../../core/services/audio_cache_service.dart';
 import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/mushaf_assets_service.dart';
+import '../reader/widgets/audio_player_bar.dart';
 import '../reader/widgets/tajweed_text.dart';
 import '../reader/widgets/tafseer_sheet.dart';
 import '../reader/widgets/word_detail_sheet.dart';
@@ -43,7 +44,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   StreamSubscription<Duration>? _positionSub;
   
   // Mushaf pages: downloaded on first launch from GitHub Releases.
-  late Future<String> _mushafPagesDirFuture;
+  String? _mushafPagesDirPath;
+  Object? _mushafPagesError;
+  bool _isMushafDownloading = false;
   int _downloadReceived = 0;
   int _downloadTotal = 0;
 
@@ -155,7 +158,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _initializeMushafPages() {
-    _mushafPagesDirFuture = MushafAssetsService.getMushafPagesDir(
+    _mushafPagesError = null;
+    _isMushafDownloading = true;
+    _downloadReceived = 0;
+    _downloadTotal = 0;
+
+    unawaited(MushafAssetsService.getMushafPagesDir(
       onProgress: (received, total) {
         if (mounted && total > 0) {
           setState(() {
@@ -164,7 +172,22 @@ class _ReaderScreenState extends State<ReaderScreen> {
           });
         }
       },
-    ).then((dir) => dir.path);
+    ).then((dir) {
+      if (!mounted) return;
+      setState(() {
+        _mushafPagesDirPath = dir.path;
+      });
+    }).catchError((error) {
+      if (!mounted) return;
+      setState(() {
+        _mushafPagesError = error;
+      });
+    }).whenComplete(() {
+      if (!mounted) return;
+      setState(() {
+        _isMushafDownloading = false;
+      });
+    }));
   }
 
   void _persistReaderViewMode(_ReaderViewMode mode) {
@@ -1130,7 +1153,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   String _getMushafPagePath(int pageNumber) {
-    return 'assets/mushaf_pages/tajweed/$pageNumber.webp';
+    final root = _mushafPagesDirPath;
+    if (root == null) return '';
+    return '$root/images/$pageNumber.png';
   }
 
   Future<void> _updateMushafAnchorForPage(int pageNumber) async {
@@ -1200,6 +1225,34 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   Widget _buildMushafPageView() {
+    final hasPack = _mushafPagesDirPath != null;
+    if (!hasPack) {
+      if (_mushafPagesError != null) {
+        return _MushafDownloadStateCard(
+          title: 'Unable to load Mushaf pages',
+          subtitle: '${_mushafPagesError.runtimeType}: $_mushafPagesError',
+          actionLabel: 'Retry download',
+          onAction: _initializeMushafPages,
+          icon: Icons.cloud_off_outlined,
+        );
+      }
+
+      final progress = _downloadTotal > 0
+          ? (_downloadReceived / _downloadTotal).clamp(0.0, 1.0)
+          : null;
+
+      return _MushafDownloadStateCard(
+        title: _isMushafDownloading ? 'Downloading Mushaf pages' : 'Preparing Mushaf pages',
+        subtitle: _downloadTotal > 0
+            ? '${(_downloadReceived / (1024 * 1024)).toStringAsFixed(1)} MB / ${(_downloadTotal / (1024 * 1024)).toStringAsFixed(1)} MB'
+            : 'This happens once and pages are cached locally.',
+        actionLabel: _isMushafDownloading ? null : 'Start download',
+        onAction: _isMushafDownloading ? null : _initializeMushafPages,
+        icon: Icons.cloud_download_outlined,
+        progress: progress,
+      );
+    }
+
     return PageView.builder(
       controller: _mushafPageController,
       itemCount: 604,
@@ -1259,8 +1312,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
                         ),
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
-                          child: Image.asset(
-                            _getMushafPagePath(pageNumber),
+                          child: Image.file(
+                            File(_getMushafPagePath(pageNumber)),
                             fit: BoxFit.contain,
                             filterQuality: FilterQuality.none,
                             alignment: Alignment.center,
@@ -1309,7 +1362,7 @@ class _MissingLocalMushafPage extends StatelessWidget {
           const Icon(Icons.image_not_supported_outlined, size: 28, color: Color(0xFF7D6E52)),
           const SizedBox(height: 8),
           const Text(
-            'Bundled page image not found',
+            'Downloaded page image not found',
             style: TextStyle(
               fontSize: 13,
               color: Color(0xFF5A4B2E),
@@ -1318,10 +1371,79 @@ class _MissingLocalMushafPage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Expected asset: $pageNumber.webp',
+            'Expected file: $pageNumber.png',
             style: const TextStyle(fontSize: 11, color: Color(0xFF7E7158)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MushafDownloadStateCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final IconData icon;
+  final double? progress;
+
+  const _MushafDownloadStateCard({
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    required this.onAction,
+    required this.icon,
+    this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBF9F4),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF8E7C58), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 28, color: const Color(0xFF6F5A33)),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4F4025),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6F5F40)),
+            ),
+            if (progress != null) ...[
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: progress,
+                color: const Color(0xFF1D9E75),
+                backgroundColor: const Color(0xFFE1D8C6),
+              ),
+            ],
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: onAction,
+                child: Text(actionLabel!),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

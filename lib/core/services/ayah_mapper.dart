@@ -13,8 +13,10 @@ class AyahMapper {
     final ayahNumber = int.tryParse(parts[1]) ?? 1;
     final pageNumber = json['page_number'] as int? ?? 1;
 
-    // Full Arabic text
-    final arabic = json['text_uthmani'] as String? ?? '';
+    // Full Arabic text as provided by Quran source.
+    final arabic = _normalizeAlefMaddGlyphForms(
+      json['text_uthmani'] as String? ?? '',
+    );
 
     // Translations — API may return as a list of translation objects
     final translations = <String, String>{};
@@ -69,17 +71,19 @@ class AyahMapper {
   }
 
   static TajweedWord _mapWord(Map<String, dynamic> w) {
-    final textUthmani = w['text_uthmani'] as String? ?? '';
+    final textForDisplay = _normalizeAlefMaddGlyphForms(
+      w['text_uthmani'] as String? ?? '',
+    );
     final spans = <TajweedSpan>[];
 
     // The API tajweed field can be a string of codes or HTML-style tags.
     // Parse character-level codes if present.
     final tajweedRaw = w['tajweed'];
     if (tajweedRaw is String && tajweedRaw.isNotEmpty) {
-      spans.addAll(_parseTajweedCodes(textUthmani, tajweedRaw));
+      spans.addAll(_parseTajweedCodes(textForDisplay, tajweedRaw));
     }
 
-    return TajweedWord(arabic: textUthmani, spans: spans);
+    return TajweedWord(arabic: textForDisplay, spans: spans);
   }
 
   /// Parses Quran.com tajweed annotation strings into character-level spans.
@@ -110,7 +114,7 @@ class AyahMapper {
     int searchFrom = 0;
     for (final match in tagPattern.allMatches(tajweedData)) {
       final ruleKey = match.group(1) ?? '';
-      final ruleText = match.group(2) ?? '';
+      final ruleText = _normalizeAlefMaddGlyphForms(match.group(2) ?? '');
       final rule = _ruleFromClassName(ruleKey);
       if (rule != null && ruleText.isNotEmpty) {
         final idx = arabicText.indexOf(ruleText, searchFrom);
@@ -212,7 +216,9 @@ class AyahMapper {
     for (final match in pattern.allMatches(cleaned)) {
       // Plain text before this tag
       if (cursor < match.start) {
-        final plain = _stripHtmlPreserveSpacing(cleaned.substring(cursor, match.start));
+        final plain = _normalizeAlefMaddGlyphForms(
+          _stripHtmlPreserveSpacing(cleaned.substring(cursor, match.start)),
+        );
         if (plain.isNotEmpty) {
           segments.add(TajweedSegment(text: plain));
         }
@@ -220,7 +226,9 @@ class AyahMapper {
 
       // Tagged text
       final className = match.group(1)!;
-      final text = _stripHtmlPreserveSpacing(match.group(2)!);
+      final text = _normalizeAlefMaddGlyphForms(
+        _stripHtmlPreserveSpacing(match.group(2)!),
+      );
       final rule = _ruleFromTajweedClass(className);
       if (text.isNotEmpty) {
         segments.add(TajweedSegment(text: text, rule: rule));
@@ -231,7 +239,9 @@ class AyahMapper {
 
     // Remaining plain text
     if (cursor < cleaned.length) {
-      final remaining = _stripHtmlPreserveSpacing(cleaned.substring(cursor));
+      final remaining = _normalizeAlefMaddGlyphForms(
+        _stripHtmlPreserveSpacing(cleaned.substring(cursor)),
+      );
       if (remaining.isNotEmpty) {
         segments.add(TajweedSegment(text: remaining));
       }
@@ -242,6 +252,15 @@ class AyahMapper {
 
   static String _stripHtmlPreserveSpacing(String text) {
     return text.replaceAll(RegExp(r'<[^>]*>'), '');
+  }
+
+    // Keep Quran text intact; only normalize specific alef glyph variants that
+    // render as hamza-like forms in some stacks where madd should appear.
+    static String _normalizeAlefMaddGlyphForms(String text) {
+    return text
+      .replaceAll('ٲ', 'ٰ')
+      .replaceAll('ٳ', 'ٰ')
+      .replaceAll('ٵ', 'ٰ');
   }
 
   /// Maps Quran.com tajweed CSS class names to [TajweedRule].
