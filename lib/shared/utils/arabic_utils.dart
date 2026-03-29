@@ -1,3 +1,5 @@
+import 'package:characters/characters.dart';
+
 /// Utilities for working with Arabic and Quranic text.
 class ArabicUtils {
   /// The 28 Arabic letters used to identify tajweed trigger letters.
@@ -56,7 +58,7 @@ class ArabicUtils {
   static String toArabicNumerals(int number) {
     const western = ['0','1','2','3','4','5','6','7','8','9'];
     const eastern = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
-    return number.toString().split('').map((c) {
+    return number.toString().characters.map((c) {
       final i = western.indexOf(c);
       return i >= 0 ? eastern[i] : c;
     }).join();

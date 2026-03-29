@@ -142,6 +142,7 @@ class TajweedSegment {
 class Ayah {
   final int surahNumber;
   final int ayahNumber;
+  final int pageNumber;
   final String arabic;
   final Map<String, String> translations; // langCode → translation
   final List<TajweedWord> words;
@@ -151,6 +152,7 @@ class Ayah {
   const Ayah({
     required this.surahNumber,
     required this.ayahNumber,
+    required this.pageNumber,
     required this.arabic,
     required this.translations,
     required this.words,

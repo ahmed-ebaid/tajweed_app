@@ -6,6 +6,10 @@ import '../models/tajweed_models.dart';
 class QuranApiService {
   static const _baseUrl = 'https://api.quran.com/api/v4';
   static const _audioBaseUrl = 'https://verses.quran.com';
+  static const _mushafImageBaseUrls = [
+    'https://cdn.qurancdn.com/images/svg/pages',
+    'https://static.qurancdn.com/images/svg/pages',
+  ];
 
   final Dio _dio;
 
@@ -43,6 +47,7 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': true,
+        'fields': 'page_number,verse_key',
         'word_fields': 'text_uthmani,tajweed,transliteration',
         'translations': _translationIdFor(langCode),
         'audio': reciterId,
@@ -51,6 +56,22 @@ class QuranApiService {
       },
     );
     return List<Map<String, dynamic>>.from(response.data['verses']);
+  }
+
+  /// Returns all verses that belong to a Mushaf page number (1..604).
+  Future<List<Map<String, dynamic>>> fetchVersesByPage({
+    required int pageNumber,
+    required String langCode,
+  }) async {
+    final safePage = pageNumber.clamp(1, 604);
+    final response = await _dio.get(
+      '/verses/by_page/$safePage',
+      queryParameters: {
+        'language': langCode,
+        'fields': 'page_number,verse_key',
+      },
+    );
+    return List<Map<String, dynamic>>.from(response.data['verses'] ?? const []);
   }
 
   /// Returns a single verse.
@@ -136,6 +157,22 @@ class QuranApiService {
     final s = surahNumber.toString().padLeft(3, '0');
     final a = ayahNumber.toString().padLeft(3, '0');
     return '$_audioBaseUrl/$reciterId/$s$a.mp3';
+  }
+
+  /// Returns Madani Mushaf SVG page image URL (page001.svg .. page604.svg).
+  String mushafPageSvgUrl(int pageNumber) {
+    final safePage = pageNumber.clamp(1, 604);
+    final padded = safePage.toString().padLeft(3, '0');
+    return '${_mushafImageBaseUrls.first}/page$padded.svg';
+  }
+
+  /// Returns fallback URL candidates for a Mushaf page SVG.
+  List<String> mushafPageSvgUrlCandidates(int pageNumber) {
+    final safePage = pageNumber.clamp(1, 604);
+    final padded = safePage.toString().padLeft(3, '0');
+    return _mushafImageBaseUrls
+        .map((base) => '$base/page$padded.svg')
+        .toList(growable: false);
   }
 
   // ─── Juz Mappings ──────────────────────────────────────────────────────────

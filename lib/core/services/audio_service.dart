@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:just_audio/just_audio.dart';
 
 class AudioService {
@@ -16,7 +18,7 @@ class AudioService {
     try {
       await _player.stop();
       await _player.setUrl(url);
-      await _player.play();
+      unawaited(_player.play());
     } catch (e) {
       // URL not reachable — stop gracefully
       await stop();
@@ -26,7 +28,7 @@ class AudioService {
   /// Play a locally recorded file.
   Future<void> playFile(String path) async {
     await _player.setFilePath(path);
-    await _player.play();
+    unawaited(_player.play());
   }
 
   Future<void> pause() async => _player.pause();
