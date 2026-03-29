@@ -1,10 +1,15 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/tajweed_models.dart';
 
 /// Renders an [Ayah] as RTL Arabic text with tajweed color highlighting.
 /// Tapping a colored span calls [onRuleTapped] with the matching [TajweedRule].
 class TajweedText extends StatelessWidget {
+  static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
+    '\u0651([\u064B-\u0650])',
+  );
+
   final Ayah ayah;
   final double fontSize;
   final double lineHeight;
@@ -26,7 +31,9 @@ class TajweedText extends StatelessWidget {
 
   // Slight stroke-like shadow to make thin harakat marks read clearer.
   static List<Shadow> _diacriticShadows(Color color) => [
-      Shadow(color: color.withValues(alpha: 0.10), offset: const Offset(0.10, 0)),
+        Shadow(
+            color: color.withValues(alpha: 0.10),
+            offset: const Offset(0.10, 0)),
       ];
 
   TextStyle _arabicStyle({
@@ -35,7 +42,7 @@ class TajweedText extends StatelessWidget {
     FontWeight weight = FontWeight.w600,
     Color? backgroundColor,
   }) {
-    return TextStyle(
+    final base = TextStyle(
       color: color,
       fontSize: size ?? fontSize,
       fontWeight: weight,
@@ -43,56 +50,83 @@ class TajweedText extends StatelessWidget {
       backgroundColor: backgroundColor,
       shadows: _diacriticShadows(color),
       fontFeatures: const [
+        FontFeature.enable('ccmp'),
         FontFeature.enable('mark'),
         FontFeature.enable('mkmk'),
+        FontFeature.enable('rlig'),
+        FontFeature.enable('liga'),
+        FontFeature.enable('calt'),
       ],
-      fontFamily: 'UthmanicHafs',
       fontFamilyFallback: const [
-        'Noto Naskh Arabic',
         'Amiri Quran',
         'Amiri',
+        'Noto Naskh Arabic',
         'Geeza Pro',
       ],
     );
+
+    // Force a Quran-capable Arabic font to stabilize mark positioning
+    // (e.g. kasra with shadda in words like "رَبِّ").
+    return GoogleFonts.amiriQuran(textStyle: base);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
+    final verticalInset = compactFlow ? 3.0 : 4.0;
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: RichText(
-        textAlign: TextAlign.right,
-        softWrap: !compactFlow,
-        textWidthBasis:
-            compactFlow ? TextWidthBasis.longestLine : TextWidthBasis.parent,
-        textHeightBehavior: const TextHeightBehavior(
-          applyHeightToFirstAscent: false,
-          applyHeightToLastDescent: false,
-        ),
-        strutStyle: StrutStyle(
-          fontFamily: 'UthmanicHafs',
-          fontSize: fontSize,
-          height: lineHeight,
-          leading: 0.15,
-        ),
-        text: TextSpan(
-          children: _buildSpans(context, baseColor),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: verticalInset),
+        child: RichText(
+          textAlign: TextAlign.right,
+          softWrap: !compactFlow,
+          textWidthBasis: compactFlow
+              ? TextWidthBasis.longestLine
+              : TextWidthBasis.parent,
+          textHeightBehavior: TextHeightBehavior(
+            // Keep first-line ascent on native font metrics; this avoids
+            // clipping high Quranic marks in ayah-by-ayah mode.
+            applyHeightToFirstAscent: false,
+            applyHeightToLastDescent: false,
+          ),
+          strutStyle: compactFlow
+              ? StrutStyle(
+                  fontSize: fontSize,
+                  height: lineHeight,
+                  leading: 0.34,
+                )
+              : null,
+          text: TextSpan(
+            children: _buildSpans(context, baseColor),
+          ),
         ),
       ),
     );
   }
 
   List<InlineSpan> _buildSpans(BuildContext context, Color baseColor) {
-    // Prefer verse-level tajweed segments from the uthmani_tajweed API
-    // When syncing playback to words, prefer word rendering so active word
-    // can be highlighted.
-    if (highlightEnabled && ayah.tajweedSegments.isNotEmpty && highlightedWordIndex < 0) {
+    // Preserve canonical Quran word glyphs whenever words are available.
+    // Verse-level tajweed HTML can contain alternate glyph forms; only use it
+    // as a last resort when upstream/cached word data is missing entirely.
+    if (highlightEnabled && ayah.words.isEmpty && ayah.tajweedSegments.isNotEmpty) {
       final segmentSpans = _buildSegmentSpans(baseColor);
       segmentSpans.add(_buildAyahEndMarker(baseColor));
       return segmentSpans;
+    }
+
+    // Last-resort fallback: render full ayah text so we never show only
+    // the end marker when upstream/cached word data is missing.
+    if (ayah.words.isEmpty && ayah.tajweedSegments.isEmpty) {
+      return [
+        TextSpan(
+          text: '${_normalizeArabicText(ayah.arabic)} ',
+          style: _arabicStyle(color: baseColor),
+        ),
+        _buildAyahEndMarker(baseColor),
+      ];
     }
 
     final spans = <InlineSpan>[];
@@ -104,12 +138,11 @@ class TajweedText extends StatelessWidget {
       if (!highlightEnabled || word.spans.isEmpty) {
         // No tajweed spans — render entire word in base color
         spans.add(TextSpan(
-          text: '${word.arabic} ',
+          text: '${_normalizeArabicText(word.arabic)} ',
           style: _arabicStyle(
             color: baseColor,
-            backgroundColor: isActiveWord
-                ? const Color(0xFFFFE08A).withOpacity(0.65)
-                : null,
+            backgroundColor:
+                isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
           ),
         ));
       } else {
@@ -119,9 +152,8 @@ class TajweedText extends StatelessWidget {
           text: ' ',
           style: _arabicStyle(
             color: baseColor,
-            backgroundColor: isActiveWord
-                ? const Color(0xFFFFE08A).withOpacity(0.45)
-                : null,
+            backgroundColor:
+                isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.45) : null,
           ),
         ));
       }
@@ -162,7 +194,8 @@ class TajweedText extends StatelessWidget {
         .join();
   }
 
-  List<InlineSpan> _buildWordSpans(TajweedWord word, Color baseColor, bool isActiveWord) {
+  List<InlineSpan> _buildWordSpans(
+      TajweedWord word, Color baseColor, bool isActiveWord) {
     final result = <InlineSpan>[];
     final text = word.arabic;
     final graphemeMap = _GraphemeMap.fromText(text);
@@ -187,9 +220,8 @@ class TajweedText extends StatelessWidget {
           beforeText,
           _arabicStyle(
             color: baseColor,
-            backgroundColor: isActiveWord
-                ? const Color(0xFFFFE08A).withOpacity(0.65)
-                : null,
+            backgroundColor:
+                isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
           ),
         ));
       }
@@ -221,9 +253,8 @@ class TajweedText extends StatelessWidget {
         remaining,
         _arabicStyle(
           color: baseColor,
-          backgroundColor: isActiveWord
-              ? const Color(0xFFFFE08A).withOpacity(0.65)
-              : null,
+          backgroundColor:
+              isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
         ),
       ));
     }
@@ -253,26 +284,28 @@ class TajweedText extends StatelessWidget {
     return ayah.tajweedSegments.map<InlineSpan>((segment) {
       final rule = segment.rule;
       final color = rule?.color ?? baseColor;
+      final text = _normalizeArabicText(segment.text);
       if (rule != null && onRuleTapped != null) {
         return TextSpan(
-          text: segment.text,
+          text: text,
           style: _arabicStyle(color: color),
           recognizer: TapGestureRecognizer()
-            ..onTap = () => onRuleTapped!(rule, segment.text),
+            ..onTap = () => onRuleTapped!(rule, text),
         );
       }
       return TextSpan(
-        text: segment.text,
+        text: text,
         style: _arabicStyle(color: color),
       );
     }).toList();
   }
 
-  TextStyle _styleFor(TajweedRule rule, Color baseColor, {bool isActiveWord = false}) => _arabicStyle(
+  TextStyle _styleFor(TajweedRule rule, Color baseColor,
+          {bool isActiveWord = false}) =>
+      _arabicStyle(
         color: highlightEnabled ? rule.color : baseColor,
-        backgroundColor: isActiveWord
-            ? const Color(0xFFFFE08A).withOpacity(0.65)
-            : null,
+        backgroundColor:
+            isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
         // Subtle underline for madd rules to indicate elongation
       ).copyWith(
         decoration: rule == TajweedRule.maddTabeei ||
@@ -284,6 +317,12 @@ class TajweedText extends StatelessWidget {
         decorationColor: rule.color.withOpacity(0.5),
         decorationStyle: TextDecorationStyle.dotted,
       );
+
+  static String _normalizeArabicText(String text) {
+    return text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+      return '${match.group(1)}\u0651';
+    });
+  }
 }
 
 class _GraphemeMap {

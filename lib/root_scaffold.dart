@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/providers/locale_provider.dart';
+import 'core/services/quran_offline_sync_service.dart';
 import 'features/home/home_screen.dart';
 import 'features/reader/reader_screen.dart';
 import 'features/quiz/quiz_screen.dart';
@@ -19,6 +22,14 @@ class RootScaffold extends StatefulWidget {
 
 class _RootScaffoldState extends State<RootScaffold> {
   int _currentIndex = 0;
+  final QuranOfflineSyncService _quranOfflineSync = QuranOfflineSyncService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Run one-time Quran text sync in background when needed.
+    unawaited(_quranOfflineSync.ensureBackgroundSync());
+  }
 
   void _switchTab(int index) => setState(() => _currentIndex = index);
 
