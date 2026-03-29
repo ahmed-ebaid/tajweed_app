@@ -63,4 +63,3 @@ flutter:
 
   assets:
     - assets/tajweed/            # Local tajweed rule JSON database
-    - assets/mushaf_pages/tajweed/

@@ -5,6 +5,7 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/recitation_provider.dart';
 import '../../core/providers/tafseer_provider.dart';
+import '../../core/services/mushaf_assets_service.dart';
 import '../../core/services/quran_api_service.dart';
 import 'language_selector_screen.dart';
 
@@ -99,6 +100,9 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _showTafseerPicker(context),
           ),
           const Divider(height: 0.5, indent: 16),
+          _SectionLabel(label: 'Mushaf Pages'),
+          const _MushafPackTile(),
+          const Divider(height: 0.5, indent: 16),
           _SectionLabel(label: 'About'),
           ListTile(
             leading: const Icon(Icons.info_outline_rounded),
@@ -188,6 +192,141 @@ class SettingsScreen extends StatelessWidget {
           Navigator.pop(context);
         },
       ),
+    );
+  }
+}
+
+class _MushafPackTile extends StatefulWidget {
+  const _MushafPackTile();
+
+  @override
+  State<_MushafPackTile> createState() => _MushafPackTileState();
+}
+
+class _MushafPackTileState extends State<_MushafPackTile> {
+  MushafAssetsStatus? _status;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  Future<void> _refreshStatus() async {
+    setState(() {
+      _error = null;
+    });
+    try {
+      final status = await MushafAssetsService.getStatus();
+      if (!mounted) return;
+      setState(() {
+        _status = status;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _download({required bool force}) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (force) {
+        await MushafAssetsService.forceRedownload();
+      } else {
+        await MushafAssetsService.getMushafPagesDir();
+      }
+      await _refreshStatus();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deletePack() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await MushafAssetsService.clearMushafPages();
+      await _refreshStatus();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    final installed = status?.installed ?? false;
+
+    String subtitle;
+    if (_busy) {
+      subtitle = 'Working...';
+    } else if (_error != null) {
+      subtitle = 'Error while checking/downloading pack';
+    } else if (status == null) {
+      subtitle = 'Checking status...';
+    } else if (installed) {
+      subtitle = 'Installed (${status.pageCount} pages)';
+    } else {
+      subtitle = 'Not installed yet (${status.pageCount}/${MushafAssetsService.expectedPageCount} pages)';
+    }
+
+    return ListTile(
+      leading: const Icon(Icons.image_outlined),
+      title: const Text('Mushaf image pack'),
+      subtitle: Text(subtitle),
+      trailing: _busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'download') {
+                  _download(force: false);
+                } else if (value == 'redownload') {
+                  _download(force: true);
+                } else if (value == 'delete') {
+                  _deletePack();
+                } else if (value == 'refresh') {
+                  _refreshStatus();
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'download', child: Text('Download')),
+                PopupMenuItem(value: 'redownload', child: Text('Re-download')),
+                PopupMenuItem(value: 'delete', child: Text('Delete local pack')),
+                PopupMenuItem(value: 'refresh', child: Text('Refresh status')),
+              ],
+            ),
     );
   }
 }
