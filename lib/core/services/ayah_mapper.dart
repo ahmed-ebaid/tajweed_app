@@ -11,6 +11,7 @@ class AyahMapper {
     final parts = verseKey.split(':');
     final surahNumber = int.tryParse(parts[0]) ?? 1;
     final ayahNumber = int.tryParse(parts[1]) ?? 1;
+    final pageNumber = json['page_number'] as int? ?? 1;
 
     // Full Arabic text
     final arabic = json['text_uthmani'] as String? ?? '';
@@ -47,6 +48,7 @@ class AyahMapper {
     return Ayah(
       surahNumber: surahNumber,
       ayahNumber: ayahNumber,
+      pageNumber: pageNumber,
       arabic: arabic,
       translations: translations,
       words: words,
@@ -198,19 +200,19 @@ class AyahMapper {
   /// The API returns text like:
   ///   plain <tajweed class=ghunnah>colored</tajweed> more plain
   static List<TajweedSegment> parseTajweedHtml(String html) {
-    // Remove end-of-ayah markers: <span class=end>١</span>
+    // Remove end-of-ayah markers: <span class=end>١</span> / <span class="end">١</span>
     final cleaned = html
-        .replaceAll(RegExp(r'<span\s+class=end>[^<]*</span>'), '')
+      .replaceAll(RegExp(r'<span\s+class="?end"?>[^<]*</span>'), '')
         .trim();
 
     final segments = <TajweedSegment>[];
-    final pattern = RegExp(r'<tajweed\s+class=(\w+)>([^<]*)</tajweed>');
+    final pattern = RegExp(r'<tajweed\s+class="?([\w-]+)"?>(.*?)</tajweed>');
     int cursor = 0;
 
     for (final match in pattern.allMatches(cleaned)) {
       // Plain text before this tag
       if (cursor < match.start) {
-        final plain = cleaned.substring(cursor, match.start);
+        final plain = _stripHtmlPreserveSpacing(cleaned.substring(cursor, match.start));
         if (plain.isNotEmpty) {
           segments.add(TajweedSegment(text: plain));
         }
@@ -218,22 +220,28 @@ class AyahMapper {
 
       // Tagged text
       final className = match.group(1)!;
-      final text = match.group(2)!;
+      final text = _stripHtmlPreserveSpacing(match.group(2)!);
       final rule = _ruleFromTajweedClass(className);
-      segments.add(TajweedSegment(text: text, rule: rule));
+      if (text.isNotEmpty) {
+        segments.add(TajweedSegment(text: text, rule: rule));
+      }
 
       cursor = match.end;
     }
 
     // Remaining plain text
     if (cursor < cleaned.length) {
-      final remaining = cleaned.substring(cursor);
+      final remaining = _stripHtmlPreserveSpacing(cleaned.substring(cursor));
       if (remaining.isNotEmpty) {
         segments.add(TajweedSegment(text: remaining));
       }
     }
 
     return segments;
+  }
+
+  static String _stripHtmlPreserveSpacing(String text) {
+    return text.replaceAll(RegExp(r'<[^>]*>'), '');
   }
 
   /// Maps Quran.com tajweed CSS class names to [TajweedRule].

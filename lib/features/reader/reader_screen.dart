@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
@@ -28,17 +29,24 @@ class ReaderScreen extends StatefulWidget {
   State<ReaderScreen> createState() => _ReaderScreenState();
 }
 
+enum _ReaderViewMode { page, ayah }
+
 class _ReaderScreenState extends State<ReaderScreen> {
+  static const String _readerViewModeKey = 'reader_view_mode';
+  static const String _mushafAssetsDir = 'assets/mushaf_pages/tajweed';
+
   final _api = QuranApiService();
   final _audio = AudioService();
   final _audioCache = AudioCacheService();
   final _scrollController = ScrollController();
+  final PageController _mushafPageController = PageController();
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<Duration>? _positionSub;
 
   int _selectedSurah = 1;
   bool _tajweedEnabled = true;
-  bool _showTranslation = true;
+  final bool _showTranslation = true;
+  _ReaderViewMode _viewMode = _ReaderViewMode.ayah;
   List<Ayah> _ayahs = [];
   bool _loading = true;
   List<Map<String, dynamic>> _allSurahs = [];
@@ -50,14 +58,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
   // Audio state
   bool _isPlayingAll = false;
   int? _playingAyahNumber;
-  int _currentPlayIndex = 0;
   int _activeWordIndex = -1;
   int _lastObservedReciterId = -1;
   int _surahLoadVersion = 0;
   int _playRequestToken = 0;
-  bool _downloadingSurah = false;
   int _downloadedAyahs = 0;
   int _totalAyahs = 0;
+  int _currentMushafPageIndex = 0;
+  int? _ayahModeAnchorAyah;
+  int? _mushafAnchorSurah;
+  double? _ayahModeReturnOffset;
+  final Map<int, _MushafPageAnchor> _mushafPageAnchorCache = {};
 
   // Juz boundaries: ayahNumber → juz number (only for first ayah of each juz in this surah)
   Map<int, int> _juzBoundaries = {};
@@ -74,10 +85,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void initState() {
     super.initState();
+    _lockPortraitForReader();
+
+    _loadSavedReaderViewMode();
 
     // Restore last read position
     final bookmarks = context.read<BookmarkProvider>();
     _selectedSurah = bookmarks.lastReadSurah;
+    _ayahModeAnchorAyah = bookmarks.lastReadAyah;
     print('📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
 
     _initData();
@@ -85,21 +100,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
     // Listen for audio completion
     _playerStateSub = _audio.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        final isCurrentPlayAllItem =
-            _isPlayingAll &&
-            _currentPlayIndex >= 0 &&
-            _currentPlayIndex < _ayahs.length &&
-            _playingAyahNumber == _ayahs[_currentPlayIndex].ayahNumber;
-
-        if (isCurrentPlayAllItem && mounted) {
-          _playNextAyah();
-        } else {
-          if (mounted) {
-            setState(() {
-              _playingAyahNumber = null;
-              _activeWordIndex = -1;
-            });
-          }
+        if (!_isPlayingAll && mounted) {
+          setState(() {
+            _playingAyahNumber = null;
+            _activeWordIndex = -1;
+          });
         }
       }
     });
@@ -131,9 +136,40 @@ class _ReaderScreenState extends State<ReaderScreen> {
     });
   }
 
+  void _loadSavedReaderViewMode() {
+    try {
+      final box = Hive.box('settings');
+      final saved = box.get(_readerViewModeKey, defaultValue: _ReaderViewMode.ayah.name) as String;
+      _viewMode = saved == _ReaderViewMode.page.name
+          ? _ReaderViewMode.page
+          : _ReaderViewMode.ayah;
+    } catch (_) {
+      _viewMode = _ReaderViewMode.ayah;
+    }
+  }
+
+  void _persistReaderViewMode(_ReaderViewMode mode) {
+    try {
+      final box = Hive.box('settings');
+      unawaited(box.put(_readerViewModeKey, mode.name));
+    } catch (_) {
+      // Ignore persistence failures and keep runtime state.
+    }
+  }
+
   void _saveScrollPosition() {
     try {
       if (_ayahs.isEmpty || !mounted) return;
+
+      if (_viewMode == _ReaderViewMode.page) {
+        final anchorSurah = _currentMushafAnchorSurah();
+        final anchorAyah = _currentMushafAnchorAyah();
+        context.read<BookmarkProvider>().saveLastRead(
+              anchorSurah,
+              anchorAyah,
+            );
+        return;
+      }
 
       int? topVisibleAyah;
       double bestDistance = double.infinity;
@@ -200,11 +236,32 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _scrollSaveTimer?.cancel();
     // Save position one final time before closing
     _saveScrollPosition();
+    _restoreAppOrientations();
     _playerStateSub?.cancel();
     _positionSub?.cancel();
+    _mushafPageController.dispose();
     _audio.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _lockPortraitForReader() {
+    unawaited(
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+      ]),
+    );
+  }
+
+  void _restoreAppOrientations() {
+    unawaited(
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]),
+    );
   }
 
   Future<void> _loadSurah() async {
@@ -251,6 +308,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           _ayahs = AyahMapper.fromApiList(allVerses, tajweedMap: tajweedMap);
           _audioUrls = audioMap;
           _activeWordIndex = -1;
+          _currentMushafPageIndex = 0;
           _ayahKeys.clear();
           for (final a in _ayahs) {
             _ayahKeys[a.ayahNumber] = GlobalKey();
@@ -258,20 +316,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
         });
         print('📻 AFTER SETSTATE: _audioUrls.length=${_audioUrls.length}');
         _refreshOfflineStatus();
-        // Defer scroll until widgets are rendered
+        // Defer position restore until widgets are rendered.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_pendingScrollOffset > 0) {
-            _restoreScrollOffset(_pendingScrollOffset);
-            _pendingScrollOffset = 0.0;
-          } else {
-            _scrollToLastReadAyah();
-          }
+          _restorePositionAfterSurahLoad();
         });
       }
     } catch (e) {
       print('❌ ERROR IN LOAD SURAH: $e');
       if (mounted && loadVersion == _surahLoadVersion) {
-        setState(() => _loading = false);
+        setState(() {
+          _loading = false;
+        });
       }
     }
   }
@@ -330,12 +385,84 @@ class _ReaderScreenState extends State<ReaderScreen> {
         return;
       }
 
+      final lastAyah = bookmarks.lastReadAyah;
       final savedOffset = bookmarks.lastScrollOffset;
-      print('🎯 _scrollToLastReadAyah using saved offset=$savedOffset in surah $_selectedSurah');
-      _restoreScrollOffset(savedOffset);
+      print('🎯 _scrollToLastReadAyah using ayah=$lastAyah and offset=$savedOffset in surah $_selectedSurah');
+
+      if (_restoreAyahByNumber(lastAyah, retries: 10)) {
+        return;
+      }
+
+      if (savedOffset > 0) {
+        Future.delayed(const Duration(milliseconds: 900), () {
+          if (mounted && _viewMode == _ReaderViewMode.ayah) {
+            _restoreScrollOffset(savedOffset);
+          }
+        });
+      }
     } catch (e) {
       print('❌ Error in _scrollToLastReadAyah: $e');
     }
+  }
+
+  bool _restoreAyahByNumber(int ayahNumber, {int retries = 0}) {
+    final key = _ayahKeys[ayahNumber];
+    if (key?.currentContext == null) {
+      if (retries <= 0) return false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 120), () {
+          if (mounted && _viewMode == _ReaderViewMode.ayah) {
+            _restoreAyahByNumber(ayahNumber, retries: retries - 1);
+          }
+        });
+      });
+      return false;
+    }
+
+    Scrollable.ensureVisible(
+      key!.currentContext!,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOut,
+      alignment: 0.18,
+    );
+    return true;
+  }
+
+  void _restorePositionAfterSurahLoad() {
+    if (!mounted || _ayahs.isEmpty) return;
+
+    if (_viewMode == _ReaderViewMode.page) {
+      _restoreMushafPageForLastRead();
+      return;
+    }
+
+    if (_pendingScrollOffset > 0) {
+      _restoreScrollOffset(_pendingScrollOffset);
+      _pendingScrollOffset = 0.0;
+    } else {
+      _scrollToLastReadAyah();
+    }
+  }
+
+  void _restoreMushafPageForLastRead() {
+    final bookmarks = context.read<BookmarkProvider>();
+    final targetSurah = bookmarks.lastReadSurah;
+    final targetAyah = targetSurah == _selectedSurah
+        ? bookmarks.lastReadAyah
+        : (_ayahs.isNotEmpty ? _ayahs.first.ayahNumber : 1);
+    final targetPage = _pageNumberForAyah(targetAyah);
+    final pageIndex = (targetPage - 1).clamp(0, 603);
+    setState(() {
+      _currentMushafPageIndex = pageIndex;
+      _ayahModeAnchorAyah = targetAyah;
+      _mushafAnchorSurah = targetSurah;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_mushafPageController.hasClients) return;
+      _mushafPageController.jumpToPage(pageIndex);
+      unawaited(_updateMushafAnchorForPage(targetPage));
+    });
   }
 
   void _restoreScrollOffset(double offset) {
@@ -376,11 +503,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
     context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
 
     if (_playingAyahNumber == ayah.ayahNumber) {
-      _audio.pause();
-      setState(() { _playingAyahNumber = null; _isPlayingAll = false; });
+      if (_audio.isPlaying) {
+        _audio.pause();
+      } else {
+        _audio.resume();
+      }
+      setState(() {
+        _isPlayingAll = false;
+      });
     } else {
       setState(() {
         _isPlayingAll = false;
+        _playingAyahNumber = ayah.ayahNumber;
+        _activeWordIndex = 0;
       });
       print('🎵 CALLING _playAyah FOR ${ayah.ayahNumber}');
       _playAyah(ayah);
@@ -390,18 +525,56 @@ class _ReaderScreenState extends State<ReaderScreen> {
   /// Play all ayahs sequentially from the first (or resume from current).
   void _togglePlayAll() {
     if (_isPlayingAll) {
-      _audio.pause();
-      setState(() { _isPlayingAll = false; _playingAyahNumber = null; });
+      _audio.stop();
+      setState(() {
+        _isPlayingAll = false;
+        _playingAyahNumber = null;
+        _activeWordIndex = -1;
+      });
     } else if (_ayahs.isNotEmpty) {
-      _isPlayingAll = true;
-      _currentPlayIndex = 0;
-      final firstAyah = _ayahs[_currentPlayIndex];
-      context.read<BookmarkProvider>().saveLastRead(firstAyah.surahNumber, firstAyah.ayahNumber);
-      _playAyah(firstAyah);
+      final startIndex = 0;
+      setState(() {
+        _isPlayingAll = true;
+        _playingAyahNumber = _ayahs[startIndex].ayahNumber;
+        _activeWordIndex = 0;
+      });
+      _playAllFromIndex(startIndex);
     }
   }
 
-  Future<void> _playAyah(Ayah ayah) async {
+  Future<void> _playAllFromIndex(int startIndex) async {
+    for (int i = startIndex; i < _ayahs.length; i++) {
+      if (!mounted || !_isPlayingAll) break;
+      final ayah = _ayahs[i];
+
+      setState(() {
+        _playingAyahNumber = ayah.ayahNumber;
+        _activeWordIndex = 0;
+      });
+      context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+
+      final started = await _playAyah(ayah, updatePlayingState: false);
+      if (!started) {
+        if (!_isPlayingAll) break;
+        continue;
+      }
+
+      final completed = await _waitForCurrentAyahCompletion();
+      if (!completed) break;
+
+      if (!_isPlayingAll) break;
+    }
+
+    if (mounted && _isPlayingAll) {
+      setState(() {
+        _isPlayingAll = false;
+        _playingAyahNumber = null;
+        _activeWordIndex = -1;
+      });
+    }
+  }
+
+  Future<bool> _playAyah(Ayah ayah, {bool updatePlayingState = true}) async {
     final token = ++_playRequestToken;
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     final verseKey = '${ayah.surahNumber}:${ayah.ayahNumber}';
@@ -426,7 +599,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           ),
         );
       }
-      return;
+      return false;
     }
     
     final preview = url.length <= 50 ? url : '${url.substring(0, 50)}...';
@@ -447,12 +620,23 @@ class _ReaderScreenState extends State<ReaderScreen> {
       }
 
       // Ignore stale async completions when a newer play request exists.
-      if (token != _playRequestToken || !mounted) return;
+      if (token != _playRequestToken || !mounted) return false;
 
-      setState(() {
-        _playingAyahNumber = ayah.ayahNumber;
-        _activeWordIndex = 0;
-      });
+      if (updatePlayingState) {
+        setState(() {
+          _playingAyahNumber = ayah.ayahNumber;
+          _activeWordIndex = 0;
+        });
+      }
+
+      if (!_audio.isPlaying && mounted) {
+        setState(() {
+          if (!_isPlayingAll) {
+            _playingAyahNumber = null;
+            _activeWordIndex = -1;
+          }
+        });
+      }
     } catch (e) {
       print('❌ Exception in playUrl: $e');
       if (mounted) {
@@ -463,7 +647,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           ),
         );
       }
-      return;
+      return false;
     }
 
     // Update last read position
@@ -487,15 +671,38 @@ class _ReaderScreenState extends State<ReaderScreen> {
         print('❌ Error scrolling: $e');
       }
     }
+
+    return true;
   }
 
-  void _playNextAyah() {
-    _currentPlayIndex++;
-    if (_currentPlayIndex < _ayahs.length) {
-      _playAyah(_ayahs[_currentPlayIndex]);
-    } else {
-      setState(() { _isPlayingAll = false; _playingAyahNumber = null; });
-    }
+  Future<bool> _waitForCurrentAyahCompletion() async {
+    if (!_isPlayingAll) return false;
+
+    final completer = Completer<bool>();
+    late StreamSubscription<PlayerState> sub;
+    late final Timer stopPoll;
+
+    sub = _audio.playerStateStream.listen((state) {
+      if (!completer.isCompleted && _isPlayingAll && state.processingState == ProcessingState.completed) {
+        completer.complete(true);
+      }
+
+      if (!completer.isCompleted && state.processingState == ProcessingState.idle) {
+        completer.complete(false);
+      }
+    });
+
+    // If play-all gets turned off while paused, complete immediately.
+    stopPoll = Timer.periodic(const Duration(milliseconds: 150), (_) {
+      if (!completer.isCompleted && !_isPlayingAll) {
+        completer.complete(false);
+      }
+    });
+
+    final result = await completer.future;
+    await sub.cancel();
+    stopPoll.cancel();
+    return result;
   }
 
   Future<void> _refreshOfflineStatus() async {
@@ -509,49 +716,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
       _downloadedAyahs = count;
       _totalAyahs = _ayahs.length;
     });
-  }
-
-  Future<void> _downloadCurrentSurah() async {
-    if (_downloadingSurah || _audioUrls.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
-    final reciterId = context.read<RecitationProvider>().selectedReciterId;
-
-    setState(() {
-      _downloadingSurah = true;
-      _downloadedAyahs = 0;
-      _totalAyahs = _audioUrls.length;
-    });
-
-    try {
-      await _audioCache.downloadSurah(
-        reciterId: reciterId,
-        surahNumber: _selectedSurah,
-        audioUrls: _audioUrls,
-        onProgress: (done, total) {
-          if (!mounted) return;
-          setState(() {
-            _downloadedAyahs = done;
-            _totalAyahs = total;
-          });
-        },
-      );
-
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Downloaded $_downloadedAyahs ayahs for offline use')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Download failed: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _downloadingSurah = false);
-      }
-    }
   }
 
   void _stopAudio() {
@@ -682,6 +846,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              _viewMode == _ReaderViewMode.page
+                  ? Icons.view_agenda_outlined
+                  : Icons.menu_book_outlined,
+              size: 22,
+            ),
+            tooltip: _viewMode == _ReaderViewMode.page
+                ? 'Switch to Ayah view'
+                : 'Switch to Page view',
+            onPressed: _toggleReaderViewMode,
+          ),
           // Bookmarks
           IconButton(
             icon: const Icon(Icons.bookmark_border_rounded, size: 22),
@@ -715,62 +891,30 @@ class _ReaderScreenState extends State<ReaderScreen> {
       ),
       body: Column(
         children: [
-          TajweedLegend(
-            rules: TajweedRule.values,
-            langCode: langCode,
-          ),
-          const Divider(height: 0.5),
-          // DEBUG: Show audio map status
-          Container(
-            color: const Color(0xFFF5F5F5),
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              '📻 Audio URLs: ${_audioUrls.length} | Offline: $_downloadedAyahs/$_totalAyahs | Last read: $_selectedSurah:${context.watch<BookmarkProvider>().lastReadAyah}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF666)),
+          if (_viewMode == _ReaderViewMode.ayah) ...[
+            TajweedLegend(
+              rules: TajweedRule.values,
+              langCode: langCode,
             ),
-          ),
+            const Divider(height: 0.5),
+            // DEBUG: Show audio map status in ayah mode only
+            Container(
+              color: const Color(0xFFF5F5F5),
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                '📻 Audio URLs: ${_audioUrls.length} | Offline: $_downloadedAyahs/$_totalAyahs | Last read: $_selectedSurah:${context.watch<BookmarkProvider>().lastReadAyah}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF666)),
+              ),
+            ),
+          ],
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _ayahs.isEmpty
                     ? _EmptyState(onRetry: _loadSurah)
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: _ayahs.length,
-                        itemBuilder: (context, i) {
-                          final ayah = _ayahs[i];
-                          final juzNumber = _juzBoundaries[ayah.ayahNumber];
-                          final isPlaying = _playingAyahNumber == ayah.ayahNumber;
-                          final isBookmarked = context.watch<BookmarkProvider>()
-                              .isBookmarked(ayah.surahNumber, ayah.ayahNumber);
-
-                          return Column(
-                            key: _ayahKeys[ayah.ayahNumber],
-                            children: [
-                              // Juz boundary marker
-                              if (juzNumber != null)
-                                _JuzMarker(juzNumber: juzNumber),
-                              // Divider between ayahs (not before first)
-                              if (i > 0 && juzNumber == null)
-                                const Divider(height: 0.5, indent: 16),
-                              _AyahTile(
-                                ayah: ayah,
-                                tajweedEnabled: _tajweedEnabled,
-                                showTranslation: _showTranslation,
-                                langCode: langCode,
-                                isPlaying: isPlaying,
-                                activeWordIndex: isPlaying ? _activeWordIndex : -1,
-                                isBookmarked: isBookmarked,
-                                onWordTapped: _onWordTapped,
-                                onDoubleTap: () => _playSingleAyah(ayah),
-                                onTafseerTap: () => _showTafseer(ayah),
-                                onBookmarkTap: () => _toggleBookmark(ayah),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
+                    : (_viewMode == _ReaderViewMode.page
+                        ? _buildMushafPageView()
+                        : _buildAyahList(langCode, pageMode: false)),
           ),
           // Audio player bar when playing
           if (_playingAyahNumber != null)
@@ -780,6 +924,416 @@ class _ReaderScreenState extends State<ReaderScreen> {
               onClose: _stopAudio,
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAyahList(String langCode, {required bool pageMode}) {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.symmetric(vertical: pageMode ? 12 : 8),
+      itemCount: _ayahs.length,
+      itemBuilder: (context, i) {
+        final ayah = _ayahs[i];
+        final juzNumber = _juzBoundaries[ayah.ayahNumber];
+        final isPlaying = _playingAyahNumber == ayah.ayahNumber;
+        final isBookmarked = context.watch<BookmarkProvider>()
+            .isBookmarked(ayah.surahNumber, ayah.ayahNumber);
+
+        return Column(
+          key: _ayahKeys[ayah.ayahNumber],
+          children: [
+            if (juzNumber != null) _JuzMarker(juzNumber: juzNumber),
+            if (!pageMode && i > 0 && juzNumber == null)
+              const Divider(height: 0.5, indent: 16),
+            if (pageMode)
+              _PageAyahLine(
+                ayah: ayah,
+                tajweedEnabled: _tajweedEnabled,
+                isPlaying: isPlaying,
+                activeWordIndex: isPlaying ? _activeWordIndex : -1,
+                mushafFontSize: 28,
+                onWordTapped: _onWordTapped,
+                onDoubleTap: () => _playSingleAyah(ayah),
+                onBookmarkTap: () => _toggleBookmark(ayah),
+              )
+            else
+              _AyahTile(
+                ayah: ayah,
+                tajweedEnabled: _tajweedEnabled,
+                showTranslation: _showTranslation,
+                langCode: langCode,
+                isPlaying: isPlaying,
+                activeWordIndex: isPlaying ? _activeWordIndex : -1,
+                isBookmarked: isBookmarked,
+                onWordTapped: _onWordTapped,
+                onDoubleTap: () => _playSingleAyah(ayah),
+                onTafseerTap: () => _showTafseer(ayah),
+                onBookmarkTap: () => _toggleBookmark(ayah),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _toggleReaderViewMode() {
+    if (_viewMode == _ReaderViewMode.ayah) {
+      final ayahOffset = _scrollController.hasClients
+          ? _scrollController.offset
+          : context.read<BookmarkProvider>().lastScrollOffset;
+      final anchorAyah = _findTopVisibleAyahNumber() ??
+          context.read<BookmarkProvider>().lastReadAyah;
+      _ayahModeAnchorAyah = anchorAyah;
+      _mushafAnchorSurah = _selectedSurah;
+      _ayahModeReturnOffset = ayahOffset;
+      context.read<BookmarkProvider>().saveLastRead(
+            _selectedSurah,
+            anchorAyah,
+            scrollOffset: ayahOffset,
+          );
+      final targetPageIndex = _pageNumberForAyah(anchorAyah) - 1;
+
+      setState(() {
+        _viewMode = _ReaderViewMode.page;
+        _currentMushafPageIndex = targetPageIndex;
+      });
+      _persistReaderViewMode(_ReaderViewMode.page);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_mushafPageController.hasClients) return;
+        _mushafPageController.jumpToPage(targetPageIndex);
+        unawaited(_updateMushafAnchorForPage(targetPageIndex + 1));
+      });
+      return;
+    }
+
+    _goToAnchoredAyah();
+  }
+
+  void _goToAnchoredAyah() {
+    final anchorAyah = _ayahModeAnchorAyah ??
+        context.read<BookmarkProvider>().lastReadAyah;
+    final anchorSurah = _mushafAnchorSurah ?? _selectedSurah;
+    final rawOffset = _ayahModeReturnOffset ??
+        context.read<BookmarkProvider>().lastScrollOffset;
+    final shouldReloadSurah = anchorSurah != _selectedSurah;
+    final targetOffset = shouldReloadSurah ? 0.0 : rawOffset;
+
+    // Persist anchor and offset before switching back to ayah mode.
+    context.read<BookmarkProvider>().saveLastRead(
+          anchorSurah,
+          anchorAyah,
+          scrollOffset: targetOffset,
+        );
+
+    setState(() {
+      _viewMode = _ReaderViewMode.ayah;
+      if (shouldReloadSurah) {
+        _selectedSurah = anchorSurah;
+      }
+    });
+    _persistReaderViewMode(_ReaderViewMode.ayah);
+
+    if (shouldReloadSurah) {
+      _loadSurah();
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (targetOffset > 0) {
+        _restoreScrollOffset(targetOffset);
+      } else {
+        _restoreAyahByNumber(anchorAyah, retries: 12);
+      }
+
+      // Extra safety: if list build takes longer, try again shortly.
+      Future.delayed(const Duration(milliseconds: 650), () {
+        if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+        if (targetOffset > 0) {
+          _restoreScrollOffset(targetOffset);
+        } else {
+          _restoreAyahByNumber(anchorAyah, retries: 6);
+        }
+      });
+    });
+  }
+
+  int? _findTopVisibleAyahNumber() {
+    if (!mounted || _ayahs.isEmpty) return null;
+
+    int? bestAyah;
+    double bestDistance = double.infinity;
+
+    for (final ayah in _ayahs) {
+      final key = _ayahKeys[ayah.ayahNumber];
+      if (key?.currentContext == null) continue;
+      final renderObject = key!.currentContext!.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.hasSize) continue;
+
+      final dy = renderObject.localToGlobal(Offset.zero).dy;
+      final distance = dy.abs();
+
+      if (dy >= -20 && distance < bestDistance) {
+        bestDistance = distance;
+        bestAyah = ayah.ayahNumber;
+      }
+    }
+
+    return bestAyah;
+  }
+
+  String _surahArabicName(int surahNumber) {
+    for (final s in _allSurahs) {
+      if (s['id'] == surahNumber) {
+        return (s['name_arabic'] as String?) ?? 'سورة';
+      }
+    }
+    return 'سورة';
+  }
+
+  int _currentMushafAnchorAyah() {
+    final pageNumber = _currentMushafPageIndex + 1;
+    return _mushafPageAnchorCache[pageNumber]?.ayah ?? _ayahModeAnchorAyah ?? 1;
+  }
+
+  int _currentMushafAnchorSurah() {
+    final pageNumber = _currentMushafPageIndex + 1;
+    return _mushafPageAnchorCache[pageNumber]?.surah ?? _mushafAnchorSurah ?? _selectedSurah;
+  }
+
+  int _pageNumberForAyah(int ayahNumber) {
+    if (_ayahs.isEmpty) return (_currentMushafPageIndex + 1).clamp(1, 604);
+    final idx = _ayahs.indexWhere((a) => a.ayahNumber == ayahNumber);
+    if (idx < 0) return _ayahs.first.pageNumber;
+    return _ayahs[idx].pageNumber;
+  }
+
+  Future<void> _updateMushafAnchorForPage(int pageNumber) async {
+    if (!mounted) return;
+    final cached = _mushafPageAnchorCache[pageNumber];
+    // Always refetch multi-surah pages to ensure correct surah selection
+    if (cached != null && pageNumber != 1 && pageNumber != 2) {
+      setState(() {
+        _mushafAnchorSurah = cached.surah;
+        _ayahModeAnchorAyah = cached.ayah;
+      });
+      return;
+    }
+
+    try {
+      final langCode = context.read<LocaleProvider>().locale.languageCode;
+      final verses = await _api.fetchVersesByPage(
+        pageNumber: pageNumber,
+        langCode: langCode,
+      );
+
+      if (verses.isEmpty || !mounted) return;
+      
+      // For pages spanning multiple surahs, use the highest surah number 
+      // (the surah that dominates the page content).
+      int? maxSurah;
+      String? anchorVerseKey;
+      for (final verse in verses) {
+        final verseKey = verse['verse_key'] as String? ?? '';
+        final parts = verseKey.split(':');
+        if (parts.length != 2) continue;
+        
+        final surah = int.tryParse(parts.first);
+        if (surah == null) continue;
+        
+        if (maxSurah == null || surah > maxSurah) {
+          maxSurah = surah;
+          anchorVerseKey = verseKey;
+        }
+      }
+      
+      if (maxSurah == null || anchorVerseKey == null) return;
+      
+      final parts = anchorVerseKey.split(':');
+      final ayah = int.tryParse(parts.last);
+      if (ayah == null) return;
+
+      final anchor = _MushafPageAnchor(
+        pageNumber: pageNumber,
+        surah: maxSurah,
+        ayah: ayah,
+      );
+
+      _mushafPageAnchorCache[pageNumber] = anchor;
+      if (!mounted) return;
+      setState(() {
+        _mushafAnchorSurah = maxSurah!;
+        _ayahModeAnchorAyah = ayah;
+        if (_viewMode == _ReaderViewMode.page) {
+          // Keep the top selector in sync while swiping Mushaf pages.
+          _selectedSurah = maxSurah;
+        }
+      });
+    } catch (_) {
+      // Ignore per-page metadata failure; image page remains readable.
+    }
+  }
+
+  String _mushafPageAsset(int pageNumber) {
+    final safePage = pageNumber.clamp(1, 604);
+    return '$_mushafAssetsDir/$safePage.png';
+  }
+
+  Widget _buildMushafPageView() {
+    return PageView.builder(
+      controller: _mushafPageController,
+      itemCount: 604,
+      onPageChanged: (index) {
+        final pageNumber = index + 1;
+        setState(() {
+          _currentMushafPageIndex = index;
+        });
+
+        unawaited(_updateMushafAnchorForPage(pageNumber));
+
+        final anchorSurah = _currentMushafAnchorSurah();
+        final anchorAyah = _currentMushafAnchorAyah();
+        context.read<BookmarkProvider>().saveLastRead(anchorSurah, anchorAyah);
+      },
+      itemBuilder: (context, index) {
+        final pageNumber = index + 1;
+        final pageAsset = _mushafPageAsset(pageNumber);
+        final pageSurah = _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
+        final surahName = _surahArabicName(pageSurah);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: _QuranPageBackground(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _MushafHeaderChip(text: surahName),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          '۞۞۞',
+                          style: TextStyle(
+                            fontFamily: 'UthmanicHafs',
+                            fontSize: 18,
+                            color: Color(0xFF946E2A),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: _MushafHeaderChip(text: 'الصفحة $pageNumber'),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBF9F4),
+                      border: Border.all(color: const Color(0xFF8E7C58), width: 1.2),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
+                      child: Image.asset(
+                              pageAsset,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.none,
+                              alignment: Alignment.center,
+                              isAntiAlias: false,
+                              errorBuilder: (_, __, ___) => _MissingLocalMushafPage(
+                                pageNumber: pageNumber,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MushafPageAnchor {
+  final int pageNumber;
+  final int surah;
+  final int ayah;
+
+  const _MushafPageAnchor({
+    required this.pageNumber,
+    required this.surah,
+    required this.ayah,
+  });
+}
+
+class _MissingLocalMushafPage extends StatelessWidget {
+  final int pageNumber;
+
+  const _MissingLocalMushafPage({
+    required this.pageNumber,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.image_not_supported_outlined, size: 28, color: Color(0xFF7D6E52)),
+          const SizedBox(height: 8),
+          const Text(
+            'Bundled page image not found',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF5A4B2E),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Expected asset: $pageNumber.png',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF7E7158)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MushafHeaderChip extends StatelessWidget {
+  final String text;
+  const _MushafHeaderChip({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1ECE2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF8A7958), width: 1.0),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontFamily: 'UthmanicHafs',
+          fontSize: 20,
+          color: Color(0xFF4D3E24),
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -1039,6 +1593,95 @@ class _JuzMarker extends StatelessWidget {
   }
 }
 
+class _QuranPageBackground extends StatelessWidget {
+  final Widget child;
+  const _QuranPageBackground({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFF3E8D1),
+                Color(0xFFEADCC0),
+                Color(0xFFF3E8D1),
+              ],
+            ),
+            border: Border.all(color: const Color(0xFF8F7A50), width: 1.2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x12000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _QuranPagePatternPainter(),
+                ),
+              ),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuranPagePatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sideFill = Paint()..color = const Color(0xFFDFC39A).withValues(alpha: 0.55);
+    canvas.drawRect(Rect.fromLTWH(0, 0, 18, size.height), sideFill);
+    canvas.drawRect(Rect.fromLTWH(size.width - 18, 0, 18, size.height), sideFill);
+
+    final motifPaint = Paint()..color = const Color(0xFF8B6A2E).withValues(alpha: 0.55);
+    for (double y = 16; y < size.height - 16; y += 20) {
+      canvas.drawCircle(const Offset(9, 0) + Offset(0, y), 3.0, motifPaint);
+      canvas.drawCircle(Offset(size.width - 9, y), 3.0, motifPaint);
+    }
+
+    final frame = Paint()
+      ..color = const Color(0xFF7C6640).withValues(alpha: 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(18, 6, size.width - 36, size.height - 12),
+        const Radius.circular(8),
+      ),
+      frame,
+    );
+
+    final inner = Paint()
+      ..color = const Color(0xFF9A845A).withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(24, 12, size.width - 48, size.height - 24),
+        const Radius.circular(6),
+      ),
+      inner,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 // ─── Ayah Tile (redesigned) ──────────────────────────────────────────────────
 
 class _AyahTile extends StatelessWidget {
@@ -1099,7 +1742,7 @@ class _AyahTile extends StatelessWidget {
             const SizedBox(height: 8),
             TajweedText(
               ayah: ayah,
-              fontSize: 24,
+              fontSize: 28,
               highlightEnabled: tajweedEnabled,
               highlightedWordIndex: activeWordIndex,
               onRuleTapped: onWordTapped,
@@ -1115,6 +1758,53 @@ class _AyahTile extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PageAyahLine extends StatelessWidget {
+  final Ayah ayah;
+  final bool tajweedEnabled;
+  final bool isPlaying;
+  final int activeWordIndex;
+  final double mushafFontSize;
+  final void Function(TajweedRule, String) onWordTapped;
+  final VoidCallback onDoubleTap;
+  final VoidCallback onBookmarkTap;
+
+  const _PageAyahLine({
+    required this.ayah,
+    required this.tajweedEnabled,
+    required this.isPlaying,
+    required this.activeWordIndex,
+    required this.mushafFontSize,
+    required this.onWordTapped,
+    required this.onDoubleTap,
+    required this.onBookmarkTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onDoubleTap: onDoubleTap,
+      onLongPress: onBookmarkTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isPlaying ? const Color(0xFF1D9E75).withValues(alpha: 0.10) : null,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 0.5),
+        child: TajweedText(
+          ayah: ayah,
+          fontSize: mushafFontSize,
+          lineHeight: 1.72,
+          compactFlow: true,
+          highlightEnabled: tajweedEnabled,
+          highlightedWordIndex: activeWordIndex,
+          onRuleTapped: onWordTapped,
         ),
       ),
     );

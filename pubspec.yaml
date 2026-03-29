@@ -32,6 +32,7 @@ dependencies:
 
   # Arabic text & Quranic fonts
   google_fonts: ^8.0.2         # Fallback; Uthmanic Hafs loaded as asset font
+  characters: ^1.3.0
 
   # Internationalisation
   intl: ^0.20.2
@@ -61,3 +62,4 @@ flutter:
 
   assets:
     - assets/tajweed/            # Local tajweed rule JSON database
+    - assets/mushaf_pages/tajweed/
