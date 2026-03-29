@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Large runtime assets (published as GitHub Release assets)
+assets/mushaf_pages/images.zip
