@@ -34,8 +34,8 @@ class MushafAssetsService {
     final docsDir = await getApplicationDocumentsDirectory();
     final mushafDir = Directory('${docsDir.path}/$_unzipDirName');
 
-    final existing = await _countPageImages(mushafDir);
-    if (existing >= expectedPageCount) return mushafDir;
+    final hasCompleteSet = await _hasCompletePageSet(mushafDir);
+    if (hasCompleteSet) return mushafDir;
 
     if (await mushafDir.exists()) {
       await mushafDir.delete(recursive: true);
@@ -64,12 +64,14 @@ class MushafAssetsService {
     final docsDir = await getApplicationDocumentsDirectory();
     final mushafDir = Directory('${docsDir.path}/$_unzipDirName');
     if (!await mushafDir.exists()) {
-      return const MushafAssetsStatus(installed: false, pageCount: 0, rootPath: null);
+      return const MushafAssetsStatus(
+          installed: false, pageCount: 0, rootPath: null);
     }
 
     final pageCount = await _countPageImages(mushafDir);
+    final hasCompleteSet = await _hasCompletePageSet(mushafDir);
     return MushafAssetsStatus(
-      installed: pageCount >= expectedPageCount,
+      installed: hasCompleteSet,
       pageCount: pageCount,
       rootPath: mushafDir.path,
     );
@@ -81,7 +83,8 @@ class MushafAssetsService {
   }) async {
     final docsDir = await getApplicationDocumentsDirectory();
     final tempZip = File('${docsDir.path}/pages_download.zip');
-    final extractDir = Directory('${docsDir.path}/mushaf_extract_tmp_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(100000)}');
+    final extractDir = Directory(
+        '${docsDir.path}/mushaf_extract_tmp_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(100000)}');
 
     try {
       // Download zip
@@ -131,10 +134,34 @@ class MushafAssetsService {
     var count = 0;
     await for (final entity in imagesDir.list(followLinks: false)) {
       if (entity is! File) continue;
-      final name = entity.uri.pathSegments.isNotEmpty ? entity.uri.pathSegments.last : '';
+      final name = entity.uri.pathSegments.isNotEmpty
+          ? entity.uri.pathSegments.last
+          : '';
       if (name.endsWith('.png')) count++;
     }
     return count;
+  }
+
+  static Future<bool> _hasCompletePageSet(Directory mushafDir) async {
+    final rootPath = mushafDir.path;
+    for (int page = 1; page <= expectedPageCount; page++) {
+      if (_resolveExistingPagePath(rootPath, page) == null) return false;
+    }
+    return true;
+  }
+
+  static String? _resolveExistingPagePath(String rootPath, int pageNumber) {
+    final plain = '$rootPath/images/$pageNumber.png';
+    if (File(plain).existsSync()) return plain;
+
+    final padded = pageNumber.toString().padLeft(3, '0');
+    final paddedOnly = '$rootPath/images/$padded.png';
+    if (File(paddedOnly).existsSync()) return paddedOnly;
+
+    final pagePrefixed = '$rootPath/images/page$padded.png';
+    if (File(pagePrefixed).existsSync()) return pagePrefixed;
+
+    return null;
   }
 
   /// Delete extracted pages (e.g. to force a re-download).

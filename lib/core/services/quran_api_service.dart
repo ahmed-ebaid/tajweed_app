@@ -48,7 +48,8 @@ class QuranApiService {
         'language': langCode,
         'words': true,
         'fields': 'page_number,verse_key',
-        'word_fields': 'text_uthmani,tajweed,transliteration',
+        'word_fields':
+            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration',
         'translations': _translationIdFor(langCode),
         'audio': reciterId,
         'page': page ?? 1,
@@ -86,7 +87,8 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': true,
-        'word_fields': 'text_uthmani,tajweed',
+        'word_fields':
+            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name',
         'translations': _translationIdFor(langCode),
         'audio': reciterId,
       },
@@ -200,7 +202,10 @@ class QuranApiService {
     required String verseKey,
   }) async {
     final response = await _dio.get('/tafsirs/$tafsirId/by_ayah/$verseKey');
-    final tafsir = response.data['tafsir'] as Map<String, dynamic>? ?? {};
+    final tafsirRaw = response.data['tafsir'];
+    final tafsir = tafsirRaw is Map
+        ? Map<String, dynamic>.from(tafsirRaw)
+        : <String, dynamic>{};
     return tafsir['text'] as String? ?? '';
   }
 
@@ -254,18 +259,30 @@ class QuranApiService {
   ///   s = shaddah
   static TajweedRule? ruleFromCode(String code) {
     switch (code) {
-      case 'g': return TajweedRule.ghunnah;
-      case 'q': return TajweedRule.qalqalah;
-      case 'm': return TajweedRule.maddTabeei;
-      case 'M': return TajweedRule.maddMuttasil;
-      case 'n': return TajweedRule.maddMunfasil;
-      case 'i': return TajweedRule.ikhfa;
-      case 'I': return TajweedRule.iqlab;
-      case 'd': return TajweedRule.idghamWithGhunnah;
-      case 'D': return TajweedRule.idghamWithoutGhunnah;
-      case 'z': return TajweedRule.izhar;
-      case 's': return TajweedRule.shaddah;
-      default:  return null;
+      case 'g':
+        return TajweedRule.ghunnah;
+      case 'q':
+        return TajweedRule.qalqalah;
+      case 'm':
+        return TajweedRule.maddTabeei;
+      case 'M':
+        return TajweedRule.maddMuttasil;
+      case 'n':
+        return TajweedRule.maddMunfasil;
+      case 'i':
+        return TajweedRule.ikhfa;
+      case 'I':
+        return TajweedRule.iqlab;
+      case 'd':
+        return TajweedRule.idghamWithGhunnah;
+      case 'D':
+        return TajweedRule.idghamWithoutGhunnah;
+      case 'z':
+        return TajweedRule.izhar;
+      case 's':
+        return TajweedRule.shaddah;
+      default:
+        return null;
     }
   }
 
@@ -274,13 +291,20 @@ class QuranApiService {
   /// Maps language codes to Quran.com translation resource IDs.
   static String _translationIdFor(String langCode) {
     switch (langCode) {
-      case 'ar': return '16';   // Muhammad Taqī-ud-Dīn al-Hilālī (Arabic tafsir)
-      case 'ur': return '97';   // Fateh Muhammad Jalandhari
-      case 'tr': return '52';   // Diyanet İşleri
-      case 'fr': return '31';   // Muhammad Hamidullah
-      case 'id': return '33';   // Indonesian Ministry of Religious Affairs
-      case 'de': return '27';   // Adul Hye & Ahmad von Denffer
-      default:   return '131';  // Dr. Mustafa Khattab (English)
+      case 'ar':
+        return '16'; // Muhammad Taqī-ud-Dīn al-Hilālī (Arabic tafsir)
+      case 'ur':
+        return '97'; // Fateh Muhammad Jalandhari
+      case 'tr':
+        return '52'; // Diyanet İşleri
+      case 'fr':
+        return '31'; // Muhammad Hamidullah
+      case 'id':
+        return '33'; // Indonesian Ministry of Religious Affairs
+      case 'de':
+        return '27'; // Adul Hye & Ahmad von Denffer
+      default:
+        return '131'; // Dr. Mustafa Khattab (English)
     }
   }
 }

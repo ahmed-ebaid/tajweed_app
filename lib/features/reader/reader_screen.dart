@@ -15,6 +15,7 @@ import '../../core/providers/tafseer_provider.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/services/audio_cache_service.dart';
 import '../../core/services/ayah_mapper.dart';
+import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/mushaf_assets_service.dart';
 import '../reader/widgets/audio_player_bar.dart';
@@ -38,11 +39,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
   final _api = QuranApiService();
   final _audio = AudioService();
   final _audioCache = AudioCacheService();
+  final _quranOfflineSync = QuranOfflineSyncService();
   final _scrollController = ScrollController();
   final PageController _mushafPageController = PageController();
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<Duration>? _positionSub;
-  
+
   // Mushaf pages: downloaded on first launch from GitHub Releases.
   String? _mushafPagesDirPath;
   Object? _mushafPagesError;
@@ -58,7 +60,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _allSurahs = [];
   Map<String, String> _audioUrls = {};
-  
+
   // Debounce timer for scroll position saving
   Timer? _scrollSaveTimer;
 
@@ -100,7 +102,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final bookmarks = context.read<BookmarkProvider>();
     _selectedSurah = bookmarks.lastReadSurah;
     _ayahModeAnchorAyah = bookmarks.lastReadAyah;
-    print('📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
+    print(
+        '📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
 
     _initializeMushafPages();
 
@@ -124,7 +127,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
       final total = _audio.duration;
       if (total == null || total.inMilliseconds <= 0) return;
 
-      final ayahIdx = _ayahs.indexWhere((a) => a.ayahNumber == _playingAyahNumber);
+      final ayahIdx =
+          _ayahs.indexWhere((a) => a.ayahNumber == _playingAyahNumber);
       if (ayahIdx < 0) return;
       final wordCount = _ayahs[ayahIdx].words.length;
       if (wordCount <= 0) return;
@@ -141,14 +145,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
     // Debounced scroll tracking - save every 1 second while scrolling
     _scrollController.addListener(() {
       _scrollSaveTimer?.cancel();
-      _scrollSaveTimer = Timer(const Duration(milliseconds: 500), _saveScrollPosition);
+      _scrollSaveTimer =
+          Timer(const Duration(milliseconds: 500), _saveScrollPosition);
     });
   }
 
   void _loadSavedReaderViewMode() {
     try {
       final box = Hive.box('settings');
-      final saved = box.get(_readerViewModeKey, defaultValue: _ReaderViewMode.ayah.name) as String;
+      final saved = box.get(_readerViewModeKey,
+          defaultValue: _ReaderViewMode.ayah.name) as String;
       _viewMode = saved == _ReaderViewMode.page.name
           ? _ReaderViewMode.page
           : _ReaderViewMode.ayah;
@@ -235,7 +241,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
             topVisibleAyah = ayah.ayahNumber;
           }
         } catch (e) {
-          print('⚠️ Error processing ayah ${ayah.ayahNumber} in scroll save: $e');
+          print(
+              '⚠️ Error processing ayah ${ayah.ayahNumber} in scroll save: $e');
           continue;
         }
       }
@@ -251,9 +258,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
       if (topVisibleAyah != null && mounted) {
         try {
-          final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-          context.read<BookmarkProvider>().saveLastRead(_selectedSurah, topVisibleAyah, scrollOffset: scrollOffset);
-          print('✅ Saved scroll position: surah=$_selectedSurah, ayah=$topVisibleAyah, offset=$scrollOffset');
+          final scrollOffset =
+              _scrollController.hasClients ? _scrollController.offset : 0.0;
+          context.read<BookmarkProvider>().saveLastRead(
+              _selectedSurah, topVisibleAyah,
+              scrollOffset: scrollOffset);
+          print(
+              '✅ Saved scroll position: surah=$_selectedSurah, ayah=$topVisibleAyah, offset=$scrollOffset');
         } catch (e) {
           print('❌ Error saving to BookmarkProvider: $e');
         }
@@ -308,33 +319,59 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   Future<void> _loadSurah() async {
     final loadVersion = ++_surahLoadVersion;
-    setState(() { _loading = true; _ayahs = []; _audioUrls = {}; _juzBoundaries = {}; });
-    final langCode = context.read<LocaleProvider>().locale.languageCode;
+    setState(() {
+      _loading = true;
+      _ayahs = [];
+      _audioUrls = {};
+      _juzBoundaries = {};
+    });
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     _lastObservedReciterId = reciterId;
 
     try {
+      final cachedVerses =
+          await _quranOfflineSync.getCachedSurah(_selectedSurah);
       final allVerses = <Map<String, dynamic>>[];
-      int page = 1;
-      while (true) {
-        final verses = await _api.fetchVerses(
+      Map<String, String> tajweedMap = <String, String>{};
+
+      if (cachedVerses != null && cachedVerses.isNotEmpty) {
+        allVerses.addAll(cachedVerses);
+        tajweedMap =
+            await _quranOfflineSync.getCachedTajweedMap(_selectedSurah);
+      } else {
+        int page = 1;
+        while (true) {
+          final verses = await _api.fetchVerses(
+            surahNumber: _selectedSurah,
+            langCode: 'ar',
+            reciterId: reciterId,
+            page: page,
+          );
+          allVerses.addAll(verses);
+          if (verses.length < 50) break;
+          page++;
+        }
+
+        tajweedMap = await _api.fetchTajweedText(chapterNumber: _selectedSurah);
+        // Persist immediately so restart does not lose freshly loaded surah.
+        await _quranOfflineSync.saveSurahCache(
           surahNumber: _selectedSurah,
-          langCode: langCode,
-          reciterId: reciterId,
-          page: page,
+          verses: allVerses,
+          tajweedMap: tajweedMap,
         );
-        allVerses.addAll(verses);
-        if (verses.length < 50) break;
-        page++;
       }
 
-      final results = await Future.wait([
-        _api.fetchAudioFiles(reciterId: reciterId, surahNumber: _selectedSurah),
-        _api.fetchTajweedText(chapterNumber: _selectedSurah),
-        _loadJuzBoundaries(),
-      ]);
-      final audioMap = results[0] as Map<String, String>;
-      final tajweedMap = results[1] as Map<String, String>;
+      Map<String, String> audioMap = <String, String>{};
+      try {
+        audioMap = await _api.fetchAudioFiles(
+          reciterId: reciterId,
+          surahNumber: _selectedSurah,
+        );
+      } catch (_) {
+        // Audio URLs are optional when offline. Cached audio still works.
+      }
+
+      await _loadJuzBoundaries();
 
       print('📻 AUDIO MAP KEYS: ${audioMap.keys.toList()}');
       print('📻 AUDIO MAP SIZE: ${audioMap.length}');
@@ -365,6 +402,30 @@ class _ReaderScreenState extends State<ReaderScreen> {
       }
     } catch (e) {
       print('❌ ERROR IN LOAD SURAH: $e');
+
+      final fallbackSurah = await _quranOfflineSync.getFirstCachedSurahNumber();
+      if (fallbackSurah != null && fallbackSurah != _selectedSurah) {
+        final fallbackVerses =
+            await _quranOfflineSync.getCachedSurah(fallbackSurah);
+        if (fallbackVerses != null && fallbackVerses.isNotEmpty) {
+          final fallbackTajweed =
+              await _quranOfflineSync.getCachedTajweedMap(fallbackSurah);
+          if (mounted && loadVersion == _surahLoadVersion) {
+            setState(() {
+              _selectedSurah = fallbackSurah;
+              _loading = false;
+              _ayahs = AyahMapper.fromApiList(
+                fallbackVerses,
+                tajweedMap: fallbackTajweed,
+              );
+              _audioUrls = {};
+              _activeWordIndex = -1;
+            });
+          }
+          return;
+        }
+      }
+
       if (mounted && loadVersion == _surahLoadVersion) {
         setState(() {
           _loading = false;
@@ -381,7 +442,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
     if (reciterId == _lastObservedReciterId) return;
 
     _lastObservedReciterId = reciterId;
-    final currentOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final currentOffset =
+        _scrollController.hasClients ? _scrollController.offset : 0.0;
     _stopAudio();
     setState(() {
       _pendingScrollOffset = currentOffset;
@@ -397,7 +459,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
       final surahStr = _selectedSurah.toString();
       for (final j in juzs) {
         final juzNum = j['juz_number'] as int;
-        final mapping = j['verse_mapping'] as Map<String, dynamic>? ?? {};
+        final mappingRaw = j['verse_mapping'];
+        final mapping = mappingRaw is Map
+            ? Map<String, dynamic>.from(mappingRaw)
+            : <String, dynamic>{};
         if (mapping.containsKey(surahStr)) {
           final range = mapping[surahStr] as String;
           final startAyah = int.tryParse(range.split('-').first) ?? 0;
@@ -423,13 +488,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
     try {
       final bookmarks = context.read<BookmarkProvider>();
       if (bookmarks.lastReadSurah != _selectedSurah || _ayahs.isEmpty) {
-        print('⚠️ Not scrolling: mismatch/empty (lastReadSurah=${bookmarks.lastReadSurah}, _selectedSurah=$_selectedSurah, count=${_ayahs.length})');
+        print(
+            '⚠️ Not scrolling: mismatch/empty (lastReadSurah=${bookmarks.lastReadSurah}, _selectedSurah=$_selectedSurah, count=${_ayahs.length})');
         return;
       }
 
       final lastAyah = bookmarks.lastReadAyah;
       final savedOffset = bookmarks.lastScrollOffset;
-      print('🎯 _scrollToLastReadAyah using ayah=$lastAyah and offset=$savedOffset in surah $_selectedSurah');
+      print(
+          '🎯 _scrollToLastReadAyah using ayah=$lastAyah and offset=$savedOffset in surah $_selectedSurah');
 
       if (_restoreAyahByNumber(lastAyah, retries: 10)) {
         return;
@@ -516,18 +583,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
 
     // Clamp offset to valid range
-    final validOffset = offset.clamp(0.0, _scrollController.position.maxScrollExtent);
+    final validOffset =
+        offset.clamp(0.0, _scrollController.position.maxScrollExtent);
     _isProgrammaticScroll = true;
-    
+
     print('🔄 Restoring scroll to offset=$validOffset');
     _scrollController.jumpTo(validOffset);
-    
+
     // Save the position
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         try {
           final bookmarks = context.read<BookmarkProvider>();
-          context.read<BookmarkProvider>().saveLastRead(_selectedSurah, bookmarks.lastReadAyah, scrollOffset: validOffset);
+          context.read<BookmarkProvider>().saveLastRead(
+              _selectedSurah, bookmarks.lastReadAyah,
+              scrollOffset: validOffset);
           print('✅ Restored scroll position at offset=$validOffset');
         } catch (e) {
           print('❌ Error saving during restore: $e');
@@ -542,7 +612,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   /// Double-tap on a single ayah — play just that one.
   void _playSingleAyah(Ayah ayah) {
     print('🔢 DOUBLE TAP: ayah ${ayah.ayahNumber}');
-    context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+    context
+        .read<BookmarkProvider>()
+        .saveLastRead(ayah.surahNumber, ayah.ayahNumber);
 
     if (_playingAyahNumber == ayah.ayahNumber) {
       if (_audio.isPlaying) {
@@ -593,7 +665,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
         _playingAyahNumber = ayah.ayahNumber;
         _activeWordIndex = 0;
       });
-      context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+      context
+          .read<BookmarkProvider>()
+          .saveLastRead(ayah.surahNumber, ayah.ayahNumber);
 
       final started = await _playAyah(ayah, updatePlayingState: false);
       if (!started) {
@@ -627,9 +701,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
       ayahNumber: ayah.ayahNumber,
     );
     final rawUrl = giveFromMap ?? ayah.audioUrl ?? fallbackUrl;
-    final url = rawUrl.startsWith('http') ? rawUrl : 'https://verses.quran.com/$rawUrl';
+    final url =
+        rawUrl.startsWith('http') ? rawUrl : 'https://verses.quran.com/$rawUrl';
 
-    print('🎵 PLAY AYAH: verseKey=$verseKey, mapHas=${giveFromMap != null}, raw=$rawUrl, url=$url');
+    print(
+        '🎵 PLAY AYAH: verseKey=$verseKey, mapHas=${giveFromMap != null}, raw=$rawUrl, url=$url');
 
     if (url.isEmpty) {
       print('❌ ERROR: EMPTY URL FOR $verseKey');
@@ -643,9 +719,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
       }
       return false;
     }
-    
+
     final preview = url.length <= 50 ? url : '${url.substring(0, 50)}...';
     print('📂 PLAYING URL: $preview');
+    var usedCachedAudio = false;
     try {
       final localPath = await _audioCache.getCachedAyahPath(
         reciterId: reciterId,
@@ -654,6 +731,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       );
 
       if (localPath != null && File(localPath).existsSync()) {
+        usedCachedAudio = true;
         await _audio.playFile(localPath);
         print('✅ playFile succeeded from cache');
       } else {
@@ -684,7 +762,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error playing audio: $e'),
+            content: Text(
+              usedCachedAudio
+                  ? 'Error playing cached audio: $e'
+                  : 'Audio for this ayah is not downloaded for offline use. Download the surah audio or connect to the internet.',
+            ),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -694,7 +776,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     // Update last read position
     try {
-      context.read<BookmarkProvider>().saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+      context
+          .read<BookmarkProvider>()
+          .saveLastRead(ayah.surahNumber, ayah.ayahNumber);
     } catch (e) {
       print('❌ Error saving last read: $e');
     }
@@ -725,11 +809,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
     late final Timer stopPoll;
 
     sub = _audio.playerStateStream.listen((state) {
-      if (!completer.isCompleted && _isPlayingAll && state.processingState == ProcessingState.completed) {
+      if (!completer.isCompleted &&
+          _isPlayingAll &&
+          state.processingState == ProcessingState.completed) {
         completer.complete(true);
       }
 
-      if (!completer.isCompleted && state.processingState == ProcessingState.idle) {
+      if (!completer.isCompleted &&
+          state.processingState == ProcessingState.idle) {
         completer.complete(false);
       }
     });
@@ -792,7 +879,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
       bm.removeBookmark(ayah.surahNumber, ayah.ayahNumber);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bookmark removed'), duration: Duration(seconds: 1)),
+          const SnackBar(
+              content: Text('Bookmark removed'),
+              duration: Duration(seconds: 1)),
         );
       }
     } else {
@@ -800,15 +889,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
       String label = '${ayah.surahNumber}:${ayah.ayahNumber}';
       for (final s in _allSurahs) {
         if (s['id'] == ayah.surahNumber) {
-          label = '${s['name_arabic'] ?? s['name_simple']} — Ayah ${ayah.ayahNumber}';
+          label =
+              '${s['name_arabic'] ?? s['name_simple']} — Ayah ${ayah.ayahNumber}';
           break;
         }
       }
-      final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-      bm.addBookmark(ayah.surahNumber, ayah.ayahNumber, label: label, scrollOffset: scrollOffset);
+      final scrollOffset =
+          _scrollController.hasClients ? _scrollController.offset : 0.0;
+      bm.addBookmark(ayah.surahNumber, ayah.ayahNumber,
+          label: label, scrollOffset: scrollOffset);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bookmark added'), duration: Duration(seconds: 1)),
+          const SnackBar(
+              content: Text('Bookmark added'), duration: Duration(seconds: 1)),
         );
       }
     }
@@ -830,7 +923,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
             // Same surah: direct scroll without full reload
             _isProgrammaticScroll = true;
             _restoreScrollOffset(bookmark.scrollOffset);
-            context.read<BookmarkProvider>().saveLastRead(bookmark.surah, bookmark.ayah, scrollOffset: bookmark.scrollOffset);
+            context.read<BookmarkProvider>().saveLastRead(
+                bookmark.surah, bookmark.ayah,
+                scrollOffset: bookmark.scrollOffset);
             return;
           }
 
@@ -863,7 +958,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   Widget build(BuildContext context) {
     final langCode = context.read<LocaleProvider>().locale.languageCode;
-    final selectedReciterId = context.watch<RecitationProvider>().selectedReciterId;
+    final selectedReciterId =
+        context.watch<RecitationProvider>().selectedReciterId;
 
     if (selectedReciterId != _lastObservedReciterId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -883,7 +979,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
             child: _SurahSelector(
               surahs: _allSurahs,
               selected: _selectedSurah,
-              onChanged: (v) { _selectedSurah = v; _stopAudio(); _loadSurah(); },
+              onChanged: (v) {
+                _selectedSurah = v;
+                _stopAudio();
+                _loadSurah();
+              },
             ),
           ),
         ),
@@ -909,7 +1009,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
           // Play all toggle
           IconButton(
             icon: Icon(
-              _isPlayingAll ? Icons.stop_circle_outlined : Icons.play_circle_outline,
+              _isPlayingAll
+                  ? Icons.stop_circle_outlined
+                  : Icons.play_circle_outline,
               size: 22,
             ),
             color: _isPlayingAll ? Colors.red : const Color(0xFF1D9E75),
@@ -917,7 +1019,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
             onPressed: _ayahs.isNotEmpty ? _togglePlayAll : null,
           ),
           IconButton(
-            icon: Icon(_tajweedEnabled ? Icons.palette : Icons.palette_outlined),
+            icon:
+                Icon(_tajweedEnabled ? Icons.palette : Icons.palette_outlined),
             color: _tajweedEnabled ? const Color(0xFF1D9E75) : null,
             tooltip: 'Tajweed colors',
             onPressed: () => setState(() => _tajweedEnabled = !_tajweedEnabled),
@@ -962,7 +1065,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
           if (_playingAyahNumber != null)
             AudioPlayerBar(
               audioService: _audio,
-              label: '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
+              label:
+                  '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
               onClose: _stopAudio,
             ),
         ],
@@ -979,7 +1083,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
         final ayah = _ayahs[i];
         final juzNumber = _juzBoundaries[ayah.ayahNumber];
         final isPlaying = _playingAyahNumber == ayah.ayahNumber;
-        final isBookmarked = context.watch<BookmarkProvider>()
+        final isBookmarked = context
+            .watch<BookmarkProvider>()
             .isBookmarked(ayah.surahNumber, ayah.ayahNumber);
 
         return Column(
@@ -1054,8 +1159,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _goToAnchoredAyah() {
-    final anchorAyah = _ayahModeAnchorAyah ??
-        context.read<BookmarkProvider>().lastReadAyah;
+    final anchorAyah =
+        _ayahModeAnchorAyah ?? context.read<BookmarkProvider>().lastReadAyah;
     final anchorSurah = _mushafAnchorSurah ?? _selectedSurah;
     final rawOffset = _ayahModeReturnOffset ??
         context.read<BookmarkProvider>().lastScrollOffset;
@@ -1142,7 +1247,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   int _currentMushafAnchorSurah() {
     final pageNumber = _currentMushafPageIndex + 1;
-    return _mushafPageAnchorCache[pageNumber]?.surah ?? _mushafAnchorSurah ?? _selectedSurah;
+    return _mushafPageAnchorCache[pageNumber]?.surah ??
+        _mushafAnchorSurah ??
+        _selectedSurah;
   }
 
   int _pageNumberForAyah(int ayahNumber) {
@@ -1155,7 +1262,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
   String _getMushafPagePath(int pageNumber) {
     final root = _mushafPagesDirPath;
     if (root == null) return '';
-    return '$root/images/$pageNumber.png';
+    final plain = '$root/images/$pageNumber.png';
+    if (File(plain).existsSync()) return plain;
+
+    final padded = pageNumber.toString().padLeft(3, '0');
+    final paddedOnly = '$root/images/$padded.png';
+    if (File(paddedOnly).existsSync()) return paddedOnly;
+
+    final pagePrefixed = '$root/images/page$padded.png';
+    if (File(pagePrefixed).existsSync()) return pagePrefixed;
+
+    return plain;
   }
 
   Future<void> _updateMushafAnchorForPage(int pageNumber) async {
@@ -1178,8 +1295,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
       );
 
       if (verses.isEmpty || !mounted) return;
-      
-      // For pages spanning multiple surahs, use the highest surah number 
+
+      // For pages spanning multiple surahs, use the highest surah number
       // (the surah that dominates the page content).
       int? maxSurah;
       String? anchorVerseKey;
@@ -1187,18 +1304,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
         final verseKey = verse['verse_key'] as String? ?? '';
         final parts = verseKey.split(':');
         if (parts.length != 2) continue;
-        
+
         final surah = int.tryParse(parts.first);
         if (surah == null) continue;
-        
+
         if (maxSurah == null || surah > maxSurah) {
           maxSurah = surah;
           anchorVerseKey = verseKey;
         }
       }
-      
+
       if (maxSurah == null || anchorVerseKey == null) return;
-      
+
       final parts = anchorVerseKey.split(':');
       final ayah = int.tryParse(parts.last);
       if (ayah == null) return;
@@ -1242,7 +1359,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
           : null;
 
       return _MushafDownloadStateCard(
-        title: _isMushafDownloading ? 'Downloading Mushaf pages' : 'Preparing Mushaf pages',
+        title: _isMushafDownloading
+            ? 'Downloading Mushaf pages'
+            : 'Preparing Mushaf pages',
         subtitle: _downloadTotal > 0
             ? '${(_downloadReceived / (1024 * 1024)).toStringAsFixed(1)} MB / ${(_downloadTotal / (1024 * 1024)).toStringAsFixed(1)} MB'
             : 'This happens once and pages are cached locally.',
@@ -1256,81 +1375,83 @@ class _ReaderScreenState extends State<ReaderScreen> {
     return PageView.builder(
       controller: _mushafPageController,
       itemCount: 604,
-          onPageChanged: (index) {
-            final pageNumber = index + 1;
-            setState(() {
-              _currentMushafPageIndex = index;
-            });
+      onPageChanged: (index) {
+        final pageNumber = index + 1;
+        setState(() {
+          _currentMushafPageIndex = index;
+        });
 
-            unawaited(_updateMushafAnchorForPage(pageNumber));
+        unawaited(_updateMushafAnchorForPage(pageNumber));
 
-            final anchorSurah = _currentMushafAnchorSurah();
-            final anchorAyah = _currentMushafAnchorAyah();
-            context.read<BookmarkProvider>().saveLastRead(anchorSurah, anchorAyah);
-          },
-          itemBuilder: (context, index) {
-            final pageNumber = index + 1;
-            final pageSurah = _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
-            final surahName = _surahArabicName(pageSurah);
+        final anchorSurah = _currentMushafAnchorSurah();
+        final anchorAyah = _currentMushafAnchorAyah();
+        context.read<BookmarkProvider>().saveLastRead(anchorSurah, anchorAyah);
+      },
+      itemBuilder: (context, index) {
+        final pageNumber = index + 1;
+        final pageSurah =
+            _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
+        final surahName = _surahArabicName(pageSurah);
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: _QuranPageBackground(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _MushafHeaderChip(text: surahName),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 6),
-                            child: Text(
-                              '۞۞۞',
-                              style: TextStyle(
-                                fontFamily: 'UthmanicHafs',
-                                fontSize: 18,
-                                color: Color(0xFF946E2A),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _MushafHeaderChip(text: 'الصفحة $pageNumber'),
-                          ),
-                        ],
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: _QuranPageBackground(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _MushafHeaderChip(text: surahName),
                       ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFBF9F4),
-                          border: Border.all(color: const Color(0xFF8E7C58), width: 1.2),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
-                          child: Image.file(
-                            File(_getMushafPagePath(pageNumber)),
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.none,
-                            alignment: Alignment.center,
-                            isAntiAlias: false,
-                            errorBuilder: (_, __, ___) => _MissingLocalMushafPage(
-                              pageNumber: pageNumber,
-                            ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          '۞۞۞',
+                          style: TextStyle(
+                            fontFamily: 'UthmanicHafs',
+                            fontSize: 18,
+                            color: Color(0xFF946E2A),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: _MushafHeaderChip(text: 'الصفحة $pageNumber'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBF9F4),
+                      border: Border.all(
+                          color: const Color(0xFF8E7C58), width: 1.2),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
+                      child: Image.file(
+                        File(_getMushafPagePath(pageNumber)),
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.none,
+                        alignment: Alignment.center,
+                        isAntiAlias: false,
+                        errorBuilder: (_, __, ___) => _MissingLocalMushafPage(
+                          pageNumber: pageNumber,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
+      },
+    );
   }
 }
 
@@ -1359,7 +1480,8 @@ class _MissingLocalMushafPage extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.image_not_supported_outlined, size: 28, color: Color(0xFF7D6E52)),
+          const Icon(Icons.image_not_supported_outlined,
+              size: 28, color: Color(0xFF7D6E52)),
           const SizedBox(height: 8),
           const Text(
             'Downloaded page image not found',
@@ -1482,7 +1604,8 @@ class _SurahSelector extends StatelessWidget {
   final List<Map<String, dynamic>> surahs;
   final int selected;
   final void Function(int) onChanged;
-  const _SurahSelector({required this.surahs, required this.selected, required this.onChanged});
+  const _SurahSelector(
+      {required this.surahs, required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -1550,7 +1673,8 @@ class _SurahPickerSheet extends StatefulWidget {
   final List<Map<String, dynamic>> surahs;
   final int selected;
   final void Function(int) onChanged;
-  const _SurahPickerSheet({required this.surahs, required this.selected, required this.onChanged});
+  const _SurahPickerSheet(
+      {required this.surahs, required this.selected, required this.onChanged});
 
   @override
   State<_SurahPickerSheet> createState() => _SurahPickerSheetState();
@@ -1573,7 +1697,8 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
 
   void _jumpToIndex(int startNumber) {
     // Find the index in the full list for that surah number
-    final idx = widget.surahs.indexWhere((s) => (s['id'] as int? ?? 0) >= startNumber);
+    final idx =
+        widget.surahs.indexWhere((s) => (s['id'] as int? ?? 0) >= startNumber);
     if (idx >= 0) {
       _listController.animateTo(
         idx * 64.0, // approximate tile height
@@ -1592,7 +1717,8 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final surahs = _filtered;
-    final showIndex = _search.isEmpty; // only show jump index when not searching
+    final showIndex =
+        _search.isEmpty; // only show jump index when not searching
 
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -1602,8 +1728,12 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
       builder: (_, controller) => Column(
         children: [
           const SizedBox(height: 12),
-          Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+          Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2))),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
@@ -1629,17 +1759,23 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                       final isSelected = id == widget.selected;
                       return ListTile(
                         leading: Container(
-                          width: 36, height: 36,
+                          width: 36,
+                          height: 36,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF1D9E75) : const Color(0xFFF5F5F5),
+                            color: isSelected
+                                ? const Color(0xFF1D9E75)
+                                : const Color(0xFFF5F5F5),
                             shape: BoxShape.circle,
                           ),
                           child: Text('$id',
-                            style: TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500,
-                              color: isSelected ? Colors.white : const Color(0xFF3D3D3A),
-                            )),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF3D3D3A),
+                              )),
                         ),
                         // Arabic name is primary
                         title: Text(
@@ -1654,7 +1790,8 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: isSelected
-                            ? const Icon(Icons.check_circle, color: Color(0xFF1D9E75), size: 20)
+                            ? const Icon(Icons.check_circle,
+                                color: Color(0xFF1D9E75), size: 20)
                             : null,
                         onTap: () {
                           FocusScope.of(context).unfocus();
@@ -1671,7 +1808,20 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                     child: ListView(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       children: [
-                        for (final n in [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110])
+                        for (final n in [
+                          1,
+                          10,
+                          20,
+                          30,
+                          40,
+                          50,
+                          60,
+                          70,
+                          80,
+                          90,
+                          100,
+                          110
+                        ])
                           GestureDetector(
                             onTap: () => _jumpToIndex(n),
                             child: Container(
@@ -1714,7 +1864,9 @@ class _JuzMarker extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5E6C8),
         border: Border.symmetric(
-          horizontal: BorderSide(color: const Color(0xFFD4A940).withValues(alpha: 0.5), width: 0.5),
+          horizontal: BorderSide(
+              color: const Color(0xFFD4A940).withValues(alpha: 0.5),
+              width: 0.5),
         ),
       ),
       child: Center(
@@ -1781,11 +1933,14 @@ class _QuranPageBackground extends StatelessWidget {
 class _QuranPagePatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final sideFill = Paint()..color = const Color(0xFFDFC39A).withValues(alpha: 0.55);
+    final sideFill = Paint()
+      ..color = const Color(0xFFDFC39A).withValues(alpha: 0.55);
     canvas.drawRect(Rect.fromLTWH(0, 0, 18, size.height), sideFill);
-    canvas.drawRect(Rect.fromLTWH(size.width - 18, 0, 18, size.height), sideFill);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - 18, 0, 18, size.height), sideFill);
 
-    final motifPaint = Paint()..color = const Color(0xFF8B6A2E).withValues(alpha: 0.55);
+    final motifPaint = Paint()
+      ..color = const Color(0xFF8B6A2E).withValues(alpha: 0.55);
     for (double y = 16; y < size.height - 16; y += 20) {
       canvas.drawCircle(const Offset(9, 0) + Offset(0, y), 3.0, motifPaint);
       canvas.drawCircle(Offset(size.width - 9, y), 3.0, motifPaint);
@@ -1837,11 +1992,17 @@ class _AyahTile extends StatelessWidget {
   final VoidCallback onBookmarkTap;
 
   const _AyahTile({
-    required this.ayah, required this.tajweedEnabled,
-    required this.showTranslation, required this.langCode,
-    required this.isPlaying, required this.activeWordIndex, required this.isBookmarked,
-    required this.onWordTapped, required this.onDoubleTap,
-    required this.onTafseerTap, required this.onBookmarkTap,
+    required this.ayah,
+    required this.tajweedEnabled,
+    required this.showTranslation,
+    required this.langCode,
+    required this.isPlaying,
+    required this.activeWordIndex,
+    required this.isBookmarked,
+    required this.onWordTapped,
+    required this.onDoubleTap,
+    required this.onTafseerTap,
+    required this.onBookmarkTap,
   });
 
   @override
@@ -1853,7 +2014,8 @@ class _AyahTile extends StatelessWidget {
       // Increase double-tap detection window
       excludeFromSemantics: false,
       child: Container(
-        color: isPlaying ? const Color(0xFF1D9E75).withValues(alpha: 0.08) : null,
+        color:
+            isPlaying ? const Color(0xFF1D9E75).withValues(alpha: 0.08) : null,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1875,7 +2037,8 @@ class _AyahTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 // Bookmark indicator
                 if (isBookmarked)
-                  const Icon(Icons.bookmark, size: 18, color: Color(0xFFB8860B)),
+                  const Icon(Icons.bookmark,
+                      size: 18, color: Color(0xFFB8860B)),
               ],
             ),
             const SizedBox(height: 8),
@@ -1932,14 +2095,16 @@ class _PageAyahLine extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         decoration: BoxDecoration(
-          color: isPlaying ? const Color(0xFF1D9E75).withValues(alpha: 0.10) : null,
+          color: isPlaying
+              ? const Color(0xFF1D9E75).withValues(alpha: 0.10)
+              : null,
           borderRadius: BorderRadius.circular(4),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 0.5),
+        padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 3),
         child: TajweedText(
           ayah: ayah,
           fontSize: mushafFontSize,
-          lineHeight: 1.72,
+          lineHeight: 1.9,
           compactFlow: true,
           highlightEnabled: tajweedEnabled,
           highlightedWordIndex: activeWordIndex,
@@ -1957,7 +2122,8 @@ class _AyahNumber extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 28, height: 28,
+      width: 28,
+      height: 28,
       decoration: BoxDecoration(
         color: const Color(0xFFF5E6C8),
         shape: BoxShape.circle,
@@ -1967,7 +2133,9 @@ class _AyahNumber extends StatelessWidget {
       child: Text(
         '$number',
         style: const TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFFB8860B)),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFFB8860B)),
       ),
     );
   }
@@ -1996,16 +2164,24 @@ class _BookmarksSheet extends StatelessWidget {
       builder: (_, controller) => Column(
         children: [
           const SizedBox(height: 12),
-          Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+          Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2))),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.bookmark_rounded, color: Color(0xFFB8860B), size: 22),
+                const Icon(Icons.bookmark_rounded,
+                    color: Color(0xFFB8860B), size: 22),
                 const SizedBox(width: 8),
                 Text('Bookmarks',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -2013,25 +2189,30 @@ class _BookmarksSheet extends StatelessWidget {
           Expanded(
             child: bookmarks.isEmpty
                 ? const Center(
-                    child: Text('No bookmarks yet.\nLong-press an ayah to bookmark it.',
+                    child: Text(
+                        'No bookmarks yet.\nLong-press an ayah to bookmark it.',
                         textAlign: TextAlign.center))
                 : ListView.separated(
                     controller: controller,
                     itemCount: bookmarks.length,
-                    separatorBuilder: (_, __) => const Divider(height: 0.5, indent: 16),
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 0.5, indent: 16),
                     itemBuilder: (_, i) {
                       final bm = bookmarks[i];
                       return ListTile(
                         leading: Container(
-                          width: 36, height: 36,
+                          width: 36,
+                          height: 36,
                           alignment: Alignment.center,
                           decoration: const BoxDecoration(
                             color: Color(0xFFF5E6C8),
                             shape: BoxShape.circle,
                           ),
                           child: Text('${bm.surah}:${bm.ayah}',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
-                                color: Color(0xFFB8860B))),
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFFB8860B))),
                         ),
                         title: Text(bm.label ?? '${bm.surah}:${bm.ayah}'),
                         subtitle: Text(
@@ -2068,7 +2249,8 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 40, color: Color(0xFF888780)),
+          const Icon(Icons.wifi_off_rounded,
+              size: 40, color: Color(0xFF888780)),
           const SizedBox(height: 12),
           Text('Could not load verses',
               style: Theme.of(context).textTheme.bodyMedium),

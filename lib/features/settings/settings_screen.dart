@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_localizations.dart';
@@ -6,6 +7,7 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/providers/recitation_provider.dart';
 import '../../core/providers/tafseer_provider.dart';
 import '../../core/services/mushaf_assets_service.dart';
+import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import 'language_selector_screen.dart';
 
@@ -18,8 +20,9 @@ class SettingsScreen extends StatelessWidget {
     final localeProvider = context.watch<LocaleProvider>();
     final recitationProvider = context.watch<RecitationProvider>();
     final tafseerProvider = context.watch<TafseerProvider>();
-    final currentLang = LocaleProvider.languageNames[
-        localeProvider.locale.languageCode] ?? 'English';
+    final currentLang =
+        LocaleProvider.languageNames[localeProvider.locale.languageCode] ??
+            'English';
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
@@ -100,6 +103,9 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _showTafseerPicker(context),
           ),
           const Divider(height: 0.5, indent: 16),
+          _SectionLabel(label: 'Quran Data'),
+          const _QuranDataTile(),
+          const Divider(height: 0.5, indent: 16),
           _SectionLabel(label: 'Mushaf Pages'),
           const _MushafPackTile(),
           const Divider(height: 0.5, indent: 16),
@@ -107,8 +113,8 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.info_outline_rounded),
             title: const Text('Version'),
-            trailing: Text('1.0.0',
-                style: Theme.of(context).textTheme.bodyMedium),
+            trailing:
+                Text('1.0.0', style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),
@@ -149,7 +155,9 @@ class SettingsScreen extends StatelessWidget {
           final style = r['style'] as String?;
           return style != null ? '$name ($style)' : name;
         },
-        isSelected: (r) => (r['id'] as int?) == context.read<RecitationProvider>().selectedReciterId,
+        isSelected: (r) =>
+            (r['id'] as int?) ==
+            context.read<RecitationProvider>().selectedReciterId,
         onSelect: (r) {
           final id = r['id'] as int;
           context.read<RecitationProvider>().setReciter(id);
@@ -174,8 +182,13 @@ class SettingsScreen extends StatelessWidget {
           final all = await api.fetchAvailableTafsirs();
           // Map language names to our lang codes for filtering
           const langMap = {
-            'en': 'english', 'ar': 'arabic', 'ur': 'urdu',
-            'tr': 'turkish', 'fr': 'french', 'id': 'indonesian', 'de': 'german',
+            'en': 'english',
+            'ar': 'arabic',
+            'ur': 'urdu',
+            'tr': 'turkish',
+            'fr': 'french',
+            'id': 'indonesian',
+            'de': 'german',
           };
           final target = langMap[langCode] ?? 'english';
           // Show tafsirs matching current language, plus all Arabic ones
@@ -185,13 +198,202 @@ class SettingsScreen extends StatelessWidget {
           }).toList();
         },
         itemTitle: (t) => '${t['name'] ?? ''} — ${t['author_name'] ?? ''}',
-        isSelected: (t) => (t['id'] as int?) == context.read<TafseerProvider>().selectedTafsirId,
+        isSelected: (t) =>
+            (t['id'] as int?) ==
+            context.read<TafseerProvider>().selectedTafsirId,
         onSelect: (t) {
           final id = t['id'] as int;
           context.read<TafseerProvider>().setTafsir(id);
           Navigator.pop(context);
         },
       ),
+    );
+  }
+}
+
+class _QuranDataTile extends StatefulWidget {
+  const _QuranDataTile();
+
+  @override
+  State<_QuranDataTile> createState() => _QuranDataTileState();
+}
+
+class _QuranDataTileState extends State<_QuranDataTile> {
+  final QuranOfflineSyncService _syncService = QuranOfflineSyncService();
+
+  QuranOfflineSyncStatus? _status;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  Future<void> _refreshStatus() async {
+    setState(() => _error = null);
+    try {
+      final status = await _syncService.getStatus();
+      if (!mounted) return;
+      setState(() => _status = status);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _sync({required bool force}) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (force) {
+        await _syncService.forceResync();
+      } else {
+        await _syncService.ensureBackgroundSync();
+      }
+      await _refreshStatus();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<void> _clear() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await _syncService.clearQuranCache();
+      await _refreshStatus();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<void> _showDiagnostics() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final diagnostics = await _syncService.getDiagnostics(
+        surahNumber: 7,
+        ayahNumbers: const [101, 122],
+      );
+      if (!mounted) return;
+
+      final report = diagnostics.toMultilineString();
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Quran Diagnostics (7:101, 7:122)'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: SelectableText(report),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: report));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Diagnostics copied')),
+                  );
+                },
+                child: const Text('Copy'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+
+    String subtitle;
+    if (_busy) {
+      subtitle = 'Working...';
+    } else if (_error != null) {
+      subtitle = 'Error while syncing Quran data';
+    } else if (status == null) {
+      subtitle = 'Checking status...';
+    } else if (status.completed) {
+      final syncedAt =
+          status.lastCompletedAt?.toLocal().toString() ?? 'unknown';
+      subtitle =
+          'Ready (${status.syncedSurahs}/${status.totalSurahs}) • Last sync: $syncedAt';
+    } else if (status.inProgress) {
+      subtitle =
+          'Syncing ${status.syncedSurahs}/${status.totalSurahs} surahs...';
+    } else {
+      subtitle =
+          'Not fully synced (${status.syncedSurahs}/${status.totalSurahs})';
+    }
+
+    return ListTile(
+      leading: const Icon(Icons.cloud_sync_outlined),
+      title: const Text('Quran text (offline)'),
+      subtitle: Text(subtitle),
+      trailing: _busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'sync') {
+                  _sync(force: false);
+                } else if (value == 'resync') {
+                  _sync(force: true);
+                } else if (value == 'clear') {
+                  _clear();
+                } else if (value == 'refresh') {
+                  _refreshStatus();
+                } else if (value == 'diagnostics') {
+                  _showDiagnostics();
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'sync', child: Text('Download / Resume')),
+                PopupMenuItem(value: 'resync', child: Text('Re-sync all')),
+                PopupMenuItem(
+                    value: 'clear', child: Text('Clear local Quran cache')),
+                PopupMenuItem(value: 'refresh', child: Text('Refresh status')),
+                PopupMenuItem(
+                    value: 'diagnostics', child: Text('Show diagnostics')),
+              ],
+            ),
     );
   }
 }
@@ -295,7 +497,8 @@ class _MushafPackTileState extends State<_MushafPackTile> {
     } else if (installed) {
       subtitle = 'Installed (${status.pageCount} pages)';
     } else {
-      subtitle = 'Not installed yet (${status.pageCount}/${MushafAssetsService.expectedPageCount} pages)';
+      subtitle =
+          'Not installed yet (${status.pageCount}/${MushafAssetsService.expectedPageCount} pages)';
     }
 
     return ListTile(
@@ -323,7 +526,8 @@ class _MushafPackTileState extends State<_MushafPackTile> {
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'download', child: Text('Download')),
                 PopupMenuItem(value: 'redownload', child: Text('Re-download')),
-                PopupMenuItem(value: 'delete', child: Text('Delete local pack')),
+                PopupMenuItem(
+                    value: 'delete', child: Text('Delete local pack')),
                 PopupMenuItem(value: 'refresh', child: Text('Refresh status')),
               ],
             ),
@@ -364,7 +568,11 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
   Future<void> _load() async {
     try {
       final items = await widget.fetchItems();
-      if (mounted) setState(() { _items = items; _loading = false; });
+      if (mounted)
+        setState(() {
+          _items = items;
+          _loading = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -380,12 +588,19 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
       builder: (_, controller) => Column(
         children: [
           const SizedBox(height: 12),
-          Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+          Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2))),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(widget.title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w600)),
           ),
           const Divider(height: 0.5),
           Expanded(
@@ -396,14 +611,16 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
                     : ListView.separated(
                         controller: controller,
                         itemCount: _items!.length,
-                        separatorBuilder: (_, __) => const Divider(height: 0.5, indent: 16),
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 0.5, indent: 16),
                         itemBuilder: (_, i) {
                           final item = _items![i];
                           final selected = widget.isSelected(item);
                           return ListTile(
                             title: Text(widget.itemTitle(item)),
                             trailing: selected
-                                ? const Icon(Icons.check_circle, color: Color(0xFF1D9E75), size: 20)
+                                ? const Icon(Icons.check_circle,
+                                    color: Color(0xFF1D9E75), size: 20)
                                 : null,
                             onTap: () => widget.onSelect(item),
                           );

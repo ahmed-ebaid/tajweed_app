@@ -4,6 +4,10 @@ import 'quran_api_service.dart';
 /// Maps raw Quran.com API v4 JSON responses into typed [Ayah] models
 /// with word-level tajweed annotations.
 class AyahMapper {
+  static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
+    '\u0651([\u064B-\u0650])',
+  );
+
   /// Converts a single verse JSON object from the API into an [Ayah].
   /// Optionally accepts [tajweedHtml] from the uthmani_tajweed endpoint.
   static Ayah fromApi(Map<String, dynamic> json, {String? tajweedHtml}) {
@@ -13,8 +17,9 @@ class AyahMapper {
     final ayahNumber = int.tryParse(parts[1]) ?? 1;
     final pageNumber = json['page_number'] as int? ?? 1;
 
-    // Full Arabic text as provided by Quran source.
-    final arabic = _normalizeAlefMaddGlyphForms(
+    // Preserve the source glyphs exactly, but reorder combining marks into
+    // canonical form so shaddah + kasrah render correctly across font stacks.
+    final arabic = _normalizeArabicText(
       json['text_uthmani'] as String? ?? '',
     );
 
@@ -22,9 +27,10 @@ class AyahMapper {
     final translations = <String, String>{};
     final rawTranslations = json['translations'] as List<dynamic>? ?? [];
     for (final t in rawTranslations) {
-      if (t is Map<String, dynamic>) {
-        final langCode = _langCodeFromResourceId(t['resource_id']);
-        final text = _stripHtml(t['text'] as String? ?? '');
+      if (t is Map) {
+        final map = Map<String, dynamic>.from(t);
+        final langCode = _langCodeFromResourceId(map['resource_id']);
+        final text = _stripHtml(map['text'] as String? ?? '');
         if (langCode != null) {
           translations[langCode] = text;
         }
@@ -35,11 +41,13 @@ class AyahMapper {
     final rawWords = json['words'] as List<dynamic>? ?? [];
     final words = rawWords
         .where((w) => w['char_type_name'] != 'end')
-        .map<TajweedWord>((w) => _mapWord(w as Map<String, dynamic>))
+        .whereType<Map>()
+        .map<TajweedWord>((w) => _mapWord(Map<String, dynamic>.from(w)))
         .toList();
 
     // Audio URL
-    final audio = json['audio'] as Map<String, dynamic>?;
+    final audioRaw = json['audio'];
+    final audio = audioRaw is Map ? Map<String, dynamic>.from(audioRaw) : null;
     final audioUrl = audio?['url'] as String?;
 
     // Parse verse-level tajweed segments from uthmani_tajweed HTML
@@ -71,19 +79,140 @@ class AyahMapper {
   }
 
   static TajweedWord _mapWord(Map<String, dynamic> w) {
-    final textForDisplay = _normalizeAlefMaddGlyphForms(
-      w['text_uthmani'] as String? ?? '',
-    );
+    // Keep display text and span positions aligned by deriving both from the
+    // same source (`text_uthmani_tajweed`) when available.
+    final wordTajweedHtml = w['text_uthmani_tajweed'] as String?;
+    final sourceText = (wordTajweedHtml != null && wordTajweedHtml.isNotEmpty)
+        ? _stripHtmlPreserveSpacing(wordTajweedHtml)
+        : (w['text_uthmani'] as String? ?? '');
+    final textForDisplay = _normalizeArabicText(sourceText);
     final spans = <TajweedSpan>[];
 
-    // The API tajweed field can be a string of codes or HTML-style tags.
-    // Parse character-level codes if present.
-    final tajweedRaw = w['tajweed'];
-    if (tajweedRaw is String && tajweedRaw.isNotEmpty) {
-      spans.addAll(_parseTajweedCodes(textForDisplay, tajweedRaw));
+    // Parse modern per-word rule tags first.
+    if (wordTajweedHtml != null && wordTajweedHtml.isNotEmpty) {
+      spans.addAll(_parseRuleTagTajweed(textForDisplay, wordTajweedHtml));
+    }
+
+    // Fallback: legacy compact tajweed code format.
+    if (spans.isEmpty) {
+      final tajweedRaw = w['tajweed'];
+      if (tajweedRaw is String && tajweedRaw.isNotEmpty) {
+        spans.addAll(_parseTajweedCodes(textForDisplay, tajweedRaw));
+      }
     }
 
     return TajweedWord(arabic: textForDisplay, spans: spans);
+  }
+
+  static List<TajweedSpan> _parseRuleTagTajweed(
+    String arabicText,
+    String tajweedHtml,
+  ) {
+    final spans = <TajweedSpan>[];
+    final pattern = RegExp(r'<rule\s+class="?([\w-]+)"?>([\s\S]*?)</rule>');
+    int searchFrom = 0;
+
+    for (final match in pattern.allMatches(tajweedHtml)) {
+      final className = match.group(1) ?? '';
+      final rule = _ruleFromTajweedClass(className) ?? _ruleFromClassName(className);
+      if (rule == null) continue;
+
+      final inner = match.group(2) ?? '';
+      final ruleText = _normalizeArabicText(_stripHtmlPreserveSpacing(inner));
+      if (ruleText.isEmpty) continue;
+
+      // --- Span search (three passes, most-to-least strict) ---
+      int idx = -1;
+      int endIdx = -1;
+
+      // Pass 1: exact match
+      final exactIdx = arabicText.indexOf(ruleText, searchFrom);
+      if (exactIdx >= 0) {
+        idx = exactIdx;
+        endIdx = exactIdx + ruleText.length;
+      }
+
+      // Pass 2: sukun-normalised match (U+06E1 ۡ ↔ U+0652 ْ variants).
+      if (idx < 0) {
+        final normalizedArabic = _normaliseSukun(arabicText);
+        final normalizedRule = _normaliseSukun(ruleText);
+        final ni = normalizedArabic.indexOf(normalizedRule, searchFrom);
+        if (ni >= 0) {
+          idx = ni;
+          endIdx = ni + ruleText.length;
+        }
+      }
+
+      // Pass 3: flexible match – allows optional Arabic diacritics between
+      // adjacent chars. Needed when the word text has a short vowel between
+      // consonant and shadda (e.g. م+َ+ّ after normalization) while the
+      // rule text has only consonant+shadda (مّ).
+      if (idx < 0) {
+        final fm = _flexibleMatch(arabicText, ruleText, searchFrom);
+        if (fm != null) {
+          idx = fm[0];
+          endIdx = fm[1];
+        }
+      }
+
+      if (idx < 0) continue;
+
+      // Extend endIdx over any trailing Arabic combining / Quranic marks
+      // (e.g. U+06ED ۭ small low meem, U+06E2 ۢ small high meem) that
+      // belong to the same grapheme cluster but are absent from rule text.
+      endIdx = _extendOverCombining(arabicText, endIdx);
+
+      spans.add(TajweedSpan(start: idx, end: endIdx, rule: rule));
+      searchFrom = endIdx;
+    }
+
+    return spans;
+  }
+
+  /// Normalises U+06E1 (ۡ Quranic sukun) and U+06E2 (ۢ) to U+0652 (ْ sukun)
+  /// so that span lookups work regardless of which code-point the API uses.
+  static String _normaliseSukun(String text) {
+    return _normalizeArabicText(
+      text.replaceAll('\u06E1', '\u0652').replaceAll('\u06E2', '\u0652'),
+    );
+  }
+
+  /// Builds a regex that matches [ruleText] with optional Arabic diacritics
+  /// between each pair of adjacent code units. Returns [start, end) indices
+  /// into [arabicText] on a match, or null.
+  static List<int>? _flexibleMatch(
+      String arabicText, String ruleText, int searchFrom) {
+    if (ruleText.isEmpty) return null;
+    final buf = StringBuffer();
+    for (int i = 0; i < ruleText.length; i++) {
+      buf.write(RegExp.escape(String.fromCharCode(ruleText.codeUnitAt(i))));
+      if (i < ruleText.length - 1) {
+        // Allow any number of Arabic diacritics / small Quranic marks between
+        // consecutive rule characters.
+        buf.write('[\u064B-\u0650\u0652\u06D6-\u06ED]*');
+      }
+    }
+    final re = RegExp(buf.toString());
+    final sub = arabicText.substring(searchFrom);
+    final m = re.firstMatch(sub);
+    if (m == null) return null;
+    return [searchFrom + m.start, searchFrom + m.end];
+  }
+
+  /// Advances [endIdx] past any trailing Arabic combining marks so that the
+  /// span covers the full grapheme cluster (e.g. the trailing ۭ in لَيْلَةًۭ).
+  static int _extendOverCombining(String text, int endIdx) {
+    while (endIdx < text.length) {
+      final cp = text.codeUnitAt(endIdx);
+      if ((cp >= 0x0610 && cp <= 0x061A) || // Arabic extended combining
+          (cp >= 0x064B && cp <= 0x065F) || // Arabic diacritics
+          (cp >= 0x06D6 && cp <= 0x06ED)) { // Quranic annotation marks
+        endIdx++;
+      } else {
+        break;
+      }
+    }
+    return endIdx;
   }
 
   /// Parses Quran.com tajweed annotation strings into character-level spans.
@@ -114,7 +243,7 @@ class AyahMapper {
     int searchFrom = 0;
     for (final match in tagPattern.allMatches(tajweedData)) {
       final ruleKey = match.group(1) ?? '';
-      final ruleText = _normalizeAlefMaddGlyphForms(match.group(2) ?? '');
+      final ruleText = _normalizeArabicText(match.group(2) ?? '');
       final rule = _ruleFromClassName(ruleKey);
       if (rule != null && ruleText.isNotEmpty) {
         final idx = arabicText.indexOf(ruleText, searchFrom);
@@ -145,6 +274,8 @@ class AyahMapper {
         return TajweedRule.maddTabeei;
       case 'madd_muttasil':
       case 'madda_obligatory':
+      case 'madda_obligatory_monfasel':
+      case 'madda_obligatory_muttasel':
         return TajweedRule.maddMuttasil;
       case 'madd_munfasil':
       case 'madda_permissible':
@@ -206,7 +337,7 @@ class AyahMapper {
   static List<TajweedSegment> parseTajweedHtml(String html) {
     // Remove end-of-ayah markers: <span class=end>١</span> / <span class="end">١</span>
     final cleaned = html
-      .replaceAll(RegExp(r'<span\s+class="?end"?>[^<]*</span>'), '')
+        .replaceAll(RegExp(r'<span\s+class="?end"?>[^<]*</span>'), '')
         .trim();
 
     final segments = <TajweedSegment>[];
@@ -216,7 +347,7 @@ class AyahMapper {
     for (final match in pattern.allMatches(cleaned)) {
       // Plain text before this tag
       if (cursor < match.start) {
-        final plain = _normalizeAlefMaddGlyphForms(
+        final plain = _normalizeArabicText(
           _stripHtmlPreserveSpacing(cleaned.substring(cursor, match.start)),
         );
         if (plain.isNotEmpty) {
@@ -226,7 +357,7 @@ class AyahMapper {
 
       // Tagged text
       final className = match.group(1)!;
-      final text = _normalizeAlefMaddGlyphForms(
+      final text = _normalizeArabicText(
         _stripHtmlPreserveSpacing(match.group(2)!),
       );
       final rule = _ruleFromTajweedClass(className);
@@ -239,7 +370,7 @@ class AyahMapper {
 
     // Remaining plain text
     if (cursor < cleaned.length) {
-      final remaining = _normalizeAlefMaddGlyphForms(
+      final remaining = _normalizeArabicText(
         _stripHtmlPreserveSpacing(cleaned.substring(cursor)),
       );
       if (remaining.isNotEmpty) {
@@ -254,35 +385,54 @@ class AyahMapper {
     return text.replaceAll(RegExp(r'<[^>]*>'), '');
   }
 
-    // Keep Quran text intact; only normalize specific alef glyph variants that
-    // render as hamza-like forms in some stacks where madd should appear.
-    static String _normalizeAlefMaddGlyphForms(String text) {
-    return text
-      .replaceAll('ٲ', 'ٰ')
-      .replaceAll('ٳ', 'ٰ')
-      .replaceAll('ٵ', 'ٰ');
+  // Keep Quran text intact. Only normalize combining-mark order so short
+  // vowels are stored before shaddah, which prevents misplaced harakat in
+  // some font/rendering stacks while preserving the exact verse text.
+  static String _normalizeArabicText(String text) {
+    return text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+      return '${match.group(1)}\u0651';
+    });
   }
 
   /// Maps Quran.com tajweed CSS class names to [TajweedRule].
   static TajweedRule? _ruleFromTajweedClass(String className) {
     switch (className) {
-      case 'ghunnah':             return TajweedRule.ghunnah;
-      case 'qalaqah':             return TajweedRule.qalqalah;
-      case 'madda_normal':        return TajweedRule.maddTabeei;
-      case 'madda_obligatory':    return TajweedRule.maddMuttasil;
-      case 'madda_permissible':   return TajweedRule.maddMunfasil;
-      case 'madda_necessary':     return TajweedRule.maddLazim;
-      case 'idgham_ghunnah':      return TajweedRule.idghamWithGhunnah;
-      case 'idgham_wo_ghunnah':   return TajweedRule.idghamWithoutGhunnah;
-      case 'idgham_shafawi':      return TajweedRule.idghamShafawi;
-      case 'idgham_mutajanisayn': return TajweedRule.idghamMutajanisayn;
-      case 'ikhafa':              return TajweedRule.ikhfa;
-      case 'ikhafa_shafawi':      return TajweedRule.ikhfaShafawi;
-      case 'iqlab':               return TajweedRule.iqlab;
-      case 'ham_wasl':            return TajweedRule.hamzatWasl;
-      case 'laam_shamsiyah':      return TajweedRule.laamShamsiyah;
-      case 'slnt':                return TajweedRule.silent;
-      default:                    return null;
+      case 'ghunnah':
+        return TajweedRule.ghunnah;
+      case 'qalaqah':
+        return TajweedRule.qalqalah;
+      case 'madda_normal':
+        return TajweedRule.maddTabeei;
+      case 'madda_obligatory':
+      case 'madda_obligatory_monfasel':
+      case 'madda_obligatory_muttasel':
+        return TajweedRule.maddMuttasil;
+      case 'madda_permissible':
+        return TajweedRule.maddMunfasil;
+      case 'madda_necessary':
+        return TajweedRule.maddLazim;
+      case 'idgham_ghunnah':
+        return TajweedRule.idghamWithGhunnah;
+      case 'idgham_wo_ghunnah':
+        return TajweedRule.idghamWithoutGhunnah;
+      case 'idgham_shafawi':
+        return TajweedRule.idghamShafawi;
+      case 'idgham_mutajanisayn':
+        return TajweedRule.idghamMutajanisayn;
+      case 'ikhafa':
+        return TajweedRule.ikhfa;
+      case 'ikhafa_shafawi':
+        return TajweedRule.ikhfaShafawi;
+      case 'iqlab':
+        return TajweedRule.iqlab;
+      case 'ham_wasl':
+        return TajweedRule.hamzatWasl;
+      case 'laam_shamsiyah':
+        return TajweedRule.laamShamsiyah;
+      case 'slnt':
+        return TajweedRule.silent;
+      default:
+        return null;
     }
   }
 }
