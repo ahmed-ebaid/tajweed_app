@@ -22,7 +22,7 @@ class TajweedText extends StatelessWidget {
     super.key,
     required this.ayah,
     this.fontSize = 26,
-    this.lineHeight = 2.15,
+    this.lineHeight = 2.3,
     this.compactFlow = false,
     this.highlightEnabled = true,
     this.highlightedWordIndex = -1,
@@ -208,8 +208,9 @@ class TajweedText extends StatelessWidget {
       final start = graphemeMap.startClusterForCodeUnit(span.start);
       final end = graphemeMap.endClusterForCodeUnit(span.end);
 
-      if (end <= start) {
-        // Skip malformed span ranges from upstream data.
+      if (end <= start || start < cursor) {
+        // Skip malformed spans and spans that collapse onto a grapheme
+        // cluster already rendered by an earlier tajweed segment.
         continue;
       }
 
@@ -306,16 +307,6 @@ class TajweedText extends StatelessWidget {
         color: highlightEnabled ? rule.color : baseColor,
         backgroundColor:
             isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
-        // Subtle underline for madd rules to indicate elongation
-      ).copyWith(
-        decoration: rule == TajweedRule.maddTabeei ||
-                rule == TajweedRule.maddMuttasil ||
-                rule == TajweedRule.maddMunfasil ||
-                rule == TajweedRule.maddLazim
-            ? TextDecoration.underline
-            : TextDecoration.none,
-        decorationColor: rule.color.withOpacity(0.5),
-        decorationStyle: TextDecorationStyle.dotted,
       );
 
   static String _normalizeArabicText(String text) {

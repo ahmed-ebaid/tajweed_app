@@ -2044,7 +2044,7 @@ class _AyahTile extends StatelessWidget {
             const SizedBox(height: 8),
             TajweedText(
               ayah: ayah,
-              fontSize: 28,
+              fontSize: 32,
               highlightEnabled: tajweedEnabled,
               highlightedWordIndex: activeWordIndex,
               onRuleTapped: onWordTapped,
