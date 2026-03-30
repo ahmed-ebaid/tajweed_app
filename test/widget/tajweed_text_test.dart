@@ -171,4 +171,43 @@ void main() {
     expect(children.any((span) => span.text == 'تِلْكَ ٱلْقُرَىٰ '), isTrue);
     expect(children.any((span) => span.text!.contains('﴿١٠١﴾')), isTrue);
   });
+
+  testWidgets('does not duplicate grapheme clusters across adjacent tajweed spans',
+      (tester) async {
+    const overlappingSpanAyah = Ayah(
+      surahNumber: 7,
+      ayahNumber: 146,
+      pageNumber: 168,
+      arabic: 'ذٰلِكَ',
+      translations: {'en': 'That'},
+      words: [
+        TajweedWord(
+          arabic: 'ذٰلِكَ',
+          spans: [
+            TajweedSpan(start: 0, end: 1, rule: TajweedRule.ikhfa),
+            TajweedSpan(start: 1, end: 2, rule: TajweedRule.maddTabeei),
+          ],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: TajweedText(ayah: overlappingSpanAyah),
+        ),
+      ),
+    );
+
+    final richText = tester.widget<RichText>(find.byType(RichText).first);
+    final rootSpan = richText.text as TextSpan;
+    final children = rootSpan.children!.whereType<TextSpan>().toList();
+    final renderedClusters = children
+        .map((span) => span.text)
+        .whereType<String>()
+        .where((text) => text == 'ذٰ')
+        .length;
+
+    expect(renderedClusters, 1);
+  });
 }

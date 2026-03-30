@@ -95,7 +95,8 @@ class _TafseerSheetState extends State<TafseerSheet> {
                           _stripHtml(_text ?? ''),
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 height: 1.8,
-                                fontSize: 15,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
                               ),
                         ),
                       ),

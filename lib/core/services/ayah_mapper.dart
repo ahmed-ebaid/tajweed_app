@@ -188,8 +188,9 @@ class AyahMapper {
       buf.write(RegExp.escape(String.fromCharCode(ruleText.codeUnitAt(i))));
       if (i < ruleText.length - 1) {
         // Allow any number of Arabic diacritics / small Quranic marks between
-        // consecutive rule characters.
-        buf.write('[\u064B-\u0650\u0652\u06D6-\u06ED]*');
+        // consecutive rule characters. Include shaddah (U+0651) so spans
+        // like َا can still match when text contains َّا after normalization.
+        buf.write('[\u064B-\u0652\u06D6-\u06ED]*');
       }
     }
     final re = RegExp(buf.toString());
