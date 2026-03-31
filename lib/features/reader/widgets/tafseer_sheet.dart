@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/quran_api_service.dart';
+import '../../../core/services/quran_offline_sync_service.dart';
 
 /// Bottom sheet that displays tafseer (commentary) for a single ayah.
 class TafseerSheet extends StatefulWidget {
@@ -19,6 +20,7 @@ class TafseerSheet extends StatefulWidget {
 
 class _TafseerSheetState extends State<TafseerSheet> {
   final _api = QuranApiService();
+  final _offlineSync = QuranOfflineSyncService();
   String? _text;
   bool _loading = true;
   String? _error;
@@ -31,11 +33,48 @@ class _TafseerSheetState extends State<TafseerSheet> {
 
   Future<void> _fetchTafseer() async {
     try {
+      final surah = int.tryParse(widget.verseKey.split(':').first);
+      if (surah != null) {
+        final cachedMap = await _offlineSync.getCachedTafsirMap(
+          tafsirId: widget.tafsirId,
+          surahNumber: surah,
+        );
+        final cached = cachedMap[widget.verseKey];
+        if (cached != null && cached.trim().isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              _text = cached;
+              _loading = false;
+            });
+          }
+          return;
+        }
+      }
+
       final text = await _api.fetchTafsirForAyah(
         tafsirId: widget.tafsirId,
         verseKey: widget.verseKey,
       );
-      if (mounted) setState(() { _text = text; _loading = false; });
+
+      if (surah != null && text.trim().isNotEmpty) {
+        final cachedMap = await _offlineSync.getCachedTafsirMap(
+          tafsirId: widget.tafsirId,
+          surahNumber: surah,
+        );
+        cachedMap[widget.verseKey] = text;
+        await _offlineSync.saveTafsirMap(
+          tafsirId: widget.tafsirId,
+          surahNumber: surah,
+          tafsirMap: cachedMap,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _text = text;
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }

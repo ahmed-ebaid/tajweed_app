@@ -27,36 +27,59 @@ enum TajweedRule {
 extension TajweedRuleExtension on TajweedRule {
   Color get color {
     switch (this) {
-      case TajweedRule.ghunnah:
-        return const Color(0xFFFFA500);   // orange
-      case TajweedRule.qalqalah:
-        return const Color(0xFFA32D2D);   // red
+      // ── Madd / elongation ── Blues (light → dark by duration) ──────────────
       case TajweedRule.maddTabeei:
+        return const Color(0xFF42A5F5);   // blue 400  – 2 counts
       case TajweedRule.maddMuttasil:
+        return const Color(0xFF1565C0);   // blue 800  – 4–5 counts, connected
       case TajweedRule.maddMunfasil:
-        return const Color(0xFF185FA5);   // blue
+        return const Color(0xFF1976D2);   // blue 700  – 4–5 counts, separated
       case TajweedRule.maddLazim:
-        return const Color(0xFFFF00FF);   // magenta
+        return const Color(0xFF283593);   // indigo 900 – 6 counts, obligatory
+
+      // ── Idgham / merging ── Greens ──────────────────────────────────────────
       case TajweedRule.idghamWithGhunnah:
+        return const Color(0xFF388E3C);   // green 700
       case TajweedRule.idghamWithoutGhunnah:
+        return const Color(0xFF33691E);   // light-green 900
       case TajweedRule.idghamShafawi:
+        return const Color(0xFF00695C);   // teal 800
       case TajweedRule.idghamMutajanisayn:
-        return const Color(0xFFB8860B);   // gold
+        return const Color(0xFF1B5E20);   // green 900
+
+      // ── Ikhfa / concealment ── Purples ──────────────────────────────────────
       case TajweedRule.ikhfa:
+        return const Color(0xFF6A1B9A);   // purple 900
       case TajweedRule.ikhfaShafawi:
-        return const Color(0xFF8B008B);   // purple
+        return const Color(0xFF880E4F);   // pink 900 (distinct shade)
+
+      // ── Nasalization ── Warm oranges ────────────────────────────────────────
+      case TajweedRule.ghunnah:
+        return const Color(0xFFE65100);   // deep orange 900
       case TajweedRule.iqlab:
-        return const Color(0xFFD85A30);   // coral
+        return const Color(0xFFBF360C);   // deep orange / burnt-red
+
+      // ── Qalqalah ── Red ─────────────────────────────────────────────────────
+      case TajweedRule.qalqalah:
+        return const Color(0xFFC62828);   // red 800
+
+      // ── Izhar ── Dark teal (replaces jarring pure cyan) ─────────────────────
       case TajweedRule.izhar:
-        return const Color(0xFF00FFFF);   // cyan
+        return const Color(0xFF00838F);   // cyan 800
+
+      // ── Shaddah ── Brown ─────────────────────────────────────────────────────
       case TajweedRule.shaddah:
-        return const Color(0xFF639922);   // green
+        return const Color(0xFF4E342E);   // brown 800
+
+      // ── Structural / light letters ── Grays ─────────────────────────────────
       case TajweedRule.waqf:
-        return const Color(0xFF888780);   // gray
+        return const Color(0xFF616161);   // grey 700
       case TajweedRule.hamzatWasl:
+        return const Color(0xFF546E7A);   // blue-grey 600
       case TajweedRule.laamShamsiyah:
+        return const Color(0xFF795548);   // brown 600
       case TajweedRule.silent:
-        return const Color(0xFFAAAAAA);   // grey
+        return const Color(0xFF9E9E9E);   // grey 500
     }
   }
 

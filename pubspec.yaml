@@ -18,8 +18,6 @@ dependencies:
 
   # Audio playback & recording
   just_audio: ^0.10.5          # Quran audio streaming (Quran.com CDN)
-  record: ^6.2.0               # Recitation recording (microphone)
-  audio_waveforms: ^2.0.2      # Waveform visualizer during playback/recording
 
   # Networking & data
   dio: ^5.4.1                  # HTTP client for Quran.com API & Tarteel AI
@@ -43,12 +41,6 @@ dependencies:
   flutter_svg: ^2.0.9
   shimmer: ^3.0.0              # Loading skeletons
   go_router: ^17.1.0           # Declarative routing
-
-  # Permissions
-  permission_handler: ^12.0.1
-
-dependency_overrides:
-  record_linux: ^1.3.0
 
 dev_dependencies:
   flutter_test:

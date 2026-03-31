@@ -9,7 +9,6 @@ import 'features/home/home_screen.dart';
 import 'features/reader/reader_screen.dart';
 import 'features/quiz/quiz_screen.dart';
 import 'features/rules/rules_screen.dart';
-import 'features/record/record_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'shared/widgets/app_bottom_nav.dart';
 
@@ -42,7 +41,6 @@ class _RootScaffoldState extends State<RootScaffold> {
       const ReaderScreen(),
       const QuizScreen(),
       const RulesScreen(),
-      const RecordScreen(),
     ];
 
     return Directionality(
