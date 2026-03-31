@@ -155,19 +155,12 @@ class _QuickCards extends StatelessWidget {
           sub: l10n.get('test_knowledge'),
           tab: 2),
       _CardData(
-          icon: Icons.mic_rounded,
-          iconBg: const Color(0xFFE1F5EE),
-          iconColor: const Color(0xFF1D9E75),
-          title: l10n.recordReview,
-          sub: l10n.get('ai_feedback'),
-          tab: 3),
-      _CardData(
           icon: Icons.library_books_rounded,
           iconBg: const Color(0xFFFAEEDA),
           iconColor: const Color(0xFFB8860B),
           title: l10n.rulesLibrary,
           sub: l10n.get('all_tajweed_rules'),
-          tab: 4),
+          tab: 3),
     ];
 
     return Padding(

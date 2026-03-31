@@ -90,6 +90,9 @@ class QuranOfflineSyncService {
   static String _tajweedCacheKey(int surahNumber) =>
       'quran_tajweed_surah_$surahNumber';
 
+    static String _tafsirCacheKey(int tafsirId, int surahNumber) =>
+      'tafsir_${tafsirId}_surah_$surahNumber';
+
   Box get _settingsBox => Hive.box(_settingsBoxKey);
 
   Box get _cacheBox => Hive.box(_cacheBoxKey);
@@ -144,6 +147,26 @@ class QuranOfflineSyncService {
     return raw.map<String, String>((key, value) {
       return MapEntry(key.toString(), value?.toString() ?? '');
     });
+  }
+
+  Future<Map<String, String>> getCachedTafsirMap({
+    required int tafsirId,
+    required int surahNumber,
+  }) async {
+    final raw = _cacheBox.get(_tafsirCacheKey(tafsirId, surahNumber));
+    if (raw is! Map) return <String, String>{};
+
+    return raw.map<String, String>((key, value) {
+      return MapEntry(key.toString(), value?.toString() ?? '');
+    });
+  }
+
+  Future<void> saveTafsirMap({
+    required int tafsirId,
+    required int surahNumber,
+    required Map<String, String> tafsirMap,
+  }) async {
+    await _cacheBox.put(_tafsirCacheKey(tafsirId, surahNumber), tafsirMap);
   }
 
   Future<void> ensureBackgroundSync({
@@ -257,7 +280,9 @@ class QuranOfflineSyncService {
     // silently repopulate current keys after a user clears local data.
     final legacyKeys = _cacheBox.keys
         .whereType<String>()
-        .where((k) => RegExp(r'^\d+_').hasMatch(k))
+      .where((k) =>
+        RegExp(r'^\d+_').hasMatch(k) ||
+        RegExp(r'^tafsir_\d+_surah_\d+$').hasMatch(k))
         .toList(growable: false);
     keys.addAll(legacyKeys);
 
