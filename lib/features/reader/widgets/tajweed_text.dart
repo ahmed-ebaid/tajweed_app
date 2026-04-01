@@ -9,6 +9,7 @@ class TajweedText extends StatelessWidget {
   static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
     '\u0651([\u064B-\u0650])',
   );
+  static const String _sajdahGlyph = '\u06E9';
 
   final Ayah ayah;
   final double fontSize;
@@ -16,7 +17,10 @@ class TajweedText extends StatelessWidget {
   final bool compactFlow;
   final bool highlightEnabled;
   final int highlightedWordIndex;
-  final void Function(TajweedRule rule, String word)? onRuleTapped;
+  final TajweedRule? focusedRule;
+  final bool strictFocusedRuleOnly;
+  final Set<TajweedRule> suppressedRules;
+  final void Function(TajweedRule rule, String word, String? wordAudioUrl)? onRuleTapped;
 
   const TajweedText({
     super.key,
@@ -26,6 +30,9 @@ class TajweedText extends StatelessWidget {
     this.compactFlow = false,
     this.highlightEnabled = true,
     this.highlightedWordIndex = -1,
+    this.focusedRule,
+    this.strictFocusedRuleOnly = false,
+    this.suppressedRules = const {},
     this.onRuleTapped,
   });
 
@@ -134,27 +141,21 @@ class TajweedText extends StatelessWidget {
     for (int wi = 0; wi < ayah.words.length; wi++) {
       final word = ayah.words[wi];
       final isActiveWord = wi == highlightedWordIndex;
-
       if (!highlightEnabled || word.spans.isEmpty) {
         // No tajweed spans — render entire word in base color
         spans.add(TextSpan(
-          text: '${_normalizeArabicText(word.arabic)} ',
-          style: _arabicStyle(
-            color: baseColor,
-            backgroundColor:
-                isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
-          ),
+          text: _normalizeArabicText(word.arabic),
+          style: _baseWordStyle(baseColor, isActiveWord: isActiveWord),
         ));
       } else {
         // Build per-character colored spans within the word
         spans.addAll(_buildWordSpans(word, baseColor, isActiveWord));
+      }
+
+      if (wi < ayah.words.length - 1) {
         spans.add(TextSpan(
           text: ' ',
-          style: _arabicStyle(
-            color: baseColor,
-            backgroundColor:
-                isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.45) : null,
-          ),
+          style: _baseSeparatorStyle(baseColor, isActiveWord: isActiveWord),
         ));
       }
     }
@@ -219,17 +220,21 @@ class TajweedText extends StatelessWidget {
         final beforeText = graphemeMap.slice(cursor, start);
         result.addAll(_buildGraphemeTextSpans(
           beforeText,
-          _arabicStyle(
-            color: baseColor,
-            backgroundColor:
-                isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
-          ),
+          _baseWordStyle(baseColor, isActiveWord: isActiveWord),
         ));
       }
 
       // Colored span
       final spanText = graphemeMap.slice(start, end);
       final rule = span.rule;
+      if (suppressedRules.contains(rule)) {
+        result.addAll(_buildGraphemeTextSpans(
+          spanText,
+          _baseWordStyle(baseColor, isActiveWord: isActiveWord),
+        ));
+        cursor = end;
+        continue;
+      }
       final style = _styleFor(rule, baseColor, isActiveWord: isActiveWord);
 
       if (onRuleTapped != null) {
@@ -237,7 +242,7 @@ class TajweedText extends StatelessWidget {
           _buildGraphemeTextSpans(
             spanText,
             style,
-            onTap: () => onRuleTapped!(rule, spanText),
+            onTap: () => onRuleTapped!(rule, _normalizeArabicText(word.arabic), word.audioUrl),
           ),
         );
       } else {
@@ -252,11 +257,7 @@ class TajweedText extends StatelessWidget {
       final remaining = graphemeMap.slice(cursor, graphemeMap.length);
       result.addAll(_buildGraphemeTextSpans(
         remaining,
-        _arabicStyle(
-          color: baseColor,
-          backgroundColor:
-              isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
-        ),
+        _baseWordStyle(baseColor, isActiveWord: isActiveWord),
       ));
     }
 
@@ -269,45 +270,105 @@ class TajweedText extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     // Keep each Arabic segment contiguous so glyph shaping remains stable.
-    if (onTap != null) {
-      return [
-        TextSpan(
-          text: text,
-          style: style,
-          recognizer: TapGestureRecognizer()..onTap = onTap,
-        ),
-      ];
+    final normalizedText = text;
+
+    if (!normalizedText.contains(_sajdahGlyph)) {
+      if (onTap != null) {
+        return [
+          TextSpan(
+            text: normalizedText,
+            style: style,
+            recognizer: TapGestureRecognizer()..onTap = onTap,
+          ),
+        ];
+      }
+      return [TextSpan(text: normalizedText, style: style)];
     }
-    return [TextSpan(text: text, style: style)];
+
+    final spans = <InlineSpan>[];
+    for (final cluster in normalizedText.characters) {
+      final isSajdah = cluster == _sajdahGlyph;
+      spans.add(
+        TextSpan(
+          text: cluster,
+          style: isSajdah ? _sajdahStyleFrom(style) : style,
+          recognizer: onTap != null
+              ? (TapGestureRecognizer()..onTap = onTap)
+              : null,
+        ),
+      );
+    }
+    return spans;
   }
 
   List<InlineSpan> _buildSegmentSpans(Color baseColor) {
     return ayah.tajweedSegments.map<InlineSpan>((segment) {
       final rule = segment.rule;
-      final color = rule?.color ?? baseColor;
       final text = _normalizeArabicText(segment.text);
+      if (rule != null && suppressedRules.contains(rule)) {
+        return TextSpan(
+          text: text,
+          style: _baseWordStyle(baseColor),
+        );
+      }
+      final style = rule == null
+          ? _baseWordStyle(baseColor)
+          : _styleFor(rule, baseColor);
       if (rule != null && onRuleTapped != null) {
         return TextSpan(
           text: text,
-          style: _arabicStyle(color: color),
+          style: style,
           recognizer: TapGestureRecognizer()
-            ..onTap = () => onRuleTapped!(rule, text),
+            ..onTap = () => onRuleTapped!(rule, text, null),
         );
       }
       return TextSpan(
         text: text,
-        style: _arabicStyle(color: color),
+        style: style,
       );
     }).toList();
   }
 
-  TextStyle _styleFor(TajweedRule rule, Color baseColor,
-          {bool isActiveWord = false}) =>
+  TextStyle _baseWordStyle(Color baseColor, {bool isActiveWord = false}) =>
       _arabicStyle(
-        color: highlightEnabled ? rule.color : baseColor,
+        color: baseColor,
         backgroundColor:
-            isActiveWord ? const Color(0xFFFFE08A).withOpacity(0.65) : null,
+            isActiveWord ? const Color(0xFFFFE08A).withValues(alpha: 0.65) : null,
       );
+
+  TextStyle _baseSeparatorStyle(Color baseColor, {bool isActiveWord = false}) =>
+      _arabicStyle(
+        color: baseColor,
+        backgroundColor:
+            isActiveWord ? const Color(0xFFFFE08A).withValues(alpha: 0.45) : null,
+      );
+
+  TextStyle _sajdahStyleFrom(TextStyle style) {
+    return style.copyWith(
+      fontFamily: 'Noto Naskh Arabic',
+      fontFamilyFallback: const [
+        'Noto Naskh Arabic',
+        'Amiri',
+        'Geeza Pro',
+      ],
+    );
+  }
+
+  TextStyle _styleFor(TajweedRule rule, Color baseColor,
+          {bool isActiveWord = false}) {
+    return _arabicStyle(
+        color: _resolvedRuleColor(rule, baseColor),
+        backgroundColor:
+            isActiveWord ? const Color(0xFFFFE08A).withValues(alpha: 0.65) : null,
+      );
+  }
+
+  Color _resolvedRuleColor(TajweedRule rule, Color baseColor) {
+    if (!highlightEnabled) return baseColor;
+    if (focusedRule == null || focusedRule == rule) return rule.color;
+    if (strictFocusedRuleOnly) return baseColor;
+    return Color.lerp(rule.color, baseColor, 0.68) ?? baseColor;
+  }
 
   static String _normalizeArabicText(String text) {
     return text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
@@ -323,7 +384,15 @@ class _GraphemeMap {
   _GraphemeMap._(this._clusters, this._clusterCodeUnitStarts);
 
   factory _GraphemeMap.fromText(String text) {
-    final clusters = text.characters.toList(growable: false);
+    final rawClusters = text.characters.toList(growable: false);
+    final clusters = <String>[];
+    for (final cluster in rawClusters) {
+      if (_isStandaloneArabicMarkCluster(cluster) && clusters.isNotEmpty) {
+        clusters[clusters.length - 1] = '${clusters.last}$cluster';
+        continue;
+      }
+      clusters.add(cluster);
+    }
     final starts = <int>[0];
     var offset = 0;
     for (final cluster in clusters) {
@@ -331,6 +400,26 @@ class _GraphemeMap {
       starts.add(offset);
     }
     return _GraphemeMap._(clusters, starts);
+  }
+
+  static bool _isStandaloneArabicMarkCluster(String cluster) {
+    if (cluster.isEmpty) return false;
+    for (final rune in cluster.runes) {
+      if (!_isArabicCombiningOrQuranicMark(rune)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _isArabicCombiningOrQuranicMark(int codePoint) {
+    return (codePoint >= 0x0610 && codePoint <= 0x061A) ||
+        (codePoint >= 0x064B && codePoint <= 0x065F) ||
+        codePoint == 0x0670 ||
+      (codePoint >= 0x06D6 && codePoint <= 0x06E8) ||
+      (codePoint >= 0x06EA && codePoint <= 0x06ED) ||
+        (codePoint >= 0x08D3 && codePoint <= 0x08E1) ||
+        (codePoint >= 0x08E3 && codePoint <= 0x08FF);
   }
 
   int get length => _clusters.length;
@@ -414,7 +503,10 @@ class _LegendItem extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'UthmanicHafs',
               fontSize: 13,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.7),
             ),
           ),
         ],

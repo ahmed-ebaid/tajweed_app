@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   static const _teal = Color(0xFF1D9E75);
-  static const _tealDark = Color(0xFF0F6E56);
   static const _gold = Color(0xFFB8860B);
 
   static ThemeData get lightTheme => ThemeData(
@@ -149,5 +148,6 @@ class AppTheme {
     'izhar':                 Color(0xFF0F6E56),
     'shaddah':               Color(0xFF639922),
     'waqf':                  Color(0xFF888780),
+    'sajdah':                Color(0xFF455A64),
   };
 }

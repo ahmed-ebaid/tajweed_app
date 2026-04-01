@@ -15,6 +15,7 @@ enum TajweedRule {
   izhar,
   shaddah,
   waqf,
+  sajdah,
   maddLazim,
   idghamShafawi,
   idghamMutajanisayn,
@@ -74,6 +75,8 @@ extension TajweedRuleExtension on TajweedRule {
       // ── Structural / light letters ── Grays ─────────────────────────────────
       case TajweedRule.waqf:
         return const Color(0xFF616161);   // grey 700
+      case TajweedRule.sajdah:
+        return const Color(0xFF455A64);   // blue-grey 700
       case TajweedRule.hamzatWasl:
         return const Color(0xFF546E7A);   // blue-grey 600
       case TajweedRule.laamShamsiyah:
@@ -98,6 +101,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.izhar:            return 'rule_izhar';
       case TajweedRule.shaddah:            return 'rule_shaddah';
       case TajweedRule.waqf:               return 'rule_waqf';
+      case TajweedRule.sajdah:             return 'rule_sajdah';
       case TajweedRule.maddLazim:          return 'rule_madd_lazim';
       case TajweedRule.idghamShafawi:      return 'rule_idgham_shafawi';
       case TajweedRule.idghamMutajanisayn: return 'rule_idgham_mutajanisayn';
@@ -122,6 +126,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.izhar:                 return 'إِظْهَار';
       case TajweedRule.shaddah:               return 'شَدَّة';
       case TajweedRule.waqf:                  return 'وَقْف';
+      case TajweedRule.sajdah:                return 'سَجْدَة';
       case TajweedRule.maddLazim:             return 'مَدّ لَازِم';
       case TajweedRule.idghamShafawi:         return 'إِدْغَام شَفَوِيّ';
       case TajweedRule.idghamMutajanisayn:    return 'إِدْغَام مُتَجَانِسَيْن';
@@ -138,8 +143,9 @@ extension TajweedRuleExtension on TajweedRule {
 class TajweedWord {
   final String arabic;
   final List<TajweedSpan> spans;
+  final String? audioUrl;
 
-  const TajweedWord({required this.arabic, required this.spans});
+  const TajweedWord({required this.arabic, required this.spans, this.audioUrl});
 }
 
 class TajweedSpan {
