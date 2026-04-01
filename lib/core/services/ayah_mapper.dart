@@ -40,7 +40,12 @@ class AyahMapper {
     // Words with tajweed spans
     final rawWords = json['words'] as List<dynamic>? ?? [];
     final words = rawWords
-        .where((w) => w['char_type_name'] != 'end')
+        .where((w) {
+          if (w['char_type_name'] != 'end') return true;
+          // Keep end-marker words that carry the sajdah sign so it renders.
+          final t = (w['text_uthmani_tajweed'] as String? ?? w['text_uthmani'] as String? ?? '');
+          return t.contains('\u06E9'); // ۩ Arabic place of sajdah
+        })
         .whereType<Map>()
         .map<TajweedWord>((w) => _mapWord(Map<String, dynamic>.from(w)))
         .toList();
@@ -101,7 +106,16 @@ class AyahMapper {
       }
     }
 
-    return TajweedWord(arabic: textForDisplay, spans: spans);
+    // Detect ۩ (U+06E9 Arabic place of sajdah) embedded directly in text.
+    // The API uses a plain Unicode character — no HTML class is emitted.
+    const sajdahChar = '\u06E9';
+    var sajdahIdx = textForDisplay.indexOf(sajdahChar);
+    while (sajdahIdx >= 0) {
+      spans.add(TajweedSpan(start: sajdahIdx, end: sajdahIdx + 1, rule: TajweedRule.sajdah));
+      sajdahIdx = textForDisplay.indexOf(sajdahChar, sajdahIdx + 1);
+    }
+
+    return TajweedWord(arabic: textForDisplay, spans: spans, audioUrl: w['audio_url'] as String?);
   }
 
   static List<TajweedSpan> _parseRuleTagTajweed(
@@ -207,7 +221,7 @@ class AyahMapper {
       final cp = text.codeUnitAt(endIdx);
       if ((cp >= 0x0610 && cp <= 0x061A) || // Arabic extended combining
           (cp >= 0x064B && cp <= 0x065F) || // Arabic diacritics
-          (cp >= 0x06D6 && cp <= 0x06ED)) { // Quranic annotation marks
+          ((cp >= 0x06D6 && cp <= 0x06ED) && cp != 0x06E9)) { // Quranic annotation marks (exclude sajdah sign ۩)
         endIdx++;
       } else {
         break;
@@ -268,35 +282,61 @@ class AyahMapper {
       case 'ghn':
         return TajweedRule.ghunnah;
       case 'qalqalah':
+      case 'qalaqah':
       case 'qlq':
         return TajweedRule.qalqalah;
       case 'madd_normal':
       case 'madda_normal':
+      case 'madda_permissible':
         return TajweedRule.maddTabeei;
       case 'madd_muttasil':
+      case 'madd_mottasel':
       case 'madda_obligatory':
-      case 'madda_obligatory_monfasel':
+      case 'madda_obligatory_mottasel':
+      case 'madda_obligatory_muttasil':
       case 'madda_obligatory_muttasel':
         return TajweedRule.maddMuttasil;
+      case 'madda_obligatory_monfasel':
+      case 'madda_obligatory_monfasil':
       case 'madd_munfasil':
-      case 'madda_permissible':
         return TajweedRule.maddMunfasil;
+      case 'madda_necessary':
+        return TajweedRule.maddLazim;
       case 'idgham_ghunnah':
       case 'idghaam_w_ghunnah':
         return TajweedRule.idghamWithGhunnah;
       case 'idgham_no_ghunnah':
+      case 'idgham_wo_ghunnah':
       case 'idghaam_wo_ghunnah':
         return TajweedRule.idghamWithoutGhunnah;
+      case 'idgham_shafawi':
+        return TajweedRule.idghamShafawi;
+      case 'idgham_mutajanisayn':
+        return TajweedRule.idghamMutajanisayn;
       case 'ikhfa':
-      case 'ikhfa_shafawi':
+      case 'ikhafa':
         return TajweedRule.ikhfa;
+      case 'ikhfa_shafawi':
+      case 'ikhafa_shafawi':
+        return TajweedRule.ikhfaShafawi;
       case 'iqlab':
         return TajweedRule.iqlab;
       case 'izhar':
       case 'idhaar':
         return TajweedRule.izhar;
+      case 'ham_wasl':
+        return TajweedRule.hamzatWasl;
+      case 'laam_shamsiyah':
+        return TajweedRule.laamShamsiyah;
+      case 'slnt':
+        return TajweedRule.silent;
+      case 'sajdah':
+      case 'sajdah_sign':
+        return TajweedRule.sajdah;
       case 'shaddah':
         return TajweedRule.shaddah;
+      case 'waqf':
+        return TajweedRule.waqf;
       default:
         return null;
     }
@@ -334,7 +374,7 @@ class AyahMapper {
 
   /// Parses Quran.com `text_uthmani_tajweed` HTML into typed segments.
   /// The API returns text like:
-  ///   plain <tajweed class=ghunnah>colored</tajweed> more plain
+  ///   plain `<tajweed class="ghunnah">colored</tajweed>` more plain
   static List<TajweedSegment> parseTajweedHtml(String html) {
     // Remove end-of-ayah markers: <span class=end>١</span> / <span class="end">١</span>
     final cleaned = html
@@ -400,38 +440,61 @@ class AyahMapper {
     switch (className) {
       case 'ghunnah':
         return TajweedRule.ghunnah;
+      case 'qalqalah':
       case 'qalaqah':
         return TajweedRule.qalqalah;
+      case 'madd_normal':
       case 'madda_normal':
+      case 'madda_permissible':
         return TajweedRule.maddTabeei;
+      case 'madd_muttasil':
+      case 'madd_mottasel':
       case 'madda_obligatory':
-      case 'madda_obligatory_monfasel':
+      case 'madda_obligatory_mottasel':
+      case 'madda_obligatory_muttasil':
       case 'madda_obligatory_muttasel':
         return TajweedRule.maddMuttasil;
-      case 'madda_permissible':
+      case 'madda_obligatory_monfasel':
+      case 'madda_obligatory_monfasil':
+      case 'madd_munfasil':
         return TajweedRule.maddMunfasil;
       case 'madda_necessary':
         return TajweedRule.maddLazim;
       case 'idgham_ghunnah':
+      case 'idghaam_w_ghunnah':
         return TajweedRule.idghamWithGhunnah;
+      case 'idgham_no_ghunnah':
       case 'idgham_wo_ghunnah':
+      case 'idghaam_wo_ghunnah':
         return TajweedRule.idghamWithoutGhunnah;
       case 'idgham_shafawi':
         return TajweedRule.idghamShafawi;
       case 'idgham_mutajanisayn':
         return TajweedRule.idghamMutajanisayn;
+      case 'ikhfa':
       case 'ikhafa':
         return TajweedRule.ikhfa;
+      case 'ikhfa_shafawi':
       case 'ikhafa_shafawi':
         return TajweedRule.ikhfaShafawi;
       case 'iqlab':
         return TajweedRule.iqlab;
+      case 'izhar':
+      case 'idhaar':
+        return TajweedRule.izhar;
       case 'ham_wasl':
         return TajweedRule.hamzatWasl;
       case 'laam_shamsiyah':
         return TajweedRule.laamShamsiyah;
       case 'slnt':
         return TajweedRule.silent;
+      case 'sajdah':
+      case 'sajdah_sign':
+        return TajweedRule.sajdah;
+      case 'shaddah':
+        return TajweedRule.shaddah;
+      case 'waqf':
+        return TajweedRule.waqf;
       default:
         return null;
     }

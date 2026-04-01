@@ -25,6 +25,27 @@ class AudioService {
     }
   }
 
+  /// Load and play multiple audio URLs back-to-back (e.g. multi-word rules).
+  Future<void> playUrls(List<String> urls) async {
+    if (urls.isEmpty) return;
+    if (urls.length == 1) {
+      await playUrl(urls.first);
+      return;
+    }
+    try {
+      await _player.stop();
+      final source = ConcatenatingAudioSource(
+        children: urls
+            .map((u) => AudioSource.uri(Uri.parse(u)))
+            .toList(),
+      );
+      await _player.setAudioSource(source);
+      unawaited(_player.play());
+    } catch (_) {
+      await stop();
+    }
+  }
+
   /// Play a locally recorded file.
   Future<void> playFile(String path) async {
     await _player.setFilePath(path);

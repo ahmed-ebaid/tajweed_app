@@ -13,7 +13,6 @@ class ReaderViewModel extends ChangeNotifier {
   final AudioService audioService = AudioService();
 
   int _selectedSurah = 67;
-  String _langCode = 'en';
   bool _tajweedEnabled = true;
   bool _showTranslation = true;
   bool _loading = false;
@@ -33,7 +32,6 @@ class ReaderViewModel extends ChangeNotifier {
 
   Future<void> loadSurah(int surahNumber, String langCode) async {
     _selectedSurah = surahNumber;
-    _langCode = langCode;
     _loading = true;
     notifyListeners();
 

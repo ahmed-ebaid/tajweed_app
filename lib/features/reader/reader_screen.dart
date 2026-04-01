@@ -22,6 +22,8 @@ import '../reader/widgets/audio_player_bar.dart';
 import '../reader/widgets/tajweed_text.dart';
 import '../reader/widgets/tafseer_sheet.dart';
 import '../reader/widgets/word_detail_sheet.dart';
+import '../rules/rule_detail_screen.dart';
+import '../rules/rules_repository.dart';
 import '../settings/settings_screen.dart';
 
 class ReaderScreen extends StatefulWidget {
@@ -41,7 +43,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   final _audio = AudioService();
   final _audioCache = AudioCacheService();
   final _quranOfflineSync = QuranOfflineSyncService();
-  final _scrollController = ScrollController();
+  late final ScrollController _scrollController;
   final PageController _mushafPageController = PageController();
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<Duration>? _positionSub;
@@ -84,6 +86,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   int? _ayahModeAnchorAyah;
   int? _mushafAnchorSurah;
   double? _ayahModeReturnOffset;
+  int? _mushafEntryAnchorAyah;
+  int? _mushafEntrySurah;
   final Map<int, _MushafPageAnchor> _mushafPageAnchorCache = {};
 
   // Juz boundaries: ayahNumber → juz number (only for first ayah of each juz in this surah)
@@ -100,11 +104,10 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   // Flag to avoid saving scroll position while automatic jump is in progress
   bool _isProgrammaticScroll = false;
+  bool _initializedWithSavedOffset = false;
 
   // GlobalKeys for scrolling to specific ayahs
   final Map<int, GlobalKey> _ayahKeys = {};
-  final Set<int> _ayahModeDownloadPromptShownSurahs = <int>{};
-
   @override
   void initState() {
     super.initState();
@@ -117,6 +120,11 @@ class _ReaderScreenState extends State<ReaderScreen>
     final bookmarks = context.read<BookmarkProvider>();
     _selectedSurah = bookmarks.lastReadSurah;
     _ayahModeAnchorAyah = bookmarks.lastReadAyah;
+    final initialOffset = bookmarks.lastScrollOffset;
+    _initializedWithSavedOffset = initialOffset > 0;
+    _scrollController = ScrollController(
+      initialScrollOffset: _initializedWithSavedOffset ? initialOffset : 0.0,
+    );
     print(
         '📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
 
@@ -532,7 +540,11 @@ class _ReaderScreenState extends State<ReaderScreen>
   ///
   /// Each iteration `maxScrollExtent` is more accurate (more items measured),
   /// so the seed converges quickly even for surahs with variable-height ayahs.
-  void _scrollToAyah(int ayahNumber, {int maxAttempts = 15}) {
+  void _scrollToAyah(
+    int ayahNumber, {
+    int maxAttempts = 15,
+    bool allowSeedJump = true,
+  }) {
     if (!mounted || _viewMode != _ReaderViewMode.ayah || _ayahs.isEmpty) return;
 
     final key = _ayahKeys[ayahNumber];
@@ -551,11 +563,14 @@ class _ReaderScreenState extends State<ReaderScreen>
       return;
     }
 
-    if (maxAttempts <= 0) return;
+    if (maxAttempts <= 0) {
+      _isProgrammaticScroll = false;
+      return;
+    }
 
     // Seed the viewport so items near ayahNumber get built.  Use the current
     // maxScrollExtent (it improves each iteration as more items are measured).
-    if (_scrollController.hasClients) {
+    if (allowSeedJump && _scrollController.hasClients) {
       final idx = _ayahs.indexWhere((a) => a.ayahNumber == ayahNumber);
       if (idx >= 0) {
         final maxExtent = _scrollController.position.maxScrollExtent;
@@ -569,7 +584,11 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 80), () {
-        _scrollToAyah(ayahNumber, maxAttempts: maxAttempts - 1);
+        _scrollToAyah(
+          ayahNumber,
+          maxAttempts: maxAttempts - 1,
+          allowSeedJump: false,
+        );
       });
     });
   }
@@ -615,7 +634,22 @@ class _ReaderScreenState extends State<ReaderScreen>
       _pendingScrollAyah = null;
       _scrollToAyah(ayah);
     } else {
-      _scrollToLastReadAyah();
+      // App restart / fresh load: if the scroll controller was initialized
+      // with the saved offset, do not perform a second programmatic restore.
+      if (_initializedWithSavedOffset) {
+        _initializedWithSavedOffset = false;
+        return;
+      }
+
+      // Otherwise prefer saved scroll offset for the same surah, then fall
+      // back to ayah-based restore.
+      final bookmarks = context.read<BookmarkProvider>();
+      final savedOffset = bookmarks.lastScrollOffset;
+      if (bookmarks.lastReadSurah == _selectedSurah && savedOffset > 0) {
+        _restoreScrollOffset(savedOffset);
+      } else {
+        _scrollToLastReadAyah();
+      }
     }
   }
 
@@ -640,36 +674,56 @@ class _ReaderScreenState extends State<ReaderScreen>
     });
   }
 
-  void _restoreScrollOffset(double offset) {
+  void _restoreScrollOffset(
+    double offset, {
+    int attempt = 0,
+    double? lastMaxExtent,
+    int stablePasses = 0,
+  }) {
+    if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+
     if (!_scrollController.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _restoreScrollOffset(offset);
+        _restoreScrollOffset(
+          offset,
+          attempt: attempt + 1,
+          lastMaxExtent: lastMaxExtent,
+          stablePasses: stablePasses,
+        );
       });
       return;
     }
 
-    // Clamp offset to valid range
-    final validOffset =
-        offset.clamp(0.0, _scrollController.position.maxScrollExtent);
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    final extentStable = lastMaxExtent != null &&
+        (maxExtent - lastMaxExtent).abs() < 1.0;
+    final nextStablePasses = extentStable ? stablePasses + 1 : 0;
+    final extentReady = maxExtent >= offset || nextStablePasses >= 2;
+
+    if (!extentReady && attempt < 18) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 60), () {
+          _restoreScrollOffset(
+            offset,
+            attempt: attempt + 1,
+            lastMaxExtent: maxExtent,
+            stablePasses: nextStablePasses,
+          );
+        });
+      });
+      return;
+    }
+
+    final validOffset = offset.clamp(0.0, maxExtent);
     _isProgrammaticScroll = true;
 
-    print('🔄 Restoring scroll to offset=$validOffset');
+    print('🔄 Restoring scroll to offset=$validOffset (target=$offset, max=$maxExtent)');
     _scrollController.jumpTo(validOffset);
 
-    // Save the position
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
-        try {
-          final bookmarks = context.read<BookmarkProvider>();
-          context.read<BookmarkProvider>().saveLastRead(
-              _selectedSurah, bookmarks.lastReadAyah,
-              scrollOffset: validOffset);
-          print('✅ Restored scroll position at offset=$validOffset');
-        } catch (e) {
-          print('❌ Error saving during restore: $e');
-        }
+        _isProgrammaticScroll = false;
       }
-      _isProgrammaticScroll = false;
     });
   }
 
@@ -808,18 +862,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     final token = ++_playRequestToken;
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     final verseKey = '${ayah.surahNumber}:${ayah.ayahNumber}';
-    final giveFromMap = _audioUrls[verseKey];
-    final fallbackUrl = _api.audioUrl(
-      reciterId: reciterId,
-      surahNumber: ayah.surahNumber,
-      ayahNumber: ayah.ayahNumber,
-    );
-    final rawUrl = giveFromMap ?? ayah.audioUrl ?? fallbackUrl;
-    final url =
-        rawUrl.startsWith('http') ? rawUrl : 'https://verses.quran.com/$rawUrl';
+    final url = _resolveAyahAudioUrl(ayah);
 
     print(
-        '🎵 PLAY AYAH: verseKey=$verseKey, mapHas=${giveFromMap != null}, raw=$rawUrl, url=$url');
+        '🎵 PLAY AYAH: verseKey=$verseKey, mapHas=${_audioUrls.containsKey(verseKey)}, url=$url');
 
     if (url.isEmpty) {
       print('❌ ERROR: EMPTY URL FOR $verseKey');
@@ -921,6 +967,23 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
 
     return true;
+  }
+
+  String _resolveAyahAudioUrl(Ayah ayah) {
+    final reciterId = context.read<RecitationProvider>().selectedReciterId;
+    final verseKey = '${ayah.surahNumber}:${ayah.ayahNumber}';
+    final rawUrl = _audioUrls[verseKey] ??
+        ayah.audioUrl ??
+        _api.audioUrl(
+          reciterId: reciterId,
+          surahNumber: ayah.surahNumber,
+          ayahNumber: ayah.ayahNumber,
+        );
+
+    if (rawUrl.isEmpty) return '';
+    return rawUrl.startsWith('http')
+        ? rawUrl
+        : 'https://verses.quran.com/$rawUrl';
   }
 
   Future<bool> _waitForCurrentAyahCompletion() async {
@@ -1209,73 +1272,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
-  Future<void> _maybePromptDownloadsBeforeAyahMode() async {
-    if (_viewMode != _ReaderViewMode.page) return;
-    final surah = _selectedSurah;
-    if (_ayahModeDownloadPromptShownSurahs.contains(surah)) return;
-    _ayahModeDownloadPromptShownSurahs.add(surah);
-
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Prepare this surah for offline?',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Surah $surah · optional download before ayah-by-ayah mode',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF666666)),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.download_for_offline_outlined),
-                title: const Text('Download recitation'),
-                onTap: () => Navigator.pop(context, 'audio'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.menu_book_outlined),
-                title: const Text('Download tafseer'),
-                onTap: () => Navigator.pop(context, 'tafseer'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.done_all_outlined),
-                title: const Text('Download both'),
-                onTap: () => Navigator.pop(context, 'both'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.arrow_forward_rounded),
-                title: const Text('Skip for now'),
-                onTap: () => Navigator.pop(context, 'skip'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (!mounted || choice == null || choice == 'skip') return;
-    if (choice == 'audio') {
-      await _downloadCurrentSurahAudio();
-    } else if (choice == 'tafseer') {
-      await _downloadCurrentSurahTafseer();
-    } else if (choice == 'both') {
-      final audioOk = await _downloadCurrentSurahAudio();
-      if (audioOk) {
-        await _downloadCurrentSurahTafseer();
-      }
-    }
-  }
-
   void _stopAudio() {
     _audio.stop();
     setState(() {
@@ -1374,13 +1370,36 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
   }
 
-  void _onWordTapped(TajweedRule rule, String word) {
-    showModalBottomSheet(
+  void _onWordTapped(TajweedRule rule, String word, Ayah ayah, {String? wordAudioUrl}) {
+    showModalBottomSheet<TajweedRule>(
       context: context,
+      isDismissible: true,
+      enableDrag: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      isScrollControlled: false,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.82,
+      ),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => WordDetailSheet(rule: rule, word: word),
-    );
+      builder: (_) => WordDetailSheet(
+        rule: rule,
+        word: word,
+        ayah: ayah,
+        wordAudioUrl: wordAudioUrl,
+        ayahAudioUrl: _resolveAyahAudioUrl(ayah),
+      ),
+    ).then((selectedRule) {
+      if (!mounted || selectedRule == null) return;
+      final definition = RulesRepository.findByRule(selectedRule);
+      if (definition == null) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => RuleDetailScreen(definition: definition),
+        ),
+      );
+    });
   }
 
   @override
@@ -1420,8 +1439,8 @@ class _ReaderScreenState extends State<ReaderScreen>
           IconButton(
             icon: Icon(
               _viewMode == _ReaderViewMode.page
-                  ? Icons.view_agenda_outlined
-                  : Icons.menu_book_outlined,
+                  ? Icons.menu_book_outlined
+                  : Icons.view_agenda_outlined,
               size: 22,
             ),
             tooltip: _viewMode == _ReaderViewMode.page
@@ -1562,6 +1581,8 @@ class _ReaderScreenState extends State<ReaderScreen>
           context.read<BookmarkProvider>().lastReadAyah;
       _ayahModeAnchorAyah = anchorAyah;
       _mushafAnchorSurah = _selectedSurah;
+        _mushafEntryAnchorAyah = anchorAyah;
+        _mushafEntrySurah = _selectedSurah;
       _ayahModeReturnOffset = ayahOffset;
       context.read<BookmarkProvider>().saveLastRead(
             _selectedSurah,
@@ -1585,7 +1606,6 @@ class _ReaderScreenState extends State<ReaderScreen>
       return;
     }
 
-    await _maybePromptDownloadsBeforeAyahMode();
     _goToAnchoredAyah();
   }
 
@@ -1596,10 +1616,13 @@ class _ReaderScreenState extends State<ReaderScreen>
     _isMushafScrubberDragging = false;
 
     final anchorAyah =
-        _ayahModeAnchorAyah ?? context.read<BookmarkProvider>().lastReadAyah;
-    final anchorSurah = _mushafAnchorSurah ?? _selectedSurah;
-    final rawOffset = _ayahModeReturnOffset ??
-        context.read<BookmarkProvider>().lastScrollOffset;
+      _currentMushafAnchorAyah();
+    final anchorSurah = _currentMushafAnchorSurah();
+    final returningToOriginalAnchor =
+      anchorSurah == _mushafEntrySurah && anchorAyah == _mushafEntryAnchorAyah;
+    final rawOffset = returningToOriginalAnchor
+      ? (_ayahModeReturnOffset ?? context.read<BookmarkProvider>().lastScrollOffset)
+      : 0.0;
     final shouldReloadSurah = anchorSurah != _selectedSurah;
     final targetOffset = shouldReloadSurah ? 0.0 : rawOffset;
 
@@ -1628,7 +1651,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (targetOffset > 0) {
         _restoreScrollOffset(targetOffset);
       } else {
-        _restoreAyahByNumber(anchorAyah, retries: 12);
+        _scrollToAyah(anchorAyah, maxAttempts: 12);
       }
 
       // Extra safety: if list build takes longer, try again shortly.
@@ -1637,10 +1660,13 @@ class _ReaderScreenState extends State<ReaderScreen>
         if (targetOffset > 0) {
           _restoreScrollOffset(targetOffset);
         } else {
-          _restoreAyahByNumber(anchorAyah, retries: 6);
+          _scrollToAyah(anchorAyah, maxAttempts: 6);
         }
       });
     });
+
+    _mushafEntryAnchorAyah = null;
+    _mushafEntrySurah = null;
   }
 
   int? _findTopVisibleAyahNumber() {
@@ -1736,44 +1762,30 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       if (verses.isEmpty || !mounted) return;
 
-      // For pages spanning multiple surahs, use the highest surah number
-      // (the surah that dominates the page content).
-      int? maxSurah;
-      String? anchorVerseKey;
-      for (final verse in verses) {
-        final verseKey = verse['verse_key'] as String? ?? '';
-        final parts = verseKey.split(':');
-        if (parts.length != 2) continue;
+      // Use the first ayah on the page as the return anchor when switching
+      // back to ayah mode so the text view starts at the top of that page.
+      final firstVerseKey = verses.first['verse_key'] as String? ?? '';
+      final parts = firstVerseKey.split(':');
+      if (parts.length != 2) return;
 
-        final surah = int.tryParse(parts.first);
-        if (surah == null) continue;
-
-        if (maxSurah == null || surah > maxSurah) {
-          maxSurah = surah;
-          anchorVerseKey = verseKey;
-        }
-      }
-
-      if (maxSurah == null || anchorVerseKey == null) return;
-
-      final parts = anchorVerseKey.split(':');
+      final surah = int.tryParse(parts.first);
       final ayah = int.tryParse(parts.last);
-      if (ayah == null) return;
+      if (surah == null || ayah == null) return;
 
       final anchor = _MushafPageAnchor(
         pageNumber: pageNumber,
-        surah: maxSurah,
+        surah: surah,
         ayah: ayah,
       );
 
       _mushafPageAnchorCache[pageNumber] = anchor;
       if (!mounted) return;
       setState(() {
-        _mushafAnchorSurah = maxSurah!;
+        _mushafAnchorSurah = surah;
         _ayahModeAnchorAyah = ayah;
         if (_viewMode == _ReaderViewMode.page) {
-          // Keep the top selector in sync while swiping Mushaf pages.
-          _selectedSurah = maxSurah;
+          // Keep the top selector in sync with the first ayah shown on page.
+          _selectedSurah = surah;
         }
       });
     } catch (_) {
@@ -2595,7 +2607,7 @@ class _AyahTile extends StatelessWidget {
   final bool isPlaying;
   final int activeWordIndex;
   final bool isBookmarked;
-  final void Function(TajweedRule, String) onWordTapped;
+  final void Function(TajweedRule, String, Ayah, {String? wordAudioUrl}) onWordTapped;
   final VoidCallback onDoubleTap;
   final VoidCallback onTafseerTap;
   final VoidCallback onBookmarkTap;
@@ -2656,7 +2668,8 @@ class _AyahTile extends StatelessWidget {
               fontSize: 32,
               highlightEnabled: tajweedEnabled,
               highlightedWordIndex: activeWordIndex,
-              onRuleTapped: onWordTapped,
+              suppressedRules: const {TajweedRule.izhar},
+              onRuleTapped: (rule, word, wordAudioUrl) => onWordTapped(rule, word, ayah, wordAudioUrl: wordAudioUrl),
             ),
             if (showTranslation) ...[
               const SizedBox(height: 8),
@@ -2681,7 +2694,7 @@ class _PageAyahLine extends StatelessWidget {
   final bool isPlaying;
   final int activeWordIndex;
   final double mushafFontSize;
-  final void Function(TajweedRule, String) onWordTapped;
+  final void Function(TajweedRule, String, Ayah, {String? wordAudioUrl}) onWordTapped;
   final VoidCallback onDoubleTap;
   final VoidCallback onBookmarkTap;
 
@@ -2717,7 +2730,8 @@ class _PageAyahLine extends StatelessWidget {
           compactFlow: true,
           highlightEnabled: tajweedEnabled,
           highlightedWordIndex: activeWordIndex,
-          onRuleTapped: onWordTapped,
+          suppressedRules: const {TajweedRule.izhar},
+          onRuleTapped: (rule, word, wordAudioUrl) => onWordTapped(rule, word, ayah, wordAudioUrl: wordAudioUrl),
         ),
       ),
     );

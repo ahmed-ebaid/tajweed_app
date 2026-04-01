@@ -23,7 +23,7 @@ void main() {
 
   Widget buildSubject({
     bool highlightEnabled = true,
-    void Function(TajweedRule, String)? onRuleTapped,
+    void Function(TajweedRule, String, String?)? onRuleTapped,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -49,7 +49,7 @@ void main() {
 
   testWidgets('calls onRuleTapped when colored span is tapped', (tester) async {
     await tester.pumpWidget(buildSubject(
-      onRuleTapped: (_, __) {},
+      onRuleTapped: (_, __, ___) {},
     ));
 
     // Tap the first RichText (which contains the tappable span)

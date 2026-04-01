@@ -1,6 +1,3 @@
-import '../models/tajweed_models.dart';
-import 'quran_api_service.dart';
-
 /// Provides word-by-word comparison between the user's spoken text
 /// (from speech-to-text) and the expected Quranic text for an ayah.
 ///

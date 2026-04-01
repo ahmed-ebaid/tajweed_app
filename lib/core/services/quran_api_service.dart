@@ -49,7 +49,7 @@ class QuranApiService {
         'words': true,
         'fields': 'page_number,verse_key',
         'word_fields':
-            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration',
+            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration,audio_url',
         'translations': _translationIdFor(langCode),
         'audio': reciterId,
         'page': page ?? 1,
@@ -88,7 +88,7 @@ class QuranApiService {
         'language': langCode,
         'words': true,
         'word_fields':
-            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name',
+            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,audio_url',
         'translations': _translationIdFor(langCode),
         'audio': reciterId,
       },

@@ -30,11 +30,77 @@ class _RulesScreenState extends State<RulesScreen> {
     }).toList();
   }
 
+  List<_RuleGroup> _grouped(List<TajweedRuleDefinition> rules, String langCode) {
+    final buckets = <String, List<TajweedRuleDefinition>>{};
+    for (final r in rules) {
+      final key = _categoryFor(r.rule);
+      buckets.putIfAbsent(key, () => <TajweedRuleDefinition>[]).add(r);
+    }
+
+    final ordered = <_RuleGroup>[];
+    for (final key in _categoryOrder) {
+      final list = buckets[key];
+      if (list == null || list.isEmpty) continue;
+      list.sort((a, b) => a.name(langCode).compareTo(b.name(langCode)));
+      ordered.add(_RuleGroup(title: key, rules: list));
+    }
+
+    // Keep any unexpected categories visible at the end.
+    final extras = buckets.keys.where((k) => !_categoryOrder.contains(k)).toList()
+      ..sort();
+    for (final key in extras) {
+      final list = buckets[key]!;
+      list.sort((a, b) => a.name(langCode).compareTo(b.name(langCode)));
+      ordered.add(_RuleGroup(title: key, rules: list));
+    }
+
+    return ordered;
+  }
+
+  static const List<String> _categoryOrder = [
+    'rules_category_madd',
+    'rules_category_noon_meem',
+    'rules_category_merging',
+    'rules_category_stops_signs',
+    'rules_category_orthographic',
+  ];
+
+  static String _categoryFor(TajweedRule rule) {
+    switch (rule) {
+      case TajweedRule.maddTabeei:
+      case TajweedRule.maddMuttasil:
+      case TajweedRule.maddMunfasil:
+      case TajweedRule.maddLazim:
+        return 'rules_category_madd';
+      case TajweedRule.ghunnah:
+      case TajweedRule.iqlab:
+      case TajweedRule.izhar:
+        return 'rules_category_noon_meem';
+      case TajweedRule.idghamWithGhunnah:
+      case TajweedRule.idghamWithoutGhunnah:
+      case TajweedRule.idghamShafawi:
+      case TajweedRule.idghamMutajanisayn:
+      case TajweedRule.ikhfa:
+      case TajweedRule.ikhfaShafawi:
+      case TajweedRule.qalqalah:
+      case TajweedRule.shaddah:
+        return 'rules_category_merging';
+      case TajweedRule.waqf:
+      case TajweedRule.sajdah:
+        return 'rules_category_stops_signs';
+      case TajweedRule.hamzatWasl:
+      case TajweedRule.laamShamsiyah:
+      case TajweedRule.silent:
+        return 'rules_category_orthographic';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final rules = _filtered;
+    final groups = _grouped(rules, langCode);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.rulesLibrary)),
@@ -64,20 +130,28 @@ class _RulesScreenState extends State<RulesScreen> {
                     style: Theme.of(context).textTheme.bodyMedium))
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: rules.length,
+                    itemCount: groups.length,
                     separatorBuilder: (_, __) => const Divider(height: 0.5, indent: 16),
-                    itemBuilder: (context, i) => _RuleCard(
-                      definition: rules[i],
-                      langCode: langCode,
-                      expanded: _expandedIndex == i,
-                      onToggle: () => setState(() =>
-                          _expandedIndex = _expandedIndex == i ? null : i),
-                      onOpenDetail: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => RuleDetailScreen(definition: rules[i]),
+                    itemBuilder: (context, i) {
+                      final group = groups[i];
+                      return _RuleGroupSection(
+                        group: group,
+                        langCode: langCode,
+                        l10n: l10n,
+                        expandedIndex: _expandedIndex,
+                        onToggle: (flatIndex) => setState(
+                          () => _expandedIndex = _expandedIndex == flatIndex ? null : flatIndex,
                         ),
-                      ),
-                    ),
+                        onOpenDetail: (definition) => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RuleDetailScreen(definition: definition),
+                          ),
+                        ),
+                        baseFlatIndex: groups
+                            .take(i)
+                            .fold<int>(0, (sum, g) => sum + g.rules.length),
+                      );
+                    },
                   ),
           ),
         ],
@@ -209,7 +283,7 @@ class _RuleCard extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           crossFadeState: expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
           firstChild: Container(
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +315,7 @@ class _RuleCard extends StatelessWidget {
                   child: TextButton.icon(
                     onPressed: onOpenDetail,
                     icon: const Icon(Icons.open_in_new, size: 14),
-                    label: const Text('Full details'),
+                    label: Text(AppLocalizations.of(context).get('full_details')),
                     style: TextButton.styleFrom(
                       foregroundColor: definition.rule.color,
                       textStyle: const TextStyle(fontSize: 12),
@@ -253,6 +327,63 @@ class _RuleCard extends StatelessWidget {
           ),
           secondChild: const SizedBox.shrink(),
         ),
+      ],
+    );
+  }
+}
+
+class _RuleGroup {
+  final String title;
+  final List<TajweedRuleDefinition> rules;
+
+  const _RuleGroup({required this.title, required this.rules});
+}
+
+class _RuleGroupSection extends StatelessWidget {
+  final _RuleGroup group;
+  final String langCode;
+  final int? expandedIndex;
+  final int baseFlatIndex;
+  final ValueChanged<int> onToggle;
+  final ValueChanged<TajweedRuleDefinition> onOpenDetail;
+  final AppLocalizations l10n;
+
+  const _RuleGroupSection({
+    required this.group,
+    required this.langCode,
+    required this.expandedIndex,
+    required this.baseFlatIndex,
+    required this.onToggle,
+    required this.onOpenDetail,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          child: Text(
+            l10n.get(group.title),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+        ...List.generate(group.rules.length, (idx) {
+          final definition = group.rules[idx];
+          final flatIndex = baseFlatIndex + idx;
+          return _RuleCard(
+            definition: definition,
+            langCode: langCode,
+            expanded: expandedIndex == flatIndex,
+            onToggle: () => onToggle(flatIndex),
+            onOpenDetail: () => onOpenDetail(definition),
+          );
+        }),
       ],
     );
   }
