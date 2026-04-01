@@ -68,11 +68,31 @@ class QuranOfflineSyncService {
   static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
     '\u0651([\u064B-\u0650])',
   );
+  static const String _canonicalMarkerGlyph = '\u06DE';
+  static const String _sajdahGlyph = '\u06E9';
+  static const int _rubElHizbRune = 0x06DE;
+  static const Set<int> _sajdahAyahKeys = {
+    7 * 1000 + 206,
+    13 * 1000 + 15,
+    16 * 1000 + 50,
+    17 * 1000 + 109,
+    19 * 1000 + 58,
+    22 * 1000 + 18,
+    22 * 1000 + 77,
+    25 * 1000 + 60,
+    27 * 1000 + 26,
+    32 * 1000 + 15,
+    38 * 1000 + 24,
+    41 * 1000 + 38,
+    53 * 1000 + 62,
+    84 * 1000 + 21,
+    96 * 1000 + 19,
+  };
 
   static const String _settingsBoxKey = 'settings';
   static const String _cacheBoxKey = 'verse_cache';
 
-  static const int _syncSchemaVersion = 4;
+  static const int _syncSchemaVersion = 5;
   static const String _syncVersionKey = 'quran_sync_version';
   static const String _syncInProgressKey = 'quran_sync_in_progress';
   static const String _syncCompletedAtKey = 'quran_sync_completed_at';
@@ -420,9 +440,11 @@ class QuranOfflineSyncService {
           if (item is! Map) continue;
           final verse = Map<String, dynamic>.from(item);
 
+          final forceSajdahGlyph = _isSajdahAyahVerse(verse);
           final verseText = verse['text_uthmani'] as String?;
           if (verseText != null) {
-            final normalizedVerse = _normalizeArabicText(verseText);
+            final normalizedVerse =
+                _normalizeArabicText(verseText, forceSajdahGlyph: forceSajdahGlyph);
             if (normalizedVerse != verseText) {
               verse['text_uthmani'] = normalizedVerse;
               changed = true;
@@ -439,7 +461,10 @@ class QuranOfflineSyncService {
                 final word = Map<String, dynamic>.from(w);
                 final wordText = word['text_uthmani'] as String?;
                 if (wordText != null) {
-                  final normalizedWord = _normalizeArabicText(wordText);
+                  final normalizedWord = _normalizeArabicText(
+                    wordText,
+                    forceSajdahGlyph: forceSajdahGlyph,
+                  );
                   if (normalizedWord != wordText) {
                     word['text_uthmani'] = normalizedWord;
                     wordsChanged = true;
@@ -472,10 +497,38 @@ class QuranOfflineSyncService {
     }
   }
 
-  static String _normalizeArabicText(String text) {
-    return text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+  static String _normalizeArabicText(
+    String text, {
+    bool forceSajdahGlyph = false,
+  }) {
+    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
       return '${match.group(1)}\u0651';
     });
+
+    final out = StringBuffer();
+    bool previousWasCanonicalMarker = false;
+    for (final rune in reordered.runes) {
+      if (rune == _rubElHizbRune) {
+        out.write(_canonicalMarkerGlyph);
+        previousWasCanonicalMarker = true;
+        continue;
+      }
+
+      if (previousWasCanonicalMarker &&
+          ((rune >= 0x06D6 && rune <= 0x06DC) ||
+              (rune >= 0x06DF && rune <= 0x06E8) ||
+              (rune >= 0x06EA && rune <= 0x06ED))) {
+        continue;
+      }
+
+      out.write(String.fromCharCode(rune));
+      previousWasCanonicalMarker = false;
+    }
+    var normalized = out.toString();
+    if (forceSajdahGlyph) {
+      normalized = normalized.replaceAll(_canonicalMarkerGlyph, _sajdahGlyph);
+    }
+    return normalized;
   }
 
   static List<Map<String, dynamic>> _normalizeVerseList(
@@ -484,10 +537,12 @@ class QuranOfflineSyncService {
     final output = <Map<String, dynamic>>[];
     for (final item in verses) {
       final verse = Map<String, dynamic>.from(item);
+      final forceSajdahGlyph = _isSajdahAyahVerse(verse);
 
       final verseText = verse['text_uthmani'] as String?;
       if (verseText != null) {
-        verse['text_uthmani'] = _normalizeArabicText(verseText);
+        verse['text_uthmani'] =
+            _normalizeArabicText(verseText, forceSajdahGlyph: forceSajdahGlyph);
       }
 
       final words = verse['words'];
@@ -498,7 +553,10 @@ class QuranOfflineSyncService {
             final word = Map<String, dynamic>.from(w);
             final wordText = word['text_uthmani'] as String?;
             if (wordText != null) {
-              word['text_uthmani'] = _normalizeArabicText(wordText);
+              word['text_uthmani'] = _normalizeArabicText(
+                wordText,
+                forceSajdahGlyph: forceSajdahGlyph,
+              );
             }
             normalizedWords.add(word);
           } else {
@@ -515,6 +573,27 @@ class QuranOfflineSyncService {
 
   static String _toCodepoints(String text) {
     return text.runes.map((r) => 'U+${r.toRadixString(16).toUpperCase()}').join(' ');
+  }
+
+  static bool _isSajdahAyahVerse(Map<String, dynamic> verse) {
+    final key = verse['verse_key'] as String?;
+    if (key != null) {
+      final parts = key.split(':');
+      if (parts.length == 2) {
+        final surah = int.tryParse(parts[0]);
+        final ayah = int.tryParse(parts[1]);
+        if (surah != null && ayah != null) {
+          return _sajdahAyahKeys.contains(surah * 1000 + ayah);
+        }
+      }
+    }
+
+    final surah = verse['chapter_id'] as int?;
+    final ayah = verse['verse_number'] as int?;
+    if (surah != null && ayah != null) {
+      return _sajdahAyahKeys.contains(surah * 1000 + ayah);
+    }
+    return false;
   }
 
   List<String> _legacySurahKeys(int surahNumber) {

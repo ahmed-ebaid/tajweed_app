@@ -85,9 +85,12 @@ class _ReaderScreenState extends State<ReaderScreen>
   Timer? _mushafScrubberHideTimer;
   int? _ayahModeAnchorAyah;
   int? _mushafAnchorSurah;
+  int? _mushafCurrentAnchorAyah;
+  int? _mushafCurrentAnchorSurah;
   double? _ayahModeReturnOffset;
   int? _mushafEntryAnchorAyah;
   int? _mushafEntrySurah;
+  int? _mushafEntryPageNumber;
   final Map<int, _MushafPageAnchor> _mushafPageAnchorCache = {};
 
   // Juz boundaries: ayahNumber → juz number (only for first ayah of each juz in this surah)
@@ -104,7 +107,10 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   // Flag to avoid saving scroll position while automatic jump is in progress
   bool _isProgrammaticScroll = false;
-  bool _initializedWithSavedOffset = false;
+  bool _didInitialReopenRestore = false;
+  int? _lastKnownVisibleAyah;
+  int _suppressAutoSaveUntilMs = 0;
+  int? _startupRestoreTargetAyah;
 
   // GlobalKeys for scrolling to specific ayahs
   final Map<int, GlobalKey> _ayahKeys = {};
@@ -120,10 +126,8 @@ class _ReaderScreenState extends State<ReaderScreen>
     final bookmarks = context.read<BookmarkProvider>();
     _selectedSurah = bookmarks.lastReadSurah;
     _ayahModeAnchorAyah = bookmarks.lastReadAyah;
-    final initialOffset = bookmarks.lastScrollOffset;
-    _initializedWithSavedOffset = initialOffset > 0;
     _scrollController = ScrollController(
-      initialScrollOffset: _initializedWithSavedOffset ? initialOffset : 0.0,
+      initialScrollOffset: 0.0,
     );
     print(
         '📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
@@ -232,47 +236,55 @@ class _ReaderScreenState extends State<ReaderScreen>
     try {
       if (_ayahs.isEmpty || !mounted) return;
 
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      if (_viewMode == _ReaderViewMode.ayah && nowMs < _suppressAutoSaveUntilMs) {
+        if (_startupRestoreTargetAyah != null) {
+          final scrollOffset =
+              _scrollController.hasClients ? _scrollController.offset : 0.0;
+          context.read<BookmarkProvider>().saveLastRead(
+                _selectedSurah,
+                _startupRestoreTargetAyah!,
+                scrollOffset: scrollOffset,
+                caller: '[ayah-mode/startup-restore]',
+              );
+        }
+        return;
+      }
+
       if (_viewMode == _ReaderViewMode.page) {
         final anchorSurah = _currentMushafAnchorSurah();
         final anchorAyah = _currentMushafAnchorAyah();
         context.read<BookmarkProvider>().saveLastRead(
               anchorSurah,
               anchorAyah,
+              scrollOffset: 0.0,
+              caller: '[page-mode/scroll]',
             );
         return;
       }
 
-      int? topVisibleAyah;
-      double bestDistance = double.infinity;
-      final screenHeight = MediaQuery.of(context).size.height;
-
-      for (final ayah in _ayahs) {
-        final key = _ayahKeys[ayah.ayahNumber];
-        if (key?.currentContext == null) continue;
-
-        try {
-          final renderObject = key!.currentContext!.findRenderObject();
-          if (renderObject is! RenderBox) continue;
-          final renderBox = renderObject;
-          if (!renderBox.hasSize) continue;
-
-          final offset = renderBox.localToGlobal(Offset.zero).dy;
-          final distance = (offset - 0).abs();
-
-          if (distance < bestDistance && offset < screenHeight * 0.8) {
-            bestDistance = distance;
-            topVisibleAyah = ayah.ayahNumber;
-          }
-        } catch (e) {
-          print(
-              '⚠️ Error processing ayah ${ayah.ayahNumber} in scroll save: $e');
-          continue;
-        }
+      int? topVisibleAyah = _findTopVisibleAyahNumber();
+      if (topVisibleAyah != null) {
+        _lastKnownVisibleAyah = topVisibleAyah;
       }
 
       if (topVisibleAyah == null && _playingAyahNumber != null) {
         topVisibleAyah = _playingAyahNumber;
       }
+      if (topVisibleAyah == null &&
+          _scrollController.hasClients &&
+          _ayahs.isNotEmpty) {
+        final maxExtent = _scrollController.position.maxScrollExtent;
+        if (maxExtent > 0) {
+          final progress = (_scrollController.offset / maxExtent).clamp(0.0, 1.0);
+          final idx =
+              (progress * (_ayahs.length - 1)).round().clamp(0, _ayahs.length - 1);
+          topVisibleAyah = _ayahs[idx].ayahNumber;
+        } else {
+          topVisibleAyah = _ayahs.first.ayahNumber;
+        }
+      }
+      topVisibleAyah ??= _lastKnownVisibleAyah;
 
       if (_isProgrammaticScroll) {
         // Ignore automatic jump positions until the final scroll settle.
@@ -285,9 +297,8 @@ class _ReaderScreenState extends State<ReaderScreen>
               _scrollController.hasClients ? _scrollController.offset : 0.0;
           context.read<BookmarkProvider>().saveLastRead(
               _selectedSurah, topVisibleAyah,
-              scrollOffset: scrollOffset);
-          print(
-              '✅ Saved scroll position: surah=$_selectedSurah, ayah=$topVisibleAyah, offset=$scrollOffset');
+              scrollOffset: scrollOffset,
+              caller: '[ayah-mode/scroll]');
         } catch (e) {
           print('❌ Error saving to BookmarkProvider: $e');
         }
@@ -358,6 +369,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       _ayahs = [];
       _audioUrls = {};
       _juzBoundaries = {};
+      _mushafPageAnchorCache.clear();
     });
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     _lastObservedReciterId = reciterId;
@@ -526,7 +538,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       return;
     }
     print('🎯 _scrollToLastReadAyah: ayah=${bookmarks.lastReadAyah} in surah $_selectedSurah');
-    _scrollToAyah(bookmarks.lastReadAyah);
+    _scrollToAyah(bookmarks.lastReadAyah, alignment: 0.0);
   }
 
   /// Scrolls to [ayahNumber] in the current surah, navigating by index rather
@@ -544,6 +556,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     int ayahNumber, {
     int maxAttempts = 15,
     bool allowSeedJump = true,
+    double alignment = 0.18,
   }) {
     if (!mounted || _viewMode != _ReaderViewMode.ayah || _ayahs.isEmpty) return;
 
@@ -552,7 +565,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       _isProgrammaticScroll = true;
       Scrollable.ensureVisible(
         key!.currentContext!,
-        alignment: 0.18,
+        alignment: alignment,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       ).then((_) {
@@ -587,7 +600,8 @@ class _ReaderScreenState extends State<ReaderScreen>
         _scrollToAyah(
           ayahNumber,
           maxAttempts: maxAttempts - 1,
-          allowSeedJump: false,
+          allowSeedJump: allowSeedJump,
+          alignment: alignment,
         );
       });
     });
@@ -620,6 +634,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     if (!mounted || _ayahs.isEmpty) return;
 
     if (_viewMode == _ReaderViewMode.page) {
+      _didInitialReopenRestore = true;
       _restoreMushafPageForLastRead();
       return;
     }
@@ -632,21 +647,49 @@ class _ReaderScreenState extends State<ReaderScreen>
       // Cross-surah bookmark navigation: scroll by ayah number.
       final ayah = _pendingScrollAyah!;
       _pendingScrollAyah = null;
-      _scrollToAyah(ayah);
+      _startupRestoreTargetAyah = ayah;
+      _suppressAutoSaveUntilMs = DateTime.now().millisecondsSinceEpoch + 2200;
+      _scrollToAyah(ayah, maxAttempts: 20, alignment: 0.0, allowSeedJump: true);
+      Future.delayed(const Duration(milliseconds: 650), () {
+        if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+        _scrollToAyah(ayah, maxAttempts: 8, alignment: 0.0, allowSeedJump: true);
+      });
+      Future.delayed(const Duration(milliseconds: 2400), () {
+        if (!mounted) return;
+        _startupRestoreTargetAyah = null;
+        _suppressAutoSaveUntilMs = 0;
+      });
     } else {
-      // App restart / fresh load: if the scroll controller was initialized
-      // with the saved offset, do not perform a second programmatic restore.
-      if (_initializedWithSavedOffset) {
-        _initializedWithSavedOffset = false;
+      // First restore after app launch: always anchor by ayah number.
+      // Pixel offsets can drift across text metrics or layout changes.
+      if (!_didInitialReopenRestore) {
+        final bookmarks = context.read<BookmarkProvider>();
+        if (bookmarks.lastReadSurah == _selectedSurah) {
+          final targetAyah = bookmarks.lastReadAyah;
+          _startupRestoreTargetAyah = targetAyah;
+          _suppressAutoSaveUntilMs =
+              DateTime.now().millisecondsSinceEpoch + 2200;
+          _scrollToAyah(targetAyah, maxAttempts: 20, alignment: 0.0);
+          Future.delayed(const Duration(milliseconds: 750), () {
+            if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+            _scrollToAyah(targetAyah, maxAttempts: 8, alignment: 0.0);
+          });
+          Future.delayed(const Duration(milliseconds: 2400), () {
+            if (!mounted) return;
+            _startupRestoreTargetAyah = null;
+            _suppressAutoSaveUntilMs = 0;
+          });
+        }
+
+        _didInitialReopenRestore = true;
         return;
       }
 
       // Otherwise prefer saved scroll offset for the same surah, then fall
       // back to ayah-based restore.
       final bookmarks = context.read<BookmarkProvider>();
-      final savedOffset = bookmarks.lastScrollOffset;
-      if (bookmarks.lastReadSurah == _selectedSurah && savedOffset > 0) {
-        _restoreScrollOffset(savedOffset);
+      if (bookmarks.lastReadSurah == _selectedSurah) {
+        _scrollToAyah(bookmarks.lastReadAyah, maxAttempts: 10, alignment: 0.0);
       } else {
         _scrollToLastReadAyah();
       }
@@ -665,6 +708,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       _currentMushafPageIndex = pageIndex;
       _ayahModeAnchorAyah = targetAyah;
       _mushafAnchorSurah = targetSurah;
+      _mushafCurrentAnchorAyah = targetAyah;
+      _mushafCurrentAnchorSurah = targetSurah;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -734,7 +779,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     print('🔢 DOUBLE TAP: ayah ${ayah.ayahNumber}');
     context
         .read<BookmarkProvider>()
-        .saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+        .saveLastRead(ayah.surahNumber, ayah.ayahNumber, caller: '[ayah-mode/double-tap]');
 
     if (_playingAyahNumber == ayah.ayahNumber) {
       if (_audio.isPlaying) {
@@ -835,7 +880,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       });
       context
           .read<BookmarkProvider>()
-          .saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+          .saveLastRead(ayah.surahNumber, ayah.ayahNumber, caller: '[ayah-mode/play-all]');
 
       final started = await _playAyah(ayah, updatePlayingState: false);
       if (!started) {
@@ -946,7 +991,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     try {
       context
           .read<BookmarkProvider>()
-          .saveLastRead(ayah.surahNumber, ayah.ayahNumber);
+          .saveLastRead(ayah.surahNumber, ayah.ayahNumber, caller: '[ayah-mode/play-single]');
     } catch (e) {
       print('❌ Error saving last read: $e');
     }
@@ -1348,7 +1393,7 @@ class _ReaderScreenState extends State<ReaderScreen>
             // Same surah: scroll by ayah number (pixel offsets can be stale
             // if font-size / line-height changed since the bookmark was saved).
             context.read<BookmarkProvider>().saveLastRead(
-                bookmark.surah, bookmark.ayah);
+                bookmark.surah, bookmark.ayah, caller: '[ayah-mode/bookmark-tap]');
             _scrollToAyah(bookmark.ayah);
             return;
           }
@@ -1579,22 +1624,30 @@ class _ReaderScreenState extends State<ReaderScreen>
           : context.read<BookmarkProvider>().lastScrollOffset;
       final anchorAyah = _findTopVisibleAyahNumber() ??
           context.read<BookmarkProvider>().lastReadAyah;
+      debugPrint('🔄 VIEW TOGGLE: ayah → page | surah=$_selectedSurah, anchorAyah=$anchorAyah, offset=$ayahOffset');
       _ayahModeAnchorAyah = anchorAyah;
       _mushafAnchorSurah = _selectedSurah;
-        _mushafEntryAnchorAyah = anchorAyah;
-        _mushafEntrySurah = _selectedSurah;
+      _mushafCurrentAnchorAyah = anchorAyah;
+      _mushafCurrentAnchorSurah = _selectedSurah;
+      _mushafEntryAnchorAyah = anchorAyah;
+      _mushafEntrySurah = _selectedSurah;
+      _mushafEntryPageNumber = _currentMushafPageIndex + 1;
       _ayahModeReturnOffset = ayahOffset;
       context.read<BookmarkProvider>().saveLastRead(
             _selectedSurah,
             anchorAyah,
             scrollOffset: ayahOffset,
+            caller: '[toggle/ayah→page]',
           );
       final targetPageIndex = _pageNumberForAyah(anchorAyah) - 1;
+      await _updateMushafAnchorForPage(targetPageIndex + 1);
 
       setState(() {
         _viewMode = _ReaderViewMode.page;
         _currentMushafPageIndex = targetPageIndex;
       });
+      _mushafEntryPageNumber = targetPageIndex + 1;
+      debugPrint('🔄 VIEW MODE: now=page | targetPage=${targetPageIndex + 1}');
       _showMushafScrubberOverlay();
       _persistReaderViewMode(_ReaderViewMode.page);
 
@@ -1606,31 +1659,52 @@ class _ReaderScreenState extends State<ReaderScreen>
       return;
     }
 
-    _goToAnchoredAyah();
+    await _goToAnchoredAyah();
   }
 
-  void _goToAnchoredAyah() {
+  Future<void> _goToAnchoredAyah() async {
+    debugPrint('🔄 VIEW TOGGLE: page → ayah | page=${_currentMushafPageIndex + 1}');
+    final currentPageNumber = _currentMushafPageIndex + 1;
+    if (!_mushafPageAnchorCache.containsKey(currentPageNumber)) {
+      await _updateMushafAnchorForPage(currentPageNumber);
+    }
+
     _mushafScrubberHideTimer?.cancel();
     _mushafScrubberPreviewPage = null;
     _showMushafScrubber = false;
     _isMushafScrubberDragging = false;
 
-    final anchorAyah =
-      _currentMushafAnchorAyah();
-    final anchorSurah = _currentMushafAnchorSurah();
-    final returningToOriginalAnchor =
-      anchorSurah == _mushafEntrySurah && anchorAyah == _mushafEntryAnchorAyah;
-    final rawOffset = returningToOriginalAnchor
-      ? (_ayahModeReturnOffset ?? context.read<BookmarkProvider>().lastScrollOffset)
-      : 0.0;
-    final shouldReloadSurah = anchorSurah != _selectedSurah;
-    final targetOffset = shouldReloadSurah ? 0.0 : rawOffset;
+    // If the user didn't navigate to a different page/surah while in mushaf
+    // mode, restore the exact ayah they were reading.
+    final entryPageNumber = _mushafEntryPageNumber;
+    final didNavigateInPageMode =
+      entryPageNumber == null ||
+      entryPageNumber != currentPageNumber ||
+      (_mushafEntrySurah != null && _mushafEntrySurah != _currentMushafAnchorSurah());
 
-    // Persist anchor and offset before switching back to ayah mode.
+    // Page mode should return to the anchor of the currently visible page.
+    // This keeps page->ayah transitions aligned with what the user sees in
+    // mushaf view (page-first ayah), instead of a previous ayah-mode anchor.
+    final anchorAyah = _currentMushafAnchorAyah();
+    final anchorSurah = _currentMushafAnchorSurah();
+    final targetAyah = anchorAyah;
+    final hasLoadedAyahsForAnchorSurah =
+      _ayahs.isNotEmpty && _ayahs.first.surahNumber == anchorSurah;
+    final shouldReloadSurah =
+      anchorSurah != _selectedSurah || !hasLoadedAyahsForAnchorSurah;
+
+    debugPrint('🔄 PAGE→AYAH anchor: didNavigate=$didNavigateInPageMode, '
+        'entryPage=$entryPageNumber, currentPage=$currentPageNumber, '
+      'targetAyah=$targetAyah (ayahModeAnchor=$_ayahModeAnchorAyah), '
+      'loadedSurah=${_ayahs.isEmpty ? '-' : _ayahs.first.surahNumber}, '
+      'reload=$shouldReloadSurah');
+
+    // Return to the selected anchor for the current page context.
     context.read<BookmarkProvider>().saveLastRead(
           anchorSurah,
-          anchorAyah,
-          scrollOffset: targetOffset,
+          targetAyah,
+          scrollOffset: 0.0,
+          caller: '[toggle/page→ayah]',
         );
 
     setState(() {
@@ -1639,34 +1713,70 @@ class _ReaderScreenState extends State<ReaderScreen>
         _selectedSurah = anchorSurah;
       }
     });
+    debugPrint('🔄 VIEW MODE: now=ayah | surah=$anchorSurah, targetAyah=$targetAyah');
     _persistReaderViewMode(_ReaderViewMode.ayah);
 
     if (shouldReloadSurah) {
+      _pendingScrollAyah = targetAyah;
+      _pendingScrollOffset = 0.0;
       _loadSurah();
       return;
     }
 
+    // Use the exact pixel offset saved when we entered page mode to pre-seed
+    // the scroll position before ensureVisible runs. This avoids the linear
+    // index approximation in _scrollToAyah overshooting on variable-height
+    // surahs (e.g. Al-Baqarah).
+    final canReuseAyahModeOffset =
+      !didNavigateInPageMode && _ayahModeAnchorAyah == targetAyah;
+    final returnOffset = canReuseAyahModeOffset ? _ayahModeReturnOffset : null;
+    _ayahModeReturnOffset = null;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (targetOffset > 0) {
-        _restoreScrollOffset(targetOffset);
-      } else {
-        _scrollToAyah(anchorAyah, maxAttempts: 12);
+      if (returnOffset != null && returnOffset > 0 && _scrollController.hasClients) {
+        final max = _scrollController.position.maxScrollExtent;
+        if (max > 0) {
+          final clamped = returnOffset.clamp(0.0, max);
+          debugPrint('🔄 PAGE→AYAH seed jump: offset=$clamped (saved=$returnOffset)');
+          _scrollController.jumpTo(clamped);
+        }
+      } else if (didNavigateInPageMode) {
+        debugPrint('🔄 PAGE→AYAH saved-offset seed skipped: user navigated pages in mushaf mode');
       }
+      _scrollToAyah(
+        targetAyah,
+        maxAttempts: 12,
+        alignment: 0.0,
+        allowSeedJump: true,
+      );
 
       // Extra safety: if list build takes longer, try again shortly.
       Future.delayed(const Duration(milliseconds: 650), () {
         if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
-        if (targetOffset > 0) {
-          _restoreScrollOffset(targetOffset);
-        } else {
-          _scrollToAyah(anchorAyah, maxAttempts: 6);
-        }
+        _scrollToAyah(
+          targetAyah,
+          maxAttempts: 6,
+          alignment: 0.0,
+          allowSeedJump: true,
+        );
+      });
+
+      // Final correction after layout settles further.
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+        _scrollToAyah(
+          targetAyah,
+          maxAttempts: 4,
+          alignment: 0.0,
+          allowSeedJump: true,
+        );
       });
     });
 
-    _mushafEntryAnchorAyah = null;
-    _mushafEntrySurah = null;
+    _mushafEntryAnchorAyah = targetAyah;
+    _mushafEntrySurah = anchorSurah;
+    _mushafEntryPageNumber = currentPageNumber;
   }
 
   int? _findTopVisibleAyahNumber() {
@@ -1704,20 +1814,53 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   int _currentMushafAnchorAyah() {
     final pageNumber = _currentMushafPageIndex + 1;
-    return _mushafPageAnchorCache[pageNumber]?.ayah ?? _ayahModeAnchorAyah ?? 1;
+    final localFirstAyah = _localFirstAyahForPage(pageNumber);
+    final localAyahNumber = localFirstAyah?.ayahNumber;
+    return _mushafPageAnchorCache[pageNumber]?.ayah ??
+        _mushafCurrentAnchorAyah ??
+        localAyahNumber ??
+        _mushafEntryAnchorAyah ??
+        _ayahModeAnchorAyah ??
+        1;
   }
 
   int _currentMushafAnchorSurah() {
     final pageNumber = _currentMushafPageIndex + 1;
+    final localFirstAyah = _localFirstAyahForPage(pageNumber);
+    final localSurah = localFirstAyah?.surahNumber;
     return _mushafPageAnchorCache[pageNumber]?.surah ??
+        _mushafCurrentAnchorSurah ??
+        localSurah ??
+      _mushafEntrySurah ??
         _mushafAnchorSurah ??
         _selectedSurah;
   }
 
+  Ayah? _localFirstAyahForPage(int pageNumber) {
+    if (_ayahs.isEmpty) return null;
+    for (final ayah in _ayahs) {
+      if (ayah.pageNumber == pageNumber) return ayah;
+    }
+    return null;
+  }
+
   int _pageNumberForAyah(int ayahNumber) {
-    if (_ayahs.isEmpty) return (_currentMushafPageIndex + 1).clamp(1, 604);
-    final idx = _ayahs.indexWhere((a) => a.ayahNumber == ayahNumber);
-    if (idx < 0) return _ayahs.first.pageNumber;
+    final fallbackPage = (_currentMushafPageIndex + 1).clamp(1, 604);
+    if (_ayahs.isEmpty) return fallbackPage;
+
+    // Guard against transient stale ayah lists during cross-surah switches.
+    // If the currently rendered ayahs belong to a different surah than the
+    // selected one, use the current mushaf page instead of a wrong lookup.
+    if (_ayahs.first.surahNumber != _selectedSurah) {
+      debugPrint(
+          '⚠️ _pageNumberForAyah fallback: stale ayahs for surah=${_ayahs.first.surahNumber}, selected=$_selectedSurah, ayah=$ayahNumber, page=$fallbackPage');
+      return fallbackPage;
+    }
+
+    final idx = _ayahs.indexWhere(
+      (a) => a.surahNumber == _selectedSurah && a.ayahNumber == ayahNumber,
+    );
+    if (idx < 0) return fallbackPage;
     return _ayahs[idx].pageNumber;
   }
 
@@ -1743,9 +1886,12 @@ class _ReaderScreenState extends State<ReaderScreen>
     // Always refetch multi-surah pages to ensure correct surah selection
     if (cached != null && pageNumber != 1 && pageNumber != 2) {
       setState(() {
-        _mushafAnchorSurah = cached.surah;
-        _ayahModeAnchorAyah = cached.ayah;
-        if (_viewMode == _ReaderViewMode.page) {
+        if (_currentMushafPageIndex + 1 == pageNumber) {
+          _mushafCurrentAnchorSurah = cached.surah;
+          _mushafCurrentAnchorAyah = cached.ayah;
+        }
+        if (_viewMode == _ReaderViewMode.page &&
+            _currentMushafPageIndex + 1 == pageNumber) {
           // Keep selector/header consistent when cached page anchors are used.
           _selectedSurah = cached.surah;
         }
@@ -1781,9 +1927,12 @@ class _ReaderScreenState extends State<ReaderScreen>
       _mushafPageAnchorCache[pageNumber] = anchor;
       if (!mounted) return;
       setState(() {
-        _mushafAnchorSurah = surah;
-        _ayahModeAnchorAyah = ayah;
-        if (_viewMode == _ReaderViewMode.page) {
+        if (_currentMushafPageIndex + 1 == pageNumber) {
+          _mushafCurrentAnchorSurah = surah;
+          _mushafCurrentAnchorAyah = ayah;
+        }
+        if (_viewMode == _ReaderViewMode.page &&
+            _currentMushafPageIndex + 1 == pageNumber) {
           // Keep the top selector in sync with the first ayah shown on page.
           _selectedSurah = surah;
         }
@@ -1828,8 +1977,14 @@ class _ReaderScreenState extends State<ReaderScreen>
   void _handleMushafPageChanged(int index) {
     if (!mounted) return;
     final pageNumber = index + 1;
+    final cached = _mushafPageAnchorCache[pageNumber];
     setState(() {
       _currentMushafPageIndex = index;
+      _mushafCurrentAnchorSurah = cached?.surah;
+      _mushafCurrentAnchorAyah = cached?.ayah;
+      if (cached != null) {
+        _selectedSurah = cached.surah;
+      }
     });
     _showMushafScrubberOverlay();
 
@@ -1840,7 +1995,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (!mounted || _currentMushafPageIndex != index) return;
       final anchorSurah = _currentMushafAnchorSurah();
       final anchorAyah = _currentMushafAnchorAyah();
-      await context.read<BookmarkProvider>().saveLastRead(anchorSurah, anchorAyah);
+      await context.read<BookmarkProvider>().saveLastRead(anchorSurah, anchorAyah, caller: '[page-mode/page-change]');
     }());
   }
 
@@ -2304,6 +2459,22 @@ class _SurahPickerSheet extends StatefulWidget {
 class _SurahPickerSheetState extends State<_SurahPickerSheet> {
   String _search = '';
   final _listController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_listController.hasClients) return;
+      final idx = widget.surahs.indexWhere((s) => (s['id'] as int? ?? 0) == widget.selected);
+      if (idx < 0) return;
+
+      // Keep the selected surah in view when opening instead of starting at top.
+      final approxTileExtent = 64.0;
+      final targetOffset = (idx * approxTileExtent - 3 * approxTileExtent)
+          .clamp(0.0, _listController.position.maxScrollExtent);
+      _listController.jumpTo(targetOffset);
+    });
+  }
 
   List<Map<String, dynamic>> get _filtered {
     if (_search.isEmpty) return widget.surahs;
