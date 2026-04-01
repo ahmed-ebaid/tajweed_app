@@ -7,6 +7,27 @@ class AyahMapper {
   static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
     '\u0651([\u064B-\u0650])',
   );
+  static const String _canonicalMarkerGlyph = '\u06DE';
+  static const String _sajdahGlyph = '\u06E9';
+  static const int _rubElHizbRune = 0x06DE;
+  static const Set<int> _sajdahAyahKeys = {
+    7 * 1000 + 206,
+    13 * 1000 + 15,
+    16 * 1000 + 50,
+    17 * 1000 + 109,
+    19 * 1000 + 58,
+    22 * 1000 + 18,
+    22 * 1000 + 77,
+    25 * 1000 + 60,
+    27 * 1000 + 26,
+    32 * 1000 + 15,
+    38 * 1000 + 24,
+    41 * 1000 + 38,
+    53 * 1000 + 62,
+    84 * 1000 + 21,
+    96 * 1000 + 19,
+  };
+  static const bool _debugMarkerAyahs = true;
 
   /// Converts a single verse JSON object from the API into an [Ayah].
   /// Optionally accepts [tajweedHtml] from the uthmani_tajweed endpoint.
@@ -16,11 +37,16 @@ class AyahMapper {
     final surahNumber = int.tryParse(parts[0]) ?? 1;
     final ayahNumber = int.tryParse(parts[1]) ?? 1;
     final pageNumber = json['page_number'] as int? ?? 1;
+    final forceRubElHizb =
+      surahNumber == 2 && (ayahNumber == 142 || ayahNumber == 177);
+    final forceSajdahGlyph = _isSajdahAyah(surahNumber, ayahNumber);
 
     // Preserve the source glyphs exactly, but reorder combining marks into
     // canonical form so shaddah + kasrah render correctly across font stacks.
     final arabic = _normalizeArabicText(
       json['text_uthmani'] as String? ?? '',
+      forceRubElHizb: forceRubElHizb,
+      forceSajdahGlyph: forceSajdahGlyph,
     );
 
     // Translations — API may return as a list of translation objects
@@ -47,8 +73,20 @@ class AyahMapper {
           return t.contains('\u06E9'); // ۩ Arabic place of sajdah
         })
         .whereType<Map>()
-        .map<TajweedWord>((w) => _mapWord(Map<String, dynamic>.from(w)))
+        .map<TajweedWord>((w) => _mapWord(
+              Map<String, dynamic>.from(w),
+              forceRubElHizb: forceRubElHizb,
+            forceSajdahGlyph: forceSajdahGlyph,
+            ))
         .toList();
+
+    if (_debugMarkerAyahs && surahNumber == 2 && (ayahNumber == 142 || ayahNumber == 177)) {
+      final markerWords = words
+          .where((w) => _containsPotentialMarker(w.arabic))
+          .map((w) => '${w.arabic} => ${_toCodepoints(w.arabic)}')
+          .join(' | ');
+      print('🔎 MARKER DEBUG $surahNumber:$ayahNumber ayah=${_toCodepoints(arabic)} words=$markerWords');
+    }
 
     // Audio URL
     final audioRaw = json['audio'];
@@ -83,14 +121,23 @@ class AyahMapper {
     }).toList();
   }
 
-  static TajweedWord _mapWord(Map<String, dynamic> w) {
+  static TajweedWord _mapWord(
+    Map<String, dynamic> w, {
+    bool forceRubElHizb = false,
+    bool forceSajdahGlyph = false,
+  }) {
     // Keep display text and span positions aligned by deriving both from the
     // same source (`text_uthmani_tajweed`) when available.
     final wordTajweedHtml = w['text_uthmani_tajweed'] as String?;
     final sourceText = (wordTajweedHtml != null && wordTajweedHtml.isNotEmpty)
         ? _stripHtmlPreserveSpacing(wordTajweedHtml)
         : (w['text_uthmani'] as String? ?? '');
-    final textForDisplay = _normalizeArabicText(sourceText);
+    final textForDisplay =
+      _normalizeArabicText(
+        sourceText,
+        forceRubElHizb: forceRubElHizb,
+        forceSajdahGlyph: forceSajdahGlyph,
+      );
     final spans = <TajweedSpan>[];
 
     // Parse modern per-word rule tags first.
@@ -429,10 +476,66 @@ class AyahMapper {
   // Keep Quran text intact. Only normalize combining-mark order so short
   // vowels are stored before shaddah, which prevents misplaced harakat in
   // some font/rendering stacks while preserving the exact verse text.
-  static String _normalizeArabicText(String text) {
-    return text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+  static String _normalizeArabicText(
+    String text, {
+    bool forceRubElHizb = false,
+    bool forceSajdahGlyph = false,
+  }) {
+    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
       return '${match.group(1)}\u0651';
     });
+
+    final out = StringBuffer();
+    bool previousWasCanonicalMarker = false;
+    for (final rune in reordered.runes) {
+      if (rune == _rubElHizbRune) {
+        out.write(_canonicalMarkerGlyph);
+        previousWasCanonicalMarker = true;
+        continue;
+      }
+
+      if (previousWasCanonicalMarker &&
+          ((rune >= 0x06D6 && rune <= 0x06DC) ||
+              (rune >= 0x06DF && rune <= 0x06E8) ||
+              (rune >= 0x06EA && rune <= 0x06ED))) {
+        continue;
+      }
+
+      out.write(String.fromCharCode(rune));
+      previousWasCanonicalMarker = false;
+    }
+
+    var normalized = out.toString();
+    if (forceRubElHizb) {
+      normalized = normalized
+          .replaceAll('\u06E9', _canonicalMarkerGlyph)
+          .replaceAll('\u06DD', _canonicalMarkerGlyph);
+    }
+    if (forceSajdahGlyph) {
+      normalized = normalized.replaceAll(_canonicalMarkerGlyph, _sajdahGlyph);
+    }
+    return normalized;
+  }
+
+  static bool _isSajdahAyah(int surah, int ayah) {
+    return _sajdahAyahKeys.contains(surah * 1000 + ayah);
+  }
+
+  static bool _containsPotentialMarker(String text) {
+    for (final rune in text.runes) {
+      if (rune == 0x06DD ||
+          rune == 0x06DE ||
+          rune == 0x06E9) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static String _toCodepoints(String text) {
+    return text.runes
+        .map((r) => 'U+${r.toRadixString(16).toUpperCase()}')
+        .join(' ');
   }
 
   /// Maps Quran.com tajweed CSS class names to [TajweedRule].

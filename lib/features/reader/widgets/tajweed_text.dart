@@ -10,6 +10,27 @@ class TajweedText extends StatelessWidget {
     '\u0651([\u064B-\u0650])',
   );
   static const String _sajdahGlyph = '\u06E9';
+  static const String _rubElHizbGlyph = '\u06DE';
+  static const String _endOfAyahGlyph = '\u06DD';
+  static const String _canonicalMarkerGlyph = _rubElHizbGlyph;
+  static const int _rubElHizbRune = 0x06DE;
+  static const Set<int> _sajdahAyahKeys = {
+    7 * 1000 + 206,
+    13 * 1000 + 15,
+    16 * 1000 + 50,
+    17 * 1000 + 109,
+    19 * 1000 + 58,
+    22 * 1000 + 18,
+    22 * 1000 + 77,
+    25 * 1000 + 60,
+    27 * 1000 + 26,
+    32 * 1000 + 15,
+    38 * 1000 + 24,
+    41 * 1000 + 38,
+    53 * 1000 + 62,
+    84 * 1000 + 21,
+    96 * 1000 + 19,
+  };
 
   final Ayah ayah;
   final double fontSize;
@@ -142,11 +163,14 @@ class TajweedText extends StatelessWidget {
       final word = ayah.words[wi];
       final isActiveWord = wi == highlightedWordIndex;
       if (!highlightEnabled || word.spans.isEmpty) {
-        // No tajweed spans — render entire word in base color
-        spans.add(TextSpan(
-          text: _normalizeArabicText(word.arabic),
-          style: _baseWordStyle(baseColor, isActiveWord: isActiveWord),
-        ));
+        // No tajweed spans — still route through grapheme renderer so
+        // Quran markers always receive marker-specific glyph styling.
+        spans.addAll(
+          _buildGraphemeTextSpans(
+            _normalizeForCurrentAyah(word.arabic),
+            _baseWordStyle(baseColor, isActiveWord: isActiveWord),
+          ),
+        );
       } else {
         // Build per-character colored spans within the word
         spans.addAll(_buildWordSpans(word, baseColor, isActiveWord));
@@ -198,7 +222,7 @@ class TajweedText extends StatelessWidget {
   List<InlineSpan> _buildWordSpans(
       TajweedWord word, Color baseColor, bool isActiveWord) {
     final result = <InlineSpan>[];
-    final text = word.arabic;
+    final text = _normalizeForCurrentAyah(word.arabic);
     final graphemeMap = _GraphemeMap.fromText(text);
     int cursor = 0;
 
@@ -270,9 +294,9 @@ class TajweedText extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     // Keep each Arabic segment contiguous so glyph shaping remains stable.
-    final normalizedText = text;
+    final normalizedText = _normalizeForCurrentAyah(text);
 
-    if (!normalizedText.contains(_sajdahGlyph)) {
+    if (!_containsQuranMarker(normalizedText)) {
       if (onTap != null) {
         return [
           TextSpan(
@@ -287,11 +311,15 @@ class TajweedText extends StatelessWidget {
 
     final spans = <InlineSpan>[];
     for (final cluster in normalizedText.characters) {
-      final isSajdah = cluster == _sajdahGlyph;
+      final isQuranMarker = _isQuranMarkerCluster(cluster);
+      final isSajdahMarker = cluster.contains(_sajdahGlyph);
+      final markerText = isSajdahMarker ? _sajdahGlyph : cluster;
       spans.add(
         TextSpan(
-          text: cluster,
-          style: isSajdah ? _sajdahStyleFrom(style) : style,
+          text: markerText,
+          style: isQuranMarker
+              ? _quranMarkerStyleFrom(style, isSajdah: isSajdahMarker)
+              : style,
           recognizer: onTap != null
               ? (TapGestureRecognizer()..onTap = onTap)
               : null,
@@ -301,32 +329,64 @@ class TajweedText extends StatelessWidget {
     return spans;
   }
 
+  static bool _containsQuranMarker(String text) {
+    if (text.contains(_sajdahGlyph) || text.contains(_endOfAyahGlyph)) {
+      return true;
+    }
+    for (final rune in text.runes) {
+      if (rune == _rubElHizbRune) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool _isQuranMarkerCluster(String cluster) {
+    if (cluster.contains(_sajdahGlyph) || cluster.contains(_endOfAyahGlyph)) {
+      return true;
+    }
+    for (final rune in cluster.runes) {
+      if (rune == _rubElHizbRune) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool _isRubElHizbCluster(String cluster) {
+    for (final rune in cluster.runes) {
+      if (rune == _rubElHizbRune) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   List<InlineSpan> _buildSegmentSpans(Color baseColor) {
-    return ayah.tajweedSegments.map<InlineSpan>((segment) {
+    final spans = <InlineSpan>[];
+    for (final segment in ayah.tajweedSegments) {
       final rule = segment.rule;
-      final text = _normalizeArabicText(segment.text);
+      final text = _normalizeForCurrentAyah(segment.text);
       if (rule != null && suppressedRules.contains(rule)) {
-        return TextSpan(
-          text: text,
-          style: _baseWordStyle(baseColor),
-        );
+        spans.addAll(_buildGraphemeTextSpans(text, _baseWordStyle(baseColor)));
+        continue;
       }
       final style = rule == null
           ? _baseWordStyle(baseColor)
           : _styleFor(rule, baseColor);
       if (rule != null && onRuleTapped != null) {
-        return TextSpan(
-          text: text,
-          style: style,
-          recognizer: TapGestureRecognizer()
-            ..onTap = () => onRuleTapped!(rule, text, null),
+        spans.addAll(
+          _buildGraphemeTextSpans(
+            text,
+            style,
+            onTap: () => onRuleTapped!(rule, text, null),
+          ),
         );
+        continue;
       }
-      return TextSpan(
-        text: text,
-        style: style,
-      );
-    }).toList();
+      spans.addAll(_buildGraphemeTextSpans(text, style));
+    }
+    return spans;
   }
 
   TextStyle _baseWordStyle(Color baseColor, {bool isActiveWord = false}) =>
@@ -343,15 +403,32 @@ class TajweedText extends StatelessWidget {
             isActiveWord ? const Color(0xFFFFE08A).withValues(alpha: 0.45) : null,
       );
 
-  TextStyle _sajdahStyleFrom(TextStyle style) {
-    return style.copyWith(
-      fontFamily: 'Noto Naskh Arabic',
-      fontFamilyFallback: const [
-        'Noto Naskh Arabic',
-        'Amiri',
-        'Geeza Pro',
-      ],
+  TextStyle _quranMarkerStyleFrom(
+    TextStyle style, {
+    required bool isSajdah,
+  }) {
+    // Keep marker glyphs on a dedicated font path instead of sharing the
+    // body-text font. This reduces iOS fallback differences for U+06DE.
+    final markerBase = style.copyWith(
+      fontFamily: isSajdah ? 'Noto Naskh Arabic' : 'Scheherazade New',
+      fontFamilyFallback: isSajdah
+          ? const [
+              'Noto Naskh Arabic',
+              'Geeza Pro',
+              'Amiri Quran',
+              'Amiri',
+            ]
+          : const [
+              'Scheherazade New',
+              'Amiri Quran',
+              'Noto Naskh Arabic',
+              'Geeza Pro',
+              'Amiri',
+            ],
     );
+    return isSajdah
+        ? GoogleFonts.notoNaskhArabic(textStyle: markerBase)
+        : GoogleFonts.scheherazadeNew(textStyle: markerBase);
   }
 
   TextStyle _styleFor(TajweedRule rule, Color baseColor,
@@ -371,9 +448,48 @@ class TajweedText extends StatelessWidget {
   }
 
   static String _normalizeArabicText(String text) {
-    return text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
       return '${match.group(1)}\u0651';
     });
+
+    // Normalize marker variants so ayah view always renders one consistent glyph.
+    return _canonicalizeQuranMarkers(reordered);
+  }
+
+  String _normalizeForCurrentAyah(String text) {
+    var normalized = _normalizeArabicText(text);
+    final ayahKey = ayah.surahNumber * 1000 + ayah.ayahNumber;
+    if (_sajdahAyahKeys.contains(ayahKey)) {
+      normalized = normalized.replaceAll(_canonicalMarkerGlyph, _sajdahGlyph);
+    }
+    return normalized;
+  }
+
+  static String _canonicalizeQuranMarkers(String text) {
+    final out = StringBuffer();
+    bool previousWasCanonicalMarker = false;
+
+    for (final rune in text.runes) {
+      if (rune == _rubElHizbRune) {
+        out.write(_canonicalMarkerGlyph);
+        previousWasCanonicalMarker = true;
+        continue;
+      }
+
+      // Drop decorative Quranic combining marks that may follow the marker,
+      // otherwise the same marker can still appear visually different.
+      if (previousWasCanonicalMarker &&
+          ((rune >= 0x06D6 && rune <= 0x06DC) ||
+              (rune >= 0x06DF && rune <= 0x06E8) ||
+              (rune >= 0x06EA && rune <= 0x06ED))) {
+        continue;
+      }
+
+      out.write(String.fromCharCode(rune));
+      previousWasCanonicalMarker = false;
+    }
+
+    return out.toString();
   }
 }
 
@@ -416,8 +532,11 @@ class _GraphemeMap {
     return (codePoint >= 0x0610 && codePoint <= 0x061A) ||
         (codePoint >= 0x064B && codePoint <= 0x065F) ||
         codePoint == 0x0670 ||
-      (codePoint >= 0x06D6 && codePoint <= 0x06E8) ||
-      (codePoint >= 0x06EA && codePoint <= 0x06ED) ||
+        // Keep major Quran markers standalone so they can receive
+        // dedicated marker font styling in ayah view.
+        (codePoint >= 0x06D6 && codePoint <= 0x06DC) ||
+        (codePoint >= 0x06DF && codePoint <= 0x06E8) ||
+        (codePoint >= 0x06EA && codePoint <= 0x06ED) ||
         (codePoint >= 0x08D3 && codePoint <= 0x08E1) ||
         (codePoint >= 0x08E3 && codePoint <= 0x08FF);
   }

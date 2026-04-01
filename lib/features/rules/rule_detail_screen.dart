@@ -45,7 +45,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     TajweedRule.idghamShafawi: '002010',
     TajweedRule.idghamMutajanisayn: '011042',
     TajweedRule.ikhfa: '002010',
-    TajweedRule.ikhfaShafawi: '002014',
+    TajweedRule.ikhfaShafawi: '105004',
     TajweedRule.iqlab: '002033',
     TajweedRule.izhar: '004011',
     TajweedRule.shaddah: '001001',

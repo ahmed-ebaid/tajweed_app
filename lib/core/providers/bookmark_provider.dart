@@ -81,7 +81,7 @@ class BookmarkProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> saveLastRead(int surah, int ayah, {double? scrollOffset}) async {
+  Future<void> saveLastRead(int surah, int ayah, {double? scrollOffset, String? caller}) async {
     final sameReference = surah == _lastReadSurah && ayah == _lastReadAyah;
     final sameOffset = scrollOffset == null || scrollOffset == _lastScrollOffset;
     if (sameReference && sameOffset) return;
@@ -97,7 +97,7 @@ class BookmarkProvider extends ChangeNotifier {
       await box.put(_lastScrollOffsetKey, scrollOffset);
     }
     await box.compact(); // Force persist to disk
-    print('✅ SAVE LAST READ: surah=$surah, ayah=$ayah, offset=$_lastScrollOffset');
+    print('✅ SAVE LAST READ [${caller ?? '-'}]: surah=$surah, ayah=$ayah, offset=$_lastScrollOffset');
     notifyListeners();
   }
 
