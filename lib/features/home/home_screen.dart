@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/providers/daily_lesson_provider.dart';
+import '../../core/providers/reader_navigation_provider.dart';
 import '../../core/providers/streak_provider.dart';
 import '../../shared/widgets/streak_bar.dart';
 
@@ -13,6 +15,8 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final streak = context.watch<StreakProvider>();
+    final dailyLesson = context.watch<DailyLessonProvider>();
+    final lesson = dailyLesson.todayLesson;
 
     return Scaffold(
       body: SafeArea(
@@ -28,7 +32,18 @@ class HomeScreen extends StatelessWidget {
                   weekDots: streak.weekDots,
                 ),
               ),
-              _TodayLesson(l10n: l10n, onTap: () => onTabSwitch(1)),
+              _TodayLesson(
+                l10n: l10n,
+                lessonTitle: lesson.titleFor(l10n.locale.languageCode),
+                progress: dailyLesson.progressForToday,
+                onTap: () {
+                  context.read<ReaderNavigationProvider>().openSurahAyah(
+                        surah: lesson.surah,
+                        ayah: lesson.ayah,
+                      );
+                  onTabSwitch(1);
+                },
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(l10n.practice,
@@ -80,11 +95,23 @@ class _Header extends StatelessWidget {
 
 class _TodayLesson extends StatelessWidget {
   final AppLocalizations l10n;
+  final String lessonTitle;
+  final double progress;
   final VoidCallback onTap;
-  const _TodayLesson({required this.l10n, required this.onTap});
+  const _TodayLesson({
+    required this.l10n,
+    required this.lessonTitle,
+    required this.progress,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isComplete = progress >= 0.999;
+    final statusText = isComplete
+        ? l10n.get('complete')
+        : l10n.get('not_quite');
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -105,8 +132,8 @@ class _TodayLesson extends StatelessWidget {
                     color: Color(0xFF1D9E75),
                     letterSpacing: 0.05)),
             const SizedBox(height: 4),
-            const Text(
-              'Ghunnah in Surah Al-Mulk',
+            Text(
+              lessonTitle,
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
@@ -116,14 +143,14 @@ class _TodayLesson extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: LinearProgressIndicator(
-                value: 0.65,
+                value: progress,
                 backgroundColor: const Color(0xFF9FE1CB),
                 valueColor: const AlwaysStoppedAnimation(Color(0xFF1D9E75)),
                 minHeight: 4,
               ),
             ),
             const SizedBox(height: 4),
-            Text('65% ${l10n.get('complete')}',
+            Text('${(progress * 100).round()}% • $statusText',
                 style: const TextStyle(fontSize: 11, color: Color(0xFF1D9E75))),
           ],
         ),

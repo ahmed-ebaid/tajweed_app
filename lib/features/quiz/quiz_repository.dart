@@ -1,9 +1,113 @@
+import 'dart:math';
+
 import '../../core/models/tajweed_models.dart';
 import '../rules/rules_repository.dart';
 
+enum QuizLevel {
+  beginner,
+  intermediate,
+  advanced,
+}
+
+class QuizLevelDefinition {
+  final QuizLevel level;
+  final String titleKey;
+  final String subtitleKey;
+  final List<TajweedRule> rules;
+
+  const QuizLevelDefinition({
+    required this.level,
+    required this.titleKey,
+    required this.subtitleKey,
+    required this.rules,
+  });
+}
+
 /// Generates a balanced quiz bank from known tajweed rules.
 class QuizRepository {
+  static const int passPercentage = 70;
   static final List<QuizQuestion> all = _buildQuestions();
+
+  static const List<QuizLevelDefinition> levels = [
+    QuizLevelDefinition(
+      level: QuizLevel.beginner,
+      titleKey: 'quiz_level_beginner',
+      subtitleKey: 'quiz_level_beginner_subtitle',
+      rules: [
+        TajweedRule.ghunnah,
+        TajweedRule.maddTabeei,
+        TajweedRule.shaddah,
+        TajweedRule.qalqalah,
+        TajweedRule.waqf,
+      ],
+    ),
+    QuizLevelDefinition(
+      level: QuizLevel.intermediate,
+      titleKey: 'quiz_level_intermediate',
+      subtitleKey: 'quiz_level_intermediate_subtitle',
+      rules: [
+        TajweedRule.ikhfa,
+        TajweedRule.iqlab,
+        TajweedRule.izhar,
+        TajweedRule.idghamWithGhunnah,
+        TajweedRule.idghamWithoutGhunnah,
+        TajweedRule.hamzatWasl,
+        TajweedRule.laamShamsiyah,
+      ],
+    ),
+    QuizLevelDefinition(
+      level: QuizLevel.advanced,
+      titleKey: 'quiz_level_advanced',
+      subtitleKey: 'quiz_level_advanced_subtitle',
+      rules: [
+        TajweedRule.maddMuttasil,
+        TajweedRule.maddMunfasil,
+        TajweedRule.maddLazim,
+        TajweedRule.idghamShafawi,
+        TajweedRule.idghamMutajanisayn,
+        TajweedRule.ikhfaShafawi,
+        TajweedRule.sajdah,
+        TajweedRule.silent,
+      ],
+    ),
+  ];
+
+  static QuizLevelDefinition definitionFor(QuizLevel level) =>
+      levels.firstWhere((entry) => entry.level == level);
+
+  static QuizLevel? nextLevelAfter(QuizLevel level) {
+    final nextIndex = level.index + 1;
+    if (nextIndex >= QuizLevel.values.length) return null;
+    return QuizLevel.values[nextIndex];
+  }
+
+  static List<QuizQuestion> randomizedUnique({QuizLevel? level}) {
+    final filtered = level == null
+        ? all
+        : all.where((question) => questionLevel(question.rule) == level).toList();
+    final shuffled = [...filtered]..shuffle(Random());
+    final unique = <QuizQuestion>[];
+    final seen = <String>{};
+
+    for (final q in shuffled) {
+      final correctNameEn = q.options[q.correctIndex]['en'] ?? '';
+      final key = '${q.arabicText}|$correctNameEn';
+      if (seen.add(key)) {
+        unique.add(q);
+      }
+    }
+
+    return unique;
+  }
+
+  static QuizLevel questionLevel(TajweedRule rule) {
+    for (final level in levels) {
+      if (level.rules.contains(rule)) {
+        return level.level;
+      }
+    }
+    return QuizLevel.beginner;
+  }
 
   static List<QuizQuestion> _buildQuestions() {
     final rules = RulesRepository.all;
@@ -48,6 +152,7 @@ class QuizRepository {
         : target.exampleArabic[variant % target.exampleArabic.length];
 
     return QuizQuestion(
+      rule: target.rule,
       arabicText: arabic,
       questionText: _questionTemplate(variant),
       options: options,

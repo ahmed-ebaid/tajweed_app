@@ -6,7 +6,10 @@ import 'package:provider/provider.dart';
 
 import 'core/l10n/app_localizations.dart';
 import 'core/providers/bookmark_provider.dart';
+import 'core/providers/daily_lesson_provider.dart';
 import 'core/providers/locale_provider.dart';
+import 'core/providers/quiz_progress_provider.dart';
+import 'core/providers/reader_navigation_provider.dart';
 import 'core/providers/streak_provider.dart';
 import 'core/providers/recitation_provider.dart';
 import 'core/providers/tafseer_provider.dart';
@@ -65,6 +68,9 @@ void main() {
           ChangeNotifierProvider.value(value: localeProvider),
           ChangeNotifierProvider.value(value: streakProvider),
           ChangeNotifierProvider.value(value: bookmarkProvider),
+          ChangeNotifierProvider(create: (_) => DailyLessonProvider()),
+          ChangeNotifierProvider(create: (_) => QuizProgressProvider()),
+          ChangeNotifierProvider(create: (_) => ReaderNavigationProvider()),
           ChangeNotifierProvider(create: (_) => RecitationProvider()),
           ChangeNotifierProvider(
             create: (_) => TafseerProvider(

@@ -218,6 +218,7 @@ class TajweedRuleDefinition {
 // ─── Quiz model ───────────────────────────────────────────────────────────────
 
 class QuizQuestion {
+  final TajweedRule rule;
   final String arabicText;
   final Map<String, String> questionText;  // langCode → question
   final List<Map<String, String>> options; // each: { langCode: option text }
@@ -225,6 +226,7 @@ class QuizQuestion {
   final Map<String, String> explanation;  // langCode → explanation
 
   const QuizQuestion({
+    required this.rule,
     required this.arabicText,
     required this.questionText,
     required this.options,
