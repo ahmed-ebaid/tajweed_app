@@ -9,8 +9,11 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/bookmark_provider.dart';
+import '../../core/providers/daily_lesson_provider.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../core/providers/reader_navigation_provider.dart';
 import '../../core/providers/recitation_provider.dart';
+import '../../core/providers/streak_provider.dart';
 import '../../core/providers/tafseer_provider.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/services/audio_cache_service.dart';
@@ -114,6 +117,8 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   // GlobalKeys for scrolling to specific ayahs
   final Map<int, GlobalKey> _ayahKeys = {};
+  ReaderNavigationProvider? _readerNavigationProvider;
+
   @override
   void initState() {
     super.initState();
@@ -175,6 +180,49 @@ class _ReaderScreenState extends State<ReaderScreen>
       _scrollSaveTimer =
           Timer(const Duration(milliseconds: 500), _saveScrollPosition);
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _readerNavigationProvider = context.read<ReaderNavigationProvider>();
+      _readerNavigationProvider?.addListener(_handleExternalReaderNavigation);
+      _handleExternalReaderNavigation();
+    });
+  }
+
+  void _handleExternalReaderNavigation() {
+    final provider = _readerNavigationProvider;
+    if (!mounted || provider == null) return;
+    final request = provider.consumePending();
+    if (request == null) return;
+
+    // Record lesson progress immediately for direct Today Lesson jumps so
+    // completion is not delayed by scroll debounce/visibility heuristics.
+    unawaited(context.read<DailyLessonProvider>().markReaderProgress(
+          surah: request.surah,
+          ayah: request.ayah,
+        ).then((completedNow) async {
+          if (!completedNow || !mounted) return;
+          await context.read<StreakProvider>().recordActivity();
+        }));
+
+    _stopAudio();
+    _persistReaderViewMode(_ReaderViewMode.ayah);
+    setState(() {
+      _viewMode = _ReaderViewMode.ayah;
+      _selectedSurah = request.surah;
+      _pendingScrollAyah = request.ayah;
+      _pendingScrollOffset = 0.0;
+      _didInitialReopenRestore = true;
+    });
+
+    context.read<BookmarkProvider>().saveLastRead(
+          request.surah,
+          request.ayah,
+          scrollOffset: 0.0,
+          caller: '[home/todays-lesson]',
+        );
+
+    _loadSurah();
   }
 
   void _loadSavedReaderViewMode() {
@@ -299,12 +347,26 @@ class _ReaderScreenState extends State<ReaderScreen>
               _selectedSurah, topVisibleAyah,
               scrollOffset: scrollOffset,
               caller: '[ayah-mode/scroll]');
+          unawaited(_recordTodayLessonProgress(topVisibleAyah));
         } catch (e) {
           print('❌ Error saving to BookmarkProvider: $e');
         }
       }
     } catch (e) {
       print('❌ Error in _saveScrollPosition: $e');
+    }
+  }
+
+  Future<void> _recordTodayLessonProgress(int ayahNumber) async {
+    if (!mounted) return;
+
+    final completedNow = await context.read<DailyLessonProvider>().markReaderProgress(
+          surah: _selectedSurah,
+          ayah: ayahNumber,
+        );
+
+    if (completedNow && mounted) {
+      await context.read<StreakProvider>().recordActivity();
     }
   }
 
@@ -328,6 +390,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _restoreAppOrientations();
     _playerStateSub?.cancel();
     _positionSub?.cancel();
+    _readerNavigationProvider?.removeListener(_handleExternalReaderNavigation);
     _mushafPageController.dispose();
     _audio.dispose();
     _scrollController.dispose();
@@ -1484,8 +1547,8 @@ class _ReaderScreenState extends State<ReaderScreen>
           IconButton(
             icon: Icon(
               _viewMode == _ReaderViewMode.page
-                  ? Icons.menu_book_outlined
-                  : Icons.view_agenda_outlined,
+                  ? Icons.view_agenda_outlined
+                  : Icons.menu_book_outlined,
               size: 22,
             ),
             tooltip: _viewMode == _ReaderViewMode.page

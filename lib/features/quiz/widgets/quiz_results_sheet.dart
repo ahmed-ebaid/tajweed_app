@@ -7,20 +7,31 @@ import '../../../core/l10n/app_localizations.dart';
 class QuizResultsSheet extends StatelessWidget {
   final int score;
   final int total;
-  final VoidCallback onRestart;
+  final bool success;
+  final String headline;
+  final String message;
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   const QuizResultsSheet({
     super.key,
     required this.score,
     required this.total,
-    required this.onRestart,
+    required this.success,
+    required this.headline,
+    required this.message,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.secondaryLabel,
+    this.onSecondary,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final percentage = total > 0 ? (score / total * 100).round() : 0;
-    final isGreat = percentage >= 70;
 
     return SafeArea(
       child: Padding(
@@ -43,13 +54,23 @@ class QuizResultsSheet extends StatelessWidget {
 
             // Trophy / result icon
             Icon(
-              isGreat
+              success
                   ? Icons.emoji_events_rounded
                   : Icons.refresh_rounded,
               size: 48,
-              color: isGreat
+              color: success
                   ? const Color(0xFFB8860B)
                   : const Color(0xFF1D9E75),
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              headline,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: const Color(0xFF0F6E56),
+                    fontWeight: FontWeight.w600,
+                  ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
 
@@ -69,9 +90,7 @@ class QuizResultsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isGreat
-                  ? 'Excellent! Keep going \u2728'
-                  : 'Good effort! Practice makes perfect.',
+              message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: const Color(0xFF888780),
                   ),
@@ -83,15 +102,28 @@ class QuizResultsSheet extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: onRestart,
-                icon: const Icon(Icons.replay_rounded, size: 18),
-                label: const Text('Try Again'),
+                onPressed: onPrimary,
+                icon: Icon(
+                  success ? Icons.arrow_forward_rounded : Icons.replay_rounded,
+                  size: 18,
+                ),
+                label: Text(primaryLabel),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF1D9E75),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
             ),
+            if (secondaryLabel != null && onSecondary != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: onSecondary,
+                  child: Text(secondaryLabel!),
+                ),
+              ),
+            ],
           ],
         ),
       ),

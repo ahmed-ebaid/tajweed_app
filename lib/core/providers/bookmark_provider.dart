@@ -98,7 +98,9 @@ class BookmarkProvider extends ChangeNotifier {
     }
     await box.compact(); // Force persist to disk
     print('✅ SAVE LAST READ [${caller ?? '-'}]: surah=$surah, ayah=$ayah, offset=$_lastScrollOffset');
-    notifyListeners();
+    // Do NOT call notifyListeners() here — last-read position changes don't
+    // affect any visible UI, and notifying causes a full reader rebuild on
+    // every scroll-debounce save, creating an oscillation loop.
   }
 
   Future<void> addBookmark(int surah, int ayah, {String? label, double scrollOffset = 0.0}) async {

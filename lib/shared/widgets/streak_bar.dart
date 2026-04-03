@@ -11,11 +11,14 @@ class StreakBar extends StatelessWidget {
     required this.weekDots,
   });
 
-  static const _dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  static const _dayLettersEn = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  static const _dayLettersAr = ['ن', 'ث', 'ر', 'خ', 'ج', 'س', 'ح'];
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isArabic = l10n.locale.languageCode == 'ar';
+    final dayLetters = isArabic ? _dayLettersAr : _dayLettersEn;
     final today = DateTime.now().weekday - 1; // 0 = Monday
 
     return Container(
@@ -36,7 +39,7 @@ class StreakBar extends StatelessWidget {
               children: [
                 Text(l10n.dayStreak,
                     style: Theme.of(context).textTheme.bodySmall),
-                Text('$streakCount days',
+                Text('$streakCount ${l10n.get('days')}',
                     style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
@@ -48,7 +51,7 @@ class StreakBar extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(left: 5),
                 child: _DayDot(
-                  letter: _dayLetters[i],
+                  letter: dayLetters[i],
                   done: done,
                   isToday: isToday,
                 ),
