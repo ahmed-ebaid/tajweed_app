@@ -101,7 +101,7 @@ void main() {
     final rootSpan = richText.text as TextSpan;
     final children = rootSpan.children!.whereType<TextSpan>().toList();
 
-    expect(children.any((span) => span.text == 'نَحْنُ '), isTrue);
+    expect(children.any((span) => span.text == 'نَحْنُ'), isTrue);
     expect(children.any((span) => span.text == 'َحْ'), isFalse);
   });
 
