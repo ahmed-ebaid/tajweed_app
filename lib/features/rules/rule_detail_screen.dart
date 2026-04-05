@@ -39,7 +39,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
   /// Each rule maps to a short verse that prominently demonstrates it.
   static const Map<TajweedRule, String> _exampleAudioCodes = {
     TajweedRule.ghunnah: '002006',
-    TajweedRule.qalqalah: '113001',
+    TajweedRule.qalqalah: '019061',
     TajweedRule.maddTabeei: '001002',
     TajweedRule.maddMuttasil: '110001',
     TajweedRule.maddMunfasil: '002004',

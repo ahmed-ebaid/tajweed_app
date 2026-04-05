@@ -15,7 +15,7 @@ class DailyLesson {
   static const List<DailyLesson> _plan = [
     DailyLesson(
       surah: 67,
-      ayah: 1,
+      ayah: 12,
       titles: {
         'en': 'Ghunnah in Surah Al-Mulk',
         'ar': 'غُنَّة في سورة الملك',
@@ -39,7 +39,7 @@ class DailyLesson {
     ),
     DailyLesson(
       surah: 19,
-      ayah: 39,
+      ayah: 61,
       titles: {
         'en': 'Qalqalah in Surah Maryam',
         'ar': 'قلقلة في سورة مريم',
@@ -47,7 +47,7 @@ class DailyLesson {
     ),
     DailyLesson(
       surah: 2,
-      ayah: 66,
+      ayah: 21,
       titles: {
         'en': 'Ikhfa in Surah Al-Baqarah',
         'ar': 'إخفاء في سورة البقرة',
@@ -55,7 +55,7 @@ class DailyLesson {
     ),
     DailyLesson(
       surah: 15,
-      ayah: 91,
+      ayah: 87,
       titles: {
         'en': 'Idgham in Surah Al-Hijr',
         'ar': 'إدغام في سورة الحجر',
@@ -63,7 +63,7 @@ class DailyLesson {
     ),
     DailyLesson(
       surah: 37,
-      ayah: 52,
+      ayah: 9,
       titles: {
         'en': 'Waqf Signs in Surah As-Saffat',
         'ar': 'علامات الوقف في سورة الصافات',

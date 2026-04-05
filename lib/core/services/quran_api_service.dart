@@ -221,7 +221,9 @@ class QuranApiService {
   /// Fetches the list of available reciters from the resources API.
   Future<List<Map<String, dynamic>>> fetchAvailableReciters() async {
     final response = await _dio.get('/resources/recitations');
-    return List<Map<String, dynamic>>.from(response.data['recitations']);
+    return List<Map<String, dynamic>>.from(response.data['recitations'])
+        .where((reciter) => (reciter['id'] as int?) != 7)
+        .toList(growable: false);
   }
 
   // ─── Search ───────────────────────────────────────────────────────────────
