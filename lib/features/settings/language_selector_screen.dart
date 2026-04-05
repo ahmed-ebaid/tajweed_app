@@ -35,6 +35,7 @@ class LanguageSelectorScreen extends StatelessWidget {
               name,
               textDirection:
                   isRtl ? TextDirection.rtl : TextDirection.ltr,
+              textAlign: TextAlign.left,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight:
@@ -44,10 +45,11 @@ class LanguageSelectorScreen extends StatelessWidget {
                     : null,
               ),
             ),
-            subtitle: isRtl
+            subtitle: _nativeName(code).isEmpty
                 ? null
                 : Text(
                     _nativeName(code),
+                    textDirection: TextDirection.ltr,
                     style: const TextStyle(fontSize: 13),
                   ),
             trailing: isSelected
@@ -75,6 +77,7 @@ class LanguageSelectorScreen extends StatelessWidget {
       case 'fr': return 'French';
       case 'id': return 'Indonesian';
       case 'de': return 'German';
+      case 'es': return 'Spanish';
       default:   return '';
     }
   }
@@ -94,6 +97,7 @@ class _FlagCircle extends StatelessWidget {
     'fr': Color(0xFF185FA5),
     'id': Color(0xFFB8860B),
     'de': Color(0xFF534AB7),
+    'es': Color(0xFFC62828),
   };
 
   @override

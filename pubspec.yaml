@@ -37,10 +37,12 @@ dependencies:
   intl: ^0.20.2
 
   # UI utilities
+  cupertino_icons: ^1.0.8
   lottie: ^3.0.0               # Animations (e.g., celebration on quiz completion)
   flutter_svg: ^2.0.9
   shimmer: ^3.0.0              # Loading skeletons
   go_router: ^17.1.0           # Declarative routing
+  share_plus: ^7.2.2           # Native share sheet for sharing rule summaries
 
 dev_dependencies:
   flutter_test:

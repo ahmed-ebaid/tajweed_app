@@ -110,10 +110,13 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   // Flag to avoid saving scroll position while automatic jump is in progress
   bool _isProgrammaticScroll = false;
+  int _scrollToAyahRequestId = 0;
   bool _didInitialReopenRestore = false;
   int? _lastKnownVisibleAyah;
   int _suppressAutoSaveUntilMs = 0;
   int? _startupRestoreTargetAyah;
+  int _restoreGuardToken = 0;
+  bool _userInterruptedRestore = false;
 
   // GlobalKeys for scrolling to specific ayahs
   final Map<int, GlobalKey> _ayahKeys = {};
@@ -283,6 +286,77 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
+  void _setRestoreGuard(int ayahNumber, {int durationMs = 2200}) {
+    final token = ++_restoreGuardToken;
+    _startupRestoreTargetAyah = ayahNumber;
+    _suppressAutoSaveUntilMs =
+        DateTime.now().millisecondsSinceEpoch + durationMs;
+    _userInterruptedRestore = false;
+
+    _scheduleRestoreGuardRelease(
+      token: token,
+      targetAyah: ayahNumber,
+      delayMs: durationMs + 250,
+      remainingChecks: 6,
+    );
+  }
+
+  void _scheduleRestoreGuardRelease({
+    required int token,
+    required int targetAyah,
+    required int delayMs,
+    required int remainingChecks,
+  }) {
+    Future.delayed(Duration(milliseconds: delayMs), () {
+      if (!mounted || token != _restoreGuardToken) return;
+
+      final shouldReleaseImmediately =
+          _viewMode != _ReaderViewMode.ayah || _userInterruptedRestore;
+      if (shouldReleaseImmediately) {
+        debugPrint('🧭 Restore guard release: immediate '
+            '(mode=$_viewMode, userInterrupted=$_userInterruptedRestore)');
+        _startupRestoreTargetAyah = null;
+        _suppressAutoSaveUntilMs = 0;
+        return;
+      }
+
+      final visibleAyah = _findTopVisibleAyahNumber();
+      final aligned = visibleAyah != null && (visibleAyah - targetAyah).abs() <= 0;
+      debugPrint('🧭 Restore guard check: target=$targetAyah, '
+          'visible=${visibleAyah ?? '-'}, aligned=$aligned, '
+          'remaining=$remainingChecks');
+      if (aligned || remainingChecks <= 0) {
+        debugPrint('🧭 Restore guard release: '
+            '${aligned ? 'aligned' : 'retries-exhausted'}');
+        _startupRestoreTargetAyah = null;
+        _suppressAutoSaveUntilMs = 0;
+        return;
+      }
+
+      _scrollToAyah(
+        targetAyah,
+        maxAttempts: 10,
+        alignment: 0.0,
+        allowSeedJump: true,
+      );
+      _suppressAutoSaveUntilMs =
+          DateTime.now().millisecondsSinceEpoch + 900;
+
+      _scheduleRestoreGuardRelease(
+        token: token,
+        targetAyah: targetAyah,
+        delayMs: 950,
+        remainingChecks: remainingChecks - 1,
+      );
+    });
+  }
+
+  void _cancelProgrammaticAyahScroll() {
+    _scrollToAyahRequestId++;
+    _isProgrammaticScroll = false;
+    _userInterruptedRestore = true;
+  }
+
   void _saveScrollPosition() {
     try {
       if (_ayahs.isEmpty || !mounted) return;
@@ -291,11 +365,25 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (_viewMode == _ReaderViewMode.ayah &&
           nowMs < _suppressAutoSaveUntilMs) {
         if (_startupRestoreTargetAyah != null) {
+          final targetAyah = _startupRestoreTargetAyah!;
+          final visibleAyah = _findTopVisibleAyahNumber();
+          if (!_userInterruptedRestore &&
+              !_isProgrammaticScroll &&
+              visibleAyah != null &&
+              (visibleAyah - targetAyah).abs() > 0) {
+            _scrollToAyah(
+              targetAyah,
+              maxAttempts: 10,
+              alignment: 0.0,
+              allowSeedJump: true,
+            );
+          }
+
           final scrollOffset =
               _scrollController.hasClients ? _scrollController.offset : 0.0;
           context.read<BookmarkProvider>().saveLastRead(
                 _selectedSurah,
-                _startupRestoreTargetAyah!,
+                targetAyah,
                 scrollOffset: scrollOffset,
                 caller: '[ayah-mode/startup-restore]',
               );
@@ -627,8 +715,12 @@ class _ReaderScreenState extends State<ReaderScreen>
     int maxAttempts = 15,
     bool allowSeedJump = true,
     double alignment = 0.18,
+    int? requestId,
   }) {
     if (!mounted || _viewMode != _ReaderViewMode.ayah || _ayahs.isEmpty) return;
+
+    final activeRequestId = requestId ?? ++_scrollToAyahRequestId;
+    if (activeRequestId != _scrollToAyahRequestId) return;
 
     final key = _ayahKeys[ayahNumber];
     if (key?.currentContext != null) {
@@ -636,43 +728,72 @@ class _ReaderScreenState extends State<ReaderScreen>
       Scrollable.ensureVisible(
         key!.currentContext!,
         alignment: alignment,
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
       ).then((_) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) _isProgrammaticScroll = false;
+        Future.delayed(const Duration(milliseconds: 220), () {
+          if (mounted && activeRequestId == _scrollToAyahRequestId) {
+            _isProgrammaticScroll = false;
+          }
         });
       });
       return;
     }
 
     if (maxAttempts <= 0) {
-      _isProgrammaticScroll = false;
+      if (activeRequestId == _scrollToAyahRequestId) {
+        _isProgrammaticScroll = false;
+      }
       return;
     }
 
-    // Seed the viewport so items near ayahNumber get built.  Use the current
-    // maxScrollExtent (it improves each iteration as more items are measured).
+    // Fixed-step directional search (no proportional/height estimation).
     if (allowSeedJump && _scrollController.hasClients) {
-      final idx = _ayahs.indexWhere((a) => a.ayahNumber == ayahNumber);
-      if (idx >= 0) {
+      final targetIdx = _ayahs.indexWhere((a) => a.ayahNumber == ayahNumber);
+      if (targetIdx >= 0) {
         final maxExtent = _scrollController.position.maxScrollExtent;
         if (maxExtent > 0) {
-          final seed =
-              ((idx / _ayahs.length) * maxExtent).clamp(0.0, maxExtent);
-          _isProgrammaticScroll = true;
-          _scrollController.jumpTo(seed);
+          final anchorAyah = _findTopVisibleAyahNumber() ?? _lastKnownVisibleAyah;
+          final anchorIdx = anchorAyah == null
+              ? -1
+              : _ayahs.indexWhere((a) => a.ayahNumber == anchorAyah);
+          final goingDown = anchorIdx >= 0
+              ? targetIdx > anchorIdx
+              : targetIdx >= (_ayahs.length ~/ 2);
+
+            final deltaAyahs =
+              anchorIdx >= 0 ? (targetIdx - anchorIdx).abs() : _ayahs.length;
+            final stepPx = deltaAyahs <= 3
+              ? 220.0
+              : deltaAyahs <= 10
+                ? 520.0
+                : 1200.0;
+          final current = _scrollController.offset;
+          var seed =
+              (current + (goingDown ? stepPx : -stepPx)).clamp(0.0, maxExtent);
+
+          if ((seed - current).abs() < 0.5) {
+            seed = (current + (goingDown ? -stepPx : stepPx))
+                .clamp(0.0, maxExtent);
+          }
+
+          if (activeRequestId == _scrollToAyahRequestId) {
+            _isProgrammaticScroll = true;
+            _scrollController.jumpTo(seed);
+          }
         }
       }
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 80), () {
+      Future.delayed(const Duration(milliseconds: 60), () {
+        if (!mounted || activeRequestId != _scrollToAyahRequestId) return;
         _scrollToAyah(
           ayahNumber,
           maxAttempts: maxAttempts - 1,
           allowSeedJump: allowSeedJump,
           alignment: alignment,
+          requestId: activeRequestId,
         );
       });
     });
@@ -718,18 +839,12 @@ class _ReaderScreenState extends State<ReaderScreen>
       // Cross-surah bookmark navigation: scroll by ayah number.
       final ayah = _pendingScrollAyah!;
       _pendingScrollAyah = null;
-      _startupRestoreTargetAyah = ayah;
-      _suppressAutoSaveUntilMs = DateTime.now().millisecondsSinceEpoch + 2200;
+      _setRestoreGuard(ayah, durationMs: 2200);
       _scrollToAyah(ayah, maxAttempts: 20, alignment: 0.0, allowSeedJump: true);
       Future.delayed(const Duration(milliseconds: 650), () {
         if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
         _scrollToAyah(ayah,
             maxAttempts: 8, alignment: 0.0, allowSeedJump: true);
-      });
-      Future.delayed(const Duration(milliseconds: 2400), () {
-        if (!mounted) return;
-        _startupRestoreTargetAyah = null;
-        _suppressAutoSaveUntilMs = 0;
       });
     } else {
       // First restore after app launch: always anchor by ayah number.
@@ -738,18 +853,11 @@ class _ReaderScreenState extends State<ReaderScreen>
         final bookmarks = context.read<BookmarkProvider>();
         if (bookmarks.lastReadSurah == _selectedSurah) {
           final targetAyah = bookmarks.lastReadAyah;
-          _startupRestoreTargetAyah = targetAyah;
-          _suppressAutoSaveUntilMs =
-              DateTime.now().millisecondsSinceEpoch + 2200;
+          _setRestoreGuard(targetAyah, durationMs: 2200);
           _scrollToAyah(targetAyah, maxAttempts: 20, alignment: 0.0);
           Future.delayed(const Duration(milliseconds: 750), () {
             if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
             _scrollToAyah(targetAyah, maxAttempts: 8, alignment: 0.0);
-          });
-          Future.delayed(const Duration(milliseconds: 2400), () {
-            if (!mounted) return;
-            _startupRestoreTargetAyah = null;
-            _suppressAutoSaveUntilMs = 0;
           });
         }
 
@@ -1720,11 +1828,14 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Widget _buildAyahList(String langCode, {required bool pageMode}) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.symmetric(vertical: pageMode ? 12 : 8),
-      itemCount: _ayahs.length,
-      itemBuilder: (context, i) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _cancelProgrammaticAyahScroll(),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: EdgeInsets.symmetric(vertical: pageMode ? 12 : 8),
+        itemCount: _ayahs.length,
+        itemBuilder: (context, i) {
         final ayah = _ayahs[i];
         final juzNumber = _juzBoundaries[ayah.ayahNumber];
         final isPlaying = _playingAyahNumber == ayah.ayahNumber;
@@ -1765,7 +1876,8 @@ class _ReaderScreenState extends State<ReaderScreen>
               ),
           ],
         );
-      },
+        },
+      ),
     );
   }
 
@@ -1847,6 +1959,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     final shouldReloadSurah =
         anchorSurah != _selectedSurah || !hasLoadedAyahsForAnchorSurah;
 
+    _scrollSaveTimer?.cancel();
+    _setRestoreGuard(targetAyah, durationMs: 4200);
+
     debugPrint('🔄 PAGE→AYAH anchor: didNavigate=$didNavigateInPageMode, '
         'entryPage=$entryPageNumber, currentPage=$currentPageNumber, '
         'targetAyah=$targetAyah (ayahModeAnchor=$_ayahModeAnchorAyah), '
@@ -1905,32 +2020,10 @@ class _ReaderScreenState extends State<ReaderScreen>
       }
       _scrollToAyah(
         targetAyah,
-        maxAttempts: 12,
+        maxAttempts: 30,
         alignment: 0.0,
         allowSeedJump: true,
       );
-
-      // Extra safety: if list build takes longer, try again shortly.
-      Future.delayed(const Duration(milliseconds: 650), () {
-        if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
-        _scrollToAyah(
-          targetAyah,
-          maxAttempts: 6,
-          alignment: 0.0,
-          allowSeedJump: true,
-        );
-      });
-
-      // Final correction after layout settles further.
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
-        _scrollToAyah(
-          targetAyah,
-          maxAttempts: 4,
-          alignment: 0.0,
-          allowSeedJump: true,
-        );
-      });
     });
 
     _mushafEntryAnchorAyah = targetAyah;
