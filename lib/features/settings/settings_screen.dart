@@ -177,6 +177,7 @@ class SettingsScreen extends StatelessWidget {
             'fr': 'french',
             'id': 'indonesian',
             'de': 'german',
+            'es': 'spanish',
           };
           final target = langMap[langCode] ?? 'english';
           // Show tafsirs matching current language, plus all Arabic ones

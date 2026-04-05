@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,6 +10,7 @@ import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_api_service.dart';
 import '../reader/widgets/tajweed_text.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Full-screen detail view for a single tajweed rule.
 /// Shows the Arabic name, description, example words with color coding,
@@ -25,8 +27,10 @@ class RuleDetailScreen extends StatefulWidget {
 class _RuleDetailScreenState extends State<RuleDetailScreen> {
   final AudioService _audio = AudioService();
   final QuranApiService _api = QuranApiService();
+  final GlobalKey _shareButtonKey = GlobalKey();
   bool _playing = false;
   Ayah? _exampleAyah;
+  String? _exampleAyahLangCode;
   bool _loadingAyah = true;
 
   static const _audioBaseUrl =
@@ -56,6 +60,59 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     TajweedRule.silent: '002002',
   };
 
+  ({int surah, int ayah})? _exampleReference() {
+    final code = _exampleAudioCodes[widget.definition.rule];
+    if (code == null || code.length != 6) return null;
+
+    final surah = int.tryParse(code.substring(0, 3));
+    final ayah = int.tryParse(code.substring(3, 6));
+    if (surah == null || ayah == null) return null;
+
+    return (surah: surah, ayah: ayah);
+  }
+
+  Future<Ayah?> _fetchExampleAyahForLanguage(String langCode) async {
+    if (_exampleAyah != null && _exampleAyahLangCode == langCode) {
+      return _exampleAyah;
+    }
+
+    final ref = _exampleReference();
+    if (ref == null) return null;
+
+    final surah = ref.surah;
+    final ayah = ref.ayah;
+
+    final verse = await _api.fetchVerse(
+      surahNumber: surah,
+      ayahNumber: ayah,
+      langCode: langCode,
+      reciterId: 1,
+    );
+    final tajweed = await _api.fetchTajweedText(chapterNumber: surah);
+    var mapped = AyahMapper.fromApi(
+      verse,
+      tajweedHtml: tajweed['$surah:$ayah'],
+    );
+
+    if (widget.definition.rule == TajweedRule.izhar) {
+      mapped = _forceHighlightTrailingWords(
+        mapped,
+        TajweedRule.izhar,
+        wordCount: 2,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _exampleAyah = mapped;
+        _exampleAyahLangCode = langCode;
+        _loadingAyah = false;
+      });
+    }
+
+    return mapped;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -68,50 +125,16 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
   }
 
   Future<void> _loadExampleAyah() async {
-    final code = _exampleAudioCodes[widget.definition.rule];
-    if (code == null || code.length != 6) {
-      if (mounted) setState(() => _loadingAyah = false);
-      return;
-    }
-
-    final surah = int.tryParse(code.substring(0, 3));
-    final ayah = int.tryParse(code.substring(3, 6));
-    if (surah == null || ayah == null) {
+    final ref = _exampleReference();
+    if (ref == null) {
       if (mounted) setState(() => _loadingAyah = false);
       return;
     }
 
     try {
       final langCode = context.read<LocaleProvider>().locale.languageCode;
-      final verses = await _api.fetchVerses(
-        surahNumber: surah,
-        langCode: langCode,
-        reciterId: 1,
-        page: 1,
-      );
-      final target = verses.where((v) => (v['verse_key'] as String? ?? '') == '$surah:$ayah').toList();
-      if (target.isNotEmpty) {
-        final tajweed = await _api.fetchTajweedText(chapterNumber: surah);
-        final verse = target.first;
-        var mapped = AyahMapper.fromApi(
-          verse,
-          tajweedHtml: tajweed['$surah:$ayah'],
-        );
-        if (widget.definition.rule == TajweedRule.izhar) {
-          mapped = _forceHighlightTrailingWords(
-            mapped,
-            TajweedRule.izhar,
-            wordCount: 2,
-          );
-        }
-        if (mounted) {
-          setState(() {
-            _exampleAyah = mapped;
-            _loadingAyah = false;
-          });
-        }
-        return;
-      }
+      final fetched = await _fetchExampleAyahForLanguage(langCode);
+      if (fetched != null) return;
     } catch (_) {}
 
     if (mounted) setState(() => _loadingAyah = false);
@@ -164,16 +187,198 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     super.dispose();
   }
 
+  Rect _shareOriginRect() {
+    final buttonContext = _shareButtonKey.currentContext;
+    if (buttonContext != null) {
+      final buttonBox = buttonContext.findRenderObject() as RenderBox?;
+      if (buttonBox != null && buttonBox.hasSize && buttonBox.size.longestSide > 0) {
+        final origin = buttonBox.localToGlobal(Offset.zero);
+        return origin & buttonBox.size;
+      }
+    }
+
+    final rootBox = context.findRenderObject() as RenderBox?;
+    if (rootBox != null && rootBox.hasSize && rootBox.size.longestSide > 0) {
+      final center = rootBox.localToGlobal(rootBox.size.center(Offset.zero));
+      return Rect.fromCenter(center: center, width: 1, height: 1);
+    }
+
+    return const Rect.fromLTWH(1, 1, 1, 1);
+  }
+
+  String? _toAbsoluteAudioUrl(String? url) {
+    if (url == null) return null;
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return null;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return 'https://verses.quran.com/$trimmed';
+  }
+
+  Future<void> _shareRule() async {
+    final l10n = AppLocalizations.of(context);
+    final langCode = context.read<LocaleProvider>().locale.languageCode;
+    final def = widget.definition;
+
+    final localizedName = def.name(langCode).trim();
+    final arabicName = def.rule.arabicName.trim();
+    final description = def.description(langCode).trim();
+    final examples = def.exampleArabic
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .take(6)
+        .toList();
+    final triggerLetters = def.triggerLetters
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+    final pronunciationTips = _PronunciationSection(
+      rule: def.rule,
+      langCode: langCode,
+      title: '',
+    )._tipsFor(def.rule, langCode);
+    Ayah? shareAyah =
+        _exampleAyahLangCode == langCode ? _exampleAyah : null;
+    if (shareAyah == null) {
+      try {
+        shareAyah = await _fetchExampleAyahForLanguage(langCode);
+      } catch (_) {
+        shareAyah = null;
+      }
+    }
+
+    final quranText = shareAyah?.arabic.trim();
+    final quranTranslation = shareAyah?.translation(langCode).trim() ?? '';
+    final previewAudioUrl = _toAbsoluteAudioUrl(shareAyah?.audioUrl);
+    final ref = shareAyah == null
+        ? _exampleReference()
+        : (surah: shareAyah.surahNumber, ayah: shareAyah.ayahNumber);
+    final fallbackAudioCode = _exampleAudioCodes[def.rule];
+    final fallbackAudioUrl = fallbackAudioCode == null
+      ? null
+      : _toAbsoluteAudioUrl('$_audioBaseUrl/$fallbackAudioCode.mp3');
+    final recitationAudioUrl =
+      (previewAudioUrl != null && previewAudioUrl.isNotEmpty)
+        ? previewAudioUrl
+        : fallbackAudioUrl;
+    final quranRef = ref == null
+        ? null
+      : '${l10n.get('surah')} ${ref.surah}, ${l10n.get('ayah')} ${ref.ayah}';
+
+    final appName = l10n.appName.trim();
+    final appComingSoon = l10n.get('app_coming_soon').trim();
+
+    final lines = <String>[
+      if (localizedName.isNotEmpty) localizedName,
+      if (arabicName.isNotEmpty && arabicName != localizedName) arabicName,
+      if (description.isNotEmpty) '',
+      if (description.isNotEmpty) description,
+    ];
+
+    if (examples.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('${l10n.get('examples')}:')
+        ..addAll(examples.map((example) => '- $example'));
+    }
+
+    if (triggerLetters.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('${l10n.get('trigger_letters')}:')
+        ..add(triggerLetters.join(' • '));
+    }
+
+    if (quranText != null && quranText.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('${l10n.get('quran_text')}${quranRef == null ? '' : ' ($quranRef)'}:')
+        ..add(quranText);
+
+      if (quranTranslation.isNotEmpty) {
+        lines
+          ..add('')
+          ..add('${l10n.get('translation')}:')
+          ..add(quranTranslation);
+      }
+
+      if (recitationAudioUrl != null && recitationAudioUrl.isNotEmpty) {
+        lines
+          ..add('')
+          ..add('${l10n.get('recitation_audio')} (${l10n.get('listen_here')}):')
+          ..add(recitationAudioUrl);
+      }
+    } else if (examples.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('${l10n.get('quran_text')}:')
+        ..add(examples.join(' '));
+
+      if (recitationAudioUrl != null && recitationAudioUrl.isNotEmpty) {
+        lines
+          ..add('')
+          ..add('${l10n.get('recitation_audio')} (${l10n.get('listen_here')}):')
+          ..add(recitationAudioUrl);
+      }
+    }
+
+    if (pronunciationTips.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('${l10n.get('how_to_pronounce')}:')
+        ..addAll(pronunciationTips.map((tip) => '- $tip'));
+    }
+
+    lines
+      ..add('')
+      ..add('$appName - $appComingSoon');
+
+    final text = lines.join('\n');
+    final subject = localizedName.isNotEmpty ? localizedName : appName;
+    final originRect = _shareOriginRect();
+
+    try {
+      await Share.share(
+        text,
+        subject: subject,
+        sharePositionOrigin: originRect,
+      );
+    } catch (error) {
+      debugPrint('Rule share failed: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final def = widget.definition;
     final rule = def.rule;
+    final platform = Theme.of(context).platform;
+    final isApplePlatform =
+        platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(def.name(langCode)),
+        actions: [
+          if (isApplePlatform)
+            CupertinoButton(
+              key: _shareButtonKey,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(44, 44),
+              onPressed: _shareRule,
+              child: const Icon(CupertinoIcons.share, size: 22),
+            )
+          else
+            IconButton(
+              key: _shareButtonKey,
+              onPressed: _shareRule,
+              icon: const Icon(Icons.share_rounded),
+              tooltip: l10n.get('share_rule'),
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

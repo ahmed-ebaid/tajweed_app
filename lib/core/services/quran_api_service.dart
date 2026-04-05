@@ -87,6 +87,7 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': true,
+        'fields': 'text_uthmani,page_number,verse_key',
         'word_fields':
             'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,audio_url',
         'translations': _translationIdFor(langCode),
@@ -129,7 +130,7 @@ class QuranApiService {
   // ─── Audio ────────────────────────────────────────────────────────────────
 
   /// Fetches tajweed-annotated text for all verses in a chapter.
-  /// Returns a map of verse_key → HTML string with <tajweed> tags.
+  /// Returns a map of verse_key → HTML string with `<tajweed>` tags.
   Future<Map<String, String>> fetchTajweedText({
     required int chapterNumber,
   }) async {
@@ -303,6 +304,8 @@ class QuranApiService {
         return '33'; // Indonesian Ministry of Religious Affairs
       case 'de':
         return '27'; // Adul Hye & Ahmad von Denffer
+      case 'es':
+        return '131'; // Temporary fallback to English until Spanish resource ID is configured
       default:
         return '131'; // Dr. Mustafa Khattab (English)
     }

@@ -5,7 +5,7 @@ class LocaleProvider extends ChangeNotifier {
   static const _boxKey = 'settings';
   static const _localeKey = 'locale';
 
-  // Supported locales: English, Arabic, Urdu, Turkish, French, Indonesian, German
+  // Supported locales: English, Arabic, Urdu, Turkish, French, Indonesian, German, Spanish
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('ar'),
@@ -14,6 +14,7 @@ class LocaleProvider extends ChangeNotifier {
     Locale('fr'),
     Locale('id'),
     Locale('de'),
+    Locale('es'),
   ];
 
   static const Map<String, String> languageNames = {
@@ -24,6 +25,7 @@ class LocaleProvider extends ChangeNotifier {
     'fr': 'Français',
     'id': 'Bahasa Indonesia',
     'de': 'Deutsch',
+    'es': 'Español',
   };
 
   /// RTL languages — used to flip layout direction app-wide

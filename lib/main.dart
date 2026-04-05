@@ -72,10 +72,16 @@ void main() {
           ChangeNotifierProvider(create: (_) => QuizProgressProvider()),
           ChangeNotifierProvider(create: (_) => ReaderNavigationProvider()),
           ChangeNotifierProvider(create: (_) => RecitationProvider()),
-          ChangeNotifierProvider(
+          ChangeNotifierProxyProvider<LocaleProvider, TafseerProvider>(
             create: (_) => TafseerProvider(
               langCode: localeProvider.locale.languageCode,
             ),
+            update: (_, locale, tafseerProvider) {
+              final provider =
+                  tafseerProvider ?? TafseerProvider(langCode: locale.locale.languageCode);
+              provider.syncLanguage(locale.locale.languageCode);
+              return provider;
+            },
           ),
         ],
         child: const TajweedApp(),
