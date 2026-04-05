@@ -128,6 +128,35 @@ Place `.ttf` files in `assets/fonts/`.
 flutter run
 ```
 
+### 6. Offline audit for shifted end-token tajweed (release check)
+Run this before beta release to detect all ayahs where the end token has shifted tajweed payload:
+
+1) Generate a full 6236-ayah words dump:
+
+```bash
+dart run tool/fetch_quran_words_dump.dart --output /tmp/quran_words_full_6236.json
+```
+
+2) Run the audit on the generated dump:
+
+```bash
+dart run tool/end_token_audit.dart --input /path/to/quran_words_full_6236.json --output /tmp/shifted_end_token_report.json
+```
+
+Expected console format:
+
+```text
+Shifted end-token ayahs: <count>
+SHIFTED_END_TOKEN 8:6
+SHIFTED_END_TOKEN <surah>:<ayah>
+...
+```
+
+Input JSON can be either:
+- a flat list of verse objects
+- `{ "verses": [ ... ] }`
+- per-surah map like `{ "1": [ ... ], "2": [ ... ] }`
+
 ---
 
 ## Key architecture decisions

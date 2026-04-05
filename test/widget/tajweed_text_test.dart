@@ -210,4 +210,37 @@ void main() {
 
     expect(renderedClusters, 1);
   });
+
+  testWidgets('renders a single sajdah glyph when duplicate tokens are present',
+      (tester) async {
+    const duplicateSajdahAyah = Ayah(
+      surahNumber: 7,
+      ayahNumber: 206,
+      pageNumber: 176,
+      arabic: 'واسجد۩',
+      translations: {'en': 'and prostrate'},
+      words: [
+        TajweedWord(
+          arabic: 'واسجد۩',
+          spans: [
+            TajweedSpan(start: 5, end: 6, rule: TajweedRule.sajdah),
+          ],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: TajweedText(ayah: duplicateSajdahAyah),
+        ),
+      ),
+    );
+
+    final richText = tester.widget<RichText>(find.byType(RichText).first);
+    final plain = (richText.text as TextSpan).toPlainText();
+    final sajdahCount = plain.runes.where((r) => r == 0x06E9).length;
+
+    expect(sajdahCount, 1);
+  });
 }
