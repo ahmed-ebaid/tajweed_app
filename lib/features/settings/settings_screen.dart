@@ -117,7 +117,6 @@ class SettingsScreen extends StatelessWidget {
       4: 'Abu Bakr al-Shatri',
       5: 'Hani ar-Rifai',
       6: 'Al-Husary',
-      7: 'Mishari Alafasy',
       8: 'Al-Minshawi (Mujawwad)',
       9: 'Al-Minshawi (Murattal)',
       10: 'Sa`ud ash-Shuraym',
