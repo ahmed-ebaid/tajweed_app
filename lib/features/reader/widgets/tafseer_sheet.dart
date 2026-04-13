@@ -82,6 +82,12 @@ class _TafseerSheetState extends State<TafseerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = _TafseerSheetStrings.of(context);
+    final strippedText = _stripHtml(_text ?? '');
+    final showEmptyState = !_loading && _error == null && strippedText.isEmpty;
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final isRtl = localeCode == 'ar' || localeCode == 'ur';
+
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       maxChildSize: 0.9,
@@ -104,11 +110,18 @@ class _TafseerSheetState extends State<TafseerSheet> {
                 const Icon(Icons.menu_book_rounded,
                     color: Color(0xFF1D9E75), size: 22),
                 const SizedBox(width: 8),
-                Text(
-                  'Tafseer — Ayah ${widget.verseKey}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                Expanded(
+                  child: Text(
+                    strings.text('title', {'verseKey': widget.verseKey}),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: strings.text('close'),
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
                 ),
               ],
             ),
@@ -122,16 +135,28 @@ class _TafseerSheetState extends State<TafseerSheet> {
                         child: Padding(
                           padding: const EdgeInsets.all(24),
                           child: Text(
-                            'Could not load tafseer.\n$_error',
+                            strings.text('load_failed', {'error': _error ?? ''}),
                             textAlign: TextAlign.center,
                           ),
                         ),
                       )
+                    : showEmptyState
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                strings.text('empty', {'tafsirId': '${widget.tafsirId}'}),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
                     : SingleChildScrollView(
                         controller: controller,
                         padding: const EdgeInsets.all(16),
                         child: SelectableText(
-                          _stripHtml(_text ?? ''),
+                          strippedText,
+                          textDirection:
+                              isRtl ? TextDirection.rtl : TextDirection.ltr,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 height: 1.8,
                                 fontSize: 22,
@@ -155,5 +180,75 @@ class _TafseerSheetState extends State<TafseerSheet> {
         .replaceAll('&gt;', '>')
         .replaceAll('&quot;', '"')
         .trim();
+  }
+}
+
+
+class _TafseerSheetStrings {
+  final String _languageCode;
+
+  const _TafseerSheetStrings._(this._languageCode);
+
+  factory _TafseerSheetStrings.of(BuildContext context) {
+    return _TafseerSheetStrings._(Localizations.localeOf(context).languageCode);
+  }
+
+  static const Map<String, Map<String, String>> _localized = {
+    'en': {
+      'title': 'Tafseer — Ayah {verseKey}',
+      'close': 'Close',
+      'load_failed': 'Could not load tafseer.\n{error}',
+      'empty': 'No tafseer text was returned for this ayah with source ID {tafsirId}.',
+    },
+    'ar': {
+      'title': 'التفسير — الآية {verseKey}',
+      'close': 'إغلاق',
+      'load_failed': 'تعذر تحميل التفسير.\n{error}',
+      'empty': 'لم يتم إرجاع نص تفسير لهذه الآية باستخدام مصدر التفسير {tafsirId}.',
+    },
+    'ur': {
+      'title': 'تفسیر — آیت {verseKey}',
+      'close': 'بند کریں',
+      'load_failed': 'تفسیر لوڈ نہ ہو سکی۔\n{error}',
+      'empty': 'اس آیت کے لیے تفسیر کے ماخذ {tafsirId} سے کوئی متن واپس نہیں آیا۔',
+    },
+    'tr': {
+      'title': 'Tefsir — Ayet {verseKey}',
+      'close': 'Kapat',
+      'load_failed': 'Tefsir yüklenemedi.\n{error}',
+      'empty': 'Bu ayet için {tafsirId} kaynak kimliğiyle tefsir metni döndürülmedi.',
+    },
+    'fr': {
+      'title': 'Tafsir — Ayah {verseKey}',
+      'close': 'Fermer',
+      'load_failed': 'Impossible de charger le tafsir.\n{error}',
+      'empty': 'Aucun texte de tafsir n’a été renvoyé pour cette ayah avec la source {tafsirId}.',
+    },
+    'id': {
+      'title': 'Tafsir — Ayat {verseKey}',
+      'close': 'Tutup',
+      'load_failed': 'Tidak dapat memuat tafsir.\n{error}',
+      'empty': 'Tidak ada teks tafsir yang dikembalikan untuk ayat ini dengan sumber ID {tafsirId}.',
+    },
+    'de': {
+      'title': 'Tafsir — Ayah {verseKey}',
+      'close': 'Schließen',
+      'load_failed': 'Tafsir konnte nicht geladen werden.\n{error}',
+      'empty': 'Für diese Ayah wurde mit der Quellen-ID {tafsirId} kein Tafsir-Text zurückgegeben.',
+    },
+    'es': {
+      'title': 'Tafsir — Aleya {verseKey}',
+      'close': 'Cerrar',
+      'load_failed': 'No se pudo cargar el tafsir.\n{error}',
+      'empty': 'No se devolvió texto de tafsir para esta aleya con la fuente {tafsirId}.',
+    },
+  };
+
+  String text(String key, [Map<String, String> replacements = const {}]) {
+    var value = _localized[_languageCode]?[key] ?? _localized['en']![key] ?? key;
+    replacements.forEach((placeholder, replacement) {
+      value = value.replaceAll('{$placeholder}', replacement);
+    });
+    return value;
   }
 }

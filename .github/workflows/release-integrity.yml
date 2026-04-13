@@ -1,0 +1,36 @@
+name: Release Integrity Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  quran-integrity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run ayah mapper regression tests
+        run: flutter test test/unit/ayah_mapper_test.dart
+
+      - name: Verify sajdah first-word integrity from API
+        run: node tool/check_sajdah_ayahs.js

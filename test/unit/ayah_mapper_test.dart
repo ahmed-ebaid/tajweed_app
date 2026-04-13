@@ -482,4 +482,95 @@ void main() {
       reason: 'The remaining sajdah glyph should remain annotated.',
     );
   });
+
+  test('does not drop first word on sajdah end-token marker (16:50)', () {
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '16:50',
+      'page_number': 272,
+      'text_uthmani': 'يَخَافُونَ رَبَّهُم مِّن فَوْقِهِمْ',
+      'words': [
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'يَخَافُونَ',
+          'text_uthmani_tajweed': 'يَخَافُونَ',
+        },
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'رَبَّهُم',
+          'text_uthmani_tajweed': 'رَبَّهُم',
+        },
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'مِّن',
+          'text_uthmani_tajweed': 'مِّن',
+        },
+        {
+          'char_type_name': 'end',
+          'text': '٥٠',
+          'text_uthmani': '٥٠',
+          'text_uthmani_tajweed': '۩',
+        },
+      ],
+    });
+
+    expect(ayah.words, isNotEmpty);
+    expect(ayah.words.first.arabic, 'يَخَافُونَ',
+        reason:
+            'Sajdah end-token markers must not trigger shift-fix and hide the first word.');
+  });
+
+  test('all sajdah ayahs preserve first word with sajdah end marker payload',
+      () {
+    const sajdahKeys = [
+      '7:206',
+      '13:15',
+      '16:50',
+      '17:109',
+      '19:58',
+      '22:18',
+      '22:77',
+      '25:60',
+      '27:26',
+      '32:15',
+      '38:24',
+      '41:38',
+      '53:62',
+      '84:21',
+      '96:19',
+    ];
+
+    for (final key in sajdahKeys) {
+      final firstWord = 'WORD_${key.replaceAll(':', '_')}';
+      final ayah = AyahMapper.fromApi({
+        'verse_key': key,
+        'page_number': 1,
+        'text_uthmani': '$firstWord باقي',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': firstWord,
+            'text_uthmani_tajweed': firstWord,
+          },
+          {
+            'char_type_name': 'word',
+            'text_uthmani': 'باقي',
+            'text_uthmani_tajweed': 'باقي',
+          },
+          {
+            'char_type_name': 'end',
+            'text': '١',
+            'text_uthmani': '١',
+            // Simulates sajdah marker-based end token payload pattern.
+            'text_uthmani_tajweed': '۩',
+          },
+        ],
+      });
+
+      expect(
+        ayah.words.first.arabic,
+        firstWord,
+        reason: 'First word must remain intact for sajdah ayah $key',
+      );
+    }
+  });
 }

@@ -189,8 +189,19 @@ class Ayah {
     this.tajweedSegments = const [],
   });
 
-  String translation(String langCode) =>
-      translations[langCode] ?? translations['en'] ?? '';
+  String translation(String langCode) {
+    final localized = translations[langCode]?.trim();
+    if (localized != null && localized.isNotEmpty) {
+      return localized;
+    }
+
+    final english = translations['en']?.trim();
+    if (english != null && english.isNotEmpty) {
+      return english;
+    }
+
+    return '';
+  }
 }
 
 // ─── Tajweed Rule definition (for the rules library) ─────────────────────────
