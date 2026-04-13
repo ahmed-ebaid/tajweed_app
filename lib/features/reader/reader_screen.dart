@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
@@ -38,9 +37,12 @@ class ReaderScreen extends StatefulWidget {
 
 enum _ReaderViewMode { page, ayah }
 
+enum _AyahContentMode { arabicOnly, arabicWithTranslation }
+
 class _ReaderScreenState extends State<ReaderScreen>
     with WidgetsBindingObserver {
   static const String _readerViewModeKey = 'reader_view_mode';
+  static const String _ayahContentModeKey = 'ayah_content_mode';
 
   final _api = QuranApiService();
   final _audio = AudioService();
@@ -60,7 +62,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   int _selectedSurah = 1;
   bool _tajweedEnabled = true;
-  final bool _showTranslation = true;
+  _AyahContentMode _ayahContentMode = _AyahContentMode.arabicWithTranslation;
   _ReaderViewMode _viewMode = _ReaderViewMode.ayah;
   List<Ayah> _ayahs = [];
   bool _loading = true;
@@ -112,6 +114,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _isProgrammaticScroll = false;
   int _scrollToAyahRequestId = 0;
   bool _didInitialReopenRestore = false;
+  String? _lastLoadedLanguageCode;
+  bool _forceRefreshNextSurahLoad = false;
   int? _lastKnownVisibleAyah;
   int _suppressAutoSaveUntilMs = 0;
   int? _startupRestoreTargetAyah;
@@ -122,13 +126,66 @@ class _ReaderScreenState extends State<ReaderScreen>
   final Map<int, GlobalKey> _ayahKeys = {};
   ReaderNavigationProvider? _readerNavigationProvider;
 
+  static String _surahListCacheKey(String langCode) =>
+      'reader_surah_list_$langCode';
+
+  List<Map<String, dynamic>> _fallbackSurahList() {
+    return List<Map<String, dynamic>>.generate(
+      114,
+      (index) {
+        final id = index + 1;
+        return {
+          'id': id,
+          'name_simple': 'Surah $id',
+          'name_arabic': 'سورة $id',
+        };
+      },
+      growable: false,
+    );
+  }
+
+  List<Map<String, dynamic>> _surahsForSelector() {
+    return _allSurahs.isNotEmpty ? _allSurahs : _fallbackSurahList();
+  }
+
+  Future<List<Map<String, dynamic>>?> _loadCachedSurahList(String langCode) async {
+    try {
+      final box = Hive.box('settings');
+      final raw = box.get(_surahListCacheKey(langCode));
+      if (raw is List) {
+        final cached = raw
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false);
+        if (cached.isNotEmpty) {
+          return cached;
+        }
+      }
+    } catch (_) {
+      // Ignore cache failures and continue with fallback behavior.
+    }
+    return null;
+  }
+
+  Future<void> _saveCachedSurahList(
+    String langCode,
+    List<Map<String, dynamic>> surahs,
+  ) async {
+    try {
+      final box = Hive.box('settings');
+      await box.put(_surahListCacheKey(langCode), surahs);
+    } catch (_) {
+      // Ignore cache persistence failures.
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _lockPortraitForReader();
 
     _loadSavedReaderViewMode();
+    _loadSavedAyahContentMode();
 
     // Restore last read position
     final bookmarks = context.read<BookmarkProvider>();
@@ -244,6 +301,22 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
+  void _loadSavedAyahContentMode() {
+    try {
+      final box = Hive.box('settings');
+      final saved = box.get(
+        _ayahContentModeKey,
+        defaultValue: _AyahContentMode.arabicWithTranslation.name,
+      ) as String;
+      _ayahContentMode = _AyahContentMode.values.firstWhere(
+        (mode) => mode.name == saved,
+        orElse: () => _AyahContentMode.arabicWithTranslation,
+      );
+    } catch (_) {
+      _ayahContentMode = _AyahContentMode.arabicWithTranslation;
+    }
+  }
+
   void _initializeMushafPages() {
     _mushafPagesError = null;
     _isMushafDownloading = true;
@@ -283,6 +356,48 @@ class _ReaderScreenState extends State<ReaderScreen>
       unawaited(box.put(_readerViewModeKey, mode.name));
     } catch (_) {
       // Ignore persistence failures and keep runtime state.
+    }
+  }
+
+  void _persistAyahContentMode(_AyahContentMode mode) {
+    try {
+      final box = Hive.box('settings');
+      unawaited(box.put(_ayahContentModeKey, mode.name));
+    } catch (_) {
+      // Ignore persistence failures and keep runtime state.
+    }
+  }
+
+  void _cycleAyahContentMode() {
+    final nextIndex = (_ayahContentMode.index + 1) %
+        _AyahContentMode.values.length;
+    final nextMode = _AyahContentMode.values[nextIndex];
+    setState(() {
+      _ayahContentMode = nextMode;
+    });
+    _persistAyahContentMode(nextMode);
+  }
+
+    bool get _showsArabicText => true;
+
+  bool get _showsTranslationText =>
+      _ayahContentMode == _AyahContentMode.arabicWithTranslation;
+
+  String get _ayahContentModeTooltip {
+    switch (_ayahContentMode) {
+      case _AyahContentMode.arabicOnly:
+        return 'Reading mode: Arabic only';
+      case _AyahContentMode.arabicWithTranslation:
+        return 'Reading mode: Arabic and translation';
+    }
+  }
+
+  IconData get _ayahContentModeIcon {
+    switch (_ayahContentMode) {
+      case _AyahContentMode.arabicOnly:
+        return Icons.auto_stories_outlined;
+      case _AyahContentMode.arabicWithTranslation:
+        return Icons.translate_rounded;
     }
   }
 
@@ -466,11 +581,56 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   Future<void> _initData() async {
     final langCode = context.read<LocaleProvider>().locale.languageCode;
+    _lastLoadedLanguageCode = langCode;
+    final cachedSurahs = await _loadCachedSurahList(langCode);
+    if (mounted && cachedSurahs != null) {
+      setState(() => _allSurahs = cachedSurahs);
+    }
     try {
       final surahs = await _api.fetchSurahList(langCode: langCode);
       if (mounted) setState(() => _allSurahs = surahs);
+      await _saveCachedSurahList(langCode, surahs);
     } catch (_) {}
     _loadSurah();
+  }
+
+  Future<void> _handleLocaleChange(String langCode) async {
+    if (!mounted || _lastLoadedLanguageCode == langCode) return;
+
+    final anchorAyah = _viewMode == _ReaderViewMode.ayah
+        ? (_findTopVisibleAyahNumber() ??
+            _playingAyahNumber ??
+            _lastKnownVisibleAyah ??
+            1)
+        : _currentMushafAnchorAyah();
+
+    _lastLoadedLanguageCode = langCode;
+    _forceRefreshNextSurahLoad = true;
+    _pendingScrollAyah = anchorAyah;
+    _pendingScrollOffset = 0.0;
+    _didInitialReopenRestore = true;
+
+    try {
+      final surahs = await _api.fetchSurahList(langCode: langCode);
+      if (mounted) {
+        setState(() {
+          _allSurahs = surahs;
+        });
+      }
+      await _saveCachedSurahList(langCode, surahs);
+    } catch (_) {
+      // Fall back to cached surah metadata when offline.
+      final cachedSurahs = await _loadCachedSurahList(langCode);
+      if (mounted && cachedSurahs != null && cachedSurahs.isNotEmpty) {
+        setState(() {
+          _allSurahs = cachedSurahs;
+        });
+      }
+    }
+
+    if (mounted) {
+      _loadSurah();
+    }
   }
 
   @override
@@ -481,7 +641,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     // Save position one final time before closing
     _saveScrollPosition();
     WidgetsBinding.instance.removeObserver(this);
-    _restoreAppOrientations();
     _playerStateSub?.cancel();
     _positionSub?.cancel();
     _readerNavigationProvider?.removeListener(_handleExternalReaderNavigation);
@@ -500,27 +659,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
-  void _lockPortraitForReader() {
-    unawaited(
-      SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-      ]),
-    );
-  }
-
-  void _restoreAppOrientations() {
-    unawaited(
-      SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]),
-    );
-  }
-
-  Future<void> _loadSurah() async {
+  Future<void> _loadSurah({bool allowFallback = true}) async {
     final loadVersion = ++_surahLoadVersion;
+    final langCode = context.read<LocaleProvider>().locale.languageCode;
     setState(() {
       _loading = true;
       _ayahs = [];
@@ -536,8 +677,14 @@ class _ReaderScreenState extends State<ReaderScreen>
           await _quranOfflineSync.getCachedSurah(_selectedSurah);
       final allVerses = <Map<String, dynamic>>[];
       Map<String, String> tajweedMap = <String, String>{};
+        final forceRefresh = _forceRefreshNextSurahLoad;
+      final needsLocalizedRefresh =
+          !_cacheHasTranslationForLanguage(cachedVerses, langCode);
 
-      if (cachedVerses != null && cachedVerses.isNotEmpty) {
+        if (cachedVerses != null &&
+          cachedVerses.isNotEmpty &&
+          !needsLocalizedRefresh &&
+          !forceRefresh) {
         allVerses.addAll(cachedVerses);
         tajweedMap =
             await _quranOfflineSync.getCachedTajweedMap(_selectedSurah);
@@ -546,7 +693,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         while (true) {
           final verses = await _api.fetchVerses(
             surahNumber: _selectedSurah,
-            langCode: 'ar',
+            langCode: langCode,
             reciterId: reciterId,
             page: page,
           );
@@ -587,7 +734,11 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (mounted && loadVersion == _surahLoadVersion) {
         setState(() {
           _loading = false;
-          _ayahs = AyahMapper.fromApiList(allVerses, tajweedMap: tajweedMap);
+          _ayahs = AyahMapper.fromApiList(
+            allVerses,
+            tajweedMap: tajweedMap,
+            requestedLangCode: langCode,
+          );
           _audioUrls = audioMap;
           _activeWordIndex = -1;
           _currentMushafPageIndex = 0;
@@ -603,11 +754,12 @@ class _ReaderScreenState extends State<ReaderScreen>
           _restorePositionAfterSurahLoad();
         });
       }
+      _forceRefreshNextSurahLoad = false;
     } catch (e) {
       print('❌ ERROR IN LOAD SURAH: $e');
 
       final fallbackSurah = await _quranOfflineSync.getFirstCachedSurahNumber();
-      if (fallbackSurah != null && fallbackSurah != _selectedSurah) {
+      if (allowFallback && fallbackSurah != null && fallbackSurah != _selectedSurah) {
         final fallbackVerses =
             await _quranOfflineSync.getCachedSurah(fallbackSurah);
         if (fallbackVerses != null && fallbackVerses.isNotEmpty) {
@@ -620,6 +772,7 @@ class _ReaderScreenState extends State<ReaderScreen>
               _ayahs = AyahMapper.fromApiList(
                 fallbackVerses,
                 tajweedMap: fallbackTajweed,
+                requestedLangCode: langCode,
               );
               _audioUrls = {};
               _activeWordIndex = -1;
@@ -632,9 +785,36 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (mounted && loadVersion == _surahLoadVersion) {
         setState(() {
           _loading = false;
+          _ayahs = const [];
+          _audioUrls = {};
         });
       }
     }
+  }
+
+  bool _cacheHasTranslationForLanguage(
+    List<Map<String, dynamic>>? verses,
+    String langCode,
+  ) {
+    if (verses == null || verses.isEmpty) return false;
+    if (langCode == 'ar') return true;
+
+    for (final verse in verses) {
+      final rawTranslations = verse['translations'];
+      if (rawTranslations is! List) continue;
+      for (final translation in rawTranslations) {
+        if (translation is! Map) continue;
+        final map = Map<String, dynamic>.from(translation);
+        final resourceId = map['resource_id'];
+        final text = (map['text'] as String? ?? '').trim();
+        final translationLang = AyahMapper.langCodeFromResourceId(resourceId);
+        if (translationLang == langCode && text.isNotEmpty) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   void _applyReciterChange(int reciterId) {
@@ -1391,6 +1571,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   Future<bool> _downloadCurrentSurahTafseer() async {
     if (_ayahs.isEmpty || _isDownloadingSurahTafseer) return false;
 
+    final readerStrings = _ReaderStrings.of(context);
     final tafsirId = context.read<TafseerProvider>().selectedTafsirId;
     final progress = ValueNotifier<Map<String, int>>({'done': 0, 'total': 1});
 
@@ -1403,7 +1584,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
-          title: const Text('Downloading tafseer'),
+          title: Text(readerStrings.text('downloading_tafseer')),
           content: ValueListenableBuilder<Map<String, int>>(
             valueListenable: progress,
             builder: (_, value, __) {
@@ -1415,14 +1596,20 @@ class _ReaderScreenState extends State<ReaderScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Surah $_selectedSurah · Tafseer ID $tafsirId',
+                    readerStrings.text('surah_tafseer_status', {
+                      'surah': '$_selectedSurah',
+                      'id': '$tafsirId',
+                    }),
                     style:
                         const TextStyle(fontSize: 12, color: Color(0xFF6E6E6E)),
                   ),
                   const SizedBox(height: 12),
                   LinearProgressIndicator(value: ratio),
                   const SizedBox(height: 8),
-                  Text('Downloaded $done of $total ayahs'),
+                  Text(readerStrings.text('downloaded_of_ayahs', {
+                    'done': '$done',
+                    'total': '$total',
+                  })),
                 ],
               );
             },
@@ -1434,7 +1621,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     try {
       final keys = await _fetchCurrentSurahVerseKeysForTafseer();
       if (keys.isEmpty) {
-        throw Exception('No verses returned for this surah.');
+        throw Exception(readerStrings.text('no_verses_for_surah'));
       }
 
       final cached = await _quranOfflineSync.getCachedTafsirMap(
@@ -1474,7 +1661,9 @@ class _ReaderScreenState extends State<ReaderScreen>
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Surah $_selectedSurah tafseer downloaded.'),
+            content: Text(readerStrings.text('surah_tafseer_downloaded', {
+              'surah': '$_selectedSurah',
+            })),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -1485,7 +1674,9 @@ class _ReaderScreenState extends State<ReaderScreen>
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tafseer download failed: $e'),
+            content: Text(readerStrings.text('tafseer_download_failed', {
+              'error': '$e',
+            })),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -1709,9 +1900,17 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   Widget build(BuildContext context) {
-    final langCode = context.read<LocaleProvider>().locale.languageCode;
+    final langCode = context.watch<LocaleProvider>().locale.languageCode;
     final selectedReciterId =
         context.watch<RecitationProvider>().selectedReciterId;
+
+    if (_lastLoadedLanguageCode != null && langCode != _lastLoadedLanguageCode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _handleLocaleChange(langCode);
+        }
+      });
+    }
 
     if (selectedReciterId != _lastObservedReciterId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1729,13 +1928,13 @@ class _ReaderScreenState extends State<ReaderScreen>
           child: Align(
             alignment: AlignmentDirectional.centerStart,
             child: _SurahSelector(
-              surahs: _allSurahs,
+              surahs: _surahsForSelector(),
               selected: _selectedSurah,
               onBeforeOpen: () => _hideMushafScrubberOverlay(),
               onChanged: (v) {
                 _selectedSurah = v;
                 _stopAudio();
-                _loadSurah();
+                _loadSurah(allowFallback: false);
               },
             ),
           ),
@@ -1779,6 +1978,12 @@ class _ReaderScreenState extends State<ReaderScreen>
             onPressed: () => setState(() => _tajweedEnabled = !_tajweedEnabled),
           ),
           IconButton(
+            icon: Icon(_ayahContentModeIcon, size: 22),
+            tooltip: _ayahContentModeTooltip,
+            onPressed:
+                _viewMode == _ReaderViewMode.ayah ? _cycleAyahContentMode : null,
+          ),
+          IconButton(
             icon: const Icon(Icons.settings_outlined, size: 22),
             tooltip: 'Settings',
             onPressed: () => Navigator.of(context).push(
@@ -1790,11 +1995,13 @@ class _ReaderScreenState extends State<ReaderScreen>
       body: Column(
         children: [
           if (_viewMode == _ReaderViewMode.ayah) ...[
-            TajweedLegend(
-              rules: TajweedRule.values,
-              langCode: langCode,
-            ),
-            const Divider(height: 0.5),
+            if (_showsArabicText) ...[
+              TajweedLegend(
+                rules: TajweedRule.values,
+                langCode: langCode,
+              ),
+              const Divider(height: 0.5),
+            ],
             // DEBUG: Show audio map status in ayah mode only
             Container(
               color: const Color(0xFFF5F5F5),
@@ -1828,15 +2035,26 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Widget _buildAyahList(String langCode, {required bool pageMode}) {
+    final showOpeningHeader =
+        !pageMode && _showsArabicText && _shouldShowOpeningSurahHeader();
+    final showOpeningBasmala = showOpeningHeader && _shouldShowOpeningBasmala();
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => _cancelProgrammaticAyahScroll(),
       child: ListView.builder(
         controller: _scrollController,
         padding: EdgeInsets.symmetric(vertical: pageMode ? 12 : 8),
-        itemCount: _ayahs.length,
+        itemCount: _ayahs.length + (showOpeningHeader ? 1 : 0),
         itemBuilder: (context, i) {
-        final ayah = _ayahs[i];
+        if (showOpeningHeader && i == 0) {
+          return _BasmalaOpener(
+            surahName: _surahArabicName(_selectedSurah),
+            showBasmala: showOpeningBasmala,
+          );
+        }
+
+        final ayahIndex = i - (showOpeningHeader ? 1 : 0);
+        final ayah = _ayahs[ayahIndex];
         final juzNumber = _juzBoundaries[ayah.ayahNumber];
         final isPlaying = _playingAyahNumber == ayah.ayahNumber;
         final isBookmarked = context
@@ -1847,7 +2065,7 @@ class _ReaderScreenState extends State<ReaderScreen>
           key: _ayahKeys[ayah.ayahNumber],
           children: [
             if (juzNumber != null) _JuzMarker(juzNumber: juzNumber),
-            if (!pageMode && i > 0 && juzNumber == null)
+            if (!pageMode && ayahIndex > 0 && juzNumber == null)
               const Divider(height: 0.5, indent: 16),
             if (pageMode)
               _PageAyahLine(
@@ -1864,7 +2082,8 @@ class _ReaderScreenState extends State<ReaderScreen>
               _AyahTile(
                 ayah: ayah,
                 tajweedEnabled: _tajweedEnabled,
-                showTranslation: _showTranslation,
+                showArabic: _showsArabicText,
+                showTranslation: _showsTranslationText,
                 langCode: langCode,
                 isPlaying: isPlaying,
                 activeWordIndex: isPlaying ? _activeWordIndex : -1,
@@ -1879,6 +2098,16 @@ class _ReaderScreenState extends State<ReaderScreen>
         },
       ),
     );
+  }
+
+  bool _shouldShowOpeningSurahHeader() {
+    if (_selectedSurah <= 0 || _selectedSurah > 114) return false;
+    if (_ayahs.isEmpty) return false;
+    return _ayahs.first.surahNumber == _selectedSurah;
+  }
+
+  bool _shouldShowOpeningBasmala() {
+    return _shouldShowOpeningSurahHeader() && _selectedSurah != 9;
   }
 
   Future<void> _toggleReaderViewMode() async {
@@ -2407,6 +2636,8 @@ class _ReaderScreenState extends State<ReaderScreen>
             onPageChanged: _handleMushafPageChanged,
             itemBuilder: (context, index) {
               final pageNumber = index + 1;
+              final isLandscape =
+                  MediaQuery.of(context).orientation == Orientation.landscape;
               final pageSurah =
                   _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
               final surahName = _surahArabicName(pageSurah);
@@ -2414,75 +2645,106 @@ class _ReaderScreenState extends State<ReaderScreen>
                   bookmarkProvider.isPageBookmarked(pageNumber);
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                padding: isLandscape
+                    ? EdgeInsets.zero
+                    : const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: _QuranPageBackground(
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _MushafHeaderChip(text: surahName),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 6),
-                              child: Text(
-                                '۞۞۞',
-                                style: TextStyle(
-                                  fontFamily: 'UthmanicHafs',
-                                  fontSize: 18,
-                                  color: Color(0xFF946E2A),
+                      if (!isLandscape)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _MushafHeaderChip(text: surahName),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 6),
+                                child: Text(
+                                  '۞۞۞',
+                                  style: TextStyle(
+                                    fontFamily: 'UthmanicHafs',
+                                    fontSize: 18,
+                                    color: Color(0xFF946E2A),
+                                  ),
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (isPageBookmarked)
-                                    const Padding(
-                                      padding:
-                                          EdgeInsetsDirectional.only(end: 6),
-                                      child: Icon(
-                                        Icons.bookmark,
-                                        color: Color(0xFFB8860B),
-                                        size: 18,
+                              Expanded(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (isPageBookmarked)
+                                      const Padding(
+                                        padding:
+                                            EdgeInsetsDirectional.only(end: 6),
+                                        child: Icon(
+                                          Icons.bookmark,
+                                          color: Color(0xFFB8860B),
+                                          size: 18,
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: _MushafHeaderChip(
+                                        text: 'الصفحة $pageNumber',
                                       ),
                                     ),
-                                  Expanded(
-                                    child: _MushafHeaderChip(
-                                      text: 'الصفحة $pageNumber',
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
                       Expanded(
                         child: Container(
                           width: double.infinity,
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          margin: isLandscape
+                              ? EdgeInsets.zero
+                              : const EdgeInsets.symmetric(horizontal: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFBF9F4),
                             border: Border.all(
-                                color: const Color(0xFF8E7C58), width: 1.2),
+                                color: const Color(0xFF8E7C58),
+                                width: isLandscape ? 0.8 : 1.2),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
-                            child: Image.file(
-                              File(_getMushafPagePath(pageNumber)),
-                              fit: BoxFit.contain,
-                              filterQuality: FilterQuality.none,
-                              alignment: Alignment.center,
-                              isAntiAlias: false,
-                              errorBuilder: (_, __, ___) =>
-                                  _MissingLocalMushafPage(
-                                pageNumber: pageNumber,
-                              ),
-                            ),
+                            padding: isLandscape
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.fromLTRB(0, 2, 0, 2),
+                            child: isLandscape
+                                ? SingleChildScrollView(
+                                    physics: const BouncingScrollPhysics(),
+                                    child: Image.file(
+                                      File(_getMushafPagePath(pageNumber)),
+                                      width: MediaQuery.sizeOf(context).width,
+                                      fit: BoxFit.fitWidth,
+                                      filterQuality: FilterQuality.none,
+                                      alignment: Alignment.topCenter,
+                                      isAntiAlias: false,
+                                      errorBuilder: (_, __, ___) =>
+                                          _MissingLocalMushafPage(
+                                        pageNumber: pageNumber,
+                                      ),
+                                    ),
+                                  )
+                                : InteractiveViewer(
+                                    minScale: 1.0,
+                                    maxScale: 4.0,
+                                    boundaryMargin: const EdgeInsets.all(48),
+                                    panEnabled: true,
+                                    scaleEnabled: true,
+                                    child: Image.file(
+                                      File(_getMushafPagePath(pageNumber)),
+                                      fit: BoxFit.contain,
+                                      filterQuality: FilterQuality.none,
+                                      alignment: Alignment.center,
+                                      isAntiAlias: false,
+                                      errorBuilder: (_, __, ___) =>
+                                          _MissingLocalMushafPage(
+                                        pageNumber: pageNumber,
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -3049,6 +3311,7 @@ class _QuranPagePatternPainter extends CustomPainter {
 class _AyahTile extends StatelessWidget {
   final Ayah ayah;
   final bool tajweedEnabled;
+  final bool showArabic;
   final bool showTranslation;
   final String langCode;
   final bool isPlaying;
@@ -3063,6 +3326,7 @@ class _AyahTile extends StatelessWidget {
   const _AyahTile({
     required this.ayah,
     required this.tajweedEnabled,
+    required this.showArabic,
     required this.showTranslation,
     required this.langCode,
     required this.isPlaying,
@@ -3076,6 +3340,7 @@ class _AyahTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final readerStrings = _ReaderStrings.of(context);
     return GestureDetector(
       onDoubleTap: onDoubleTap,
       onLongPress: onBookmarkTap,
@@ -3097,7 +3362,7 @@ class _AyahTile extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.menu_book_outlined, size: 18),
                   color: const Color(0xFF888780),
-                  tooltip: 'Tafseer',
+                  tooltip: readerStrings.text('tafseer'),
                   onPressed: onTafseerTap,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -3111,21 +3376,26 @@ class _AyahTile extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            TajweedText(
-              ayah: ayah,
-              fontSize: 32,
-              highlightEnabled: tajweedEnabled,
-              highlightedWordIndex: activeWordIndex,
-              suppressedRules: const {TajweedRule.izhar},
-              onRuleTapped: (rule, word, wordAudioUrl) =>
-                  onWordTapped(rule, word, ayah, wordAudioUrl: wordAudioUrl),
-            ),
+            if (showArabic)
+              TajweedText(
+                ayah: ayah,
+                fontSize: 32,
+                highlightEnabled: tajweedEnabled,
+                highlightedWordIndex: activeWordIndex,
+                suppressedRules: const {TajweedRule.izhar},
+                onRuleTapped: (rule, word, wordAudioUrl) =>
+                    onWordTapped(rule, word, ayah, wordAudioUrl: wordAudioUrl),
+              ),
             if (showTranslation) ...[
               const SizedBox(height: 8),
               Text(
                 ayah.translation(langCode),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontStyle: FontStyle.italic,
+                      fontSize:
+                          (Theme.of(context).textTheme.bodySmall?.fontSize ??
+                                  12) +
+                              2,
                       height: 1.6,
                     ),
               ),
@@ -3134,6 +3404,161 @@ class _AyahTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _BasmalaOpener extends StatelessWidget {
+  static const String _bismillah = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+
+  final String surahName;
+  final bool showBasmala;
+
+  const _BasmalaOpener({
+    required this.surahName,
+    required this.showBasmala,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFF8E8), Color(0xFFF5E6C8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFD4A940), width: 0.8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                surahName,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.rtl,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: const Color(0xFF8B6B2A),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (showBasmala) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  _bismillah,
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontFamily: 'UthmanicHafs',
+                    fontSize: 28,
+                    height: 1.8,
+                    color: Color(0xFF3F3122),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReaderStrings {
+  final String _languageCode;
+
+  const _ReaderStrings._(this._languageCode);
+
+  factory _ReaderStrings.of(BuildContext context) {
+    return _ReaderStrings._(Localizations.localeOf(context).languageCode);
+  }
+
+  static const Map<String, Map<String, String>> _localized = {
+    'en': {
+      'tafseer': 'Tafseer',
+      'downloading_tafseer': 'Downloading tafseer',
+      'surah_tafseer_status': 'Surah {surah} · Tafseer ID {id}',
+      'downloaded_of_ayahs': 'Downloaded {done} of {total} ayahs',
+      'no_verses_for_surah': 'No verses returned for this surah.',
+      'surah_tafseer_downloaded': 'Surah {surah} tafseer downloaded.',
+      'tafseer_download_failed': 'Tafseer download failed: {error}',
+    },
+    'ar': {
+      'tafseer': 'التفسير',
+      'downloading_tafseer': 'جارٍ تنزيل التفسير',
+      'surah_tafseer_status': 'سورة {surah} · معرف التفسير {id}',
+      'downloaded_of_ayahs': 'تم تنزيل {done} من {total} آيات',
+      'no_verses_for_surah': 'لم يتم إرجاع آيات لهذه السورة.',
+      'surah_tafseer_downloaded': 'تم تنزيل تفسير السورة {surah}.',
+      'tafseer_download_failed': 'فشل تنزيل التفسير: {error}',
+    },
+    'ur': {
+      'tafseer': 'تفسیر',
+      'downloading_tafseer': 'تفسیر ڈاؤن لوڈ ہو رہی ہے',
+      'surah_tafseer_status': 'سورہ {surah} · تفسیر آئی ڈی {id}',
+      'downloaded_of_ayahs': '{total} میں سے {done} آیات ڈاؤن لوڈ ہوئیں',
+      'no_verses_for_surah': 'اس سورہ کے لیے کوئی آیات واپس نہیں آئیں۔',
+      'surah_tafseer_downloaded': 'سورہ {surah} کی تفسیر ڈاؤن لوڈ ہو گئی۔',
+      'tafseer_download_failed': 'تفسیر ڈاؤن لوڈ ناکام: {error}',
+    },
+    'tr': {
+      'tafseer': 'Tefsir',
+      'downloading_tafseer': 'Tefsir indiriliyor',
+      'surah_tafseer_status': 'Sure {surah} · Tefsir kimliği {id}',
+      'downloaded_of_ayahs': '{total} ayetin {done} tanesi indirildi',
+      'no_verses_for_surah': 'Bu sure için ayet döndürülmedi.',
+      'surah_tafseer_downloaded': '{surah}. sure için tefsir indirildi.',
+      'tafseer_download_failed': 'Tefsir indirme başarısız: {error}',
+    },
+    'fr': {
+      'tafseer': 'Tafsir',
+      'downloading_tafseer': 'Téléchargement du tafsir',
+      'surah_tafseer_status': 'Sourate {surah} · ID du tafsir {id}',
+      'downloaded_of_ayahs': '{done} ayats téléchargées sur {total}',
+      'no_verses_for_surah': 'Aucun verset renvoyé pour cette sourate.',
+      'surah_tafseer_downloaded': 'Tafsir de la sourate {surah} téléchargé.',
+      'tafseer_download_failed': 'Échec du téléchargement du tafsir : {error}',
+    },
+    'id': {
+      'tafseer': 'Tafsir',
+      'downloading_tafseer': 'Mengunduh tafsir',
+      'surah_tafseer_status': 'Surah {surah} · ID tafsir {id}',
+      'downloaded_of_ayahs': 'Mengunduh {done} dari {total} ayat',
+      'no_verses_for_surah': 'Tidak ada ayat yang dikembalikan untuk surah ini.',
+      'surah_tafseer_downloaded': 'Tafsir untuk surah {surah} berhasil diunduh.',
+      'tafseer_download_failed': 'Gagal mengunduh tafsir: {error}',
+    },
+    'de': {
+      'tafseer': 'Tafsir',
+      'downloading_tafseer': 'Tafsir wird heruntergeladen',
+      'surah_tafseer_status': 'Sura {surah} · Tafsir-ID {id}',
+      'downloaded_of_ayahs': '{done} von {total} Ayat heruntergeladen',
+      'no_verses_for_surah': 'Für diese Sura wurden keine Verse zurückgegeben.',
+      'surah_tafseer_downloaded': 'Tafsir für Sura {surah} heruntergeladen.',
+      'tafseer_download_failed': 'Herunterladen des Tafsir fehlgeschlagen: {error}',
+    },
+    'es': {
+      'tafseer': 'Tafsir',
+      'downloading_tafseer': 'Descargando tafsir',
+      'surah_tafseer_status': 'Sura {surah} · ID de tafsir {id}',
+      'downloaded_of_ayahs': '{done} de {total} ayat descargadas',
+      'no_verses_for_surah': 'No se devolvieron versículos para esta sura.',
+      'surah_tafseer_downloaded': 'Se descargó el tafsir de la sura {surah}.',
+      'tafseer_download_failed': 'Error al descargar el tafsir: {error}',
+    },
+  };
+
+  String text(String key, [Map<String, String> replacements = const {}]) {
+    var value = _localized[_languageCode]?[key] ?? _localized['en']![key] ?? key;
+    replacements.forEach((placeholder, replacement) {
+      value = value.replaceAll('{$placeholder}', replacement);
+    });
+    return value;
   }
 }
 

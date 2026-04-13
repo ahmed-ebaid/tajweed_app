@@ -31,7 +31,11 @@ class AyahMapper {
 
   /// Converts a single verse JSON object from the API into an [Ayah].
   /// Optionally accepts [tajweedHtml] from the uthmani_tajweed endpoint.
-  static Ayah fromApi(Map<String, dynamic> json, {String? tajweedHtml}) {
+  static Ayah fromApi(
+    Map<String, dynamic> json, {
+    String? tajweedHtml,
+    String? requestedLangCode,
+  }) {
     final verseKey = json['verse_key'] as String? ?? '1:1';
     final parts = verseKey.split(':');
     final surahNumber = int.tryParse(parts[0]) ?? 1;
@@ -55,11 +59,25 @@ class AyahMapper {
     for (final t in rawTranslations) {
       if (t is Map) {
         final map = Map<String, dynamic>.from(t);
-        final langCode = _langCodeFromResourceId(map['resource_id']);
+        final langCode = _langCodeFromResourceId(map['resource_id']) ??
+            _langCodeFromName(map['language_name']) ??
+            requestedLangCode;
         final text = _stripHtml(map['text'] as String? ?? '');
-        if (langCode != null) {
+        if (langCode != null && text.isNotEmpty) {
           translations[langCode] = text;
         }
+      }
+    }
+
+    // Some Quran.com verse payloads omit verse-level `translations` but still
+    // provide per-word translation text. Build an English fallback to avoid
+    // rendering an empty translation line in ayah mode.
+    final fallbackLang = requestedLangCode ?? 'en';
+    if (translations[fallbackLang] == null ||
+        translations[fallbackLang]!.trim().isEmpty) {
+      final wordFallback = _buildWordTranslationFallback(json);
+      if (wordFallback.isNotEmpty) {
+        translations[fallbackLang] = wordFallback;
       }
     }
 
@@ -146,11 +164,20 @@ class AyahMapper {
   static List<Ayah> fromApiList(
     List<Map<String, dynamic>> verses, {
     Map<String, String>? tajweedMap,
+    String? requestedLangCode,
   }) {
     return verses.map((v) {
       final key = v['verse_key'] as String? ?? '';
-      return fromApi(v, tajweedHtml: tajweedMap?[key]);
+      return fromApi(
+        v,
+        tajweedHtml: tajweedMap?[key],
+        requestedLangCode: requestedLangCode,
+      );
     }).toList();
+  }
+
+  static String? langCodeFromResourceId(dynamic resourceId) {
+    return _langCodeFromResourceId(resourceId);
   }
 
   // Quran.com sometimes shifts word-level `text_uthmani_tajweed` into the next
@@ -182,6 +209,15 @@ class AyahMapper {
         .trim();
     final endTajweed =
         (endToken['text_uthmani_tajweed'] as String? ?? '').trim();
+
+    // Sajdah/rub-el-hizb markers can legitimately appear on the end token and
+    // make `endTajweed != endText` even when there is no shifted payload.
+    // In that case, do not realign words or we risk dropping the first word.
+    if (endTajweed.contains(_sajdahGlyph) ||
+        endTajweed.contains(_canonicalMarkerGlyph) ||
+        endTajweed.contains('۝')) {
+      return words;
+    }
 
     // Case 1 (clean): tajweed equals glyph text, no correction needed.
     if (endText.isEmpty || endTajweed.isEmpty || endTajweed == endText) {
@@ -255,6 +291,27 @@ class AyahMapper {
         arabic: textForDisplay,
         spans: spans,
         audioUrl: w['audio_url'] as String?);
+  }
+
+  static String _buildWordTranslationFallback(Map<String, dynamic> json) {
+    final rawWords = json['words'] as List<dynamic>? ?? const [];
+    final chunks = <String>[];
+
+    for (final rawWord in rawWords) {
+      if (rawWord is! Map) continue;
+      final word = Map<String, dynamic>.from(rawWord);
+      if ((word['char_type_name'] as String?) == 'end') continue;
+
+      final translationRaw = word['translation'];
+      if (translationRaw is! Map) continue;
+      final translation = Map<String, dynamic>.from(translationRaw);
+      final text = _stripHtml((translation['text'] as String? ?? '').trim());
+      if (text.isNotEmpty) {
+        chunks.add(text);
+      }
+    }
+
+    return chunks.join(' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   static List<TajweedSpan> _parseRuleTagTajweed(
@@ -529,8 +586,22 @@ class AyahMapper {
       case 27:
         return 'de';
       default:
-        return 'en';
+        return null;
     }
+  }
+
+  static String? _langCodeFromName(dynamic languageName) {
+    final name = (languageName as String? ?? '').toLowerCase().trim();
+    if (name.isEmpty) return null;
+    if (name.contains('arab')) return 'ar';
+    if (name.contains('urdu')) return 'ur';
+    if (name.contains('turk')) return 'tr';
+    if (name.contains('french') || name.contains('fran')) return 'fr';
+    if (name.contains('indones')) return 'id';
+    if (name.contains('german') || name.contains('deutsch')) return 'de';
+    if (name.contains('span')) return 'es';
+    if (name.contains('english')) return 'en';
+    return null;
   }
 
   /// Strips HTML tags from translation text.

@@ -157,6 +157,27 @@ Input JSON can be either:
 - `{ "verses": [ ... ] }`
 - per-surah map like `{ "1": [ ... ], "2": [ ... ] }`
 
+### 7. Release integrity gate (required)
+Before every release candidate, run both checks below:
+
+```bash
+flutter test test/unit/ayah_mapper_test.dart
+node tool/check_sajdah_ayahs.js
+```
+
+Expected output includes:
+
+```text
+ALL_SAJDAH_FIRST_WORDS_PRESENT
+```
+
+These checks guard against regressions where ayah word mapping can hide the
+first word (especially on sajdah-marker ayahs like `16:50`).
+
+CI enforcement:
+- GitHub Actions workflow: `.github/workflows/release-integrity.yml`
+- It runs on push/PR and can also be triggered manually (`workflow_dispatch`).
+
 ---
 
 ## Key architecture decisions
