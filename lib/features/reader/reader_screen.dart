@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/bookmark_provider.dart';
 import '../../core/providers/daily_lesson_provider.dart';
@@ -100,6 +101,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   // Juz boundaries: ayahNumber → juz number (only for first ayah of each juz in this surah)
   Map<int, int> _juzBoundaries = {};
+  Map<int, List<_JuzRange>> _juzRangesBySurah = {};
 
   // Target scroll offset to restore after loading a surah (used only for
   // in-session reciter-change reloads where the pixel offset is still valid).
@@ -128,6 +130,19 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   static String _surahListCacheKey(String langCode) =>
       'reader_surah_list_$langCode';
+
+  static String _toArabicIndicDigits(int value) {
+    const arabicIndic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    final digits = value.toString().split('');
+    return digits.map((d) => arabicIndic[int.parse(d)]).join();
+  }
+
+  static String _localizedDigits(int value, String languageCode) {
+    if (languageCode == 'ar' || languageCode == 'ur') {
+      return _toArabicIndicDigits(value);
+    }
+    return value.toString();
+  }
 
   List<Map<String, dynamic>> _fallbackSurahList() {
     return List<Map<String, dynamic>>.generate(
@@ -839,6 +854,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     try {
       final juzs = await _api.fetchJuzList();
       final boundaries = <int, int>{};
+      final rangesBySurah = <int, List<_JuzRange>>{};
       final surahStr = _selectedSurah.toString();
       for (final j in juzs) {
         final juzNum = j['juz_number'] as int;
@@ -846,6 +862,27 @@ class _ReaderScreenState extends State<ReaderScreen>
         final mapping = mappingRaw is Map
             ? Map<String, dynamic>.from(mappingRaw)
             : <String, dynamic>{};
+        for (final entry in mapping.entries) {
+          final surah = int.tryParse(entry.key);
+          final range = entry.value as String?;
+          if (surah == null || range == null || range.isEmpty) continue;
+          final parts = range.split('-');
+          final startAyah = int.tryParse(parts.first) ?? 0;
+          final endAyah = parts.length > 1
+              ? (int.tryParse(parts.last) ?? startAyah)
+              : startAyah;
+          if (startAyah <= 0 || endAyah <= 0) continue;
+
+          rangesBySurah
+              .putIfAbsent(surah, () => <_JuzRange>[])
+              .add(
+                _JuzRange(
+                  juzNumber: juzNum,
+                  startAyah: startAyah,
+                  endAyah: endAyah,
+                ),
+              );
+        }
         if (mapping.containsKey(surahStr)) {
           final range = mapping[surahStr] as String;
           final startAyah = int.tryParse(range.split('-').first) ?? 0;
@@ -860,7 +897,15 @@ class _ReaderScreenState extends State<ReaderScreen>
           }
         }
       }
-      if (mounted) setState(() => _juzBoundaries = boundaries);
+      for (final list in rangesBySurah.values) {
+        list.sort((a, b) => a.startAyah.compareTo(b.startAyah));
+      }
+      if (mounted) {
+        setState(() {
+          _juzBoundaries = boundaries;
+          _juzRangesBySurah = rangesBySurah;
+        });
+      }
       return boundaries;
     } catch (_) {
       return {};
@@ -1719,14 +1764,15 @@ class _ReaderScreenState extends State<ReaderScreen>
   // ─── Bookmarks ────────────────────────────────────────────────────────────
 
   void _toggleBookmark(Ayah ayah) {
+    final l10n = AppLocalizations.of(context);
     final bm = context.read<BookmarkProvider>();
     if (bm.isBookmarked(ayah.surahNumber, ayah.ayahNumber)) {
       bm.removeBookmark(ayah.surahNumber, ayah.ayahNumber);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Bookmark removed'),
-              duration: Duration(seconds: 1)),
+          SnackBar(
+              content: Text(l10n.get('bookmark_removed')),
+              duration: const Duration(seconds: 1)),
         );
       }
     } else {
@@ -1745,23 +1791,25 @@ class _ReaderScreenState extends State<ReaderScreen>
           label: label, scrollOffset: scrollOffset);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Bookmark added'), duration: Duration(seconds: 1)),
+          SnackBar(
+              content: Text(l10n.get('bookmark_added')),
+              duration: const Duration(seconds: 1)),
         );
       }
     }
   }
 
   void _togglePageBookmark() {
+    final l10n = AppLocalizations.of(context);
     final bm = context.read<BookmarkProvider>();
     final pageNumber = _currentMushafPageIndex + 1;
     if (bm.isPageBookmarked(pageNumber)) {
       bm.removePageBookmark(pageNumber);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Page bookmark removed'),
-            duration: Duration(seconds: 1),
+          SnackBar(
+            content: Text(l10n.get('page_bookmark_removed')),
+            duration: const Duration(seconds: 1),
           ),
         );
       }
@@ -1779,9 +1827,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Page bookmark added'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text(l10n.get('page_bookmark_added')),
+          duration: const Duration(seconds: 1),
         ),
       );
     }
@@ -1900,6 +1948,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final langCode = context.watch<LocaleProvider>().locale.languageCode;
     final selectedReciterId =
         context.watch<RecitationProvider>().selectedReciterId;
@@ -1930,9 +1979,19 @@ class _ReaderScreenState extends State<ReaderScreen>
             child: _SurahSelector(
               surahs: _surahsForSelector(),
               selected: _selectedSurah,
+              juzStarts: _juzStartReferences(),
               onBeforeOpen: () => _hideMushafScrubberOverlay(),
-              onChanged: (v) {
-                _selectedSurah = v;
+              onChanged: (surah, {ayah}) {
+                _selectedSurah = surah;
+                if (ayah != null) {
+                  _pendingScrollAyah = ayah;
+                  _pendingScrollOffset = 0.0;
+                  unawaited(context.read<BookmarkProvider>().saveLastRead(
+                        surah,
+                        ayah,
+                        caller: '[surah-picker/juz-jump]',
+                      ));
+                }
                 _stopAudio();
                 _loadSurah(allowFallback: false);
               },
@@ -1948,14 +2007,14 @@ class _ReaderScreenState extends State<ReaderScreen>
               size: 22,
             ),
             tooltip: _viewMode == _ReaderViewMode.page
-                ? 'Switch to Ayah view'
-                : 'Switch to Page view',
+                ? l10n.get('switch_to_ayah_view')
+                : l10n.get('switch_to_page_view'),
             onPressed: _toggleReaderViewMode,
           ),
           // Bookmarks
           IconButton(
             icon: const Icon(Icons.bookmark_border_rounded, size: 22),
-            tooltip: 'Bookmarks',
+            tooltip: l10n.get('bookmarks'),
             onPressed: _showBookmarksList,
           ),
           // Play all toggle
@@ -1967,14 +2026,14 @@ class _ReaderScreenState extends State<ReaderScreen>
               size: 22,
             ),
             color: _isPlayingAll ? Colors.red : const Color(0xFF1D9E75),
-            tooltip: _isPlayingAll ? 'Stop' : 'Play All',
+            tooltip: _isPlayingAll ? l10n.get('stop') : l10n.get('play_all'),
             onPressed: _ayahs.isNotEmpty ? _togglePlayAll : null,
           ),
           IconButton(
             icon:
                 Icon(_tajweedEnabled ? Icons.palette : Icons.palette_outlined),
             color: _tajweedEnabled ? const Color(0xFF1D9E75) : null,
-            tooltip: 'Tajweed colors',
+            tooltip: l10n.get('tajweed_colors'),
             onPressed: () => setState(() => _tajweedEnabled = !_tajweedEnabled),
           ),
           IconButton(
@@ -2038,24 +2097,38 @@ class _ReaderScreenState extends State<ReaderScreen>
     final showOpeningHeader =
         !pageMode && _showsArabicText && _shouldShowOpeningSurahHeader();
     final showOpeningBasmala = showOpeningHeader && _shouldShowOpeningBasmala();
+    final topJuzNumber = !pageMode ? _topJuzNumberForCurrentSurah() : null;
+    final showTopJuzMarker = !pageMode && topJuzNumber != null;
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => _cancelProgrammaticAyahScroll(),
       child: ListView.builder(
         controller: _scrollController,
         padding: EdgeInsets.symmetric(vertical: pageMode ? 12 : 8),
-        itemCount: _ayahs.length + (showOpeningHeader ? 1 : 0),
+        itemCount: _ayahs.length +
+            (showOpeningHeader ? 1 : 0) +
+            (showTopJuzMarker ? 1 : 0),
         itemBuilder: (context, i) {
-        if (showOpeningHeader && i == 0) {
+        if (showTopJuzMarker && i == 0) {
+          return _JuzMarker(juzNumber: topJuzNumber);
+        }
+
+        final openingHeaderIndex = showTopJuzMarker ? 1 : 0;
+        if (showOpeningHeader && i == openingHeaderIndex) {
           return _BasmalaOpener(
             surahName: _surahArabicName(_selectedSurah),
             showBasmala: showOpeningBasmala,
           );
         }
 
-        final ayahIndex = i - (showOpeningHeader ? 1 : 0);
+        final ayahIndex =
+            i - (showOpeningHeader ? 1 : 0) - (showTopJuzMarker ? 1 : 0);
         final ayah = _ayahs[ayahIndex];
         final juzNumber = _juzBoundaries[ayah.ayahNumber];
+        final showInlineJuzMarker = juzNumber != null &&
+            !(showTopJuzMarker &&
+                ayah.ayahNumber == 1 &&
+                juzNumber == topJuzNumber);
         final isPlaying = _playingAyahNumber == ayah.ayahNumber;
         final isBookmarked = context
             .watch<BookmarkProvider>()
@@ -2064,7 +2137,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         return Column(
           key: _ayahKeys[ayah.ayahNumber],
           children: [
-            if (juzNumber != null) _JuzMarker(juzNumber: juzNumber),
+            if (showInlineJuzMarker) _JuzMarker(juzNumber: juzNumber),
             if (!pageMode && ayahIndex > 0 && juzNumber == null)
               const Divider(height: 0.5, indent: 16),
             if (pageMode)
@@ -2108,6 +2181,45 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   bool _shouldShowOpeningBasmala() {
     return _shouldShowOpeningSurahHeader() && _selectedSurah != 9;
+  }
+
+  int? _topJuzNumberForCurrentSurah() {
+    // Only show a top-of-list Juz marker when the surah itself starts at a
+    // Juz boundary (ayah 1). Otherwise, show markers inline at true boundary
+    // ayahs (e.g. Al-Baqarah ayah 142 for Juz 2).
+    return _juzBoundaries[1];
+  }
+
+  int? _juzNumberForAyah(int surahNumber, int ayahNumber) {
+    final ranges = _juzRangesBySurah[surahNumber];
+    if (ranges == null || ranges.isEmpty) {
+      if (surahNumber == _selectedSurah) return _juzBoundaries[ayahNumber];
+      return null;
+    }
+    for (final range in ranges) {
+      if (ayahNumber >= range.startAyah && ayahNumber <= range.endAyah) {
+        return range.juzNumber;
+      }
+    }
+    return null;
+  }
+
+  Map<int, ({int surah, int ayah})> _juzStartReferences() {
+    final starts = <int, ({int surah, int ayah})>{};
+
+    for (final entry in _juzRangesBySurah.entries) {
+      final surah = entry.key;
+      for (final range in entry.value) {
+        final existing = starts[range.juzNumber];
+        if (existing == null ||
+            surah < existing.surah ||
+            (surah == existing.surah && range.startAyah < existing.ayah)) {
+          starts[range.juzNumber] = (surah: surah, ayah: range.startAyah);
+        }
+      }
+    }
+
+    return starts;
   }
 
   Future<void> _toggleReaderViewMode() async {
@@ -2485,6 +2597,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   Widget _buildMushafScrubber() {
     final previewPage =
         _mushafScrubberPreviewPage ?? (_currentMushafPageIndex + 1);
+    final l10n = AppLocalizations.of(context);
+    final langCode = Localizations.localeOf(context).languageCode;
+    final previewPageText = _localizedDigits(previewPage, langCode);
     final previewSurah =
         _mushafPageAnchorCache[previewPage]?.surah ?? _selectedSurah;
     final previewSurahName = _surahArabicName(previewSurah);
@@ -2518,7 +2633,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                   Row(
                     children: [
                       Text(
-                        'Page $previewPage',
+                        '${l10n.get('page')} $previewPageText',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -2553,7 +2668,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                       min: 1,
                       max: 604,
                       divisions: 603,
-                      label: '$previewPage',
+                      label: previewPageText,
                       activeColor: const Color(0xFF8B6A2E),
                       inactiveColor: const Color(0xFFD8CCB1),
                       onChangeStart: (_) {
@@ -2640,6 +2755,10 @@ class _ReaderScreenState extends State<ReaderScreen>
                   MediaQuery.of(context).orientation == Orientation.landscape;
               final pageSurah =
                   _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
+              final pageAyah = _mushafPageAnchorCache[pageNumber]?.ayah ?? 1;
+              final pageJuz = _juzNumberForAyah(pageSurah, pageAyah);
+                final langCode = Localizations.localeOf(context).languageCode;
+                final localizedPageNumber = _localizedDigits(pageNumber, langCode);
               final surahName = _surahArabicName(pageSurah);
               final isPageBookmarked =
                   bookmarkProvider.isPageBookmarked(pageNumber);
@@ -2659,16 +2778,26 @@ class _ReaderScreenState extends State<ReaderScreen>
                               Expanded(
                                 child: _MushafHeaderChip(text: surahName),
                               ),
-                              const Padding(
+                              Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 6),
-                                child: Text(
-                                  '۞۞۞',
-                                  style: TextStyle(
-                                    fontFamily: 'UthmanicHafs',
-                                    fontSize: 18,
-                                    color: Color(0xFF946E2A),
-                                  ),
-                                ),
+                                child: pageJuz != null
+                                    ? Text(
+                                        '${AppLocalizations.of(context).get('juz')} ${_localizedDigits(pageJuz, langCode)}',
+                                        style: TextStyle(
+                                          fontFamily: 'UthmanicHafs',
+                                          fontSize: 16,
+                                          color: Color(0xFF946E2A),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      )
+                                    : Text(
+                                        '۞۞۞',
+                                        style: TextStyle(
+                                          fontFamily: 'UthmanicHafs',
+                                          fontSize: 18,
+                                          color: Color(0xFF946E2A),
+                                        ),
+                                      ),
                               ),
                               Expanded(
                                 child: Row(
@@ -2686,7 +2815,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                                       ),
                                     Expanded(
                                       child: _MushafHeaderChip(
-                                        text: 'الصفحة $pageNumber',
+                                        text: 'الصفحة $localizedPageNumber',
                                       ),
                                     ),
                                   ],
@@ -2770,6 +2899,18 @@ class _MushafPageAnchor {
     required this.pageNumber,
     required this.surah,
     required this.ayah,
+  });
+}
+
+class _JuzRange {
+  final int juzNumber;
+  final int startAyah;
+  final int endAyah;
+
+  const _JuzRange({
+    required this.juzNumber,
+    required this.startAyah,
+    required this.endAyah,
   });
 }
 
@@ -2909,11 +3050,13 @@ class _MushafHeaderChip extends StatelessWidget {
 class _SurahSelector extends StatelessWidget {
   final List<Map<String, dynamic>> surahs;
   final int selected;
+  final Map<int, ({int surah, int ayah})> juzStarts;
   final bool Function()? onBeforeOpen;
-  final void Function(int) onChanged;
+  final void Function(int surah, {int? ayah}) onChanged;
   const _SurahSelector(
       {required this.surahs,
       required this.selected,
+      required this.juzStarts,
       this.onBeforeOpen,
       required this.onChanged});
 
@@ -2973,8 +3116,9 @@ class _SurahSelector extends StatelessWidget {
       builder: (_) => _SurahPickerSheet(
         surahs: surahs,
         selected: selected,
-        onChanged: (v) {
-          onChanged(v);
+        juzStarts: juzStarts,
+        onChanged: (surah, {ayah}) {
+          onChanged(surah, ayah: ayah);
           Navigator.pop(context);
         },
       ),
@@ -2985,9 +3129,13 @@ class _SurahSelector extends StatelessWidget {
 class _SurahPickerSheet extends StatefulWidget {
   final List<Map<String, dynamic>> surahs;
   final int selected;
-  final void Function(int) onChanged;
+  final Map<int, ({int surah, int ayah})> juzStarts;
+  final void Function(int surah, {int? ayah}) onChanged;
   const _SurahPickerSheet(
-      {required this.surahs, required this.selected, required this.onChanged});
+      {required this.surahs,
+      required this.selected,
+      required this.juzStarts,
+      required this.onChanged});
 
   @override
   State<_SurahPickerSheet> createState() => _SurahPickerSheetState();
@@ -2996,6 +3144,88 @@ class _SurahPickerSheet extends StatefulWidget {
 class _SurahPickerSheetState extends State<_SurahPickerSheet> {
   String _search = '';
   final _listController = ScrollController();
+
+  String _normalizeSearchText(String input) {
+    final buffer = StringBuffer();
+    for (final rune in input.runes) {
+      final ch = String.fromCharCode(rune);
+      switch (ch) {
+        case '٠':
+        case '۰':
+          buffer.write('0');
+          break;
+        case '١':
+        case '۱':
+          buffer.write('1');
+          break;
+        case '٢':
+        case '۲':
+          buffer.write('2');
+          break;
+        case '٣':
+        case '۳':
+          buffer.write('3');
+          break;
+        case '٤':
+        case '۴':
+          buffer.write('4');
+          break;
+        case '٥':
+        case '۵':
+          buffer.write('5');
+          break;
+        case '٦':
+        case '۶':
+          buffer.write('6');
+          break;
+        case '٧':
+        case '۷':
+          buffer.write('7');
+          break;
+        case '٨':
+        case '۸':
+          buffer.write('8');
+          break;
+        case '٩':
+        case '۹':
+          buffer.write('9');
+          break;
+        default:
+          buffer.write(ch);
+      }
+    }
+    return buffer.toString().toLowerCase().trim();
+  }
+
+  List<String> _surahSearchableNames(Map<String, dynamic> surah, String locale) {
+    final translated = surah['translated_name'];
+    final translatedName = translated is Map
+        ? (translated['name'] as String? ?? '')
+        : (translated as String? ?? '');
+
+    final names = <String>[
+      if ((surah['name_arabic'] as String?)?.isNotEmpty ?? false)
+        surah['name_arabic'] as String,
+      if ((translatedName).isNotEmpty) translatedName,
+      if ((surah['name_simple'] as String?)?.isNotEmpty ?? false)
+        surah['name_simple'] as String,
+      if ((surah['name_complex'] as String?)?.isNotEmpty ?? false)
+        surah['name_complex'] as String,
+    ];
+
+    // Keep locale-preferred names first so typing in current app language
+    // feels natural while still allowing cross-language fallback search.
+    if (locale == 'ar') {
+      names.sort((a, b) {
+        final aArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(a);
+        final bArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(b);
+        if (aArabic == bArabic) return 0;
+        return aArabic ? -1 : 1;
+      });
+    }
+
+    return names;
+  }
 
   @override
   void initState() {
@@ -3016,13 +3246,42 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
 
   List<Map<String, dynamic>> get _filtered {
     if (_search.isEmpty) return widget.surahs;
-    final q = _search.toLowerCase();
+    if (_searchedJuzNumber != null) return <Map<String, dynamic>>[];
+    final locale = Localizations.localeOf(context).languageCode;
+    final q = _normalizeSearchText(_search);
     return widget.surahs.where((s) {
-      final name = (s['name_simple'] ?? '').toString().toLowerCase();
-      final nameAr = (s['name_arabic'] ?? '').toString();
-      final num = s['id'].toString();
-      return name.contains(q) || nameAr.contains(q) || num == q;
+      final names = _surahSearchableNames(s, locale)
+          .map(_normalizeSearchText)
+          .where((name) => name.isNotEmpty);
+      final num = _normalizeSearchText(s['id'].toString());
+      return names.any((name) => name.contains(q)) || num == q;
     }).toList();
+  }
+
+  int? get _searchedJuzNumber {
+    if (_search.trim().isEmpty) return null;
+
+    // Support localized Juz queries like:
+    // - juz2 / j2 / goz2
+    // - الجزء2 / الجزء ٢ / جزء2
+    // - پارہ2
+    final normalized = _normalizeSearchText(_search);
+    final compact = normalized.replaceAll(RegExp(r'[\s\-._:/]+'), '');
+    final match = RegExp(
+      r'^(?:juz|goz|j|cuz|cüz|dschuz|yuz|الجزء|جزء|پارہ|پاره)(\d{1,2})$',
+    ).firstMatch(compact);
+    if (match == null) return null;
+
+    final juz = int.tryParse(match.group(1)!);
+    if (juz == null || juz < 1 || juz > 30) return null;
+    return juz;
+  }
+
+  Map<String, dynamic>? _surahById(int id) {
+    for (final s in widget.surahs) {
+      if ((s['id'] as int? ?? 0) == id) return s;
+    }
+    return null;
   }
 
   void _jumpToIndex(int startNumber) {
@@ -3047,6 +3306,11 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final surahs = _filtered;
+    final langCode = Localizations.localeOf(context).languageCode;
+    final searchedJuz = _searchedJuzNumber;
+    final juzTarget =
+        searchedJuz == null ? null : widget.juzStarts[searchedJuz];
+    final hasJuzQuickResult = searchedJuz != null && juzTarget != null;
     final showIndex =
         _search.isEmpty; // only show jump index when not searching
 
@@ -3068,10 +3332,11 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
               autofocus: false,
-              decoration: const InputDecoration(
-                hintText: 'Search surah by name or number...',
-                prefixIcon: Icon(Icons.search, size: 20),
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
+              decoration: InputDecoration(
+                hintText:
+                    AppLocalizations.of(context).get('search_surah_or_juz'),
+                prefixIcon: const Icon(Icons.search, size: 20),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
               ),
               onChanged: (v) => setState(() => _search = v),
             ),
@@ -3082,11 +3347,75 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                 Expanded(
                   child: ListView.builder(
                     controller: _search.isEmpty ? _listController : controller,
-                    itemCount: surahs.length,
+                    itemCount: surahs.length + (hasJuzQuickResult ? 1 : 0),
                     itemBuilder: (_, i) {
-                      final s = surahs[i];
+                      if (hasJuzQuickResult && i == 0) {
+                        final target = juzTarget;
+                        final targetSurah =
+                            target != null ? _surahById(target.surah) : null;
+                        final targetArabic =
+                            (targetSurah?['name_arabic'] as String?) ??
+                                'سورة ${target?.surah ?? ''}';
+                        final targetSimple =
+                            (targetSurah?['name_simple'] as String?) ??
+                                'Surah ${target?.surah ?? ''}';
+                        return ListTile(
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF1E7CF),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              _ReaderScreenState._localizedDigits(
+                                  searchedJuz, langCode),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF8B6A2E),
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            '${AppLocalizations.of(context).get('juz')} ${_ReaderScreenState._localizedDigits(searchedJuz, langCode)} • $targetArabic',
+                            style: const TextStyle(
+                              fontFamily: 'UthmanicHafs',
+                              fontSize: 17,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '$targetSimple • Ayah ${target?.ayah ?? 1}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: const Icon(
+                            Icons.subdirectory_arrow_left,
+                            size: 18,
+                            color: Color(0xFF1D9E75),
+                          ),
+                          onTap: () {
+                            FocusScope.of(context).unfocus();
+                            if (target != null) {
+                              widget.onChanged(target.surah, ayah: target.ayah);
+                            }
+                          },
+                        );
+                      }
+
+                      final dataIndex = i - (hasJuzQuickResult ? 1 : 0);
+                      final s = surahs[dataIndex];
                       final id = s['id'] as int? ?? i + 1;
                       final isSelected = id == widget.selected;
+                        final localizedId =
+                          _ReaderScreenState._localizedDigits(id, langCode);
+                        final versesCount = s['verses_count'];
+                        final versesText = versesCount is int
+                          ? _ReaderScreenState._localizedDigits(
+                            versesCount,
+                            langCode,
+                          )
+                          : (versesCount?.toString() ?? '');
                       return ListTile(
                         leading: Container(
                           width: 36,
@@ -3098,7 +3427,7 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                                 : const Color(0xFFF5F5F5),
                             shape: BoxShape.circle,
                           ),
-                          child: Text('$id',
+                          child: Text(localizedId,
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
@@ -3116,7 +3445,7 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                           ),
                         ),
                         subtitle: Text(
-                          '${s['name_simple'] ?? 'Surah $id'} • ${s['verses_count'] ?? ''} verses',
+                          '${s['name_simple'] ?? '${AppLocalizations.of(context).get('surah')} $localizedId'} • $versesText ${AppLocalizations.of(context).get('verses')}',
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: isSelected
@@ -3158,7 +3487,8 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                               alignment: Alignment.center,
                               padding: const EdgeInsets.symmetric(vertical: 6),
                               child: Text(
-                                '$n',
+                                _ReaderScreenState._localizedDigits(
+                                    n, langCode),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w500,
@@ -3187,6 +3517,8 @@ class _JuzMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final juzLabel = AppLocalizations.of(context).get('juz');
+    final langCode = Localizations.localeOf(context).languageCode;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -3201,7 +3533,7 @@ class _JuzMarker extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          'الجزء $juzNumber',
+          '$juzLabel ${_ReaderScreenState._localizedDigits(juzNumber, langCode)}',
           style: const TextStyle(
             fontFamily: 'UthmanicHafs',
             fontSize: 16,
@@ -3395,7 +3727,7 @@ class _AyahTile extends StatelessWidget {
                       fontSize:
                           (Theme.of(context).textTheme.bodySmall?.fontSize ??
                                   12) +
-                              2,
+                              6,
                       height: 1.6,
                     ),
               ),
@@ -3655,6 +3987,7 @@ class _BookmarksSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return DraggableScrollableSheet(
       initialChildSize: 0.5,
       maxChildSize: 0.8,
@@ -3676,7 +4009,7 @@ class _BookmarksSheet extends StatelessWidget {
                 const Icon(Icons.bookmark_rounded,
                     color: Color(0xFFB8860B), size: 22),
                 const SizedBox(width: 8),
-                Text('Bookmarks',
+                Text(l10n.get('bookmarks'),
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium
@@ -3687,9 +4020,9 @@ class _BookmarksSheet extends StatelessWidget {
           const Divider(height: 0.5),
           Expanded(
             child: bookmarks.isEmpty
-                ? const Center(
+              ? Center(
                     child: Text(
-                        'No bookmarks yet.\nLong-press an ayah or tap a Mushaf page to bookmark.',
+                  l10n.get('bookmarks_empty_hint'),
                         textAlign: TextAlign.center))
                 : ListView.separated(
                     controller: controller,
@@ -3698,14 +4031,26 @@ class _BookmarksSheet extends StatelessWidget {
                         const Divider(height: 0.5, indent: 16),
                     itemBuilder: (_, i) {
                       final bm = bookmarks[i];
+                      final langCode = Localizations.localeOf(context).languageCode;
                       final previousType = i > 0 ? bookmarks[i - 1].type : null;
                       final showHeader = i == 0 || previousType != bm.type;
+                      final localizedPageNumber = bm.pageNumber == null
+                          ? '-'
+                          : _ReaderScreenState._localizedDigits(
+                              bm.pageNumber!,
+                              langCode,
+                            );
+                        final localizedSurah =
+                          _ReaderScreenState._localizedDigits(
+                            bm.surah, langCode);
+                        final localizedAyah = _ReaderScreenState._localizedDigits(
+                          bm.ayah, langCode);
                       final leadingText = bm.isPage
-                          ? 'P${bm.pageNumber ?? '-'}'
-                          : '${bm.surah}:${bm.ayah}';
+                          ? 'P$localizedPageNumber'
+                          : '$localizedSurah:$localizedAyah';
                       final subtitleText = bm.isPage
-                          ? 'Page ${bm.pageNumber ?? '-'} • Surah ${bm.surah}'
-                          : 'Surah ${bm.surah} • Ayah ${bm.ayah}';
+                          ? '${l10n.get('page')} $localizedPageNumber • ${l10n.get('surah')} $localizedSurah'
+                          : '${l10n.get('surah')} $localizedSurah • ${l10n.get('ayah')} $localizedAyah';
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3714,7 +4059,9 @@ class _BookmarksSheet extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                               child: Text(
-                                bm.isPage ? 'Page bookmarks' : 'Ayah bookmarks',
+                                bm.isPage
+                                    ? l10n.get('page_bookmarks')
+                                    : l10n.get('ayah_bookmarks'),
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,

@@ -9,6 +9,7 @@ import '../../core/services/audio_service.dart';
 import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_api_service.dart';
 import '../reader/widgets/tajweed_text.dart';
+import 'rule_example_references.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -36,39 +37,8 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
   static const _audioBaseUrl =
       'https://verses.quran.com/AbdulBaset/Mujawwad/mp3';
 
-  /// Each rule maps to a short verse that prominently demonstrates it.
-  static const Map<TajweedRule, String> _exampleAudioCodes = {
-    TajweedRule.ghunnah: '002006',
-    TajweedRule.qalqalah: '019061',
-    TajweedRule.maddTabeei: '001002',
-    TajweedRule.maddMuttasil: '110001',
-    TajweedRule.maddMunfasil: '002004',
-    TajweedRule.maddLazim: '001007',
-    TajweedRule.idghamWithGhunnah: '002008',
-    TajweedRule.idghamWithoutGhunnah: '002005',
-    TajweedRule.idghamShafawi: '002010',
-    TajweedRule.idghamMutajanisayn: '011042',
-    TajweedRule.ikhfa: '002010',
-    TajweedRule.ikhfaShafawi: '105004',
-    TajweedRule.iqlab: '002033',
-    TajweedRule.izhar: '004011',
-    TajweedRule.shaddah: '001001',
-    TajweedRule.waqf: '002002',
-    TajweedRule.sajdah: '007206',
-    TajweedRule.hamzatWasl: '001001',
-    TajweedRule.laamShamsiyah: '001003',
-    TajweedRule.silent: '002002',
-  };
-
   ({int surah, int ayah})? _exampleReference() {
-    final code = _exampleAudioCodes[widget.definition.rule];
-    if (code == null || code.length != 6) return null;
-
-    final surah = int.tryParse(code.substring(0, 3));
-    final ayah = int.tryParse(code.substring(3, 6));
-    if (surah == null || ayah == null) return null;
-
-    return (surah: surah, ayah: ayah);
+    return RuleExampleReferences.referenceFor(widget.definition.rule);
   }
 
   Future<Ayah?> _fetchExampleAyahForLanguage(String langCode) async {
@@ -95,10 +65,10 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     );
 
     if (widget.definition.rule == TajweedRule.izhar) {
-      mapped = _forceHighlightTrailingWords(
+      mapped = _forceHighlightWordIndices(
         mapped,
         TajweedRule.izhar,
-        wordCount: 2,
+        indices: const {0},
       );
     }
 
@@ -140,20 +110,17 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     if (mounted) setState(() => _loadingAyah = false);
   }
 
-  Ayah _forceHighlightTrailingWords(
+  Ayah _forceHighlightWordIndices(
     Ayah ayah,
     TajweedRule rule, {
-    required int wordCount,
+    required Set<int> indices,
   }) {
-    if (ayah.words.isEmpty || wordCount <= 0) return ayah;
-
-    final firstHighlightedIndex = ayah.words.length - wordCount;
-    if (firstHighlightedIndex < 0) return ayah;
+    if (ayah.words.isEmpty || indices.isEmpty) return ayah;
 
     final patchedWords = <TajweedWord>[];
     for (int index = 0; index < ayah.words.length; index++) {
       final word = ayah.words[index];
-      if (index < firstHighlightedIndex) {
+      if (!indices.contains(index)) {
         patchedWords.add(word);
         continue;
       }
@@ -254,7 +221,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     final ref = shareAyah == null
         ? _exampleReference()
         : (surah: shareAyah.surahNumber, ayah: shareAyah.ayahNumber);
-    final fallbackAudioCode = _exampleAudioCodes[def.rule];
+    final fallbackAudioCode = RuleExampleReferences.audioCodes[def.rule];
     final fallbackAudioUrl = fallbackAudioCode == null
       ? null
       : _toAbsoluteAudioUrl('$_audioBaseUrl/$fallbackAudioCode.mp3');
@@ -439,7 +406,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  final code = _exampleAudioCodes[def.rule];
+                  final code = RuleExampleReferences.audioCodes[def.rule];
                   if (code == null) return;
                   if (_playing) {
                     _audio.stop();
@@ -492,6 +459,8 @@ class _PlaybackAyahPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     if (loading) {
       return const Center(child: Padding(
         padding: EdgeInsets.all(12),
@@ -503,9 +472,12 @@ class _PlaybackAyahPreview extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final ayahReference = isRtl
+        ? '${l10n.get('ayah')} ${ayah!.ayahNumber} • ${l10n.get('surah')} ${ayah!.surahNumber}'
+        : '${l10n.get('surah')} ${ayah!.surahNumber} • ${l10n.get('ayah')} ${ayah!.ayahNumber}';
     final headerText = isPlaying
-        ? 'Now playing: ${ayah!.surahNumber}:${ayah!.ayahNumber}'
-        : 'Playback ayah: ${ayah!.surahNumber}:${ayah!.ayahNumber}';
+        ? '${l10n.get('now_playing')}: $ayahReference'
+        : '${l10n.get('playback_ayah')}: $ayahReference';
 
     return Container(
       width: double.infinity,
@@ -533,6 +505,7 @@ class _PlaybackAyahPreview extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 headerText,
+                textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -552,7 +525,7 @@ class _PlaybackAyahPreview extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Highlighted: ${selectedRule.arabicName}',
+            '${l10n.get('highlighted')}: ${selectedRule.arabicName}',
             style: TextStyle(
               fontSize: 11,
               color: selectedRule.color,

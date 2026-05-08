@@ -22,6 +22,7 @@ class TafseerProvider extends ChangeNotifier {
   };
 
   int get selectedTafsirId => _selectedTafsirId;
+  String get activeLangCode => _activeLangCode;
 
   TafseerProvider({String langCode = 'en'}) {
     final box = Hive.box(_boxKey);
@@ -38,25 +39,14 @@ class TafseerProvider extends ChangeNotifier {
   }
 
   /// Syncs tafseer language with app locale.
-  /// If current tafseer is still the old language default, switch to the new
-  /// language default automatically. Custom user choices are preserved.
   void syncLanguage(String langCode) {
     if (langCode == _activeLangCode) return;
-
-    final oldDefault = defaultForLang(_activeLangCode);
-    final isKnownLanguageDefault =
-      _defaultTafsirByLang.values.contains(_selectedTafsirId);
-    final shouldAutoSwitch =
-      _selectedTafsirId == oldDefault || isKnownLanguageDefault;
     _activeLangCode = langCode;
+    _selectedTafsirId = defaultForLang(langCode);
 
     final box = Hive.box(_boxKey);
     box.put(_tafsirLangKey, langCode);
-
-    if (shouldAutoSwitch) {
-      _selectedTafsirId = defaultForLang(langCode);
-      box.put(_tafsirIdKey, _selectedTafsirId);
-    }
+    box.put(_tafsirIdKey, _selectedTafsirId);
 
     notifyListeners();
   }
