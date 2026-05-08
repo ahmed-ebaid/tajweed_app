@@ -42,7 +42,7 @@ class RulesRepository {
       },
       descriptions: {
         'en': 'An echoing/bouncing sound applied to the letters ق ط ب ج د when they have sukoon or appear at the end of a word. Minor (sughra) when mid-word, major (kubra) at the end.',
-        'ar': 'اضطراب وتقلقل في المخرج عند النطق بحروف (قطبجد) ساكنة. صغرى في الوقف وكبرى في الوصل.',
+        'ar': 'اضطراب وتقلقل في المخرج عند النطق بحروف (قطبجد) ساكنة. تكون صغرى في وسط الكلمة، وكبرى عند الوقف في آخر الكلمة.',
         'ur': 'حروف (ق ط ب ج د) پر سکون یا وقف کی حالت میں آواز میں ارتعاش۔ لفظ کے درمیان میں صغریٰ اور آخر میں کبریٰ۔',
         'tr': 'ق ط ب ج د harfleri sükûnlu veya vakıf halindeyken çıkan sarsıntılı ses. Kelime ortasında küçük, sonda büyük kalkale.',
         'fr': 'Son vibrant/rebondissant pour les lettres ق ط ب ج د quand elles portent un sukoon ou sont en fin de mot.',

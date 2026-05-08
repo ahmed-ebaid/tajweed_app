@@ -183,11 +183,17 @@ class SettingsScreen extends StatelessWidget {
             'es': 'spanish',
           };
           final target = langMap[langCode] ?? 'english';
-          // Show tafsirs matching current language, plus all Arabic ones
+          final matching = all.where((t) {
+            final lang = (t['language_name'] as String? ?? '').toLowerCase();
+            return lang == target;
+          }).toList(growable: false);
+          if (matching.isNotEmpty) {
+            return matching;
+          }
           return all.where((t) {
             final lang = (t['language_name'] as String? ?? '').toLowerCase();
-            return lang == target || lang == 'arabic';
-          }).toList();
+            return lang == 'english';
+          }).toList(growable: false);
         },
         itemTitle: (t) => '${t['name'] ?? ''} — ${t['author_name'] ?? ''}',
         isSelected: (t) =>
