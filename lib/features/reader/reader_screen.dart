@@ -1760,7 +1760,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   // ─── Tafseer ──────────────────────────────────────────────────────────────
 
   void _showTafseer(Ayah ayah) {
-    final tafsirId = context.read<TafseerProvider>().selectedTafsirId;
+    final tafseerProvider = context.read<TafseerProvider>();
+    final tafsirId = tafseerProvider.selectedTafsirId;
+    final tafsirName = tafseerProvider.selectedTafsirName;
     final verseKey = '${ayah.surahNumber}:${ayah.ayahNumber}';
     showModalBottomSheet(
       context: context,
@@ -1768,7 +1770,11 @@ class _ReaderScreenState extends State<ReaderScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => TafseerSheet(verseKey: verseKey, tafsirId: tafsirId),
+      builder: (_) => TafseerSheet(
+        verseKey: verseKey,
+        tafsirId: tafsirId,
+        tafsirName: tafsirName,
+      ),
     );
   }
 

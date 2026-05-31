@@ -78,7 +78,9 @@ class SettingsScreen extends StatelessWidget {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 160),
                   child: Text(
-                    s.text('id_value', {'value': '${tafseerProvider.selectedTafsirId}'}),
+                    tafseerProvider.selectedTafsirName.isNotEmpty
+                        ? tafseerProvider.selectedTafsirName
+                        : '${tafseerProvider.selectedTafsirId}',
                     style: Theme.of(context).textTheme.bodyMedium,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -201,7 +203,8 @@ class SettingsScreen extends StatelessWidget {
             context.read<TafseerProvider>().selectedTafsirId,
         onSelect: (t) {
           final id = t['id'] as int;
-          context.read<TafseerProvider>().setTafsir(id);
+          final name = '${t['name'] ?? ''}';
+          context.read<TafseerProvider>().setTafsir(id, name: name);
           Navigator.pop(context);
         },
       ),

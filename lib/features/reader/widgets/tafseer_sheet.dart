@@ -7,11 +7,13 @@ import '../../../core/services/quran_offline_sync_service.dart';
 class TafseerSheet extends StatefulWidget {
   final String verseKey; // e.g. '2:255'
   final int tafsirId;
+  final String tafsirName;
 
   const TafseerSheet({
     super.key,
     required this.verseKey,
     required this.tafsirId,
+    this.tafsirName = '',
   });
 
   @override
@@ -112,7 +114,12 @@ class _TafseerSheetState extends State<TafseerSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    strings.text('title', {'verseKey': widget.verseKey}),
+                    widget.tafsirName.isNotEmpty
+                        ? strings.text('title_with_source', {
+                            'source': widget.tafsirName,
+                            'verseKey': widget.verseKey,
+                          })
+                        : strings.text('title', {'verseKey': widget.verseKey}),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -196,48 +203,56 @@ class _TafseerSheetStrings {
   static const Map<String, Map<String, String>> _localized = {
     'en': {
       'title': 'Tafseer — Ayah {verseKey}',
+      'title_with_source': '{source} — Ayah {verseKey}',
       'close': 'Close',
       'load_failed': 'Could not load tafseer.\n{error}',
       'empty': 'No tafseer text was returned for this ayah with source ID {tafsirId}.',
     },
     'ar': {
       'title': 'التفسير — الآية {verseKey}',
+      'title_with_source': '{source} — الآية {verseKey}',
       'close': 'إغلاق',
       'load_failed': 'تعذر تحميل التفسير.\n{error}',
       'empty': 'لم يتم إرجاع نص تفسير لهذه الآية باستخدام مصدر التفسير {tafsirId}.',
     },
     'ur': {
       'title': 'تفسیر — آیت {verseKey}',
+      'title_with_source': '{source} — آیت {verseKey}',
       'close': 'بند کریں',
       'load_failed': 'تفسیر لوڈ نہ ہو سکی۔\n{error}',
       'empty': 'اس آیت کے لیے تفسیر کے ماخذ {tafsirId} سے کوئی متن واپس نہیں آیا۔',
     },
     'tr': {
       'title': 'Tefsir — Ayet {verseKey}',
+      'title_with_source': '{source} — Ayet {verseKey}',
       'close': 'Kapat',
       'load_failed': 'Tefsir yüklenemedi.\n{error}',
       'empty': 'Bu ayet için {tafsirId} kaynak kimliğiyle tefsir metni döndürülmedi.',
     },
     'fr': {
       'title': 'Tafsir — Ayah {verseKey}',
+      'title_with_source': '{source} — Ayah {verseKey}',
       'close': 'Fermer',
       'load_failed': 'Impossible de charger le tafsir.\n{error}',
-      'empty': 'Aucun texte de tafsir n’a été renvoyé pour cette ayah avec la source {tafsirId}.',
+      'empty': "Aucun texte de tafsir n'a été renvoyé pour cette ayah avec la source {tafsirId}.",
     },
     'id': {
       'title': 'Tafsir — Ayat {verseKey}',
+      'title_with_source': '{source} — Ayat {verseKey}',
       'close': 'Tutup',
       'load_failed': 'Tidak dapat memuat tafsir.\n{error}',
       'empty': 'Tidak ada teks tafsir yang dikembalikan untuk ayat ini dengan sumber ID {tafsirId}.',
     },
     'de': {
       'title': 'Tafsir — Ayah {verseKey}',
+      'title_with_source': '{source} — Ayah {verseKey}',
       'close': 'Schließen',
       'load_failed': 'Tafsir konnte nicht geladen werden.\n{error}',
       'empty': 'Für diese Ayah wurde mit der Quellen-ID {tafsirId} kein Tafsir-Text zurückgegeben.',
     },
     'es': {
       'title': 'Tafsir — Aleya {verseKey}',
+      'title_with_source': '{source} — Aleya {verseKey}',
       'close': 'Cerrar',
       'load_failed': 'No se pudo cargar el tafsir.\n{error}',
       'empty': 'No se devolvió texto de tafsir para esta aleya con la fuente {tafsirId}.',
