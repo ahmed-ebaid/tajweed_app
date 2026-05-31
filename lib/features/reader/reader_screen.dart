@@ -410,9 +410,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   IconData get _ayahContentModeIcon {
     switch (_ayahContentMode) {
       case _AyahContentMode.arabicOnly:
-        return Icons.auto_stories_outlined;
+        return Icons.translate;
       case _AyahContentMode.arabicWithTranslation:
-        return Icons.translate_rounded;
+        return Icons.translate;
     }
   }
 
@@ -972,7 +972,9 @@ class _ReaderScreenState extends State<ReaderScreen>
       return;
     }
 
-    // Fixed-step directional search (no proportional/height estimation).
+    // Proportional seed jump: estimate target position based on ayah index
+    // ratio, then refine with directional steps. This handles surahs with
+    // very long ayahs (e.g. Al-Hajj) where fixed 1200px steps can't converge.
     if (allowSeedJump && _scrollController.hasClients) {
       final targetIdx = _ayahs.indexWhere((a) => a.ayahNumber == ayahNumber);
       if (targetIdx >= 0) {
@@ -986,20 +988,29 @@ class _ReaderScreenState extends State<ReaderScreen>
               ? targetIdx > anchorIdx
               : targetIdx >= (_ayahs.length ~/ 2);
 
-            final deltaAyahs =
+          final deltaAyahs =
               anchorIdx >= 0 ? (targetIdx - anchorIdx).abs() : _ayahs.length;
-            final stepPx = deltaAyahs <= 3
-              ? 220.0
-              : deltaAyahs <= 10
-                ? 520.0
-                : 1200.0;
-          final current = _scrollController.offset;
-          var seed =
-              (current + (goingDown ? stepPx : -stepPx)).clamp(0.0, maxExtent);
 
-          if ((seed - current).abs() < 0.5) {
-            seed = (current + (goingDown ? -stepPx : stepPx))
+          double seed;
+          if (deltaAyahs > 15 || anchorIdx < 0) {
+            // Large distance or no anchor: jump proportionally by index ratio.
+            final ratio = targetIdx / (_ayahs.length - 1).clamp(1, _ayahs.length);
+            seed = (ratio * maxExtent).clamp(0.0, maxExtent);
+          } else {
+            // Small distance: use fixed steps for precision.
+            final stepPx = deltaAyahs <= 3
+                ? 220.0
+                : deltaAyahs <= 10
+                    ? 520.0
+                    : 1200.0;
+            final current = _scrollController.offset;
+            seed = (current + (goingDown ? stepPx : -stepPx))
                 .clamp(0.0, maxExtent);
+
+            if ((seed - current).abs() < 0.5) {
+              seed = (current + (goingDown ? -stepPx : stepPx))
+                  .clamp(0.0, maxExtent);
+            }
           }
 
           if (activeRequestId == _scrollToAyahRequestId) {
@@ -1967,13 +1978,15 @@ class _ReaderScreenState extends State<ReaderScreen>
       });
     }
 
-    return Scaffold(
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Scaffold(
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        actionsPadding: const EdgeInsetsDirectional.only(start: 2, end: 8),
+        actionsPadding: const EdgeInsets.only(left: 2, right: 8),
         title: Padding(
-          padding: const EdgeInsetsDirectional.only(start: 12, end: 10),
+          padding: const EdgeInsets.only(left: 0, right: 10),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
             child: _SurahSelector(
@@ -2002,8 +2015,8 @@ class _ReaderScreenState extends State<ReaderScreen>
           IconButton(
             icon: Icon(
               _viewMode == _ReaderViewMode.page
-                  ? Icons.view_agenda_outlined
-                  : Icons.menu_book_outlined,
+                  ? Icons.view_list_outlined
+                  : Icons.chrome_reader_mode_outlined,
               size: 22,
             ),
             tooltip: _viewMode == _ReaderViewMode.page
@@ -2028,13 +2041,6 @@ class _ReaderScreenState extends State<ReaderScreen>
             color: _isPlayingAll ? Colors.red : const Color(0xFF1D9E75),
             tooltip: _isPlayingAll ? l10n.get('stop') : l10n.get('play_all'),
             onPressed: _ayahs.isNotEmpty ? _togglePlayAll : null,
-          ),
-          IconButton(
-            icon:
-                Icon(_tajweedEnabled ? Icons.palette : Icons.palette_outlined),
-            color: _tajweedEnabled ? const Color(0xFF1D9E75) : null,
-            tooltip: l10n.get('tajweed_colors'),
-            onPressed: () => setState(() => _tajweedEnabled = !_tajweedEnabled),
           ),
           IconButton(
             icon: Icon(_ayahContentModeIcon, size: 22),
@@ -2090,6 +2096,7 @@ class _ReaderScreenState extends State<ReaderScreen>
             ),
         ],
       ),
+    ),
     );
   }
 
@@ -2655,7 +2662,9 @@ class _ReaderScreenState extends State<ReaderScreen>
                       ),
                     ],
                   ),
-                  SliderTheme(
+                  Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       trackHeight: 4,
                       thumbShape:
@@ -2697,6 +2706,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                         }
                       },
                     ),
+                  ),
                   ),
                 ],
               ),
@@ -2748,6 +2758,7 @@ class _ReaderScreenState extends State<ReaderScreen>
           child: PageView.builder(
             controller: _mushafPageController,
             itemCount: 604,
+            reverse: true,
             onPageChanged: _handleMushafPageChanged,
             itemBuilder: (context, index) {
               final pageNumber = index + 1;
@@ -2772,14 +2783,34 @@ class _ReaderScreenState extends State<ReaderScreen>
                     children: [
                       if (!isLandscape)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                          padding: const EdgeInsets.fromLTRB(6, 6, 2, 4),
                           child: Row(
+                            textDirection: TextDirection.ltr,
                             children: [
                               Expanded(
-                                child: _MushafHeaderChip(text: surahName),
+                                flex: 2,
+                                child: Row(
+                                  textDirection: TextDirection.ltr,
+                                  children: [
+                                    if (isPageBookmarked)
+                                      const Padding(
+                                        padding: EdgeInsets.only(right: 6),
+                                        child: Icon(
+                                          Icons.bookmark,
+                                          color: Color(0xFFB8860B),
+                                          size: 18,
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: _MushafHeaderChip(
+                                        text: 'الصفحة $localizedPageNumber',
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 6),
+                                padding: EdgeInsets.symmetric(horizontal: 4),
                                 child: pageJuz != null
                                     ? Text(
                                         '${AppLocalizations.of(context).get('juz')} ${_localizedDigits(pageJuz, langCode)}',
@@ -2800,25 +2831,10 @@ class _ReaderScreenState extends State<ReaderScreen>
                                       ),
                               ),
                               Expanded(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    if (isPageBookmarked)
-                                      const Padding(
-                                        padding:
-                                            EdgeInsetsDirectional.only(end: 6),
-                                        child: Icon(
-                                          Icons.bookmark,
-                                          color: Color(0xFFB8860B),
-                                          size: 18,
-                                        ),
-                                      ),
-                                    Expanded(
-                                      child: _MushafHeaderChip(
-                                        text: 'الصفحة $localizedPageNumber',
-                                      ),
-                                    ),
-                                  ],
+                                flex: 3,
+                                child: _MushafHeaderChip(
+                                  text: surahName,
+                                  alignment: Alignment.center,
                                 ),
                               ),
                             ],
@@ -3020,13 +3036,18 @@ class _MushafDownloadStateCard extends StatelessWidget {
 
 class _MushafHeaderChip extends StatelessWidget {
   final String text;
-  const _MushafHeaderChip({required this.text});
+  final AlignmentGeometry alignment;
+  const _MushafHeaderChip({
+    required this.text,
+    this.alignment = Alignment.center,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 32,
-      alignment: Alignment.center,
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFF1ECE2),
         borderRadius: BorderRadius.circular(16),
@@ -3072,8 +3093,8 @@ class _SurahSelector extends StatelessWidget {
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
-    // Reserve room for 4 app bar icons + paddings so title stays balanced.
-    final maxTitleWidth = (screenWidth - 260).clamp(96.0, 230.0);
+    // Reserve room for app bar icons + paddings so title stays balanced.
+    final maxTitleWidth = (screenWidth - 220).clamp(96.0, 280.0);
 
     return GestureDetector(
       onTap: () {
@@ -3692,8 +3713,8 @@ class _AyahTile extends StatelessWidget {
                 const Spacer(),
                 // Tafseer button
                 IconButton(
-                  icon: const Icon(Icons.menu_book_outlined, size: 18),
-                  color: const Color(0xFF888780),
+                  icon: const Icon(Icons.lightbulb, size: 23),
+                  color: const Color(0xFF1D9E75),
                   tooltip: readerStrings.text('tafseer'),
                   onPressed: onTafseerTap,
                   padding: EdgeInsets.zero,
