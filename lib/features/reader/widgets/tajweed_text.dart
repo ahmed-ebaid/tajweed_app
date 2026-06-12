@@ -193,7 +193,10 @@ class TajweedText extends StatelessWidget {
     return TextSpan(
       // NBSP keeps marker attached to the previous word so it appears
       // immediately after the ayah in normal line flow.
-      text: '\u00A0﴿$arabicAyahNumber﴾',
+      // U+06DD (End of Ayah) is a combining mark that, in Quran fonts like
+      // Amiri Quran, renders as ornate brackets enclosing the following digits.
+      // Using separate ﴿/﴾ characters caused bidi mis-ordering on line breaks.
+      text: '\u00A0\u06DD$arabicAyahNumber',
       style: _arabicStyle(
         color: const Color(0xFF8B6B2A),
         size: fontSize - 2,

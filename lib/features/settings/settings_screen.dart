@@ -57,7 +57,8 @@ class SettingsScreen extends StatelessWidget {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_reciterLabel(recitationProvider.selectedReciterId),
+                Text(_reciterLabel(recitationProvider.selectedReciterId,
+                    localeProvider.locale.languageCode),
                     style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(width: 4),
                 const Icon(Icons.chevron_right_rounded, size: 18),
@@ -114,7 +115,22 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  static String _reciterLabel(int id) {
+  static String _reciterLabel(int id, String langCode) {
+    if (langCode == 'ar') {
+      const names = {
+        1: 'عبد الباسط (مجوّد)',
+        2: 'عبد الباسط (مرتّل)',
+        3: 'عبد الرحمن السديس',
+        4: 'أبو بكر الشاطري',
+        5: 'هاني الرفاعي',
+        6: 'الحصري',
+        8: 'المنشاوي (مجوّد)',
+        10: 'سعود الشريم',
+        11: 'محمد الطبلاوي',
+        12: 'الحصري (معلّم)',
+      };
+      return names[id] ?? 'قارئ $id';
+    }
     const names = {
       1: 'AbdulBaset (Mujawwad)',
       2: 'AbdulBaset (Murattal)',
@@ -133,6 +149,7 @@ class SettingsScreen extends StatelessWidget {
   void _showReciterPicker(BuildContext context) {
     final api = QuranApiService();
     final s = _SettingsStrings.of(context);
+    final langCode = context.read<LocaleProvider>().locale.languageCode;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -143,6 +160,10 @@ class SettingsScreen extends StatelessWidget {
         title: s.text('select_reciter'),
         fetchItems: () => api.fetchAvailableReciters(),
         itemTitle: (r) {
+          final id = r['id'] as int?;
+          // Use localized name if available
+          final localized = id != null ? _reciterLabel(id, langCode) : null;
+          if (localized != null && id != null) return localized;
           final name = r['reciter_name'] as String? ?? '';
           final style = r['style'] as String?;
           return style != null ? '$name ($style)' : name;
@@ -1330,10 +1351,26 @@ class _AboutSourcesSheet extends StatelessWidget {
     'Al-Husary (Muallim)',
   ];
 
+  static const List<String> _supportedRecitersAr = [
+    'عبد الباسط (مجوّد)',
+    'عبد الباسط (مرتّل)',
+    'عبد الرحمن السديس',
+    'أبو بكر الشاطري',
+    'هاني الرفاعي',
+    'الحصري',
+    'المنشاوي (مجوّد)',
+    'المنشاوي (مرتّل)',
+    'سعود الشريم',
+    'محمد الطبلاوي',
+    'الحصري (معلّم)',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final s = _SettingsStrings.of(context);
     final textTheme = Theme.of(context).textTheme;
+    final langCode = context.read<LocaleProvider>().locale.languageCode;
+    final reciters = langCode == 'ar' ? _supportedRecitersAr : _supportedReciters;
 
     return SafeArea(
       child: Padding(
@@ -1398,7 +1435,7 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutBullet(text: s.text('recitation_b1')),
               _AboutBullet(text: s.text('recitation_b2')),
               _AboutBullet(text: s.text('recitation_b3')),
-              ..._supportedReciters.map(
+              ...reciters.map(
                 (name) => _AboutSourceLine(label: s.text('reciter_label'), value: name),
               ),
               const SizedBox(height: 12),
