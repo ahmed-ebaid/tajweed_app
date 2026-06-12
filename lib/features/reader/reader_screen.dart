@@ -209,8 +209,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     _scrollController = ScrollController(
       initialScrollOffset: 0.0,
     );
-    print(
-        '📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
+    if (kDebugMode) {
+      print(
+          '📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}');
+    }
 
     _initializeMushafPages();
 
@@ -572,11 +574,15 @@ class _ReaderScreenState extends State<ReaderScreen>
               scrollOffset: scrollOffset, caller: '[ayah-mode/scroll]');
           unawaited(_recordTodayLessonProgress(topVisibleAyah));
         } catch (e) {
-          print('❌ Error saving to BookmarkProvider: $e');
+          if (kDebugMode) {
+            print('❌ Error saving to BookmarkProvider: $e');
+          }
         }
       }
     } catch (e) {
-      print('❌ Error in _saveScrollPosition: $e');
+      if (kDebugMode) {
+        print('❌ Error in _saveScrollPosition: $e');
+      }
     }
   }
 
@@ -738,12 +744,14 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       await _loadJuzBoundaries();
 
-      print('📻 AUDIO MAP KEYS: ${audioMap.keys.toList()}');
-      print('📻 AUDIO MAP SIZE: ${audioMap.length}');
-      if (audioMap.isNotEmpty) {
-        print('📻 FIRST ENTRY: ${audioMap.entries.first}');
-      } else {
-        print('❌ AUDIO MAP IS EMPTY!');
+      if (kDebugMode) {
+        print('📻 AUDIO MAP KEYS: ${audioMap.keys.toList()}');
+        print('📻 AUDIO MAP SIZE: ${audioMap.length}');
+        if (audioMap.isNotEmpty) {
+          print('📻 FIRST ENTRY: ${audioMap.entries.first}');
+        } else {
+          print('❌ AUDIO MAP IS EMPTY!');
+        }
       }
 
       if (mounted && loadVersion == _surahLoadVersion) {
@@ -762,7 +770,9 @@ class _ReaderScreenState extends State<ReaderScreen>
             _ayahKeys[a.ayahNumber] = GlobalKey();
           }
         });
-        print('📻 AFTER SETSTATE: _audioUrls.length=${_audioUrls.length}');
+        if (kDebugMode) {
+          print('📻 AFTER SETSTATE: _audioUrls.length=${_audioUrls.length}');
+        }
         _refreshOfflineStatus();
         // Defer position restore until widgets are rendered.
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -771,7 +781,9 @@ class _ReaderScreenState extends State<ReaderScreen>
       }
       _forceRefreshNextSurahLoad = false;
     } catch (e) {
-      print('❌ ERROR IN LOAD SURAH: $e');
+      if (kDebugMode) {
+        print('❌ ERROR IN LOAD SURAH: $e');
+      }
 
       final fallbackSurah = await _quranOfflineSync.getFirstCachedSurahNumber();
       if (allowFallback && fallbackSurah != null && fallbackSurah != _selectedSurah) {
@@ -915,12 +927,16 @@ class _ReaderScreenState extends State<ReaderScreen>
   void _scrollToLastReadAyah() {
     final bookmarks = context.read<BookmarkProvider>();
     if (bookmarks.lastReadSurah != _selectedSurah || _ayahs.isEmpty) {
-      print(
-          '⚠️ Not scrolling: mismatch/empty (lastReadSurah=${bookmarks.lastReadSurah}, _selectedSurah=$_selectedSurah, count=${_ayahs.length})');
+      if (kDebugMode) {
+        print(
+            '⚠️ Not scrolling: mismatch/empty (lastReadSurah=${bookmarks.lastReadSurah}, _selectedSurah=$_selectedSurah, count=${_ayahs.length})');
+      }
       return;
     }
-    print(
-        '🎯 _scrollToLastReadAyah: ayah=${bookmarks.lastReadAyah} in surah $_selectedSurah');
+    if (kDebugMode) {
+      print(
+          '🎯 _scrollToLastReadAyah: ayah=${bookmarks.lastReadAyah} in surah $_selectedSurah');
+    }
     _scrollToAyah(bookmarks.lastReadAyah, alignment: 0.0);
   }
 
@@ -1178,8 +1194,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     final validOffset = offset.clamp(0.0, maxExtent);
     _isProgrammaticScroll = true;
 
-    print(
-        '🔄 Restoring scroll to offset=$validOffset (target=$offset, max=$maxExtent)');
+    if (kDebugMode) {
+      print(
+          '🔄 Restoring scroll to offset=$validOffset (target=$offset, max=$maxExtent)');
+    }
     _scrollController.jumpTo(validOffset);
 
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -1193,7 +1211,9 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// Double-tap on a single ayah — play just that one.
   void _playSingleAyah(Ayah ayah) {
-    print('🔢 DOUBLE TAP: ayah ${ayah.ayahNumber}');
+    if (kDebugMode) {
+      print('🔢 DOUBLE TAP: ayah ${ayah.ayahNumber}');
+    }
     context.read<BookmarkProvider>().saveLastRead(
         ayah.surahNumber, ayah.ayahNumber,
         caller: '[ayah-mode/double-tap]');
@@ -1213,7 +1233,9 @@ class _ReaderScreenState extends State<ReaderScreen>
         _playingAyahNumber = ayah.ayahNumber;
         _activeWordIndex = 0;
       });
-      print('🎵 CALLING _playAyah FOR ${ayah.ayahNumber}');
+      if (kDebugMode) {
+        print('🎵 CALLING _playAyah FOR ${ayah.ayahNumber}');
+      }
       _playAyah(ayah);
     }
   }
@@ -1327,11 +1349,15 @@ class _ReaderScreenState extends State<ReaderScreen>
     final verseKey = '${ayah.surahNumber}:${ayah.ayahNumber}';
     final url = _resolveAyahAudioUrl(ayah);
 
-    print(
-        '🎵 PLAY AYAH: verseKey=$verseKey, mapHas=${_audioUrls.containsKey(verseKey)}, url=$url');
+    if (kDebugMode) {
+      print(
+          '🎵 PLAY AYAH: verseKey=$verseKey, mapHas=${_audioUrls.containsKey(verseKey)}, url=$url');
+    }
 
     if (url.isEmpty) {
-      print('❌ ERROR: EMPTY URL FOR $verseKey');
+      if (kDebugMode) {
+        print('❌ ERROR: EMPTY URL FOR $verseKey');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1344,7 +1370,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
 
     final preview = url.length <= 50 ? url : '${url.substring(0, 50)}...';
-    print('📂 PLAYING URL: $preview');
+    if (kDebugMode) {
+      print('📂 PLAYING URL: $preview');
+    }
     var usedCachedAudio = false;
     try {
       final localPath = await _audioCache.getCachedAyahPath(
@@ -1356,10 +1384,14 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (localPath != null && File(localPath).existsSync()) {
         usedCachedAudio = true;
         await _audio.playFile(localPath);
-        print('✅ playFile succeeded from cache');
+        if (kDebugMode) {
+          print('✅ playFile succeeded from cache');
+        }
       } else {
         await _audio.playUrl(url);
-        print('✅ playUrl succeeded');
+        if (kDebugMode) {
+          print('✅ playUrl succeeded');
+        }
       }
 
       // Ignore stale async completions when a newer play request exists.
@@ -1381,7 +1413,9 @@ class _ReaderScreenState extends State<ReaderScreen>
         });
       }
     } catch (e) {
-      print('❌ Exception in playUrl: $e');
+      if (kDebugMode) {
+        print('❌ Exception in playUrl: $e');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1411,7 +1445,9 @@ class _ReaderScreenState extends State<ReaderScreen>
           ayah.surahNumber, ayah.ayahNumber,
           caller: '[ayah-mode/play-single]');
     } catch (e) {
-      print('❌ Error saving last read: $e');
+      if (kDebugMode) {
+        print('❌ Error saving last read: $e');
+      }
     }
 
     // Scroll to currently playing ayah
@@ -1425,7 +1461,9 @@ class _ReaderScreenState extends State<ReaderScreen>
           alignment: 0.3,
         );
       } catch (e) {
-        print('❌ Error scrolling: $e');
+        if (kDebugMode) {
+          print('❌ Error scrolling: $e');
+        }
       }
     }
 

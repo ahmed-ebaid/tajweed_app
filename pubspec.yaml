@@ -14,7 +14,7 @@ dependencies:
 
   # State management
   provider: ^6.1.1
-  riverpod: ^2.4.10            # optional – swap provider for riverpod if preferred
+  riverpod: ^2.6.1              # pinned – hive_generator blocks riverpod 3.x (analyzer conflict)
 
   # Audio playback & recording
   just_audio: ^0.10.5          # Quran audio streaming (Quran.com CDN)
@@ -27,7 +27,7 @@ dependencies:
   # Local storage & caching
   hive_flutter: ^1.1.0         # Offline verse cache, progress, streak data
   path_provider: ^2.1.2
-  archive: ^3.4.0              # ZIP extraction for bundled Mushaf pages
+  archive: ^4.0.9              # ZIP extraction for bundled Mushaf pages
 
   # Arabic text & Quranic fonts
   google_fonts: ^8.0.2         # Fallback; Uthmanic Hafs loaded as asset font
@@ -42,7 +42,7 @@ dependencies:
   flutter_svg: ^2.0.9
   shimmer: ^3.0.0              # Loading skeletons
   go_router: ^17.1.0           # Declarative routing
-  share_plus: ^7.2.2           # Native share sheet for sharing rule summaries
+  share_plus: ^13.1.0           # Native share sheet for sharing rule summaries
 
 dev_dependencies:
   flutter_test:
@@ -50,7 +50,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   hive_generator: ^2.0.1
   build_runner: ^2.4.8
-  flutter_gen_runner: ^5.4.0   # Asset code generation
+  flutter_gen_runner: ^5.9.0   # Asset code generation
 
 flutter:
   uses-material-design: true
