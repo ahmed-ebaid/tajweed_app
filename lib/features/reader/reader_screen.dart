@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:just_audio/just_audio.dart';
@@ -2828,59 +2829,58 @@ class _ReaderScreenState extends State<ReaderScreen>
                       if (!isLandscape)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(6, 6, 2, 4),
-                          child: Row(
-                            textDirection: TextDirection.ltr,
+                          child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
-                              Expanded(
-                                flex: 2,
-                                child: Row(
-                                  textDirection: TextDirection.ltr,
-                                  children: [
-                                    if (isPageBookmarked)
-                                      const Padding(
-                                        padding: EdgeInsets.only(right: 6),
-                                        child: Icon(
-                                          Icons.bookmark,
-                                          color: Color(0xFFB8860B),
-                                          size: 18,
-                                        ),
-                                      ),
-                                    Expanded(
-                                      child: _MushafHeaderChip(
-                                        text: 'الصفحة $localizedPageNumber',
-                                      ),
+                              Row(
+                                textDirection: TextDirection.ltr,
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: _MushafHeaderChip(
+                                      text: 'الصفحة $localizedPageNumber',
                                     ),
-                                  ],
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 4),
+                                    child: pageJuz != null
+                                        ? Text(
+                                            '${AppLocalizations.of(context).get('juz')} ${_localizedDigits(pageJuz, langCode)}',
+                                            style: TextStyle(
+                                              fontFamily: 'UthmanicHafs',
+                                              fontSize: 16,
+                                              color: Color(0xFF946E2A),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          )
+                                        : Text(
+                                            '۞۞۞',
+                                            style: TextStyle(
+                                              fontFamily: 'UthmanicHafs',
+                                              fontSize: 18,
+                                              color: Color(0xFF946E2A),
+                                            ),
+                                          ),
+                                  ),
+                                  Expanded(
+                                    flex: 3,
+                                    child: _MushafHeaderChip(
+                                      text: surahName,
+                                      alignment: Alignment.center,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isPageBookmarked)
+                                Positioned(
+                                  top: -4,
+                                  left: 0,
+                                  child: Icon(
+                                    Icons.bookmark,
+                                    color: Color(0xFFB8860B),
+                                    size: 20,
+                                  ),
                                 ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 4),
-                                child: pageJuz != null
-                                    ? Text(
-                                        '${AppLocalizations.of(context).get('juz')} ${_localizedDigits(pageJuz, langCode)}',
-                                        style: TextStyle(
-                                          fontFamily: 'UthmanicHafs',
-                                          fontSize: 16,
-                                          color: Color(0xFF946E2A),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      )
-                                    : Text(
-                                        '۞۞۞',
-                                        style: TextStyle(
-                                          fontFamily: 'UthmanicHafs',
-                                          fontSize: 18,
-                                          color: Color(0xFF946E2A),
-                                        ),
-                                      ),
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: _MushafHeaderChip(
-                                  text: surahName,
-                                  alignment: Alignment.center,
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -2919,7 +2919,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                                 : InteractiveViewer(
                                     minScale: 1.0,
                                     maxScale: 4.0,
-                                    boundaryMargin: const EdgeInsets.all(48),
+                                    boundaryMargin: EdgeInsets.zero,
                                     panEnabled: true,
                                     scaleEnabled: true,
                                     child: Image.file(
