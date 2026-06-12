@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/tajweed_models.dart';
 import 'quran_api_service.dart';
 
@@ -134,8 +136,10 @@ class AyahMapper {
           .where((w) => _containsPotentialMarker(w.arabic))
           .map((w) => '${w.arabic} => ${_toCodepoints(w.arabic)}')
           .join(' | ');
-      print(
-          '🔎 MARKER DEBUG $surahNumber:$ayahNumber ayah=${_toCodepoints(arabic)} words=$markerWords');
+      if (kDebugMode) {
+        print(
+            '🔎 MARKER DEBUG $surahNumber:$ayahNumber ayah=${_toCodepoints(arabic)} words=$markerWords');
+      }
     }
 
     // Audio URL

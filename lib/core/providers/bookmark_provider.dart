@@ -125,9 +125,11 @@ class BookmarkProvider extends ChangeNotifier {
       await box.put(_lastScrollOffsetKey, scrollOffset);
     }
     await box.compact();
-    print(
-      '✅ SAVE LAST READ [${caller ?? '-'}]: surah=$surah, ayah=$ayah, offset=$_lastScrollOffset',
-    );
+    if (kDebugMode) {
+      print(
+        '✅ SAVE LAST READ [${caller ?? '-'}]: surah=$surah, ayah=$ayah, offset=$_lastScrollOffset',
+      );
+    }
   }
 
   Future<void> addBookmark(
