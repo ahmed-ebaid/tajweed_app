@@ -2830,42 +2830,22 @@ class _ReaderScreenState extends State<ReaderScreen>
                     children: [
                       if (!isLandscape)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(6, 6, 2, 4),
+                          padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
                               Row(
-                                textDirection: TextDirection.ltr,
                                 children: [
                                   Expanded(
-                                    flex: 2,
                                     child: _MushafHeaderChip(
-                                      text: 'الصفحة $localizedPageNumber',
+                                      text: pageJuz != null
+                                          ? '${AppLocalizations.of(context).get('juz')} ${_localizedDigits(pageJuz, langCode)}'
+                                          : '',
+                                      alignment: Alignment.center,
                                     ),
                                   ),
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 4),
-                                    child: pageJuz != null
-                                        ? Text(
-                                            '${AppLocalizations.of(context).get('juz')} ${_localizedDigits(pageJuz, langCode)}',
-                                            style: TextStyle(
-                                              fontFamily: 'UthmanicHafs',
-                                              fontSize: 16,
-                                              color: Color(0xFF946E2A),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          )
-                                        : Text(
-                                            '۞۞۞',
-                                            style: TextStyle(
-                                              fontFamily: 'UthmanicHafs',
-                                              fontSize: 18,
-                                              color: Color(0xFF946E2A),
-                                            ),
-                                          ),
-                                  ),
+                                  const SizedBox(width: 8),
                                   Expanded(
-                                    flex: 3,
                                     child: _MushafHeaderChip(
                                       text: surahName,
                                       alignment: Alignment.center,
@@ -2876,7 +2856,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                               if (isPageBookmarked)
                                 Positioned(
                                   top: -4,
-                                  left: 0,
+                                  right: 0,
                                   child: Icon(
                                     Icons.bookmark,
                                     color: Color(0xFFB8860B),
@@ -2939,6 +2919,19 @@ class _ReaderScreenState extends State<ReaderScreen>
                           ),
                         ),
                       ),
+                      if (!isLandscape)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
+                          child: Text(
+                            localizedPageNumber,
+                            style: const TextStyle(
+                              fontFamily: 'UthmanicHafs',
+                              fontSize: 16,
+                              color: Color(0xFF946E2A),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
