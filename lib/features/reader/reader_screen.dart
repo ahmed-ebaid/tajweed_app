@@ -2855,12 +2855,15 @@ class _ReaderScreenState extends State<ReaderScreen>
                               ),
                               if (isPageBookmarked)
                                 Positioned(
-                                  top: -4,
+                                  top: -6,
+                                  left: 0,
                                   right: 0,
-                                  child: Icon(
-                                    Icons.bookmark,
-                                    color: Color(0xFFB8860B),
-                                    size: 20,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.bookmark,
+                                      color: Color(0xFFB8860B),
+                                      size: 22,
+                                    ),
                                   ),
                                 ),
                             ],
