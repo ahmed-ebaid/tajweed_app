@@ -2809,10 +2809,12 @@ class _ReaderScreenState extends State<ReaderScreen>
               final pageNumber = index + 1;
               final isLandscape =
                   MediaQuery.of(context).orientation == Orientation.landscape;
-              final pageSurah =
-                  _mushafPageAnchorCache[pageNumber]?.surah ?? _selectedSurah;
-              final pageAyah = _mushafPageAnchorCache[pageNumber]?.ayah ?? 1;
-              final pageJuz = _juzNumberForAyah(pageSurah, pageAyah);
+              final pageAnchor = _mushafPageAnchorCache[pageNumber];
+              final pageSurah = pageAnchor?.surah ?? _selectedSurah;
+              final pageAyah = pageAnchor?.ayah ?? 1;
+              final pageJuz = pageAnchor != null
+                  ? _juzNumberForAyah(pageSurah, pageAyah)
+                  : null;
                 final langCode = Localizations.localeOf(context).languageCode;
                 final localizedPageNumber = _localizedDigits(pageNumber, langCode);
               final surahName = _surahArabicName(pageSurah);
