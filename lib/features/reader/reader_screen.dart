@@ -2825,16 +2825,16 @@ class _ReaderScreenState extends State<ReaderScreen>
                 padding: isLandscape
                     ? EdgeInsets.zero
                     : const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: _QuranPageBackground(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _QuranPageBackground(
                   child: Column(
                     children: [
                       if (!isLandscape)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Row(
+                          child: Row(
                                 children: [
                                   Expanded(
                                     child: _MushafHeaderChip(
@@ -2853,21 +2853,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                                   ),
                                 ],
                               ),
-                              if (isPageBookmarked)
-                                Positioned(
-                                  top: -6,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.bookmark,
-                                      color: Color(0xFFB8860B),
-                                      size: 22,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
                         ),
                       Expanded(
                         child: Container(
@@ -2937,6 +2922,18 @@ class _ReaderScreenState extends State<ReaderScreen>
                         ),
                     ],
                   ),
+                ),
+                    if (isPageBookmarked)
+                      Positioned(
+                        top: 2,
+                        right: 6,
+                        child: Icon(
+                          Icons.bookmark,
+                          color: Color(0xFFB8860B),
+                          size: 28,
+                        ),
+                      ),
+                  ],
                 ),
               );
             },
