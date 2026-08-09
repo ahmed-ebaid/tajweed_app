@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/providers/tafseer_provider.dart';
 import '../../../core/services/quran_api_service.dart';
 import '../../../core/services/quran_offline_sync_service.dart';
 import '../../../shared/utils/arabic_utils.dart';
@@ -7,19 +8,23 @@ import '../../../shared/utils/arabic_utils.dart';
 class TafseerSourceOption {
   final int id;
   final String name;
+  final String displayName;
   final String authorName;
 
   const TafseerSourceOption({
     required this.id,
     required this.name,
+    required this.displayName,
     required this.authorName,
   });
 
-  String get label => authorName.isEmpty ? name : '$name — $authorName';
+  String get label =>
+      authorName.isEmpty ? displayName : '$displayName — $authorName';
 
   static List<TafseerSourceOption> fromApiList(
-    Iterable<Map<String, dynamic>> sources,
-  ) {
+    Iterable<Map<String, dynamic>> sources, {
+    String Function(Map<String, dynamic> source)? displayNameForSource,
+  }) {
     final byId = <int, TafseerSourceOption>{};
     for (final source in sources) {
       final id = source['id'];
@@ -30,6 +35,7 @@ class TafseerSourceOption {
         () => TafseerSourceOption(
           id: id,
           name: name,
+          displayName: displayNameForSource?.call(source) ?? name,
           authorName: source['author_name']?.toString().trim() ?? '',
         ),
       );
@@ -37,8 +43,8 @@ class TafseerSourceOption {
 
     final options = byId.values.toList(growable: true);
     options.sort((left, right) {
-      final byName = left.name.toLowerCase().compareTo(
-            right.name.toLowerCase(),
+      final byName = left.displayName.toLowerCase().compareTo(
+            right.displayName.toLowerCase(),
           );
       if (byName != 0) return byName;
       return left.authorName.toLowerCase().compareTo(
@@ -55,6 +61,7 @@ class TafseerSheet extends StatefulWidget {
   final int tafsirId;
   final String tafsirName;
   final String surahName; // Arabic surah name, e.g. 'طه'
+  final String languageCode;
   final QuranApiService? api;
   final QuranOfflineSyncService? offlineSync;
   final Future<void> Function(int tafsirId, String tafsirName)?
@@ -66,6 +73,7 @@ class TafseerSheet extends StatefulWidget {
     required this.tafsirId,
     this.tafsirName = '',
     this.surahName = '',
+    this.languageCode = 'en',
     this.api,
     this.offlineSync,
     this.onTafsirSelected,
@@ -156,8 +164,15 @@ class _TafseerSheetState extends State<TafseerSheet> {
     }
 
     try {
+      final allSources = await _api.fetchAvailableTafsirs();
       final sources = TafseerSourceOption.fromApiList(
-        await _api.fetchAvailableTafsirs(),
+        TafseerProvider.sourcesForLanguage(allSources, widget.languageCode),
+        displayNameForSource: (source) {
+          return TafseerProvider.sourceDisplayName(
+            widget.languageCode,
+            source,
+          );
+        },
       );
       if (!sources.any((source) => source.id == _selectedTafsirId) &&
           _selectedTafsirName.isNotEmpty) {
@@ -165,12 +180,14 @@ class _TafseerSheetState extends State<TafseerSheet> {
           TafseerSourceOption(
             id: _selectedTafsirId,
             name: _selectedTafsirName,
+            displayName: _selectedTafsirName,
             authorName: '',
           ),
         );
         sources.sort(
-          (left, right) =>
-              left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+          (left, right) => left.displayName.toLowerCase().compareTo(
+                right.displayName.toLowerCase(),
+              ),
         );
       }
       if (sources.isEmpty) {

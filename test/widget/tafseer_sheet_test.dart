@@ -60,11 +60,13 @@ void main() {
     'id': 169,
     'name': 'Ibn Kathir',
     'author_name': 'Ibn Kathir',
+    'language_name': 'english',
   };
   const tabari = <String, dynamic>{
     'id': 15,
     'name': 'Al-Tabari',
     'author_name': 'Al-Tabari',
+    'language_name': 'english',
   };
 
   test('Tafseer sources are deduplicated and sorted alphabetically', () {
@@ -106,7 +108,7 @@ void main() {
       find.byKey(const ValueKey('tafseer-source-dropdown-169')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Al-Tabari — Al-Tabari').last);
+    await tester.tap(find.text('Tafsir al-Tabari — Al-Tabari').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Tabari commentary'), findsOneWidget);
@@ -137,7 +139,7 @@ void main() {
       find.byKey(const ValueKey('tafseer-source-dropdown-169')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Al-Tabari — Al-Tabari').last);
+    await tester.tap(find.text('Tafsir al-Tabari — Al-Tabari').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Initial commentary'), findsOneWidget);
