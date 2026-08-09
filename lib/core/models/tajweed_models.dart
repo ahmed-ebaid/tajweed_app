@@ -30,8 +30,7 @@ enum TajweedRule {
 extension TajweedRuleExtension on TajweedRule {
   Color get color {
     switch (this) {
-      // Every rule has a unique palette color. Related rules also use
-      // underline styles in the reader so color is never the only cue.
+      // Every rule has a unique palette color shared by the legend and reader.
       case TajweedRule.ghunnah:
         return const Color(0xFFB35C00);
       case TajweedRule.qalqalah:
@@ -76,40 +75,6 @@ extension TajweedRuleExtension on TajweedRule {
         return const Color(0xFF7A6E00);
       case TajweedRule.silent:
         return const Color(0xFF767676);
-    }
-  }
-
-  TextDecorationStyle? get underlineStyle {
-    switch (this) {
-      case TajweedRule.maddTabeei:
-      case TajweedRule.idghamWithGhunnah:
-      case TajweedRule.ikhfa:
-        return TextDecorationStyle.solid;
-      case TajweedRule.maddMuttasil:
-      case TajweedRule.idghamWithoutGhunnah:
-      case TajweedRule.ikhfaShafawi:
-        return TextDecorationStyle.double;
-      case TajweedRule.maddMunfasil:
-      case TajweedRule.idghamShafawi:
-        return TextDecorationStyle.dotted;
-      case TajweedRule.maddLazim:
-      case TajweedRule.idghamMutajanisayn:
-        return TextDecorationStyle.dashed;
-      case TajweedRule.maddSilahSughra:
-        return TextDecorationStyle.wavy;
-      case TajweedRule.maddSilahKubra:
-        return TextDecorationStyle.solid;
-      case TajweedRule.ghunnah:
-      case TajweedRule.qalqalah:
-      case TajweedRule.iqlab:
-      case TajweedRule.izhar:
-      case TajweedRule.shaddah:
-      case TajweedRule.waqf:
-      case TajweedRule.sajdah:
-      case TajweedRule.hamzatWasl:
-      case TajweedRule.laamShamsiyah:
-      case TajweedRule.silent:
-        return null;
     }
   }
 

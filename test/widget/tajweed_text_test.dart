@@ -291,4 +291,26 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets('renders Tajweed rules without underlining Quran text',
+      (tester) async {
+    await tester.pumpWidget(buildSubject());
+
+    final richText = tester.widget<RichText>(find.byType(RichText).first);
+    final children =
+        (richText.text as TextSpan).children!.whereType<TextSpan>().toList();
+    final colored = children.where(
+      (span) => span.style?.color == TajweedRule.maddTabeei.color,
+    );
+
+    expect(colored, isNotEmpty);
+    expect(
+      colored.every(
+        (span) =>
+            span.style?.decoration == null ||
+            span.style?.decoration == TextDecoration.none,
+      ),
+      isTrue,
+    );
+  });
 }

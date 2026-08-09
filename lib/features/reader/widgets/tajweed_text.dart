@@ -458,18 +458,10 @@ class TajweedText extends StatelessWidget {
 
   TextStyle _styleFor(TajweedRule rule, Color baseColor,
       {bool isActiveWord = false}) {
-    final underlineStyle = rule.underlineStyle;
     return _arabicStyle(
       color: _resolvedRuleColor(rule, baseColor),
       backgroundColor:
           isActiveWord ? const Color(0xFFFFE08A).withValues(alpha: 0.65) : null,
-    ).copyWith(
-      decoration: underlineStyle == null
-          ? TextDecoration.none
-          : TextDecoration.underline,
-      decorationStyle: underlineStyle,
-      decorationColor: _resolvedRuleColor(rule, baseColor),
-      decorationThickness: 0.7,
     );
   }
 
@@ -663,12 +655,6 @@ class _LegendItem extends StatelessWidget {
               fontFamily: 'UthmanicHafs',
               fontSize: 13,
               color: rule.color,
-              decoration: rule.underlineStyle == null
-                  ? TextDecoration.none
-                  : TextDecoration.underline,
-              decorationStyle: rule.underlineStyle,
-              decorationColor: rule.color,
-              decorationThickness: 0.7,
             ),
           ),
         ],
