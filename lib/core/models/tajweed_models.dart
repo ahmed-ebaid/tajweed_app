@@ -30,65 +30,45 @@ enum TajweedRule {
 extension TajweedRuleExtension on TajweedRule {
   Color get color {
     switch (this) {
-      // ── Madd / elongation ── Blues (light → dark by duration) ──────────────
+      // Group-level palette adapted from color-blind-safe categorical colors.
+      // Related sub-rules intentionally share a color.
       case TajweedRule.maddTabeei:
-        return const Color(0xFF42A5F5); // blue 400  – 2 counts
       case TajweedRule.maddMuttasil:
-        return const Color(0xFF1565C0); // blue 800  – 4–5 counts, connected
       case TajweedRule.maddMunfasil:
-        return const Color(0xFF1976D2); // blue 700  – 4–5 counts, separated
       case TajweedRule.maddLazim:
-        return const Color(0xFF283593); // indigo 900 – 6 counts, obligatory
       case TajweedRule.maddSilahSughra:
-        return const Color(0xFF00897B); // teal 600 – 2 counts
       case TajweedRule.maddSilahKubra:
-        return const Color(0xFF00695C); // teal 800 – 4–5 counts
+        return const Color(0xFF0072B2);
 
-      // ── Idgham / merging ── Greens ──────────────────────────────────────────
       case TajweedRule.idghamWithGhunnah:
-        return const Color(0xFF388E3C); // green 700
       case TajweedRule.idghamWithoutGhunnah:
-        return const Color(0xFF33691E); // light-green 900
       case TajweedRule.idghamShafawi:
-        return const Color(0xFF00695C); // teal 800
       case TajweedRule.idghamMutajanisayn:
-        return const Color(0xFF1B5E20); // green 900
+        return const Color(0xFF007A5E);
 
-      // ── Ikhfa / concealment ── Purples ──────────────────────────────────────
       case TajweedRule.ikhfa:
-        return const Color(0xFF6A1B9A); // purple 900
       case TajweedRule.ikhfaShafawi:
-        return const Color(0xFF880E4F); // pink 900 (distinct shade)
+        return const Color(0xFF8E4A75);
 
-      // ── Nasalization ── Warm oranges ────────────────────────────────────────
       case TajweedRule.ghunnah:
-        return const Color(0xFFE65100); // deep orange 900
       case TajweedRule.iqlab:
-        return const Color(0xFFBF360C); // deep orange / burnt-red
+        return const Color(0xFFB35C00);
 
-      // ── Qalqalah ── Red ─────────────────────────────────────────────────────
       case TajweedRule.qalqalah:
-        return const Color(0xFFC62828); // red 800
+        return const Color(0xFFD55E00);
 
-      // ── Izhar ── Dark teal (replaces jarring pure cyan) ─────────────────────
       case TajweedRule.izhar:
-        return const Color(0xFF00838F); // cyan 800
+        return const Color(0xFF007C91);
 
-      // ── Shaddah ── Brown ─────────────────────────────────────────────────────
       case TajweedRule.shaddah:
-        return const Color(0xFF4E342E); // brown 800
+        return const Color(0xFF6B4C3B);
 
-      // ── Structural / light letters ── Grays ─────────────────────────────────
       case TajweedRule.waqf:
-        return const Color(0xFF616161); // grey 700
       case TajweedRule.sajdah:
-        return const Color(0xFF455A64); // blue-grey 700
       case TajweedRule.hamzatWasl:
-        return const Color(0xFF546E7A); // blue-grey 600
       case TajweedRule.laamShamsiyah:
-        return const Color(0xFF795548); // brown 600
       case TajweedRule.silent:
-        return const Color(0xFF9E9E9E); // grey 500
+        return const Color(0xFF5F6368);
     }
   }
 
@@ -257,6 +237,24 @@ class Ayah {
     }
 
     return '';
+  }
+
+  String plainArabicText() {
+    final verseText = arabic.trim();
+    if (verseText.isNotEmpty) return verseText;
+
+    if (words.isNotEmpty) {
+      return words
+          .map((word) => word.arabic.trim())
+          .where((word) => word.isNotEmpty)
+          .join(' ');
+    }
+
+    return tajweedSegments
+        .map((segment) => segment.text)
+        .join()
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .trim();
   }
 }
 

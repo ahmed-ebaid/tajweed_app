@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -1923,7 +1924,8 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   Future<void> _shareAyah(Ayah ayah, Rect shareOrigin) async {
     Ayah shareAyah = ayah;
-    if (shareAyah.translation('en').isEmpty) {
+    if (shareAyah.translation('en').isEmpty ||
+        shareAyah.plainArabicText().isEmpty) {
       try {
         final raw = await _api.fetchVerse(
           surahNumber: ayah.surahNumber,
@@ -1938,10 +1940,11 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     final surahName = _surahDisplayName(ayah.surahNumber);
     final translation = shareAyah.translation('en');
+    final arabic = shareAyah.plainArabicText();
     final text = <String>[
       '$surahName ${ayah.surahNumber}:${ayah.ayahNumber}',
-      '',
-      ayah.arabic,
+      if (arabic.isNotEmpty) '',
+      if (arabic.isNotEmpty) arabic,
       if (translation.isNotEmpty) '',
       if (translation.isNotEmpty) translation,
       '',
@@ -3963,7 +3966,7 @@ class _AyahTile extends StatelessWidget {
                 const Spacer(),
                 Builder(
                   builder: (shareContext) => IconButton(
-                    icon: const Icon(Icons.share_outlined, size: 21),
+                    icon: const Icon(CupertinoIcons.share, size: 22),
                     color: const Color(0xFF1D9E75),
                     tooltip: MaterialLocalizations.of(context).shareButtonLabel,
                     onPressed: () {

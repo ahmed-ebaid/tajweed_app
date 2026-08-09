@@ -117,6 +117,7 @@ void main() {
       find.byKey(const ValueKey('tafseer-source-dropdown-15')),
       findsOneWidget,
     );
+    expect(find.textContaining('Tafsir al-Tabari'), findsNWidgets(2));
   });
 
   testWidgets('failed selection retains previous content and selection', (
