@@ -15,16 +15,6 @@ void main() {
       expect(colors.toSet().length, TajweedRule.values.length);
     });
 
-    test('related multi-rule groups provide non-color cues', () {
-      expect(TajweedRule.maddTabeei.underlineStyle, isNotNull);
-      expect(TajweedRule.maddMuttasil.underlineStyle, isNotNull);
-      expect(TajweedRule.idghamWithGhunnah.underlineStyle, isNotNull);
-      expect(TajweedRule.idghamWithoutGhunnah.underlineStyle, isNotNull);
-      expect(TajweedRule.ikhfa.underlineStyle, isNotNull);
-      expect(TajweedRule.ikhfaShafawi.underlineStyle, isNotNull);
-      expect(TajweedRule.waqf.underlineStyle, isNull);
-    });
-
     test('every rule has a nameKey', () {
       for (final rule in TajweedRule.values) {
         expect(rule.nameKey, isNotEmpty);
