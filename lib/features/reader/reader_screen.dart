@@ -1868,6 +1868,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         tafsirId: tafsirId,
         tafsirName: tafsirName,
         surahName: _surahArabicName(ayah.surahNumber),
+        languageCode: Localizations.localeOf(context).languageCode,
         onTafsirSelected: (id, name) {
           return tafseerProvider.setTafsir(id, name: name);
         },

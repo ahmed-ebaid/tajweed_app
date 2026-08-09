@@ -23,6 +23,17 @@ class TafseerProvider extends ChangeNotifier {
     'es': 169, // Temporary fallback (English Ibn Kathir) until Spanish default is configured
   };
 
+  static const Map<String, String> _apiLanguageByCode = {
+    'en': 'english',
+    'ar': 'arabic',
+    'ur': 'urdu',
+    'tr': 'turkish',
+    'fr': 'french',
+    'id': 'indonesian',
+    'de': 'german',
+    'es': 'spanish',
+  };
+
   /// Localized display names for known tafsir IDs, keyed by language code.
   static const Map<String, Map<int, String>> _localizedTafsirNames = {
     'en': {
@@ -165,6 +176,36 @@ class TafseerProvider extends ChangeNotifier {
   static String? localizedTafsirName(String langCode, int? id) {
     if (id == null) return null;
     return _localizedTafsirNames[langCode]?[id];
+  }
+
+  static List<Map<String, dynamic>> sourcesForLanguage(
+    Iterable<Map<String, dynamic>> sources,
+    String langCode,
+  ) {
+    final sourceList = sources.toList(growable: false);
+    final targetLanguage = _apiLanguageByCode[langCode] ?? 'english';
+    final matching = sourceList.where((source) {
+      final language =
+          (source['language_name'] as String? ?? '').toLowerCase();
+      return language == targetLanguage;
+    }).toList(growable: false);
+    if (matching.isNotEmpty) return matching;
+
+    return sourceList.where((source) {
+      final language =
+          (source['language_name'] as String? ?? '').toLowerCase();
+      return language == 'english';
+    }).toList(growable: false);
+  }
+
+  static String sourceDisplayName(
+    String langCode,
+    Map<String, dynamic> source,
+  ) {
+    final id = source['id'] as int?;
+    return localizedTafsirName(langCode, id) ??
+        source['name']?.toString().trim() ??
+        '';
   }
 
   /// Returns the localized display name for the selected tafsir.

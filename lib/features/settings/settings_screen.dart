@@ -204,40 +204,10 @@ class SettingsScreen extends StatelessWidget {
         title: s.text('select_tafseer'),
         fetchItems: () async {
           final all = await api.fetchAvailableTafsirs();
-          // Map language names to our lang codes for filtering
-          const langMap = {
-            'en': 'english',
-            'ar': 'arabic',
-            'ur': 'urdu',
-            'tr': 'turkish',
-            'fr': 'french',
-            'id': 'indonesian',
-            'de': 'german',
-            'es': 'spanish',
-          };
-          final target = langMap[langCode] ?? 'english';
-          final matching = all
-              .where((t) {
-                final lang = (t['language_name'] as String? ?? '')
-                    .toLowerCase();
-                return lang == target;
-              })
-              .toList(growable: false);
-          if (matching.isNotEmpty) {
-            return matching;
-          }
-          return all
-              .where((t) {
-                final lang = (t['language_name'] as String? ?? '')
-                    .toLowerCase();
-                return lang == 'english';
-              })
-              .toList(growable: false);
+          return TafseerProvider.sourcesForLanguage(all, langCode);
         },
         itemTitle: (t) {
-          final id = t['id'] as int?;
-          final localized = TafseerProvider.localizedTafsirName(langCode, id);
-          final displayName = localized ?? '${t['name'] ?? ''}';
+          final displayName = TafseerProvider.sourceDisplayName(langCode, t);
           return '$displayName — ${t['author_name'] ?? ''}';
         },
         isSelected: (t) =>
