@@ -169,10 +169,11 @@ void main() {
     final children = rootSpan.children!.whereType<TextSpan>().toList();
 
     expect(children.any((span) => span.text == 'تِلْكَ ٱلْقُرَىٰ '), isTrue);
-    expect(children.any((span) => span.text!.contains('﴿١٠١﴾')), isTrue);
+    expect(children.any((span) => span.text!.contains('\u06DD١٠١')), isTrue);
   });
 
-  testWidgets('does not duplicate grapheme clusters across adjacent tajweed spans',
+  testWidgets(
+      'does not duplicate grapheme clusters across adjacent tajweed spans',
       (tester) async {
     const overlappingSpanAyah = Ayah(
       surahNumber: 7,
@@ -242,5 +243,52 @@ void main() {
     final sajdahCount = plain.runes.where((r) => r == 0x06E9).length;
 
     expect(sajdahCount, 1);
+  });
+
+  testWidgets('renders every stop symbol with the Waqf palette color',
+      (tester) async {
+    const stopSymbols = 'ۘۙۚۗۖۛۜ';
+    const waqfAyah = Ayah(
+      surahNumber: 2,
+      ayahNumber: 1,
+      pageNumber: 2,
+      arabic: 'قَوْمًا$stopSymbols',
+      translations: {},
+      words: [
+        TajweedWord(
+          arabic: 'قَوْمًا$stopSymbols',
+          spans: [
+            TajweedSpan(
+              start: 0,
+              end: 13,
+              rule: TajweedRule.maddTabeei,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: TajweedText(ayah: waqfAyah)),
+      ),
+    );
+
+    final richText = tester.widget<RichText>(find.byType(RichText).first);
+    final children =
+        (richText.text as TextSpan).children!.whereType<TextSpan>().toList();
+
+    for (final rune in stopSymbols.runes) {
+      final symbol = String.fromCharCode(rune);
+      final marker = children.singleWhere((span) => span.text == symbol);
+      expect(marker.style?.color, TajweedRule.waqf.color);
+    }
+    expect(
+      children
+          .where(
+              (span) => !(span.text ?? '').contains(RegExp('[$stopSymbols]')))
+          .any((span) => span.style?.color == TajweedRule.maddTabeei.color),
+      isTrue,
+    );
   });
 }

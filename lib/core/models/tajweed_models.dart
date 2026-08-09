@@ -30,45 +30,86 @@ enum TajweedRule {
 extension TajweedRuleExtension on TajweedRule {
   Color get color {
     switch (this) {
-      // Group-level palette adapted from color-blind-safe categorical colors.
-      // Related sub-rules intentionally share a color.
-      case TajweedRule.maddTabeei:
-      case TajweedRule.maddMuttasil:
-      case TajweedRule.maddMunfasil:
-      case TajweedRule.maddLazim:
-      case TajweedRule.maddSilahSughra:
-      case TajweedRule.maddSilahKubra:
-        return const Color(0xFF0072B2);
-
-      case TajweedRule.idghamWithGhunnah:
-      case TajweedRule.idghamWithoutGhunnah:
-      case TajweedRule.idghamShafawi:
-      case TajweedRule.idghamMutajanisayn:
-        return const Color(0xFF007A5E);
-
-      case TajweedRule.ikhfa:
-      case TajweedRule.ikhfaShafawi:
-        return const Color(0xFF8E4A75);
-
+      // Every rule has a unique palette color. Related rules also use
+      // underline styles in the reader so color is never the only cue.
       case TajweedRule.ghunnah:
-      case TajweedRule.iqlab:
         return const Color(0xFFB35C00);
-
       case TajweedRule.qalqalah:
-        return const Color(0xFFD55E00);
-
+        return const Color(0xFFC73E1D);
+      case TajweedRule.maddTabeei:
+        return const Color(0xFF0072B2);
+      case TajweedRule.maddMuttasil:
+        return const Color(0xFF3B5BA9);
+      case TajweedRule.maddMunfasil:
+        return const Color(0xFF6A4C93);
+      case TajweedRule.maddLazim:
+        return const Color(0xFF5A189A);
+      case TajweedRule.maddSilahSughra:
+        return const Color(0xFF008C95);
+      case TajweedRule.maddSilahKubra:
+        return const Color(0xFFA23B72);
+      case TajweedRule.idghamWithGhunnah:
+        return const Color(0xFF007A5E);
+      case TajweedRule.idghamWithoutGhunnah:
+        return const Color(0xFF4D7C0F);
+      case TajweedRule.idghamShafawi:
+        return const Color(0xFF006D77);
+      case TajweedRule.idghamMutajanisayn:
+        return const Color(0xFF8A6D1D);
+      case TajweedRule.ikhfa:
+        return const Color(0xFF8E4A75);
+      case TajweedRule.ikhfaShafawi:
+        return const Color(0xFFB24592);
+      case TajweedRule.iqlab:
+        return const Color(0xFF9C4A00);
       case TajweedRule.izhar:
         return const Color(0xFF007C91);
-
       case TajweedRule.shaddah:
         return const Color(0xFF6B4C3B);
+      case TajweedRule.waqf:
+        return const Color(0xFF5F6368);
+      case TajweedRule.sajdah:
+        return const Color(0xFF37474F);
+      case TajweedRule.hamzatWasl:
+        return const Color(0xFF8C564B);
+      case TajweedRule.laamShamsiyah:
+        return const Color(0xFF7A6E00);
+      case TajweedRule.silent:
+        return const Color(0xFF767676);
+    }
+  }
 
+  TextDecorationStyle? get underlineStyle {
+    switch (this) {
+      case TajweedRule.maddTabeei:
+      case TajweedRule.idghamWithGhunnah:
+      case TajweedRule.ikhfa:
+        return TextDecorationStyle.solid;
+      case TajweedRule.maddMuttasil:
+      case TajweedRule.idghamWithoutGhunnah:
+      case TajweedRule.ikhfaShafawi:
+        return TextDecorationStyle.double;
+      case TajweedRule.maddMunfasil:
+      case TajweedRule.idghamShafawi:
+        return TextDecorationStyle.dotted;
+      case TajweedRule.maddLazim:
+      case TajweedRule.idghamMutajanisayn:
+        return TextDecorationStyle.dashed;
+      case TajweedRule.maddSilahSughra:
+        return TextDecorationStyle.wavy;
+      case TajweedRule.maddSilahKubra:
+        return TextDecorationStyle.solid;
+      case TajweedRule.ghunnah:
+      case TajweedRule.qalqalah:
+      case TajweedRule.iqlab:
+      case TajweedRule.izhar:
+      case TajweedRule.shaddah:
       case TajweedRule.waqf:
       case TajweedRule.sajdah:
       case TajweedRule.hamzatWasl:
       case TajweedRule.laamShamsiyah:
       case TajweedRule.silent:
-        return const Color(0xFF5F6368);
+        return null;
     }
   }
 

@@ -47,7 +47,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
@@ -55,17 +56,39 @@ class AppTheme {
           unselectedItemColor: Color(0xFF888780),
           elevation: 0,
           type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+          selectedLabelStyle:
+              TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
           unselectedLabelStyle: TextStyle(fontSize: 11),
         ),
         textTheme: const TextTheme(
-          headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
-          titleLarge:    TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
-          titleMedium:   TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
-          bodyLarge:     TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: Color(0xFF1A1A1A)),
-          bodyMedium:    TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Color(0xFF3D3D3A)),
-          bodySmall:     TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Color(0xFF888780)),
-          labelMedium:   TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF3D3D3A)),
+          headlineMedium: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1A1A1A)),
+          titleLarge: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1A1A1A)),
+          titleMedium: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1A1A1A)),
+          bodyLarge: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.normal,
+              color: Color(0xFF1A1A1A)),
+          bodyMedium: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.normal,
+              color: Color(0xFF3D3D3A)),
+          bodySmall: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.normal,
+              color: Color(0xFF888780)),
+          labelMedium: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF3D3D3A)),
         ),
       );
 
@@ -112,7 +135,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Color(0xFF1C1C1E),
@@ -120,34 +144,31 @@ class AppTheme {
           unselectedItemColor: Color(0xFF888780),
           elevation: 0,
           type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+          selectedLabelStyle:
+              TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
           unselectedLabelStyle: TextStyle(fontSize: 11),
         ),
         textTheme: const TextTheme(
-          headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: Colors.white),
-          titleLarge:    TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white),
-          titleMedium:   TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
-          bodyLarge:     TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: Colors.white),
-          bodyMedium:    TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Color(0xFFB4B2A9)),
-          bodySmall:     TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Color(0xFF888780)),
-          labelMedium:   TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFFB4B2A9)),
+          headlineMedium: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.w500, color: Colors.white),
+          titleLarge: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white),
+          titleMedium: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+          bodyLarge: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.normal, color: Colors.white),
+          bodyMedium: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.normal,
+              color: Color(0xFFB4B2A9)),
+          bodySmall: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.normal,
+              color: Color(0xFF888780)),
+          labelMedium: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFFB4B2A9)),
         ),
       );
-
-  // Tajweed rule colors (same in light and dark)
-  static const Map<String, Color> tajweedColors = {
-    'ghunnah':               Color(0xFF1D9E75),
-    'qalqalah':              Color(0xFFA32D2D),
-    'madd_tabeei':           Color(0xFF185FA5),
-    'madd_muttasil':         Color(0xFF185FA5),
-    'madd_munfasil':         Color(0xFF185FA5),
-    'idgham_ghunnah':        Color(0xFFB8860B),
-    'idgham_no_ghunnah':     Color(0xFFB8860B),
-    'ikhfa':                 Color(0xFF8B008B),
-    'iqlab':                 Color(0xFFD85A30),
-    'izhar':                 Color(0xFF0F6E56),
-    'shaddah':               Color(0xFF639922),
-    'waqf':                  Color(0xFF888780),
-    'sajdah':                Color(0xFF455A64),
-  };
 }
