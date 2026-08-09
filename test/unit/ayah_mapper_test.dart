@@ -1,81 +1,81 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
 
 void main() {
-  test('canonicalizes shaddah before short vowels across multiple patterns',
-      () {
-    final cases = [
-      (
-        verseKey: '7:122',
-        input: 'رَبِّ',
-        expected: String.fromCharCodes([
-          0x0631,
-          0x064E,
-          0x0628,
-          0x0650,
-          0x0651,
-        ]),
-      ),
-      (
-        verseKey: '1:1',
-        input: 'رَبَّ',
-        expected: String.fromCharCodes([
-          0x0631,
-          0x064E,
-          0x0628,
-          0x064E,
-          0x0651,
-        ]),
-      ),
-      (
-        verseKey: '1:2',
-        input: 'تَمُّ',
-        expected: String.fromCharCodes([
-          0x062A,
-          0x064E,
-          0x0645,
-          0x064F,
-          0x0651,
-        ]),
-      ),
-      (
-        verseKey: '1:3',
-        input: 'حَقٍّ',
-        expected: String.fromCharCodes([
-          0x062D,
-          0x064E,
-          0x0642,
-          0x064D,
-          0x0651,
-        ]),
-      ),
-    ];
+  test(
+    'canonicalizes shaddah before short vowels across multiple patterns',
+    () {
+      final cases = [
+        (
+          verseKey: '7:122',
+          input: 'رَبِّ',
+          expected: String.fromCharCodes([
+            0x0631,
+            0x064E,
+            0x0628,
+            0x0650,
+            0x0651,
+          ]),
+        ),
+        (
+          verseKey: '1:1',
+          input: 'رَبَّ',
+          expected: String.fromCharCodes([
+            0x0631,
+            0x064E,
+            0x0628,
+            0x064E,
+            0x0651,
+          ]),
+        ),
+        (
+          verseKey: '1:2',
+          input: 'تَمُّ',
+          expected: String.fromCharCodes([
+            0x062A,
+            0x064E,
+            0x0645,
+            0x064F,
+            0x0651,
+          ]),
+        ),
+        (
+          verseKey: '1:3',
+          input: 'حَقٍّ',
+          expected: String.fromCharCodes([
+            0x062D,
+            0x064E,
+            0x0642,
+            0x064D,
+            0x0651,
+          ]),
+        ),
+      ];
 
-    for (final testCase in cases) {
-      final ayah = AyahMapper.fromApi({
-        'verse_key': testCase.verseKey,
-        'page_number': 1,
-        'text_uthmani': '${testCase.input} آيَة',
-        'words': [
-          {
-            'char_type_name': 'word',
-            'text_uthmani': testCase.input,
-          },
-        ],
-      });
+      for (final testCase in cases) {
+        final ayah = AyahMapper.fromApi({
+          'verse_key': testCase.verseKey,
+          'page_number': 1,
+          'text_uthmani': '${testCase.input} آيَة',
+          'words': [
+            {'char_type_name': 'word', 'text_uthmani': testCase.input},
+          ],
+        });
 
-      expect(
-        ayah.words.first.arabic,
-        testCase.expected,
-        reason: 'word normalization should apply to ${testCase.verseKey}',
-      );
-      expect(
-        ayah.arabic.startsWith(testCase.expected),
-        isTrue,
-        reason: 'verse normalization should apply to ${testCase.verseKey}',
-      );
-    }
-  });
+        expect(
+          ayah.words.first.arabic,
+          testCase.expected,
+          reason: 'word normalization should apply to ${testCase.verseKey}',
+        );
+        expect(
+          ayah.arabic.startsWith(testCase.expected),
+          isTrue,
+          reason: 'verse normalization should apply to ${testCase.verseKey}',
+        );
+      }
+    },
+  );
 
   test('preserves Quran-specific glyph forms instead of replacing them', () {
     final ayah = AyahMapper.fromApi({
@@ -83,10 +83,7 @@ void main() {
       'page_number': 151,
       'text_uthmani': 'مَوَٲزِينُهُ',
       'words': const [
-        {
-          'char_type_name': 'word',
-          'text_uthmani': 'مَوَٲزِينُهُ',
-        },
+        {'char_type_name': 'word', 'text_uthmani': 'مَوَٲزِينُهُ'},
       ],
     });
 
@@ -101,14 +98,8 @@ void main() {
         'page_number': 165,
         'text_uthmani': 'رَبِّ مُوسَىٰ',
         'words': [
-          {
-            'char_type_name': 'word',
-            'text_uthmani': 'رَبِّ',
-          },
-          {
-            'char_type_name': 'word',
-            'text_uthmani': 'مُوسَىٰ',
-          },
+          {'char_type_name': 'word', 'text_uthmani': 'رَبِّ'},
+          {'char_type_name': 'word', 'text_uthmani': 'مُوسَىٰ'},
         ],
       },
       {
@@ -116,20 +107,21 @@ void main() {
         'page_number': 1,
         'text_uthmani': 'رَبَّ ٱلْعَٰلَمِينَ',
         'words': [
-          {
-            'char_type_name': 'word',
-            'text_uthmani': 'رَبَّ',
-          },
+          {'char_type_name': 'word', 'text_uthmani': 'رَبَّ'},
         ],
       },
     ]);
 
     expect(ayahs, hasLength(2));
-    expect(ayahs[0].words.first.arabic.indexOf('\u0650'),
-        lessThan(ayahs[0].words.first.arabic.indexOf('\u0651')));
+    expect(
+      ayahs[0].words.first.arabic.indexOf('\u0650'),
+      lessThan(ayahs[0].words.first.arabic.indexOf('\u0651')),
+    );
     expect(ayahs[0].words.first.arabic.endsWith('\u0651'), isTrue);
-    expect(ayahs[1].words.first.arabic.indexOf('\u064E'),
-        lessThan(ayahs[1].words.first.arabic.indexOf('\u0651')));
+    expect(
+      ayahs[1].words.first.arabic.indexOf('\u064E'),
+      lessThan(ayahs[1].words.first.arabic.indexOf('\u0651')),
+    );
     expect(ayahs[1].words.first.arabic.endsWith('\u0651'), isTrue);
   });
 
@@ -139,32 +131,62 @@ void main() {
       'page_number': 165,
       'text_uthmani': 'رَبِّ مُوسَىٰ',
       'words': [
-        <dynamic, dynamic>{
-          'char_type_name': 'word',
-          'text_uthmani': 'رَبِّ',
-        },
-        <dynamic, dynamic>{
-          'char_type_name': 'word',
-          'text_uthmani': 'مُوسَىٰ',
-        },
+        <dynamic, dynamic>{'char_type_name': 'word', 'text_uthmani': 'رَبِّ'},
+        <dynamic, dynamic>{'char_type_name': 'word', 'text_uthmani': 'مُوسَىٰ'},
       ],
       'translations': [
-        <dynamic, dynamic>{
-          'resource_id': 131,
-          'text': '<p>Lord of Moses</p>',
-        }
+        <dynamic, dynamic>{'resource_id': 85, 'text': '<p>Lord of Moses</p>'},
       ],
     };
 
     final ayah = AyahMapper.fromApi(fromCacheLike);
     expect(ayah.words, hasLength(2));
     expect(ayah.translations['en'], 'Lord of Moses');
-    expect(ayah.words.first.arabic.indexOf('\u0650'),
-        lessThan(ayah.words.first.arabic.indexOf('\u0651')));
+    expect(
+      ayah.words.first.arabic.indexOf('\u0650'),
+      lessThan(ayah.words.first.arabic.indexOf('\u0651')),
+    );
   });
 
-  test('parses word text_uthmani_tajweed rule tags for word-level coloring',
-      () {
+  test('classifies madd silah sughra in Al-Kahf 18:5', () {
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '18:5',
+      'page_number': 294,
+      'text_uthmani': 'مَا لَهُم بِهِۦ مِنْ عِلْمٍ',
+      'words': const [
+        {'char_type_name': 'word', 'text_uthmani': 'بِهِۦ'},
+        {'char_type_name': 'word', 'text_uthmani': 'مِنْ'},
+      ],
+    });
+
+    expect(
+      ayah.words.first.spans.any(
+        (span) => span.rule == TajweedRule.maddSilahSughra,
+      ),
+      isTrue,
+    );
+  });
+
+  test('classifies madd silah kubra before hamza', () {
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '2:255',
+      'page_number': 42,
+      'text_uthmani': 'عِندَهُۥٓ إِلَّا',
+      'words': const [
+        {'char_type_name': 'word', 'text_uthmani': 'عِندَهُۥٓ'},
+        {'char_type_name': 'word', 'text_uthmani': 'إِلَّا'},
+      ],
+    });
+
+    expect(
+      ayah.words.first.spans.any(
+        (span) => span.rule == TajweedRule.maddSilahKubra,
+      ),
+      isTrue,
+    );
+  });
+
+  test('parses word text_uthmani_tajweed rule tags for word-level coloring', () {
     final ayah = AyahMapper.fromApi(
       {
         'verse_key': '7:142',
@@ -184,13 +206,12 @@ void main() {
     );
 
     expect(ayah.words, hasLength(1));
+    expect(ayah.words.first.arabic, anyOf('وَوَٰعَدْنَا', 'وَوٰعَدۡنَا'));
     expect(
-      ayah.words.first.arabic,
-      anyOf('وَوَٰعَدْنَا', 'وَوٰعَدۡنَا'),
+      ayah.words.first.spans,
+      isNotEmpty,
+      reason: 'word-level spans prevent fallback to verse-level segment text',
     );
-    expect(ayah.words.first.spans, isNotEmpty,
-        reason:
-            'word-level spans prevent fallback to verse-level segment text');
     expect(
       ayah.words.first.spans.first.start,
       inInclusiveRange(0, ayah.words.first.arabic.length - 1),
@@ -220,33 +241,41 @@ void main() {
     );
   });
 
-  test('ghunnah span found when short vowel sits between consonant and shadda',
-      () {
-    // Word text_uthmani: فَتَمَّ (7:142 word 6).
-    // After _normalizeArabicText, shadda+fatha → fatha+shadda so the meem
-    // cluster is م + َ + ّ. The rule text مّ (meem+shadda only) must still
-    // match via the flexible pass that skips intervening diacritics.
-    final ayah = AyahMapper.fromApi({
-      'verse_key': '7:142',
-      'page_number': 168,
-      'text_uthmani': 'فَتَمَّ',
-      'words': [
-        {
-          'char_type_name': 'word',
-          'text_uthmani': 'فَتَمَّ',
-          'text_uthmani_tajweed':
-              '<rule class=ikhafa>ف</rule>َتَ<rule class=ghunnah>مّ</rule>َ',
-        },
-      ],
-    });
+  test(
+    'ghunnah span found when short vowel sits between consonant and shadda',
+    () {
+      // Word text_uthmani: فَتَمَّ (7:142 word 6).
+      // After _normalizeArabicText, shadda+fatha → fatha+shadda so the meem
+      // cluster is م + َ + ّ. The rule text مّ (meem+shadda only) must still
+      // match via the flexible pass that skips intervening diacritics.
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '7:142',
+        'page_number': 168,
+        'text_uthmani': 'فَتَمَّ',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': 'فَتَمَّ',
+            'text_uthmani_tajweed':
+                '<rule class=ikhafa>ف</rule>َتَ<rule class=ghunnah>مّ</rule>َ',
+          },
+        ],
+      });
 
-    expect(ayah.words, hasLength(1));
-    final spans = ayah.words.first.spans;
-    expect(spans.any((s) => s.rule.name == 'ikhfa'), isTrue,
-        reason: 'ikhfa on ف should be found');
-    expect(spans.any((s) => s.rule.name == 'ghunnah'), isTrue,
-        reason: 'ghunnah on مّ must be found via flexible match');
-  });
+      expect(ayah.words, hasLength(1));
+      final spans = ayah.words.first.spans;
+      expect(
+        spans.any((s) => s.rule.name == 'ikhfa'),
+        isTrue,
+        reason: 'ikhfa on ف should be found',
+      );
+      expect(
+        spans.any((s) => s.rule.name == 'ghunnah'),
+        isTrue,
+        reason: 'ghunnah on مّ must be found via flexible match',
+      );
+    },
+  );
 
   test('span extends over trailing Quranic small marks (U+06ED, U+06E2)', () {
     // لَيْلَةًۭ — the ۭ (U+06ED small low meem) sits after the tanwin and must
@@ -269,8 +298,11 @@ void main() {
     expect(spans.any((s) => s.rule.name == 'idghamWithGhunnah'), isTrue);
     // end must cover the ۭ (U+06ED) that follows ةً
     final ghSpan = spans.firstWhere((s) => s.rule.name == 'idghamWithGhunnah');
-    expect(ghSpan.end, equals(ayah.words.first.arabic.length),
-        reason: 'span end should reach end of word including trailing ۭ');
+    expect(
+      ghSpan.end,
+      equals(ayah.words.first.arabic.length),
+      reason: 'span end should reach end of word including trailing ۭ',
+    );
   });
 
   test('does not shift tajweed when end token is clean (Case 1)', () {
@@ -327,8 +359,11 @@ void main() {
       ],
     });
 
-    expect(ayah.words, hasLength(2),
-        reason: 'end token should not render as a word');
+    expect(
+      ayah.words,
+      hasLength(2),
+      reason: 'end token should not render as a word',
+    );
     expect(ayah.words.map((w) => w.arabic).toList(), ['أ', 'ب']);
   });
 
@@ -370,8 +405,7 @@ void main() {
     );
   });
 
-  test('shifted case reassigns each word from next token through last word',
-      () {
+  test('shifted case reassigns each word from next token through last word', () {
     final ayah = AyahMapper.fromApi({
       'verse_key': '8:6',
       'page_number': 177,
@@ -406,8 +440,11 @@ void main() {
       ],
     });
 
-    expect(ayah.words, hasLength(4),
-        reason: 'End token should never be rendered as a word.');
+    expect(
+      ayah.words,
+      hasLength(4),
+      reason: 'End token should never be rendered as a word.',
+    );
     expect(
       ayah.words.map((w) => w.arabic).toList(),
       ['A', 'B', 'C', 'D'],
@@ -416,72 +453,85 @@ void main() {
     );
   });
 
-  test('preserves sajdah end marker word when end token carries sajdah glyph',
-      () {
-    final ayah = AyahMapper.fromApi({
-      'verse_key': '7:206',
-      'page_number': 176,
-      'text_uthmani': 'واسجد۩',
-      'words': [
-        {
-          'char_type_name': 'word',
-          'text_uthmani': 'واسجد',
-          'text_uthmani_tajweed': 'واسجد',
-        },
-        {
-          'char_type_name': 'end',
-          'text': '۩',
-          'text_uthmani': '۩',
-          // Simulates shifted/corrupted tajweed payload on end token.
-          'text_uthmani_tajweed': 'payload-from-previous-word',
-        },
-      ],
-    });
+  test(
+    'preserves sajdah end marker word when end token carries sajdah glyph',
+    () {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '7:206',
+        'page_number': 176,
+        'text_uthmani': 'واسجد۩',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': 'واسجد',
+            'text_uthmani_tajweed': 'واسجد',
+          },
+          {
+            'char_type_name': 'end',
+            'text': '۩',
+            'text_uthmani': '۩',
+            // Simulates shifted/corrupted tajweed payload on end token.
+            'text_uthmani_tajweed': 'payload-from-previous-word',
+          },
+        ],
+      });
 
-    expect(ayah.words, hasLength(2),
-        reason: 'Sajdah end marker should be preserved as a renderable token.');
-    expect(ayah.words.last.arabic.contains('\u06E9'), isTrue);
-    expect(
-      ayah.words.last.spans.any((s) => s.rule.name == 'sajdah'),
-      isTrue,
-      reason: 'Sajdah glyph should be annotated with TajweedRule.sajdah.',
-    );
-  });
+      expect(
+        ayah.words,
+        hasLength(2),
+        reason: 'Sajdah end marker should be preserved as a renderable token.',
+      );
+      expect(ayah.words.last.arabic.contains('\u06E9'), isTrue);
+      expect(
+        ayah.words.last.spans.any((s) => s.rule.name == 'sajdah'),
+        isTrue,
+        reason: 'Sajdah glyph should be annotated with TajweedRule.sajdah.',
+      );
+    },
+  );
 
-  test('deduplicates sajdah marker when both word and end token contain it',
-      () {
-    final ayah = AyahMapper.fromApi({
-      'verse_key': '7:206',
-      'page_number': 176,
-      'text_uthmani': 'واسجد۩',
-      'words': [
-        {
-          'char_type_name': 'word',
-          'text_uthmani': 'واسجد۩',
-          'text_uthmani_tajweed': 'واسجد۩',
-        },
-        {
-          'char_type_name': 'end',
-          'text': '۩',
-          'text_uthmani': '۩',
-          'text_uthmani_tajweed': '۩',
-        },
-      ],
-    });
+  test(
+    'deduplicates sajdah marker when both word and end token contain it',
+    () {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '7:206',
+        'page_number': 176,
+        'text_uthmani': 'واسجد۩',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': 'واسجد۩',
+            'text_uthmani_tajweed': 'واسجد۩',
+          },
+          {
+            'char_type_name': 'end',
+            'text': '۩',
+            'text_uthmani': '۩',
+            'text_uthmani_tajweed': '۩',
+          },
+        ],
+      });
 
-    expect(ayah.words, hasLength(1),
-        reason: 'Duplicate end-token sajdah should be dropped.');
-    expect(
-      ayah.words.expand((w) => w.arabic.runes).where((r) => r == 0x06E9).length,
-      equals(1),
-      reason: 'Mapped words should contain exactly one sajdah glyph.',
-    );
-    expect(
-      ayah.words.first.spans.any((s) => s.rule.name == 'sajdah'),
-      isTrue,
-      reason: 'The remaining sajdah glyph should remain annotated.',
-    );
-  });
+      expect(
+        ayah.words,
+        hasLength(1),
+        reason: 'Duplicate end-token sajdah should be dropped.',
+      );
+      expect(
+        ayah.words
+            .expand((w) => w.arabic.runes)
+            .where((r) => r == 0x06E9)
+            .length,
+        equals(1),
+        reason: 'Mapped words should contain exactly one sajdah glyph.',
+      );
+      expect(
+        ayah.words.first.spans.any((s) => s.rule.name == 'sajdah'),
+        isTrue,
+        reason: 'The remaining sajdah glyph should remain annotated.',
+      );
+    },
+  );
 
   test('does not drop first word on sajdah end-token marker (16:50)', () {
     final ayah = AyahMapper.fromApi({
@@ -514,63 +564,68 @@ void main() {
     });
 
     expect(ayah.words, isNotEmpty);
-    expect(ayah.words.first.arabic, 'يَخَافُونَ',
-        reason:
-            'Sajdah end-token markers must not trigger shift-fix and hide the first word.');
+    expect(
+      ayah.words.first.arabic,
+      'يَخَافُونَ',
+      reason:
+          'Sajdah end-token markers must not trigger shift-fix and hide the first word.',
+    );
   });
 
-  test('all sajdah ayahs preserve first word with sajdah end marker payload',
-      () {
-    const sajdahKeys = [
-      '7:206',
-      '13:15',
-      '16:50',
-      '17:109',
-      '19:58',
-      '22:18',
-      '22:77',
-      '25:60',
-      '27:26',
-      '32:15',
-      '38:24',
-      '41:38',
-      '53:62',
-      '84:21',
-      '96:19',
-    ];
+  test(
+    'all sajdah ayahs preserve first word with sajdah end marker payload',
+    () {
+      const sajdahKeys = [
+        '7:206',
+        '13:15',
+        '16:50',
+        '17:109',
+        '19:58',
+        '22:18',
+        '22:77',
+        '25:60',
+        '27:26',
+        '32:15',
+        '38:24',
+        '41:38',
+        '53:62',
+        '84:21',
+        '96:19',
+      ];
 
-    for (final key in sajdahKeys) {
-      final firstWord = 'WORD_${key.replaceAll(':', '_')}';
-      final ayah = AyahMapper.fromApi({
-        'verse_key': key,
-        'page_number': 1,
-        'text_uthmani': '$firstWord باقي',
-        'words': [
-          {
-            'char_type_name': 'word',
-            'text_uthmani': firstWord,
-            'text_uthmani_tajweed': firstWord,
-          },
-          {
-            'char_type_name': 'word',
-            'text_uthmani': 'باقي',
-            'text_uthmani_tajweed': 'باقي',
-          },
-          {
-            'char_type_name': 'end',
-            'text': '١',
-            'text_uthmani': '١',
-            // Simulates sajdah marker-based end token payload pattern.
-            'text_uthmani_tajweed': '۩',
-          },
-        ],
-      });
+      for (final key in sajdahKeys) {
+        final firstWord = 'WORD_${key.replaceAll(':', '_')}';
+        final ayah = AyahMapper.fromApi({
+          'verse_key': key,
+          'page_number': 1,
+          'text_uthmani': '$firstWord باقي',
+          'words': [
+            {
+              'char_type_name': 'word',
+              'text_uthmani': firstWord,
+              'text_uthmani_tajweed': firstWord,
+            },
+            {
+              'char_type_name': 'word',
+              'text_uthmani': 'باقي',
+              'text_uthmani_tajweed': 'باقي',
+            },
+            {
+              'char_type_name': 'end',
+              'text': '١',
+              'text_uthmani': '١',
+              // Simulates sajdah marker-based end token payload pattern.
+              'text_uthmani_tajweed': '۩',
+            },
+          ],
+        });
 
-      expect(
-        ayah.words.first.arabic,
-        firstWord,
-        reason: 'First word must remain intact for sajdah ayah $key',
-      );
-    }
-  });
+        expect(
+          ayah.words.first.arabic,
+          firstWord,
+          reason: 'First word must remain intact for sajdah ayah $key',
+        );
+      }
+    },
+  );
 }

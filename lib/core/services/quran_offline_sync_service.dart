@@ -55,7 +55,8 @@ class QuranOfflineDiagnostics {
     for (final key in ayahFirstWord.keys) {
       buffer.writeln('$key firstWord="${ayahFirstWord[key] ?? ''}"');
       buffer.writeln(
-          '$key firstWordCodepoints=${ayahFirstWordCodepoints[key] ?? ''}');
+        '$key firstWordCodepoints=${ayahFirstWordCodepoints[key] ?? ''}',
+      );
     }
 
     return buffer.toString();
@@ -92,7 +93,7 @@ class QuranOfflineSyncService {
   static const String _settingsBoxKey = 'settings';
   static const String _cacheBoxKey = 'verse_cache';
 
-  static const int _syncSchemaVersion = 5;
+  static const int _syncSchemaVersion = 6;
   static const String _syncVersionKey = 'quran_sync_version';
   static const String _syncInProgressKey = 'quran_sync_in_progress';
   static const String _syncCompletedAtKey = 'quran_sync_completed_at';
@@ -102,7 +103,7 @@ class QuranOfflineSyncService {
   final QuranApiService _api;
 
   QuranOfflineSyncService({QuranApiService? api})
-      : _api = api ?? QuranApiService();
+    : _api = api ?? QuranApiService();
 
   static String _surahCacheKey(int surahNumber) =>
       'quran_ar_surah_$surahNumber';
@@ -110,7 +111,7 @@ class QuranOfflineSyncService {
   static String _tajweedCacheKey(int surahNumber) =>
       'quran_tajweed_surah_$surahNumber';
 
-    static String _tafsirCacheKey(int tafsirId, int surahNumber) =>
+  static String _tafsirCacheKey(int tafsirId, int surahNumber) =>
       'tafsir_${tafsirId}_surah_$surahNumber';
 
   Box get _settingsBox => Hive.box(_settingsBoxKey);
@@ -120,7 +121,8 @@ class QuranOfflineSyncService {
   Future<QuranOfflineSyncStatus> getStatus() async {
     final completedAtMs = _settingsBox.get(_syncCompletedAtKey) as int?;
     final syncedSurahs = _countSyncedSurahs();
-    final completed = syncedSurahs >= totalSurahs &&
+    final completed =
+        syncedSurahs >= totalSurahs &&
         (_settingsBox.get(_syncVersionKey, defaultValue: 0) as int) >=
             _syncSchemaVersion;
 
@@ -167,6 +169,22 @@ class QuranOfflineSyncService {
     return raw.map<String, String>((key, value) {
       return MapEntry(key.toString(), value?.toString() ?? '');
     });
+  }
+
+  Future<Map<String, dynamic>?> getCachedFirstVerseForPage(
+    int pageNumber,
+  ) async {
+    final safePage = pageNumber.clamp(1, 604);
+    for (int surah = 1; surah <= totalSurahs; surah++) {
+      final verses = await getCachedSurah(surah);
+      if (verses == null) continue;
+      for (final verse in verses) {
+        if (verse['page_number'] == safePage) {
+          return verse;
+        }
+      }
+    }
+    return null;
   }
 
   Future<Map<String, String>> getCachedTafsirMap({
@@ -220,9 +238,7 @@ class QuranOfflineSyncService {
     await syncAll(onProgress: onProgress);
   }
 
-  Future<void> syncAll({
-    void Function(int done, int total)? onProgress,
-  }) async {
+  Future<void> syncAll({void Function(int done, int total)? onProgress}) async {
     if (_isSyncRunning) return;
     _isSyncRunning = true;
 
@@ -300,9 +316,11 @@ class QuranOfflineSyncService {
     // silently repopulate current keys after a user clears local data.
     final legacyKeys = _cacheBox.keys
         .whereType<String>()
-      .where((k) =>
-        RegExp(r'^\d+_').hasMatch(k) ||
-        RegExp(r'^tafsir_\d+_surah_\d+$').hasMatch(k))
+        .where(
+          (k) =>
+              RegExp(r'^\d+_').hasMatch(k) ||
+              RegExp(r'^tafsir_\d+_surah_\d+$').hasMatch(k),
+        )
         .toList(growable: false);
     keys.addAll(legacyKeys);
 
@@ -363,10 +381,9 @@ class QuranOfflineSyncService {
 
         if (firstWord.isEmpty) {
           final verseText = verse['text_uthmani']?.toString() ?? '';
-          firstWord = verseText.split(' ').firstWhere(
-                (p) => p.isNotEmpty,
-                orElse: () => '',
-              );
+          firstWord = verseText
+              .split(' ')
+              .firstWhere((p) => p.isNotEmpty, orElse: () => '');
         }
 
         ayahTexts[verseKey] = firstWord;
@@ -390,7 +407,8 @@ class QuranOfflineSyncService {
   bool _isSurahCached(int surahNumber) {
     final versesRaw = _cacheBox.get(_surahCacheKey(surahNumber));
     final tajweedRaw = _cacheBox.get(_tajweedCacheKey(surahNumber));
-    final hasVerses = (versesRaw is List && versesRaw.isNotEmpty) ||
+    final hasVerses =
+        (versesRaw is List && versesRaw.isNotEmpty) ||
         (_loadLegacySurahRaw(surahNumber)?.isNotEmpty ?? false);
     final hasTajweed = tajweedRaw is Map && tajweedRaw.isNotEmpty;
     return hasVerses && hasTajweed;
@@ -443,8 +461,10 @@ class QuranOfflineSyncService {
           final forceSajdahGlyph = _isSajdahAyahVerse(verse);
           final verseText = verse['text_uthmani'] as String?;
           if (verseText != null) {
-            final normalizedVerse =
-                _normalizeArabicText(verseText, forceSajdahGlyph: forceSajdahGlyph);
+            final normalizedVerse = _normalizeArabicText(
+              verseText,
+              forceSajdahGlyph: forceSajdahGlyph,
+            );
             if (normalizedVerse != verseText) {
               verse['text_uthmani'] = normalizedVerse;
               changed = true;
@@ -501,7 +521,9 @@ class QuranOfflineSyncService {
     String text, {
     bool forceSajdahGlyph = false,
   }) {
-    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (
+      match,
+    ) {
       return '${match.group(1)}\u0651';
     });
 
@@ -541,8 +563,10 @@ class QuranOfflineSyncService {
 
       final verseText = verse['text_uthmani'] as String?;
       if (verseText != null) {
-        verse['text_uthmani'] =
-            _normalizeArabicText(verseText, forceSajdahGlyph: forceSajdahGlyph);
+        verse['text_uthmani'] = _normalizeArabicText(
+          verseText,
+          forceSajdahGlyph: forceSajdahGlyph,
+        );
       }
 
       final words = verse['words'];
@@ -572,7 +596,9 @@ class QuranOfflineSyncService {
   }
 
   static String _toCodepoints(String text) {
-    return text.runes.map((r) => 'U+${r.toRadixString(16).toUpperCase()}').join(' ');
+    return text.runes
+        .map((r) => 'U+${r.toRadixString(16).toUpperCase()}')
+        .join(' ');
   }
 
   static bool _isSajdahAyahVerse(Map<String, dynamic> verse) {

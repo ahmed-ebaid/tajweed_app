@@ -35,7 +35,10 @@ void main() {
 
     test('codes are case-sensitive (m ≠ M)', () {
       expect(QuranApiService.ruleFromCode('m'), equals(TajweedRule.maddTabeei));
-      expect(QuranApiService.ruleFromCode('M'), equals(TajweedRule.maddMuttasil));
+      expect(
+        QuranApiService.ruleFromCode('M'),
+        equals(TajweedRule.maddMuttasil),
+      );
     });
   });
 
@@ -48,8 +51,22 @@ void main() {
 
     test('handles double-digit surah and ayah', () {
       final service = QuranApiService();
-      final url = service.audioUrl(reciterId: 7, surahNumber: 67, ayahNumber: 30);
+      final url = service.audioUrl(
+        reciterId: 7,
+        surahNumber: 67,
+        ayahNumber: 30,
+      );
       expect(url, equals('https://verses.quran.com/7/067030.mp3'));
+    });
+  });
+
+  group('QuranApiService.translationIdFor', () {
+    test('uses available Abdel Haleem English translation', () {
+      expect(QuranApiService.translationIdFor('en'), '85');
+    });
+
+    test('uses a Spanish translation rather than an English fallback', () {
+      expect(QuranApiService.translationIdFor('es'), '83');
     });
   });
 }

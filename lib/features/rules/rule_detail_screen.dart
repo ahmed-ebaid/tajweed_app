@@ -34,8 +34,9 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
   String? _exampleAyahLangCode;
   bool _loadingAyah = true;
 
+  static const int _ruleReciterId = 12;
   static const _audioBaseUrl =
-      'https://verses.quran.com/AbdulBaset/Mujawwad/mp3';
+      'https://mirrors.quranicaudio.com/everyayah/Husary_Muallim_128kbps';
 
   ({int surah, int ayah})? _exampleReference() {
     return RuleExampleReferences.referenceFor(widget.definition.rule);
@@ -56,7 +57,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
       surahNumber: surah,
       ayahNumber: ayah,
       langCode: langCode,
-      reciterId: 1,
+      reciterId: _ruleReciterId,
     );
     final tajweed = await _api.fetchTajweedText(chapterNumber: surah);
     var mapped = AyahMapper.fromApi(
@@ -129,9 +130,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
         TajweedWord(
           arabic: word.arabic,
           audioUrl: word.audioUrl,
-          spans: [
-            TajweedSpan(start: 0, end: word.arabic.length, rule: rule),
-          ],
+          spans: [TajweedSpan(start: 0, end: word.arabic.length, rule: rule)],
         ),
       );
     }
@@ -158,7 +157,9 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     final buttonContext = _shareButtonKey.currentContext;
     if (buttonContext != null) {
       final buttonBox = buttonContext.findRenderObject() as RenderBox?;
-      if (buttonBox != null && buttonBox.hasSize && buttonBox.size.longestSide > 0) {
+      if (buttonBox != null &&
+          buttonBox.hasSize &&
+          buttonBox.size.longestSide > 0) {
         final origin = buttonBox.localToGlobal(Offset.zero);
         return origin & buttonBox.size;
       }
@@ -197,16 +198,15 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
         .take(6)
         .toList();
     final triggerLetters = def.triggerLetters
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     final pronunciationTips = _PronunciationSection(
       rule: def.rule,
       langCode: langCode,
       title: '',
     )._tipsFor(def.rule, langCode);
-    Ayah? shareAyah =
-        _exampleAyahLangCode == langCode ? _exampleAyah : null;
+    Ayah? shareAyah = _exampleAyahLangCode == langCode ? _exampleAyah : null;
     if (shareAyah == null) {
       try {
         shareAyah = await _fetchExampleAyahForLanguage(langCode);
@@ -223,15 +223,15 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
         : (surah: shareAyah.surahNumber, ayah: shareAyah.ayahNumber);
     final fallbackAudioCode = RuleExampleReferences.audioCodes[def.rule];
     final fallbackAudioUrl = fallbackAudioCode == null
-      ? null
-      : _toAbsoluteAudioUrl('$_audioBaseUrl/$fallbackAudioCode.mp3');
+        ? null
+        : _toAbsoluteAudioUrl('$_audioBaseUrl/$fallbackAudioCode.mp3');
     final recitationAudioUrl =
-      (previewAudioUrl != null && previewAudioUrl.isNotEmpty)
+        (previewAudioUrl != null && previewAudioUrl.isNotEmpty)
         ? previewAudioUrl
         : fallbackAudioUrl;
     final quranRef = ref == null
         ? null
-      : '${l10n.get('surah')} ${ref.surah}, ${l10n.get('ayah')} ${ref.ayah}';
+        : '${l10n.get('surah')} ${ref.surah}, ${l10n.get('ayah')} ${ref.ayah}';
 
     final appName = l10n.appName.trim();
     final appComingSoon = l10n.get('app_coming_soon').trim();
@@ -260,7 +260,9 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     if (quranText != null && quranText.isNotEmpty) {
       lines
         ..add('')
-        ..add('${l10n.get('quran_text')}${quranRef == null ? '' : ' ($quranRef)'}:')
+        ..add(
+          '${l10n.get('quran_text')}${quranRef == null ? '' : ' ($quranRef)'}:',
+        )
         ..add(quranText);
 
       if (quranTranslation.isNotEmpty) {
@@ -306,11 +308,11 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     final originRect = _shareOriginRect();
 
     try {
-      await Share.share(
-        text,
+      await SharePlus.instance.share(ShareParams(
+        text: text,
         subject: subject,
         sharePositionOrigin: originRect,
-      );
+      ));
     } catch (error) {
       debugPrint('Rule share failed: $error');
     }
@@ -359,9 +361,9 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
             // ── Description ─────────────────────────────────────────────
             Text(
               def.description(langCode),
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    height: 1.7,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(height: 1.7),
             ),
             const SizedBox(height: 24),
 
@@ -421,7 +423,9 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
                   _playing ? Icons.stop_rounded : Icons.volume_up_rounded,
                   size: 18,
                 ),
-                label: Text(_playing ? l10n.get('stop') : l10n.hearPronunciation),
+                label: Text(
+                  _playing ? l10n.get('stop') : l10n.hearPronunciation,
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: rule.color,
                   side: BorderSide(color: rule.color, width: 0.5),
@@ -462,10 +466,12 @@ class _PlaybackAyahPreview extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     if (loading) {
-      return const Center(child: Padding(
-        padding: EdgeInsets.all(12),
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
     }
 
     if (ayah == null) {
@@ -498,7 +504,9 @@ class _PlaybackAyahPreview extends StatelessWidget {
           Row(
             children: [
               Icon(
-                isPlaying ? Icons.play_circle_fill_rounded : Icons.queue_music_rounded,
+                isPlaying
+                    ? Icons.play_circle_fill_rounded
+                    : Icons.queue_music_rounded,
                 size: 16,
                 color: selectedRule.color,
               ),
@@ -536,7 +544,6 @@ class _PlaybackAyahPreview extends StatelessWidget {
       ),
     );
   }
-
 }
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────
@@ -555,7 +562,10 @@ class _RuleHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: rule.color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: rule.color.withValues(alpha: 0.3), width: 0.5),
+        border: Border.all(
+          color: rule.color.withValues(alpha: 0.3),
+          width: 0.5,
+        ),
       ),
       child: Column(
         children: [
@@ -586,9 +596,9 @@ class _RuleHeader extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 name,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: rule.color,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: rule.color),
               ),
             ],
           ),
@@ -606,9 +616,9 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            letterSpacing: 0.04,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.labelMedium?.copyWith(letterSpacing: 0.04),
     );
   }
 }
@@ -692,25 +702,26 @@ class _PronunciationSection extends StatelessWidget {
       children: [
         _SectionTitle(title: title),
         const SizedBox(height: 10),
-        ...tips.map((tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.circle, size: 6, color: rule.color),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      tip,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(height: 1.5),
-                    ),
+        ...tips.map(
+          (tip) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.circle, size: 6, color: rule.color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tip,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(height: 1.5),
                   ),
-                ],
-              ),
-            )),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -763,6 +774,16 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Extend for 2-5 counts when hamza starts the next word',
           'This is permissible (jaiz) — length varies by reader',
+        ];
+      case TajweedRule.maddSilahSughra:
+        return [
+          'Extend the pronoun ha for 2 counts',
+          'It occurs between two vowelled letters without a following hamza',
+        ];
+      case TajweedRule.maddSilahKubra:
+        return [
+          'Extend the pronoun ha for 4-5 counts',
+          'It occurs between two vowelled letters before a hamza',
         ];
       case TajweedRule.ikhfa:
         return [
@@ -883,6 +904,13 @@ class _PronunciationSection extends StatelessWidget {
           'يمد 2–5 حركات إذا جاء الهمز في أول الكلمة التالية',
           'هو مد جائز ويختلف مقداره بحسب القراءة',
         ];
+      case TajweedRule.maddSilahSughra:
+        return ['مد هاء الضمير حركتين', 'يكون بين متحركين من غير همز بعدها'];
+      case TajweedRule.maddSilahKubra:
+        return [
+          'مد هاء الضمير 4–5 حركات',
+          'يكون بين متحركين إذا جاء بعدها همز',
+        ];
       case TajweedRule.ikhfa:
         return [
           'أخفِ صوت النون بين الإظهار والإدغام',
@@ -908,10 +936,7 @@ class _PronunciationSection extends StatelessWidget {
           'حروفه: ي، ن، م، و',
         ];
       case TajweedRule.idghamWithoutGhunnah:
-        return [
-          'أدغم النون إدغامًا كاملاً في اللام أو الراء',
-          'من غير غنة',
-        ];
+        return ['أدغم النون إدغامًا كاملاً في اللام أو الراء', 'من غير غنة'];
       case TajweedRule.shaddah:
         return [
           'شدّد الحرف كأنه حرفان أولهما ساكن والثاني متحرك',
@@ -975,225 +1000,521 @@ class _PronunciationSection extends StatelessWidget {
   List<String> _tipsForUrdu(TajweedRule rule) {
     switch (rule) {
       case TajweedRule.ghunnah:
-        return ['ناک سے آواز کو دو حرکات تک برقرار رکھیں', 'غنہ واضح اور ہموار ہونا چاہیے'];
+        return [
+          'ناک سے آواز کو دو حرکات تک برقرار رکھیں',
+          'غنہ واضح اور ہموار ہونا چاہیے',
+        ];
       case TajweedRule.qalqalah:
-        return ['ساکن حرف پر ہلکی اچھال پیدا کریں', 'آخرِ کلمہ وقف میں قلقلة زیادہ واضح کریں'];
+        return [
+          'ساکن حرف پر ہلکی اچھال پیدا کریں',
+          'آخرِ کلمہ وقف میں قلقلة زیادہ واضح کریں',
+        ];
       case TajweedRule.maddTabeei:
-        return ['مدِ طبیعی کو صرف دو حرکات تک کھینچیں', 'مد کو قدرتی رکھیں، تکلف نہ کریں'];
+        return [
+          'مدِ طبیعی کو صرف دو حرکات تک کھینچیں',
+          'مد کو قدرتی رکھیں، تکلف نہ کریں',
+        ];
       case TajweedRule.maddMuttasil:
-        return ['ایک ہی لفظ میں ہمزہ آئے تو 4-5 حرکات مد کریں', 'یہ واجب مد ہے، کم نہ کریں'];
+        return [
+          'ایک ہی لفظ میں ہمزہ آئے تو 4-5 حرکات مد کریں',
+          'یہ واجب مد ہے، کم نہ کریں',
+        ];
       case TajweedRule.maddMunfasil:
-        return ['اگلے لفظ کے شروع میں ہمزہ ہو تو 2-5 حرکات مد کریں', 'یہ جائز مد ہے، قاری کے طریقے پر منحصر'];
+        return [
+          'اگلے لفظ کے شروع میں ہمزہ ہو تو 2-5 حرکات مد کریں',
+          'یہ جائز مد ہے، قاری کے طریقے پر منحصر',
+        ];
+      case TajweedRule.maddSilahSughra:
+        return ['ضمیر کی ہاء کو دو حرکات کھینچیں', 'اس کے بعد ہمزہ نہ ہو'];
+      case TajweedRule.maddSilahKubra:
+        return ['ضمیر کی ہاء کو 4-5 حرکات کھینچیں', 'اس کے بعد ہمزہ ہو'];
       case TajweedRule.ikhfa:
-        return ['نون کی آواز کو اخفاء میں رکھیں، نہ مکمل ظاہر نہ مکمل ادغام', 'دو حرکات غنہ کے ساتھ ادا کریں'];
+        return [
+          'نون کی آواز کو اخفاء میں رکھیں، نہ مکمل ظاہر نہ مکمل ادغام',
+          'دو حرکات غنہ کے ساتھ ادا کریں',
+        ];
       case TajweedRule.iqlab:
-        return ['باء سے پہلے نون کو میم میں تبدیل کریں', 'میم کو دو حرکات کے غنہ کے ساتھ مخفی پڑھیں'];
+        return [
+          'باء سے پہلے نون کو میم میں تبدیل کریں',
+          'میم کو دو حرکات کے غنہ کے ساتھ مخفی پڑھیں',
+        ];
       case TajweedRule.izhar:
         return ['نون کو صاف اور واضح ادا کریں', 'غنہ کے بغیر پڑھیں'];
       case TajweedRule.idghamWithGhunnah:
-        return ['نون کو اگلے حرف میں ادغام کریں', 'ادغام کے دوران دو حرکات غنہ رکھیں'];
+        return [
+          'نون کو اگلے حرف میں ادغام کریں',
+          'ادغام کے دوران دو حرکات غنہ رکھیں',
+        ];
       case TajweedRule.idghamWithoutGhunnah:
         return ['نون کو لام یا را میں مکمل ادغام کریں', 'غنہ نہ کریں'];
       case TajweedRule.shaddah:
-        return ['حرف کو مشدد یعنی دگنا ادا کریں', 'نون یا میم پر تشدید ہو تو غنہ لازم ہے'];
+        return [
+          'حرف کو مشدد یعنی دگنا ادا کریں',
+          'نون یا میم پر تشدید ہو تو غنہ لازم ہے',
+        ];
       case TajweedRule.waqf:
-        return ['وقف کی علامات رکنے کی جگہ بتاتی ہیں', 'علامت کے مطابق لازم، جائز یا ممنوع وقف کریں'];
+        return [
+          'وقف کی علامات رکنے کی جگہ بتاتی ہیں',
+          'علامت کے مطابق لازم، جائز یا ممنوع وقف کریں',
+        ];
       case TajweedRule.sajdah:
-        return ['۩ سجدہ آیت کی علامت ہے', 'قراءت میں اس مقام پر سجدۂ تلاوت کیا جاتا ہے'];
+        return [
+          '۩ سجدہ آیت کی علامت ہے',
+          'قراءت میں اس مقام پر سجدۂ تلاوت کیا جاتا ہے',
+        ];
       case TajweedRule.maddLazim:
         return ['اس مد کو 6 حرکات تک کھینچیں', 'یہ سب سے مضبوط لازمی مد ہے'];
       case TajweedRule.idghamShafawi:
-        return ['میم ساکن کو اگلی میم میں ادغام کریں', 'دو حرکات غنہ کے ساتھ ادا کریں'];
+        return [
+          'میم ساکن کو اگلی میم میں ادغام کریں',
+          'دو حرکات غنہ کے ساتھ ادا کریں',
+        ];
       case TajweedRule.idghamMutajanisayn:
-        return ['ہم مخرج حروف میں ادغام کریں', 'پہلا ساکن اور دوسرا متحرک حرف مل جاتا ہے'];
+        return [
+          'ہم مخرج حروف میں ادغام کریں',
+          'پہلا ساکن اور دوسرا متحرک حرف مل جاتا ہے',
+        ];
       case TajweedRule.ikhfaShafawi:
-        return ['میم ساکن کو باء سے پہلے مخفی کریں', 'شفتین قریب رکھیں اور غنہ کریں'];
+        return [
+          'میم ساکن کو باء سے پہلے مخفی کریں',
+          'شفتین قریب رکھیں اور غنہ کریں',
+        ];
       case TajweedRule.hamzatWasl:
-        return ['ہمزۂ وصل ابتدا میں پڑھا جاتا ہے', 'وصل کی حالت میں ساقط ہو جاتا ہے'];
+        return [
+          'ہمزۂ وصل ابتدا میں پڑھا جاتا ہے',
+          'وصل کی حالت میں ساقط ہو جاتا ہے',
+        ];
       case TajweedRule.laamShamsiyah:
-        return ['ال کی لام حرف شمسی سے پہلے نہیں پڑھی جاتی', 'اگلا حرف شمسی مشدد پڑھا جاتا ہے'];
+        return [
+          'ال کی لام حرف شمسی سے پہلے نہیں پڑھی جاتی',
+          'اگلا حرف شمسی مشدد پڑھا جاتا ہے',
+        ];
       case TajweedRule.silent:
-        return ['بعض حروف لکھے جاتے ہیں مگر پڑھے نہیں جاتے', 'یہ رسمِ عثمانی کی خصوصیت ہے'];
+        return [
+          'بعض حروف لکھے جاتے ہیں مگر پڑھے نہیں جاتے',
+          'یہ رسمِ عثمانی کی خصوصیت ہے',
+        ];
     }
   }
 
   List<String> _tipsForTurkish(TajweedRule rule) {
     switch (rule) {
       case TajweedRule.ghunnah:
-        return ['Sesi genizden 2 hareke tutun', 'Ghunna net ve dengeli olmalıdır'];
+        return [
+          'Sesi genizden 2 hareke tutun',
+          'Ghunna net ve dengeli olmalıdır',
+        ];
       case TajweedRule.qalqalah:
-        return ['Sakin harfte hafif yankı verin', 'Kelime sonunda vakıfta daha belirgin okuyun'];
+        return [
+          'Sakin harfte hafif yankı verin',
+          'Kelime sonunda vakıfta daha belirgin okuyun',
+        ];
       case TajweedRule.maddTabeei:
-        return ['Doğal meddi tam 2 hareke uzatın', 'Uzatmayı zorlamadan doğal okuyun'];
+        return [
+          'Doğal meddi tam 2 hareke uzatın',
+          'Uzatmayı zorlamadan doğal okuyun',
+        ];
       case TajweedRule.maddMuttasil:
-        return ['Aynı kelimede hemzeden önceki meddi 4-5 hareke uzatın', 'Bu vacip meddir, kısaltmayın'];
+        return [
+          'Aynı kelimede hemzeden önceki meddi 4-5 hareke uzatın',
+          'Bu vacip meddir, kısaltmayın',
+        ];
       case TajweedRule.maddMunfasil:
-        return ['Sonraki kelime hemze ile başlıyorsa 2-5 hareke uzatın', 'Miktar kıraat usulüne göre değişebilir'];
+        return [
+          'Sonraki kelime hemze ile başlıyorsa 2-5 hareke uzatın',
+          'Miktar kıraat usulüne göre değişebilir',
+        ];
+      case TajweedRule.maddSilahSughra:
+        return ['Zamir hâsını 2 hareke uzatın', 'Ardından hemze gelmemelidir'];
+      case TajweedRule.maddSilahKubra:
+        return ['Zamir hâsını 4-5 hareke uzatın', 'Ardından hemze gelmelidir'];
       case TajweedRule.ikhfa:
-        return ['Nun sesini izhar ile idğam arasında gizleyin', '2 hareke ghunna ile okuyun'];
+        return [
+          'Nun sesini izhar ile idğam arasında gizleyin',
+          '2 hareke ghunna ile okuyun',
+        ];
       case TajweedRule.iqlab:
-        return ['Ba harfinden önce nun sesini mime çevirin', 'Mimi 2 hareke ghunna ile gizleyin'];
+        return [
+          'Ba harfinden önce nun sesini mime çevirin',
+          'Mimi 2 hareke ghunna ile gizleyin',
+        ];
       case TajweedRule.izhar:
         return ['Nun sesini açık ve net çıkarın', 'Ghunna eklemeyin'];
       case TajweedRule.idghamWithGhunnah:
-        return ['Nunu sonraki harfe birleştirin', 'Birleşmede 2 hareke ghunna koruyun'];
+        return [
+          'Nunu sonraki harfe birleştirin',
+          'Birleşmede 2 hareke ghunna koruyun',
+        ];
       case TajweedRule.idghamWithoutGhunnah:
         return ['Nunu lam veya ra harfine tamamen katın', 'Ghunna yapmayın'];
       case TajweedRule.shaddah:
-        return ['Harfi iki harf gibi kuvvetli okuyun', 'Nun ve mimde şedde varsa ghunna gerekir'];
+        return [
+          'Harfi iki harf gibi kuvvetli okuyun',
+          'Nun ve mimde şedde varsa ghunna gerekir',
+        ];
       case TajweedRule.waqf:
-        return ['Vakf işaretleri durma yerlerini gösterir', 'İşaret türüne göre durun veya geçin'];
+        return [
+          'Vakf işaretleri durma yerlerini gösterir',
+          'İşaret türüne göre durun veya geçin',
+        ];
       case TajweedRule.sajdah:
         return ['۩ secde ayetini gösterir', 'Tilavette bu yerde secde yapılır'];
       case TajweedRule.maddLazim:
         return ['Bu meddi 6 hareke uzatın', 'En güçlü zorunlu med türüdür'];
       case TajweedRule.idghamShafawi:
-        return ['Sakin mimin ardından gelen mime idğam edin', '2 hareke ghunna ile okuyun'];
+        return [
+          'Sakin mimin ardından gelen mime idğam edin',
+          '2 hareke ghunna ile okuyun',
+        ];
       case TajweedRule.idghamMutajanisayn:
-        return ['Aynı mahreçli iki harfi idğam edin', 'İlk sakin harf ikinciye katılır'];
+        return [
+          'Aynı mahreçli iki harfi idğam edin',
+          'İlk sakin harf ikinciye katılır',
+        ];
       case TajweedRule.ikhfaShafawi:
-        return ['Sakin mimi ba harfinden önce gizleyin', 'Dudakları yaklaştırıp ghunna yapın'];
+        return [
+          'Sakin mimi ba harfinden önce gizleyin',
+          'Dudakları yaklaştırıp ghunna yapın',
+        ];
       case TajweedRule.hamzatWasl:
         return ['Hemze-i vasl sadece başlangıçta okunur', 'Vasl halinde düşer'];
       case TajweedRule.laamShamsiyah:
-        return ['El takısındaki lam okunmaz', 'Sonraki şemsi harf şeddeli okunur'];
+        return [
+          'El takısındaki lam okunmaz',
+          'Sonraki şemsi harf şeddeli okunur',
+        ];
       case TajweedRule.silent:
-        return ['Bazı harfler yazılır ama okunmaz', 'Bu Uthmani yazımın özelliğidir'];
+        return [
+          'Bazı harfler yazılır ama okunmaz',
+          'Bu Uthmani yazımın özelliğidir',
+        ];
     }
   }
 
   List<String> _tipsForFrench(TajweedRule rule) {
     switch (rule) {
       case TajweedRule.ghunnah:
-        return ['Maintenez le son nasal pendant 2 temps', 'La résonance nasale doit être claire et stable'];
+        return [
+          'Maintenez le son nasal pendant 2 temps',
+          'La résonance nasale doit être claire et stable',
+        ];
       case TajweedRule.qalqalah:
-        return ['Ajoutez un léger rebond sur la consonne avec soukoun', 'En fin de mot à l arrêt, l effet est plus fort'];
+        return [
+          'Ajoutez un léger rebond sur la consonne avec soukoun',
+          'En fin de mot à l arrêt, l effet est plus fort',
+        ];
       case TajweedRule.maddTabeei:
-        return ['Allongez la voyelle naturelle de 2 temps', 'Gardez une prolongation naturelle sans forcer'];
+        return [
+          'Allongez la voyelle naturelle de 2 temps',
+          'Gardez une prolongation naturelle sans forcer',
+        ];
       case TajweedRule.maddMuttasil:
-        return ['Allongez 4-5 temps si la hamza est dans le même mot', 'C est un madd obligatoire'];
+        return [
+          'Allongez 4-5 temps si la hamza est dans le même mot',
+          'C est un madd obligatoire',
+        ];
       case TajweedRule.maddMunfasil:
-        return ['Allongez 2-5 temps si la hamza ouvre le mot suivant', 'La longueur dépend de la lecture adoptée'];
+        return [
+          'Allongez 2-5 temps si la hamza ouvre le mot suivant',
+          'La longueur dépend de la lecture adoptée',
+        ];
+      case TajweedRule.maddSilahSughra:
+        return [
+          'Allongez le ha pronominal de 2 temps',
+          'Il n’est pas suivi d’une hamza',
+        ];
+      case TajweedRule.maddSilahKubra:
+        return [
+          'Allongez le ha pronominal de 4-5 temps',
+          'Il est suivi d’une hamza',
+        ];
       case TajweedRule.ikhfa:
-        return ['Cachez le son de noon entre izhar et idgham', 'Accompagnez avec une ghounna de 2 temps'];
+        return [
+          'Cachez le son de noon entre izhar et idgham',
+          'Accompagnez avec une ghounna de 2 temps',
+        ];
       case TajweedRule.iqlab:
-        return ['Transformez noon en son meem avant ba', 'Cachez le meem avec 2 temps de ghounna'];
+        return [
+          'Transformez noon en son meem avant ba',
+          'Cachez le meem avec 2 temps de ghounna',
+        ];
       case TajweedRule.izhar:
-        return ['Prononcez noon clairement et distinctement', 'Sans nasalisation supplémentaire'];
+        return [
+          'Prononcez noon clairement et distinctement',
+          'Sans nasalisation supplémentaire',
+        ];
       case TajweedRule.idghamWithGhunnah:
-        return ['Fusionnez noon avec la lettre suivante', 'Gardez 2 temps de ghounna pendant la fusion'];
+        return [
+          'Fusionnez noon avec la lettre suivante',
+          'Gardez 2 temps de ghounna pendant la fusion',
+        ];
       case TajweedRule.idghamWithoutGhunnah:
         return ['Fusionnez complètement noon dans lam ou ra', 'Sans ghounna'];
       case TajweedRule.shaddah:
-        return ['Doublez la consonne avec une articulation appuyée', 'Sur noon ou meem, la ghounna est requise'];
+        return [
+          'Doublez la consonne avec une articulation appuyée',
+          'Sur noon ou meem, la ghounna est requise',
+        ];
       case TajweedRule.waqf:
-        return ['Les signes de waqf indiquent où s arrêter', 'Respectez le type du signe avant de continuer'];
+        return [
+          'Les signes de waqf indiquent où s arrêter',
+          'Respectez le type du signe avant de continuer',
+        ];
       case TajweedRule.sajdah:
-        return ['Le signe ۩ indique un verset de prosternation', 'On effectue la sajdah de récitation à cet endroit'];
+        return [
+          'Le signe ۩ indique un verset de prosternation',
+          'On effectue la sajdah de récitation à cet endroit',
+        ];
       case TajweedRule.maddLazim:
-        return ['Allongez à 6 temps complets', 'C est le madd le plus fort et obligatoire'];
+        return [
+          'Allongez à 6 temps complets',
+          'C est le madd le plus fort et obligatoire',
+        ];
       case TajweedRule.idghamShafawi:
-        return ['Fusionnez meem sakinah avec meem suivant', 'Lisez avec 2 temps de ghounna'];
+        return [
+          'Fusionnez meem sakinah avec meem suivant',
+          'Lisez avec 2 temps de ghounna',
+        ];
       case TajweedRule.idghamMutajanisayn:
-        return ['Fusionnez deux lettres de même point d articulation', 'La première consonne se fond dans la seconde'];
+        return [
+          'Fusionnez deux lettres de même point d articulation',
+          'La première consonne se fond dans la seconde',
+        ];
       case TajweedRule.ikhfaShafawi:
-        return ['Cachez meem sakinah avant ba', 'Approchez les lèvres avec ghounna'];
+        return [
+          'Cachez meem sakinah avant ba',
+          'Approchez les lèvres avec ghounna',
+        ];
       case TajweedRule.hamzatWasl:
-        return ['Hamzat wasl se prononce au début seulement', 'Elle tombe en liaison'];
+        return [
+          'Hamzat wasl se prononce au début seulement',
+          'Elle tombe en liaison',
+        ];
       case TajweedRule.laamShamsiyah:
-        return ['Le lam de al n est pas prononcé', 'La lettre solaire suivante porte la shadda'];
+        return [
+          'Le lam de al n est pas prononcé',
+          'La lettre solaire suivante porte la shadda',
+        ];
       case TajweedRule.silent:
-        return ['Certaines lettres sont écrites mais non prononcées', 'C est une particularité du rasm uthmani'];
+        return [
+          'Certaines lettres sont écrites mais non prononcées',
+          'C est une particularité du rasm uthmani',
+        ];
     }
   }
 
   List<String> _tipsForIndonesian(TajweedRule rule) {
     switch (rule) {
       case TajweedRule.ghunnah:
-        return ['Tahan dengung melalui hidung selama 2 harakat', 'Resonansi dengung harus jelas dan stabil'];
+        return [
+          'Tahan dengung melalui hidung selama 2 harakat',
+          'Resonansi dengung harus jelas dan stabil',
+        ];
       case TajweedRule.qalqalah:
-        return ['Beri pantulan ringan pada huruf bersukun', 'Saat waqaf di akhir kata, pantulan lebih kuat'];
+        return [
+          'Beri pantulan ringan pada huruf bersukun',
+          'Saat waqaf di akhir kata, pantulan lebih kuat',
+        ];
       case TajweedRule.maddTabeei:
-        return ['Panjangkan mad asli tepat 2 harakat', 'Bacalah alami tanpa memaksa'];
+        return [
+          'Panjangkan mad asli tepat 2 harakat',
+          'Bacalah alami tanpa memaksa',
+        ];
       case TajweedRule.maddMuttasil:
-        return ['Panjangkan 4-5 harakat jika hamzah dalam kata yang sama', 'Ini mad wajib, jangan dipendekkan'];
+        return [
+          'Panjangkan 4-5 harakat jika hamzah dalam kata yang sama',
+          'Ini mad wajib, jangan dipendekkan',
+        ];
       case TajweedRule.maddMunfasil:
-        return ['Panjangkan 2-5 harakat bila hamzah di awal kata berikutnya', 'Panjang bacaan mengikuti riwayat qiraah'];
+        return [
+          'Panjangkan 2-5 harakat bila hamzah di awal kata berikutnya',
+          'Panjang bacaan mengikuti riwayat qiraah',
+        ];
+      case TajweedRule.maddSilahSughra:
+        return ['Panjangkan ha dhamir 2 harakat', 'Tidak diikuti hamzah'];
+      case TajweedRule.maddSilahKubra:
+        return ['Panjangkan ha dhamir 4-5 harakat', 'Diikuti hamzah'];
       case TajweedRule.ikhfa:
-        return ['Sembunyikan suara nun antara izhar dan idgham', 'Baca dengan ghunnah 2 harakat'];
+        return [
+          'Sembunyikan suara nun antara izhar dan idgham',
+          'Baca dengan ghunnah 2 harakat',
+        ];
       case TajweedRule.iqlab:
-        return ['Ubah nun menjadi bunyi mim sebelum ba', 'Sembunyikan mim dengan ghunnah 2 harakat'];
+        return [
+          'Ubah nun menjadi bunyi mim sebelum ba',
+          'Sembunyikan mim dengan ghunnah 2 harakat',
+        ];
       case TajweedRule.izhar:
         return ['Lafalkan nun dengan jelas', 'Tanpa tambahan dengung'];
       case TajweedRule.idghamWithGhunnah:
-        return ['Gabungkan nun ke huruf berikutnya', 'Pertahankan ghunnah 2 harakat saat menggabung'];
+        return [
+          'Gabungkan nun ke huruf berikutnya',
+          'Pertahankan ghunnah 2 harakat saat menggabung',
+        ];
       case TajweedRule.idghamWithoutGhunnah:
         return ['Gabungkan nun sepenuhnya ke lam atau ra', 'Tanpa ghunnah'];
       case TajweedRule.shaddah:
-        return ['Tekankan huruf seolah dua huruf', 'Jika pada nun atau mim, ghunnah wajib'];
+        return [
+          'Tekankan huruf seolah dua huruf',
+          'Jika pada nun atau mim, ghunnah wajib',
+        ];
       case TajweedRule.waqf:
-        return ['Tanda waqaf menunjukkan tempat berhenti', 'Ikuti jenis tanda saat berhenti atau lanjut'];
+        return [
+          'Tanda waqaf menunjukkan tempat berhenti',
+          'Ikuti jenis tanda saat berhenti atau lanjut',
+        ];
       case TajweedRule.sajdah:
-        return ['Tanda ۩ menunjukkan ayat sajdah', 'Pada ayat ini dilakukan sujud tilawah'];
+        return [
+          'Tanda ۩ menunjukkan ayat sajdah',
+          'Pada ayat ini dilakukan sujud tilawah',
+        ];
       case TajweedRule.maddLazim:
-        return ['Panjangkan sampai 6 harakat penuh', 'Ini jenis mad wajib paling kuat'];
+        return [
+          'Panjangkan sampai 6 harakat penuh',
+          'Ini jenis mad wajib paling kuat',
+        ];
       case TajweedRule.idghamShafawi:
-        return ['Idghamkan mim sukun ke mim berikutnya', 'Baca dengan ghunnah 2 harakat'];
+        return [
+          'Idghamkan mim sukun ke mim berikutnya',
+          'Baca dengan ghunnah 2 harakat',
+        ];
       case TajweedRule.idghamMutajanisayn:
-        return ['Gabungkan dua huruf dengan makhraj yang sama', 'Huruf pertama melebur ke huruf kedua'];
+        return [
+          'Gabungkan dua huruf dengan makhraj yang sama',
+          'Huruf pertama melebur ke huruf kedua',
+        ];
       case TajweedRule.ikhfaShafawi:
-        return ['Sembunyikan mim sukun sebelum ba', 'Dekatkan bibir disertai ghunnah'];
+        return [
+          'Sembunyikan mim sukun sebelum ba',
+          'Dekatkan bibir disertai ghunnah',
+        ];
       case TajweedRule.hamzatWasl:
-        return ['Hamzat wasl dibaca saat memulai', 'Saat washal, hamzah tidak dibaca'];
+        return [
+          'Hamzat wasl dibaca saat memulai',
+          'Saat washal, hamzah tidak dibaca',
+        ];
       case TajweedRule.laamShamsiyah:
-        return ['Lam pada al tidak dibaca', 'Huruf syamsiyah setelahnya dibaca bertasydid'];
+        return [
+          'Lam pada al tidak dibaca',
+          'Huruf syamsiyah setelahnya dibaca bertasydid',
+        ];
       case TajweedRule.silent:
-        return ['Sebagian huruf ditulis tetapi tidak dilafalkan', 'Ini ciri khusus rasm Utsmani'];
+        return [
+          'Sebagian huruf ditulis tetapi tidak dilafalkan',
+          'Ini ciri khusus rasm Utsmani',
+        ];
     }
   }
 
   List<String> _tipsForGerman(TajweedRule rule) {
     switch (rule) {
       case TajweedRule.ghunnah:
-        return ['Halte den Nasalklang 2 Zählzeiten', 'Die Resonanz soll klar und gleichmäßig sein'];
+        return [
+          'Halte den Nasalklang 2 Zählzeiten',
+          'Die Resonanz soll klar und gleichmäßig sein',
+        ];
       case TajweedRule.qalqalah:
-        return ['Gib beim stillen Buchstaben einen leichten Rückprall', 'Am Wortende im Stopp ist der Effekt stärker'];
+        return [
+          'Gib beim stillen Buchstaben einen leichten Rückprall',
+          'Am Wortende im Stopp ist der Effekt stärker',
+        ];
       case TajweedRule.maddTabeei:
-        return ['Verlängere natürlich genau 2 Zählzeiten', 'Lies natürlich ohne zu übertreiben'];
+        return [
+          'Verlängere natürlich genau 2 Zählzeiten',
+          'Lies natürlich ohne zu übertreiben',
+        ];
       case TajweedRule.maddMuttasil:
-        return ['Verlängere 4-5 Zählzeiten bei Hamza im selben Wort', 'Dies ist verpflichtend und darf nicht gekürzt werden'];
+        return [
+          'Verlängere 4-5 Zählzeiten bei Hamza im selben Wort',
+          'Dies ist verpflichtend und darf nicht gekürzt werden',
+        ];
       case TajweedRule.maddMunfasil:
-        return ['Verlängere 2-5 Zählzeiten bei Hamza im nächsten Wort', 'Die Länge folgt der gewählten Lesart'];
+        return [
+          'Verlängere 2-5 Zählzeiten bei Hamza im nächsten Wort',
+          'Die Länge folgt der gewählten Lesart',
+        ];
+      case TajweedRule.maddSilahSughra:
+        return [
+          'Verlängere das Pronomen-Ha 2 Zählzeiten',
+          'Danach folgt kein Hamza',
+        ];
+      case TajweedRule.maddSilahKubra:
+        return [
+          'Verlängere das Pronomen-Ha 4-5 Zählzeiten',
+          'Danach folgt ein Hamza',
+        ];
       case TajweedRule.ikhfa:
-        return ['Verberge den Nun-Laut zwischen Izhar und Idgham', 'Mit Ghunna von 2 Zählzeiten lesen'];
+        return [
+          'Verberge den Nun-Laut zwischen Izhar und Idgham',
+          'Mit Ghunna von 2 Zählzeiten lesen',
+        ];
       case TajweedRule.iqlab:
-        return ['Wandle Nun vor Ba in Mim-Laut um', 'Verdecke Mim mit 2 Zählzeiten Ghunna'];
+        return [
+          'Wandle Nun vor Ba in Mim-Laut um',
+          'Verdecke Mim mit 2 Zählzeiten Ghunna',
+        ];
       case TajweedRule.izhar:
-        return ['Sprich den Nun-Laut klar und deutlich', 'Ohne zusätzliche Nasalisation'];
+        return [
+          'Sprich den Nun-Laut klar und deutlich',
+          'Ohne zusätzliche Nasalisation',
+        ];
       case TajweedRule.idghamWithGhunnah:
-        return ['Verschmelze Nun mit dem folgenden Buchstaben', 'Bewahre 2 Zählzeiten Ghunna'];
+        return [
+          'Verschmelze Nun mit dem folgenden Buchstaben',
+          'Bewahre 2 Zählzeiten Ghunna',
+        ];
       case TajweedRule.idghamWithoutGhunnah:
         return ['Verschmelze Nun vollständig in Lam oder Ra', 'Ohne Ghunna'];
       case TajweedRule.shaddah:
-        return ['Sprich den Buchstaben verdoppelt und betont', 'Bei Nun oder Mim mit Shaddah ist Ghunna nötig'];
+        return [
+          'Sprich den Buchstaben verdoppelt und betont',
+          'Bei Nun oder Mim mit Shaddah ist Ghunna nötig',
+        ];
       case TajweedRule.waqf:
-        return ['Waqf-Zeichen markieren Haltepunkte', 'Beachte die Art des Zeichens beim Anhalten'];
+        return [
+          'Waqf-Zeichen markieren Haltepunkte',
+          'Beachte die Art des Zeichens beim Anhalten',
+        ];
       case TajweedRule.sajdah:
-        return ['Das Zeichen ۩ markiert einen Niederwerfungsvers', 'An dieser Stelle erfolgt Sajdah at-Tilawah'];
+        return [
+          'Das Zeichen ۩ markiert einen Niederwerfungsvers',
+          'An dieser Stelle erfolgt Sajdah at-Tilawah',
+        ];
       case TajweedRule.maddLazim:
-        return ['Verlängere auf volle 6 Zählzeiten', 'Dies ist die stärkste verpflichtende Madd-Form'];
+        return [
+          'Verlängere auf volle 6 Zählzeiten',
+          'Dies ist die stärkste verpflichtende Madd-Form',
+        ];
       case TajweedRule.idghamShafawi:
-        return ['Verschmelze Meem Sakinah mit folgendem Meem', 'Mit 2 Zählzeiten Ghunna lesen'];
+        return [
+          'Verschmelze Meem Sakinah mit folgendem Meem',
+          'Mit 2 Zählzeiten Ghunna lesen',
+        ];
       case TajweedRule.idghamMutajanisayn:
-        return ['Verschmelze zwei Buchstaben mit gleichem Artikulationsort', 'Der erste Laut geht in den zweiten über'];
+        return [
+          'Verschmelze zwei Buchstaben mit gleichem Artikulationsort',
+          'Der erste Laut geht in den zweiten über',
+        ];
       case TajweedRule.ikhfaShafawi:
-        return ['Verberge Meem Sakinah vor Ba', 'Lippen annähern und mit Ghunna lesen'];
+        return [
+          'Verberge Meem Sakinah vor Ba',
+          'Lippen annähern und mit Ghunna lesen',
+        ];
       case TajweedRule.hamzatWasl:
-        return ['Hamzat Wasl wird nur am Satzanfang gesprochen', 'In der Verbindung fällt sie weg'];
+        return [
+          'Hamzat Wasl wird nur am Satzanfang gesprochen',
+          'In der Verbindung fällt sie weg',
+        ];
       case TajweedRule.laamShamsiyah:
-        return ['Das Laam von al wird nicht gesprochen', 'Der folgende Sonnenbuchstabe trägt Shaddah'];
+        return [
+          'Das Laam von al wird nicht gesprochen',
+          'Der folgende Sonnenbuchstabe trägt Shaddah',
+        ];
       case TajweedRule.silent:
-        return ['Manche Buchstaben sind geschrieben, aber stumm', 'Das ist eine Besonderheit der uthmanischen Schrift'];
+        return [
+          'Manche Buchstaben sind geschrieben, aber stumm',
+          'Das ist eine Besonderheit der uthmanischen Schrift',
+        ];
     }
   }
 }

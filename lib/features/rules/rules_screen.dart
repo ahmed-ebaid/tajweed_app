@@ -15,6 +15,7 @@ class RulesScreen extends StatefulWidget {
 }
 
 class _RulesScreenState extends State<RulesScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _search = '';
   TajweedRule? _filter;
   int? _expandedIndex;
@@ -30,7 +31,10 @@ class _RulesScreenState extends State<RulesScreen> {
     }).toList();
   }
 
-  List<_RuleGroup> _grouped(List<TajweedRuleDefinition> rules, String langCode) {
+  List<_RuleGroup> _grouped(
+    List<TajweedRuleDefinition> rules,
+    String langCode,
+  ) {
     final buckets = <String, List<TajweedRuleDefinition>>{};
     for (final r in rules) {
       final key = _categoryFor(r.rule);
@@ -46,8 +50,8 @@ class _RulesScreenState extends State<RulesScreen> {
     }
 
     // Keep any unexpected categories visible at the end.
-    final extras = buckets.keys.where((k) => !_categoryOrder.contains(k)).toList()
-      ..sort();
+    final extras =
+        buckets.keys.where((k) => !_categoryOrder.contains(k)).toList()..sort();
     for (final key in extras) {
       final list = buckets[key]!;
       list.sort((a, b) => a.name(langCode).compareTo(b.name(langCode)));
@@ -71,6 +75,8 @@ class _RulesScreenState extends State<RulesScreen> {
       case TajweedRule.maddMuttasil:
       case TajweedRule.maddMunfasil:
       case TajweedRule.maddLazim:
+      case TajweedRule.maddSilahSughra:
+      case TajweedRule.maddSilahKubra:
         return 'rules_category_madd';
       case TajweedRule.ghunnah:
       case TajweedRule.iqlab:
@@ -95,6 +101,20 @@ class _RulesScreenState extends State<RulesScreen> {
     }
   }
 
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _search = '';
+      _expandedIndex = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -102,59 +122,86 @@ class _RulesScreenState extends State<RulesScreen> {
     final rules = _filtered;
     final groups = _grouped(rules, langCode);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.rulesLibrary)),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: l10n.searchRules,
-                prefixIcon: const Icon(Icons.search, size: 20),
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+    return PopScope(
+      canPop: _search.isEmpty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _search.isNotEmpty) _clearSearch();
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Text(l10n.rulesLibrary)),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: l10n.searchRules,
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _search.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: _clearSearch,
+                        ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onChanged: (v) => setState(() {
+                  _search = v.toLowerCase();
+                  _expandedIndex = null;
+                }),
               ),
-              onChanged: (v) => setState(() { _search = v.toLowerCase(); _expandedIndex = null; }),
             ),
-          ),
-          const SizedBox(height: 10),
-          _CategoryPills(
-            selected: _filter,
-            langCode: langCode,
-            onSelect: (r) => setState(() { _filter = r; _expandedIndex = null; }),
-          ),
-          const Divider(height: 0.5),
-          Expanded(
-            child: rules.isEmpty
-                ? Center(child: Text(l10n.get('all_rules'),
-                    style: Theme.of(context).textTheme.bodyMedium))
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: groups.length,
-                    separatorBuilder: (_, __) => const Divider(height: 0.5, indent: 16),
-                    itemBuilder: (context, i) {
-                      final group = groups[i];
-                      return _RuleGroupSection(
-                        group: group,
-                        langCode: langCode,
-                        l10n: l10n,
-                        expandedIndex: _expandedIndex,
-                        onToggle: (flatIndex) => setState(
-                          () => _expandedIndex = _expandedIndex == flatIndex ? null : flatIndex,
-                        ),
-                        onOpenDetail: (definition) => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => RuleDetailScreen(definition: definition),
+            const SizedBox(height: 10),
+            _CategoryPills(
+              selected: _filter,
+              langCode: langCode,
+              onSelect: (r) => setState(() {
+                _filter = r;
+                _expandedIndex = null;
+              }),
+            ),
+            const Divider(height: 0.5),
+            Expanded(
+              child: rules.isEmpty
+                  ? Center(
+                      child: Text(
+                        l10n.get('all_rules'),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: groups.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 0.5, indent: 16),
+                      itemBuilder: (context, i) {
+                        final group = groups[i];
+                        return _RuleGroupSection(
+                          group: group,
+                          langCode: langCode,
+                          l10n: l10n,
+                          expandedIndex: _expandedIndex,
+                          onToggle: (flatIndex) => setState(
+                            () => _expandedIndex =
+                                _expandedIndex == flatIndex ? null : flatIndex,
                           ),
-                        ),
-                        baseFlatIndex: groups
-                            .take(i)
-                            .fold<int>(0, (sum, g) => sum + g.rules.length),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                          onOpenDetail: (definition) =>
+                              Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  RuleDetailScreen(definition: definition),
+                            ),
+                          ),
+                          baseFlatIndex: groups
+                              .take(i)
+                              .fold<int>(0, (sum, g) => sum + g.rules.length),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -165,7 +212,11 @@ class _CategoryPills extends StatelessWidget {
   final String langCode;
   final void Function(TajweedRule?) onSelect;
 
-  const _CategoryPills({required this.selected, required this.langCode, required this.onSelect});
+  const _CategoryPills({
+    required this.selected,
+    required this.langCode,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -180,12 +231,14 @@ class _CategoryPills extends StatelessWidget {
             color: const Color(0xFF1D9E75),
             onTap: () => onSelect(null),
           ),
-          ...RulesRepository.all.map((d) => _Pill(
-            label: d.name(langCode),
-            selected: selected == d.rule,
-            color: d.rule.color,
-            onTap: () => onSelect(selected == d.rule ? null : d.rule),
-          )),
+          ...RulesRepository.all.map(
+            (d) => _Pill(
+              label: d.name(langCode),
+              selected: selected == d.rule,
+              color: d.rule.color,
+              onTap: () => onSelect(selected == d.rule ? null : d.rule),
+            ),
+          ),
         ],
       ),
     );
@@ -198,7 +251,12 @@ class _Pill extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _Pill({required this.label, required this.selected, required this.color, required this.onTap});
+  const _Pill({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +278,9 @@ class _Pill extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
-            color: selected ? Colors.white : Theme.of(context).textTheme.bodySmall?.color,
+            color: selected
+                ? Colors.white
+                : Theme.of(context).textTheme.bodySmall?.color,
           ),
         ),
       ),
@@ -236,8 +296,10 @@ class _RuleCard extends StatelessWidget {
   final VoidCallback onOpenDetail;
 
   const _RuleCard({
-    required this.definition, required this.langCode,
-    required this.expanded, required this.onToggle,
+    required this.definition,
+    required this.langCode,
+    required this.expanded,
+    required this.onToggle,
     required this.onOpenDetail,
   });
 
@@ -253,20 +315,26 @@ class _RuleCard extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 10, height: 10,
+                  width: 10,
+                  height: 10,
                   decoration: BoxDecoration(
-                    color: definition.rule.color, shape: BoxShape.circle,
+                    color: definition.rule.color,
+                    shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(definition.name(langCode),
-                      style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    definition.name(langCode),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
                 Text(
                   definition.rule.arabicName,
                   style: const TextStyle(
-                      fontFamily: 'UthmanicHafs', fontSize: 15),
+                    fontFamily: 'UthmanicHafs',
+                    fontSize: 15,
+                  ),
                   textDirection: TextDirection.rtl,
                 ),
                 const SizedBox(width: 8),
@@ -281,32 +349,48 @@ class _RuleCard extends StatelessWidget {
         ),
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 200),
-          crossFadeState: expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+          crossFadeState:
+              expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
           firstChild: Container(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(definition.description(langCode),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6)),
+                Text(
+                  definition.description(langCode),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.6),
+                ),
                 if (definition.exampleArabic.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Wrap(
-                    spacing: 8, runSpacing: 6,
-                    children: definition.exampleArabic.map((ex) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(ex,
-                          style: TextStyle(
-                              fontFamily: 'UthmanicHafs',
-                              fontSize: 20,
-                              color: definition.rule.color),
-                          textDirection: TextDirection.rtl),
-                    )).toList(),
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: definition.exampleArabic
+                        .map(
+                          (ex) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              ex,
+                              style: TextStyle(
+                                fontFamily: 'UthmanicHafs',
+                                fontSize: 20,
+                                color: definition.rule.color,
+                              ),
+                              textDirection: TextDirection.rtl,
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -315,7 +399,9 @@ class _RuleCard extends StatelessWidget {
                   child: TextButton.icon(
                     onPressed: onOpenDetail,
                     icon: const Icon(Icons.open_in_new, size: 14),
-                    label: Text(AppLocalizations.of(context).get('full_details')),
+                    label: Text(
+                      AppLocalizations.of(context).get('full_details'),
+                    ),
                     style: TextButton.styleFrom(
                       foregroundColor: definition.rule.color,
                       textStyle: const TextStyle(fontSize: 12),
@@ -368,9 +454,9 @@ class _RuleGroupSection extends StatelessWidget {
           child: Text(
             l10n.get(group.title),
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
           ),
         ),
         ...List.generate(group.rules.length, (idx) {

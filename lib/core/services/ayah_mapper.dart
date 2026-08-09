@@ -43,6 +43,7 @@ class AyahMapper {
     final surahNumber = int.tryParse(parts[0]) ?? 1;
     final ayahNumber = int.tryParse(parts[1]) ?? 1;
     final pageNumber = json['page_number'] as int? ?? 1;
+    final juzNumber = json['juz_number'] as int?;
     final forceRubElHizb =
         surahNumber == 2 && (ayahNumber == 142 || ayahNumber == 177);
     final forceSajdahGlyph = _isSajdahAyah(surahNumber, ayahNumber);
@@ -61,7 +62,8 @@ class AyahMapper {
     for (final t in rawTranslations) {
       if (t is Map) {
         final map = Map<String, dynamic>.from(t);
-        final langCode = _langCodeFromResourceId(map['resource_id']) ??
+        final langCode =
+            _langCodeFromResourceId(map['resource_id']) ??
             _langCodeFromName(map['language_name']) ??
             requestedLangCode;
         final text = _stripHtml(map['text'] as String? ?? '');
@@ -90,11 +92,13 @@ class AyahMapper {
         .whereType<Map>()
         .map((w) => Map<String, dynamic>.from(w))
         .where((w) => (w['char_type_name'] as String?) != 'end')
-        .any((w) => _containsSajdahInWordDisplaySource(
-              w,
-              forceRubElHizb: forceRubElHizb,
-              forceSajdahGlyph: forceSajdahGlyph,
-            ));
+        .any(
+          (w) => _containsSajdahInWordDisplaySource(
+            w,
+            forceRubElHizb: forceRubElHizb,
+            forceSajdahGlyph: forceSajdahGlyph,
+          ),
+        );
     final words = adjustedWords
         .where((w) {
           if (w['char_type_name'] != 'end') return true;
@@ -113,7 +117,8 @@ class AyahMapper {
           if ((mapped['char_type_name'] as String?) == 'end') {
             final tajweedText =
                 (mapped['text_uthmani_tajweed'] as String? ?? '');
-            final uthmaniText = (mapped['text_uthmani'] as String? ??
+            final uthmaniText =
+                (mapped['text_uthmani'] as String? ??
                 mapped['text'] as String? ??
                 '');
             if (!tajweedText.contains('\u06E9') &&
@@ -128,6 +133,7 @@ class AyahMapper {
           );
         })
         .toList();
+    final wordsWithMaddSilah = _applyMaddSilahRules(words);
 
     if (_debugMarkerAyahs &&
         surahNumber == 2 &&
@@ -138,7 +144,8 @@ class AyahMapper {
           .join(' | ');
       if (kDebugMode) {
         print(
-            '🔎 MARKER DEBUG $surahNumber:$ayahNumber ayah=${_toCodepoints(arabic)} words=$markerWords');
+          '🔎 MARKER DEBUG $surahNumber:$ayahNumber ayah=${_toCodepoints(arabic)} words=$markerWords',
+        );
       }
     }
 
@@ -156,9 +163,10 @@ class AyahMapper {
       surahNumber: surahNumber,
       ayahNumber: ayahNumber,
       pageNumber: pageNumber,
+      juzNumber: juzNumber,
       arabic: arabic,
       translations: translations,
-      words: words,
+      words: wordsWithMaddSilah,
       audioUrl: audioUrl,
       tajweedSegments: tajweedSegments,
     );
@@ -189,7 +197,8 @@ class AyahMapper {
   // Detect this by checking whether the end-token tajweed differs from its
   // ayah-number glyph text, then realign per token order.
   static List<Map<String, dynamic>> _applyEndTokenShiftFix(
-      List<dynamic> rawWords) {
+    List<dynamic> rawWords,
+  ) {
     final words = rawWords
         .whereType<Map>()
         .map((w) => Map<String, dynamic>.from(w))
@@ -207,12 +216,13 @@ class AyahMapper {
     if (endIndex < 0) return words;
 
     final endToken = words[endIndex];
-    final endText = (endToken['text'] as String? ??
-            endToken['text_uthmani'] as String? ??
-            '')
+    final endText =
+        (endToken['text'] as String? ??
+                endToken['text_uthmani'] as String? ??
+                '')
+            .trim();
+    final endTajweed = (endToken['text_uthmani_tajweed'] as String? ?? '')
         .trim();
-    final endTajweed =
-        (endToken['text_uthmani_tajweed'] as String? ?? '').trim();
 
     // Sajdah/rub-el-hizb markers can legitimately appear on the end token and
     // make `endTajweed != endText` even when there is no shifted payload.
@@ -286,15 +296,96 @@ class AyahMapper {
     const sajdahChar = '\u06E9';
     var sajdahIdx = textForDisplay.indexOf(sajdahChar);
     while (sajdahIdx >= 0) {
-      spans.add(TajweedSpan(
-          start: sajdahIdx, end: sajdahIdx + 1, rule: TajweedRule.sajdah));
+      spans.add(
+        TajweedSpan(
+          start: sajdahIdx,
+          end: sajdahIdx + 1,
+          rule: TajweedRule.sajdah,
+        ),
+      );
       sajdahIdx = textForDisplay.indexOf(sajdahChar, sajdahIdx + 1);
     }
 
     return TajweedWord(
-        arabic: textForDisplay,
-        spans: spans,
-        audioUrl: w['audio_url'] as String?);
+      arabic: textForDisplay,
+      spans: spans,
+      audioUrl: w['audio_url'] as String?,
+    );
+  }
+
+  static List<TajweedWord> _applyMaddSilahRules(List<TajweedWord> words) {
+    const silahMarkers = {'\u06E5', '\u06E6'};
+    const hamzaLetters = {'ء', 'أ', 'إ', 'آ', 'ٱ'};
+    final result = <TajweedWord>[];
+
+    for (int wordIndex = 0; wordIndex < words.length; wordIndex++) {
+      final word = words[wordIndex];
+      final spans = List<TajweedSpan>.from(word.spans);
+
+      for (
+        int markerIndex = 0;
+        markerIndex < word.arabic.length;
+        markerIndex++
+      ) {
+        if (!silahMarkers.contains(word.arabic[markerIndex])) continue;
+
+        var start = markerIndex - 1;
+        while (start >= 0 &&
+            _isArabicCombiningMark(word.arabic.codeUnitAt(start))) {
+          start--;
+        }
+        if (start < 0 || word.arabic[start] != 'ه') continue;
+
+        final nextLetter = _nextPronouncedLetter(
+          words,
+          wordIndex: wordIndex,
+          characterIndex: markerIndex + 1,
+        );
+        final rule = nextLetter != null && hamzaLetters.contains(nextLetter)
+            ? TajweedRule.maddSilahKubra
+            : TajweedRule.maddSilahSughra;
+        final end = _extendOverCombining(word.arabic, markerIndex + 1);
+
+        spans.removeWhere((span) => span.start < end && span.end > start);
+        spans.add(TajweedSpan(start: start, end: end, rule: rule));
+      }
+
+      spans.sort((a, b) => a.start.compareTo(b.start));
+      result.add(
+        TajweedWord(arabic: word.arabic, spans: spans, audioUrl: word.audioUrl),
+      );
+    }
+
+    return result;
+  }
+
+  static String? _nextPronouncedLetter(
+    List<TajweedWord> words, {
+    required int wordIndex,
+    required int characterIndex,
+  }) {
+    for (
+      int currentWord = wordIndex;
+      currentWord < words.length;
+      currentWord++
+    ) {
+      final text = words[currentWord].arabic;
+      final start = currentWord == wordIndex ? characterIndex : 0;
+      for (int i = start; i < text.length; i++) {
+        final codeUnit = text.codeUnitAt(i);
+        if (_isArabicCombiningMark(codeUnit) || text[i].trim().isEmpty) {
+          continue;
+        }
+        return text[i];
+      }
+    }
+    return null;
+  }
+
+  static bool _isArabicCombiningMark(int codeUnit) {
+    return (codeUnit >= 0x0610 && codeUnit <= 0x061A) ||
+        (codeUnit >= 0x064B && codeUnit <= 0x065F) ||
+        (codeUnit >= 0x06D6 && codeUnit <= 0x06ED);
   }
 
   static String _buildWordTranslationFallback(Map<String, dynamic> json) {
@@ -404,7 +495,8 @@ class AyahMapper {
   static bool _containsSajdahInEndToken(Map<String, dynamic> endToken) {
     final tajweedText = endToken['text_uthmani_tajweed'] as String? ?? '';
     final uthmaniText =
-        (endToken['text_uthmani'] as String? ?? endToken['text'] as String? ??
+        (endToken['text_uthmani'] as String? ??
+                endToken['text'] as String? ??
                 '')
             .trim();
     return tajweedText.contains(_sajdahGlyph) ||
@@ -423,7 +515,10 @@ class AyahMapper {
   /// between each pair of adjacent code units. Returns [start, end) indices
   /// into [arabicText] on a match, or null.
   static List<int>? _flexibleMatch(
-      String arabicText, String ruleText, int searchFrom) {
+    String arabicText,
+    String ruleText,
+    int searchFrom,
+  ) {
     if (ruleText.isEmpty) return null;
     final buf = StringBuffer();
     for (int i = 0; i < ruleText.length; i++) {
@@ -467,7 +562,9 @@ class AyahMapper {
   ///
   /// We handle both.
   static List<TajweedSpan> _parseTajweedCodes(
-      String arabicText, String tajweedData) {
+    String arabicText,
+    String tajweedData,
+  ) {
     final spans = <TajweedSpan>[];
 
     // Format 1: single-char code → whole word is that rule
@@ -492,11 +589,9 @@ class AyahMapper {
       if (rule != null && ruleText.isNotEmpty) {
         final idx = arabicText.indexOf(ruleText, searchFrom);
         if (idx >= 0) {
-          spans.add(TajweedSpan(
-            start: idx,
-            end: idx + ruleText.length,
-            rule: rule,
-          ));
+          spans.add(
+            TajweedSpan(start: idx, end: idx + ruleText.length, rule: rule),
+          );
           searchFrom = idx + ruleText.length;
         }
       }
@@ -575,7 +670,7 @@ class AyahMapper {
   static String? _langCodeFromResourceId(dynamic resourceId) {
     final id = resourceId is int ? resourceId : int.tryParse('$resourceId');
     switch (id) {
-      case 131:
+      case 85:
         return 'en';
       case 16:
         return 'ar';
@@ -589,6 +684,8 @@ class AyahMapper {
         return 'id';
       case 27:
         return 'de';
+      case 83:
+        return 'es';
       default:
         return null;
     }
@@ -677,8 +774,9 @@ class AyahMapper {
     bool forceRubElHizb = false,
     bool forceSajdahGlyph = false,
   }) {
-    final reordered =
-        text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (
+      match,
+    ) {
       return '${match.group(1)}\u0651';
     });
 

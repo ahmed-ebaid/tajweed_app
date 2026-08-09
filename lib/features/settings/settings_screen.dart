@@ -26,7 +26,7 @@ class SettingsScreen extends StatelessWidget {
     final tafseerProvider = context.watch<TafseerProvider>();
     final currentLang =
         LocaleProvider.languageNames[localeProvider.locale.languageCode] ??
-            'English';
+        'English';
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
@@ -40,14 +40,17 @@ class SettingsScreen extends StatelessWidget {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(currentLang,
-                    style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  currentLang,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
                 const SizedBox(width: 4),
                 const Icon(Icons.chevron_right_rounded, size: 18),
               ],
             ),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const LanguageSelectorScreen())),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LanguageSelectorScreen()),
+            ),
           ),
           const Divider(height: 0.5, indent: 16),
           _SectionLabel(label: s.text('audio_section')),
@@ -57,9 +60,13 @@ class SettingsScreen extends StatelessWidget {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_reciterLabel(recitationProvider.selectedReciterId,
-                    localeProvider.locale.languageCode),
-                    style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  _reciterLabel(
+                    recitationProvider.selectedReciterId,
+                    localeProvider.locale.languageCode,
+                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
                 const SizedBox(width: 4),
                 const Icon(Icons.chevron_right_rounded, size: 18),
               ],
@@ -105,8 +112,10 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.info_outline_rounded),
             title: Text(s.text('version')),
-            trailing:
-                Text('1.0.0', style: Theme.of(context).textTheme.bodyMedium),
+            trailing: Text(
+              '1.0.0',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ),
           const Divider(height: 0.5, indent: 16),
           const _AboutSourcesTile(),
@@ -206,17 +215,23 @@ class SettingsScreen extends StatelessWidget {
             'es': 'spanish',
           };
           final target = langMap[langCode] ?? 'english';
-          final matching = all.where((t) {
-            final lang = (t['language_name'] as String? ?? '').toLowerCase();
-            return lang == target;
-          }).toList(growable: false);
+          final matching = all
+              .where((t) {
+                final lang = (t['language_name'] as String? ?? '')
+                    .toLowerCase();
+                return lang == target;
+              })
+              .toList(growable: false);
           if (matching.isNotEmpty) {
             return matching;
           }
-          return all.where((t) {
-            final lang = (t['language_name'] as String? ?? '').toLowerCase();
-            return lang == 'english';
-          }).toList(growable: false);
+          return all
+              .where((t) {
+                final lang = (t['language_name'] as String? ?? '')
+                    .toLowerCase();
+                return lang == 'english';
+              })
+              .toList(growable: false);
         },
         itemTitle: (t) => '${t['name'] ?? ''} — ${t['author_name'] ?? ''}',
         isSelected: (t) =>
@@ -237,7 +252,8 @@ class _RecitationDownloadTile extends StatefulWidget {
   const _RecitationDownloadTile();
 
   @override
-  State<_RecitationDownloadTile> createState() => _RecitationDownloadTileState();
+  State<_RecitationDownloadTile> createState() =>
+      _RecitationDownloadTileState();
 }
 
 class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
@@ -317,42 +333,48 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
     final progress = ValueNotifier<Map<String, int>>({'done': 0, 'total': 1});
     try {
       if (showDialogProgress && mounted) {
-        unawaited(showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            title: Text(s.text('downloading_recitation')),
-            content: ValueListenableBuilder<Map<String, int>>(
-              valueListenable: progress,
-              builder: (_, value, __) {
-                final done = value['done'] ?? 0;
-                final total = (value['total'] ?? 1).clamp(1, 99999);
-                final ratio = (done / total).clamp(0.0, 1.0);
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      s.text('surah_reciter_status', {
-                        'surah': '$surahNumber',
-                        'reciter': '$reciterId',
-                      }),
-                      style:
-                          const TextStyle(fontSize: 12, color: Color(0xFF6E6E6E)),
-                    ),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(value: ratio),
-                    const SizedBox(height: 8),
-                    Text(s.text('downloaded_of_ayahs', {
-                      'done': '$done',
-                      'total': '$total',
-                    })),
-                  ],
-                );
-              },
+        unawaited(
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => AlertDialog(
+              title: Text(s.text('downloading_recitation')),
+              content: ValueListenableBuilder<Map<String, int>>(
+                valueListenable: progress,
+                builder: (_, value, __) {
+                  final done = value['done'] ?? 0;
+                  final total = (value['total'] ?? 1).clamp(1, 99999);
+                  final ratio = (done / total).clamp(0.0, 1.0);
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.text('surah_reciter_status', {
+                          'surah': '$surahNumber',
+                          'reciter': '$reciterId',
+                        }),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6E6E6E),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      LinearProgressIndicator(value: ratio),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.text('downloaded_of_ayahs', {
+                          'done': '$done',
+                          'total': '$total',
+                        }),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
-        ));
+        );
       }
 
       await _audioCache.downloadSurah(
@@ -390,15 +412,21 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ok
-              ? s.text('recitation_surah_downloaded', {'surah': '$surahNumber'})
-              : s.text('no_audio_urls_found', {'surah': '$surahNumber'})),
+          content: Text(
+            ok
+                ? s.text('recitation_surah_downloaded', {
+                    'surah': '$surahNumber',
+                  })
+                : s.text('no_audio_urls_found', {'surah': '$surahNumber'}),
+          ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.text('recitation_download_failed', {'error': '$e'}))),
+        SnackBar(
+          content: Text(s.text('recitation_download_failed', {'error': '$e'})),
+        ),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -408,7 +436,8 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
   Future<void> _downloadAll() async {
     if (_busy) return;
     final s = _SettingsStrings.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: Text(s.text('download_all_surahs_recitation')),
@@ -438,47 +467,53 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
 
     setState(() => _busy = true);
     if (mounted) {
-      unawaited(showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          title: Text(s.text('downloading_all_recitations')),
-          content: ValueListenableBuilder<Map<String, int>>(
-            valueListenable: progress,
-            builder: (_, value, __) {
-              final done = value['surahDone'] ?? 0;
-              final total = value['surahTotal'] ?? 114;
-              final currentSurah = value['currentSurah'] ?? 1;
-              final ratio = (done / total).clamp(0.0, 1.0);
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(s.text('reciter_surah_compact', {
-                    'reciter': '$reciterId',
-                    'surah': '$currentSurah',
-                  })),
-                  const SizedBox(height: 12),
-                  LinearProgressIndicator(value: ratio),
-                  const SizedBox(height: 8),
-                  Text(s.text('completed_of_surahs', {
-                    'done': '$done',
-                    'total': '$total',
-                  })),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _cancelBulkRecitation = true;
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: Text(s.text('downloading_all_recitations')),
+            content: ValueListenableBuilder<Map<String, int>>(
+              valueListenable: progress,
+              builder: (_, value, __) {
+                final done = value['surahDone'] ?? 0;
+                final total = value['surahTotal'] ?? 114;
+                final currentSurah = value['currentSurah'] ?? 1;
+                final ratio = (done / total).clamp(0.0, 1.0);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.text('reciter_surah_compact', {
+                        'reciter': '$reciterId',
+                        'surah': '$currentSurah',
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(value: ratio),
+                    const SizedBox(height: 8),
+                    Text(
+                      s.text('completed_of_surahs', {
+                        'done': '$done',
+                        'total': '$total',
+                      }),
+                    ),
+                  ],
+                );
               },
-              child: Text(s.text('stop')),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () {
+                  _cancelBulkRecitation = true;
+                },
+                child: Text(s.text('stop')),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
     }
 
     try {
@@ -507,9 +542,11 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_cancelBulkRecitation
-                ? s.text('recitation_download_stopped')
-                : s.text('all_surahs_recitation_completed')),
+            content: Text(
+              _cancelBulkRecitation
+                  ? s.text('recitation_download_stopped')
+                  : s.text('all_surahs_recitation_completed'),
+            ),
           ),
         );
       }
@@ -517,7 +554,11 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.text('bulk_recitation_download_failed', {'error': '$e'}))),
+          SnackBar(
+            content: Text(
+              s.text('bulk_recitation_download_failed', {'error': '$e'}),
+            ),
+          ),
         );
       }
     } finally {
@@ -549,8 +590,14 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
                 }
               },
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'one', child: Text(s.text('download_one_surah'))),
-                PopupMenuItem(value: 'all', child: Text(s.text('download_all_surahs'))),
+                PopupMenuItem(
+                  value: 'one',
+                  child: Text(s.text('download_one_surah')),
+                ),
+                PopupMenuItem(
+                  value: 'all',
+                  child: Text(s.text('download_all_surahs')),
+                ),
               ],
             ),
     );
@@ -670,42 +717,48 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
     setState(() => _busy = true);
 
     if (mounted) {
-      unawaited(showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          title: Text(s.text('downloading_tafseer')),
-          content: ValueListenableBuilder<Map<String, int>>(
-            valueListenable: progress,
-            builder: (_, value, __) {
-              final done = value['done'] ?? 0;
-              final total = (value['total'] ?? 1).clamp(1, 99999);
-              final ratio = (done / total).clamp(0.0, 1.0);
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    s.text('surah_tafseer_status', {
-                      'surah': '$surahNumber',
-                      'id': '$tafsirId',
-                    }),
-                    style:
-                        const TextStyle(fontSize: 12, color: Color(0xFF6E6E6E)),
-                  ),
-                  const SizedBox(height: 12),
-                  LinearProgressIndicator(value: ratio),
-                  const SizedBox(height: 8),
-                  Text(s.text('downloaded_of_ayahs', {
-                    'done': '$done',
-                    'total': '$total',
-                  })),
-                ],
-              );
-            },
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: Text(s.text('downloading_tafseer')),
+            content: ValueListenableBuilder<Map<String, int>>(
+              valueListenable: progress,
+              builder: (_, value, __) {
+                final done = value['done'] ?? 0;
+                final total = (value['total'] ?? 1).clamp(1, 99999);
+                final ratio = (done / total).clamp(0.0, 1.0);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.text('surah_tafseer_status', {
+                        'surah': '$surahNumber',
+                        'id': '$tafsirId',
+                      }),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6E6E6E),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(value: ratio),
+                    const SizedBox(height: 8),
+                    Text(
+                      s.text('downloaded_of_ayahs', {
+                        'done': '$done',
+                        'total': '$total',
+                      }),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
-      ));
+      );
     }
 
     try {
@@ -755,7 +808,9 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(s.text('tafseer_surah_downloaded', {'surah': '$surahNumber'})),
+            content: Text(
+              s.text('tafseer_surah_downloaded', {'surah': '$surahNumber'}),
+            ),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -781,7 +836,8 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
   Future<void> _downloadAllTafseer() async {
     if (_busy) return;
     final s = _SettingsStrings.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: Text(s.text('download_all_surahs_tafseer')),
@@ -812,47 +868,53 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
 
     setState(() => _busy = true);
     if (mounted) {
-      unawaited(showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          title: Text(s.text('downloading_all_tafseer')),
-          content: ValueListenableBuilder<Map<String, int>>(
-            valueListenable: progress,
-            builder: (_, value, __) {
-              final done = value['surahDone'] ?? 0;
-              final total = value['surahTotal'] ?? 114;
-              final currentSurah = value['currentSurah'] ?? 1;
-              final ratio = (done / total).clamp(0.0, 1.0);
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(s.text('tafseer_id_surah_compact', {
-                    'id': '$tafsirId',
-                    'surah': '$currentSurah',
-                  })),
-                  const SizedBox(height: 12),
-                  LinearProgressIndicator(value: ratio),
-                  const SizedBox(height: 8),
-                  Text(s.text('completed_of_surahs', {
-                    'done': '$done',
-                    'total': '$total',
-                  })),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _cancelBulkTafseer = true;
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: Text(s.text('downloading_all_tafseer')),
+            content: ValueListenableBuilder<Map<String, int>>(
+              valueListenable: progress,
+              builder: (_, value, __) {
+                final done = value['surahDone'] ?? 0;
+                final total = value['surahTotal'] ?? 114;
+                final currentSurah = value['currentSurah'] ?? 1;
+                final ratio = (done / total).clamp(0.0, 1.0);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.text('tafseer_id_surah_compact', {
+                        'id': '$tafsirId',
+                        'surah': '$currentSurah',
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(value: ratio),
+                    const SizedBox(height: 8),
+                    Text(
+                      s.text('completed_of_surahs', {
+                        'done': '$done',
+                        'total': '$total',
+                      }),
+                    ),
+                  ],
+                );
               },
-              child: Text(s.text('stop')),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () {
+                  _cancelBulkTafseer = true;
+                },
+                child: Text(s.text('stop')),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
     }
 
     try {
@@ -902,9 +964,11 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_cancelBulkTafseer
-                ? s.text('tafseer_download_stopped')
-                : s.text('all_surahs_tafseer_completed')),
+            content: Text(
+              _cancelBulkTafseer
+                  ? s.text('tafseer_download_stopped')
+                  : s.text('all_surahs_tafseer_completed'),
+            ),
           ),
         );
       }
@@ -912,7 +976,11 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.text('bulk_tafseer_download_failed', {'error': '$e'}))),
+          SnackBar(
+            content: Text(
+              s.text('bulk_tafseer_download_failed', {'error': '$e'}),
+            ),
+          ),
         );
       }
     } finally {
@@ -944,8 +1012,14 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
                 }
               },
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'one', child: Text(s.text('download_one_surah'))),
-                PopupMenuItem(value: 'all', child: Text(s.text('download_all_surahs'))),
+                PopupMenuItem(
+                  value: 'one',
+                  child: Text(s.text('download_one_surah')),
+                ),
+                PopupMenuItem(
+                  value: 'all',
+                  child: Text(s.text('download_all_surahs')),
+                ),
               ],
             ),
       onTap: null,
@@ -1046,9 +1120,7 @@ class _QuranDataTileState extends State<_QuranDataTile> {
             title: Text(s.text('quran_diagnostics_title')),
             content: SizedBox(
               width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: SelectableText(report),
-              ),
+              child: SingleChildScrollView(child: SelectableText(report)),
             ),
             actions: [
               TextButton(
@@ -1136,13 +1208,26 @@ class _QuranDataTileState extends State<_QuranDataTile> {
                 }
               },
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'sync', child: Text(s.text('download_resume'))),
-                PopupMenuItem(value: 'resync', child: Text(s.text('resync_all'))),
                 PopupMenuItem(
-                    value: 'clear', child: Text(s.text('clear_local_quran_cache'))),
-                PopupMenuItem(value: 'refresh', child: Text(s.text('refresh_status'))),
+                  value: 'sync',
+                  child: Text(s.text('download_resume')),
+                ),
                 PopupMenuItem(
-                    value: 'diagnostics', child: Text(s.text('show_diagnostics'))),
+                  value: 'resync',
+                  child: Text(s.text('resync_all')),
+                ),
+                PopupMenuItem(
+                  value: 'clear',
+                  child: Text(s.text('clear_local_quran_cache')),
+                ),
+                PopupMenuItem(
+                  value: 'refresh',
+                  child: Text(s.text('refresh_status')),
+                ),
+                PopupMenuItem(
+                  value: 'diagnostics',
+                  child: Text(s.text('show_diagnostics')),
+                ),
               ],
             ),
     );
@@ -1278,11 +1363,22 @@ class _MushafPackTileState extends State<_MushafPackTile> {
                 }
               },
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'download', child: Text(s.text('download'))),
-                PopupMenuItem(value: 'redownload', child: Text(s.text('redownload'))),
                 PopupMenuItem(
-                    value: 'delete', child: Text(s.text('delete_local_pack'))),
-                PopupMenuItem(value: 'refresh', child: Text(s.text('refresh_status'))),
+                  value: 'download',
+                  child: Text(s.text('download')),
+                ),
+                PopupMenuItem(
+                  value: 'redownload',
+                  child: Text(s.text('redownload')),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(s.text('delete_local_pack')),
+                ),
+                PopupMenuItem(
+                  value: 'refresh',
+                  child: Text(s.text('refresh_status')),
+                ),
               ],
             ),
     );
@@ -1316,14 +1412,14 @@ class _AboutSourcesSheet extends StatelessWidget {
   const _AboutSourcesSheet();
 
   static const List<MapEntry<String, String>> _translationSources = [
-    MapEntry('English', 'Dr. Mustafa Khattab'),
+    MapEntry('English', 'M.A.S. Abdel Haleem'),
     MapEntry('Arabic', 'Muhammad Taqi-ud-Din al-Hilali'),
     MapEntry('Urdu', 'Fateh Muhammad Jalandhari'),
     MapEntry('Turkish', 'Diyanet Isleri'),
     MapEntry('French', 'Muhammad Hamidullah'),
     MapEntry('Indonesian', 'Indonesian Ministry of Religious Affairs'),
     MapEntry('German', 'Adul Hye and Ahmad von Denffer'),
-    MapEntry('Spanish', 'Fallback to Dr. Mustafa Khattab (English)'),
+    MapEntry('Spanish', 'Sheikh Isa Garcia'),
   ];
 
   static const List<MapEntry<String, String>> _defaultTafsirSources = [
@@ -1370,7 +1466,9 @@ class _AboutSourcesSheet extends StatelessWidget {
     final s = _SettingsStrings.of(context);
     final textTheme = Theme.of(context).textTheme;
     final langCode = context.read<LocaleProvider>().locale.languageCode;
-    final reciters = langCode == 'ar' ? _supportedRecitersAr : _supportedReciters;
+    final reciters = langCode == 'ar'
+        ? _supportedRecitersAr
+        : _supportedReciters;
 
     return SafeArea(
       child: Padding(
@@ -1409,17 +1507,15 @@ class _AboutSourcesSheet extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                s.text('owned_operated'),
-                style: textTheme.bodyLarge,
-              ),
+              Text(s.text('owned_operated'), style: textTheme.bodyLarge),
               const SizedBox(height: 20),
               _AboutSectionTitle(title: s.text('quran_sources_title')),
               _AboutBullet(text: s.text('quran_b1')),
               _AboutBullet(text: s.text('quran_b2')),
               _AboutBullet(text: s.text('quran_b3')),
               ..._translationSources.map(
-                (entry) => _AboutSourceLine(label: entry.key, value: entry.value),
+                (entry) =>
+                    _AboutSourceLine(label: entry.key, value: entry.value),
               ),
               _AboutBullet(text: s.text('quran_b4')),
               const SizedBox(height: 20),
@@ -1427,7 +1523,8 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutBullet(text: s.text('tafseer_b1')),
               _AboutBullet(text: s.text('tafseer_b2')),
               ..._defaultTafsirSources.map(
-                (entry) => _AboutSourceLine(label: entry.key, value: entry.value),
+                (entry) =>
+                    _AboutSourceLine(label: entry.key, value: entry.value),
               ),
               _AboutBullet(text: s.text('tafseer_b3')),
               const SizedBox(height: 12),
@@ -1436,7 +1533,10 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutBullet(text: s.text('recitation_b2')),
               _AboutBullet(text: s.text('recitation_b3')),
               ...reciters.map(
-                (name) => _AboutSourceLine(label: s.text('reciter_label'), value: name),
+                (name) => _AboutSourceLine(
+                  label: s.text('reciter_label'),
+                  value: name,
+                ),
               ),
               const SizedBox(height: 12),
               _AboutSectionTitle(title: s.text('other_sources_title')),
@@ -1469,9 +1569,9 @@ class _AboutSectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -1527,10 +1627,7 @@ class _AboutBullet extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),
@@ -1592,43 +1689,53 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
         children: [
           const SizedBox(height: 12),
           Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2))),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(widget.title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+            child: Text(
+              widget.title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
           ),
           const Divider(height: 0.5),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _items == null || _items!.isEmpty
-                    ? Center(child: Text(_SettingsStrings.of(context).text('no_items_available')))
-                    : ListView.separated(
-                        controller: controller,
-                        itemCount: _items!.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 0.5, indent: 16),
-                        itemBuilder: (_, i) {
-                          final item = _items![i];
-                          final selected = widget.isSelected(item);
-                          return ListTile(
-                            title: Text(widget.itemTitle(item)),
-                            trailing: selected
-                                ? const Icon(Icons.check_circle,
-                                    color: Color(0xFF1D9E75), size: 20)
-                                : null,
-                            onTap: () => widget.onSelect(item),
-                          );
-                        },
-                      ),
+                ? Center(
+                    child: Text(
+                      _SettingsStrings.of(context).text('no_items_available'),
+                    ),
+                  )
+                : ListView.separated(
+                    controller: controller,
+                    itemCount: _items!.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 0.5, indent: 16),
+                    itemBuilder: (_, i) {
+                      final item = _items![i];
+                      final selected = widget.isSelected(item);
+                      return ListTile(
+                        title: Text(widget.itemTitle(item)),
+                        trailing: selected
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF1D9E75),
+                                size: 20,
+                              )
+                            : null,
+                        onTap: () => widget.onSelect(item),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -1671,15 +1778,18 @@ class _SettingsStrings {
       'no_audio_urls_found': 'No audio URLs found for surah {surah}.',
       'recitation_download_failed': 'Recitation download failed: {error}',
       'download_all_surahs_recitation': 'Download all surahs recitation',
-      'large_download_confirm': 'This may take significant storage and time. Continue?',
+      'large_download_confirm':
+          'This may take significant storage and time. Continue?',
       'start': 'Start',
       'downloading_all_recitations': 'Downloading all recitations',
       'reciter_surah_compact': 'Reciter {reciter} • Surah {surah}',
       'completed_of_surahs': 'Completed {done} of {total} surahs',
       'stop': 'Stop',
       'recitation_download_stopped': 'Recitation download stopped.',
-      'all_surahs_recitation_completed': 'All surahs recitation download completed.',
-      'bulk_recitation_download_failed': 'Bulk recitation download failed: {error}',
+      'all_surahs_recitation_completed':
+          'All surahs recitation download completed.',
+      'bulk_recitation_download_failed':
+          'Bulk recitation download failed: {error}',
       'offline_recitation_downloads': 'Offline recitation downloads',
       'reciter_id': 'Reciter ID: {id}',
       'download_one_surah': 'Download one surah',
@@ -1724,23 +1834,34 @@ class _SettingsStrings {
       'quran_sources_ownership': 'Quran sources and ownership',
       'owned_operated': 'This app is owned and operated by Ebaid LLC.',
       'quran_sources_title': 'Quran sources',
-      'quran_b1': 'Quran text, surah and ayah structure, word-by-word data, and tajweed markup are fetched from the Quran.com API v4.',
-      'quran_b2': 'The app uses these translation sources for its supported interface languages:',
-      'quran_b3': 'When you switch the app language, the app requests the matching translation for that language. If a translation is unavailable, it falls back to English.',
-      'quran_b4': 'Remote Mushaf page references point to Quran CDN page images hosted at cdn.qurancdn.com and static.qurancdn.com.',
+      'quran_b1':
+          'Quran text, surah and ayah structure, word-by-word data, and tajweed markup are fetched from the Quran.com API v4.',
+      'quran_b2':
+          'The app uses these translation sources for its supported interface languages:',
+      'quran_b3':
+          'When you switch the app language, the app requests the matching translation for that language. If a translation is unavailable, it falls back to English.',
+      'quran_b4':
+          'Remote Mushaf page references point to Quran CDN page images hosted at cdn.qurancdn.com and static.qurancdn.com.',
       'tafseer_sources_title': 'Tafseer sources',
-      'tafseer_b1': 'The tafseer catalog and verse-by-verse tafseer text are loaded from Quran.com API v4 resources and tafsir endpoints.',
+      'tafseer_b1':
+          'The tafseer catalog and verse-by-verse tafseer text are loaded from Quran.com API v4 resources and tafsir endpoints.',
       'tafseer_b2': 'Default tafseer sources configured by app language are:',
-      'tafseer_b3': 'Users can switch to other tafseer sources returned by Quran.com through the in-app tafseer picker.',
+      'tafseer_b3':
+          'Users can switch to other tafseer sources returned by Quran.com through the in-app tafseer picker.',
       'recitation_sources_title': 'Recitation sources',
-      'recitation_b1': 'The recitation catalog is loaded from Quran.com API v4 resource endpoints.',
-      'recitation_b2': 'Verse audio playback and downloadable recitation files are served from the Quran.com audio CDN at verses.quran.com.',
+      'recitation_b1':
+          'The recitation catalog is loaded from Quran.com API v4 resource endpoints.',
+      'recitation_b2':
+          'Verse audio playback and downloadable recitation files are served from the Quran.com audio CDN at verses.quran.com.',
       'recitation_b3': 'This app currently supports these reciters:',
       'reciter_label': 'Reciter',
       'other_sources_title': 'Other content sources',
-      'other_b1': 'Tajweed rule definitions used in lessons and quizzes are bundled locally in assets/tajweed/rules_db.json.',
-      'other_b2': 'Offline Mushaf page images were originally sourced from the GovarJabbar/Quran-PNG repository on GitHub and are distributed in this app through its downloadable image pack hosted on GitHub Releases.',
-      'other_b3': 'Quranic display in the app uses the bundled UthmanicHafs font asset for Mushaf-style rendering.',
+      'other_b1':
+          'Tajweed rule definitions used in lessons and quizzes are bundled locally in assets/tajweed/rules_db.json.',
+      'other_b2':
+          'Offline Mushaf page images were originally sourced from the GovarJabbar/Quran-PNG repository on GitHub and are distributed in this app through its downloadable image pack hosted on GitHub Releases.',
+      'other_b3':
+          'Quranic display in the app uses the bundled UthmanicHafs font asset for Mushaf-style rendering.',
       'no_items_available': 'No items available',
     },
     'ar': {
@@ -1768,7 +1889,8 @@ class _SettingsStrings {
       'no_audio_urls_found': 'لم يتم العثور على روابط صوتية للسورة {surah}.',
       'recitation_download_failed': 'فشل تنزيل التلاوة: {error}',
       'download_all_surahs_recitation': 'تنزيل تلاوة جميع السور',
-      'large_download_confirm': 'قد يتطلب هذا وقتاً ومساحة تخزين كبيرة. هل تريد المتابعة؟',
+      'large_download_confirm':
+          'قد يتطلب هذا وقتاً ومساحة تخزين كبيرة. هل تريد المتابعة؟',
       'start': 'ابدأ',
       'downloading_all_recitations': 'جارٍ تنزيل جميع التلاوات',
       'reciter_surah_compact': 'القارئ {reciter} • السورة {surah}',
@@ -1776,7 +1898,8 @@ class _SettingsStrings {
       'stop': 'إيقاف',
       'recitation_download_stopped': 'تم إيقاف تنزيل التلاوة.',
       'all_surahs_recitation_completed': 'اكتمل تنزيل تلاوات جميع السور.',
-      'bulk_recitation_download_failed': 'فشل تنزيل التلاوات دفعة واحدة: {error}',
+      'bulk_recitation_download_failed':
+          'فشل تنزيل التلاوات دفعة واحدة: {error}',
       'offline_recitation_downloads': 'تنزيلات التلاوة دون اتصال',
       'reciter_id': 'معرف القارئ: {id}',
       'download_one_surah': 'تنزيل سورة واحدة',
@@ -1821,23 +1944,34 @@ class _SettingsStrings {
       'quran_sources_ownership': 'مصادر القرآن والملكية',
       'owned_operated': 'هذا التطبيق مملوك ومدار بواسطة شركة Ebaid LLC.',
       'quran_sources_title': 'مصادر القرآن',
-      'quran_b1': 'يتم جلب نص القرآن وبنية السور والآيات وبيانات الكلمات وعلامات التجويد من واجهة Quran.com API v4.',
-      'quran_b2': 'يستخدم التطبيق مصادر الترجمة التالية للغات الواجهة المدعومة:',
-      'quran_b3': 'عند تغيير لغة التطبيق، يطلب التطبيق الترجمة المطابقة لتلك اللغة. وإذا لم تتوفر ترجمة، يعود إلى الإنجليزية.',
-      'quran_b4': 'تشير مراجع صفحات المصحف البعيدة إلى صور صفحات مستضافة على cdn.qurancdn.com و static.qurancdn.com.',
+      'quran_b1':
+          'يتم جلب نص القرآن وبنية السور والآيات وبيانات الكلمات وعلامات التجويد من واجهة Quran.com API v4.',
+      'quran_b2':
+          'يستخدم التطبيق مصادر الترجمة التالية للغات الواجهة المدعومة:',
+      'quran_b3':
+          'عند تغيير لغة التطبيق، يطلب التطبيق الترجمة المطابقة لتلك اللغة. وإذا لم تتوفر ترجمة، يعود إلى الإنجليزية.',
+      'quran_b4':
+          'تشير مراجع صفحات المصحف البعيدة إلى صور صفحات مستضافة على cdn.qurancdn.com و static.qurancdn.com.',
       'tafseer_sources_title': 'مصادر التفسير',
-      'tafseer_b1': 'يتم تحميل فهرس التفسير ونصوص التفسير لكل آية من موارد ونهايات tafsir في Quran.com API v4.',
+      'tafseer_b1':
+          'يتم تحميل فهرس التفسير ونصوص التفسير لكل آية من موارد ونهايات tafsir في Quran.com API v4.',
       'tafseer_b2': 'مصادر التفسير الافتراضية حسب لغة التطبيق هي:',
-      'tafseer_b3': 'يمكن للمستخدمين التبديل إلى مصادر تفسير أخرى يعرضها Quran.com من خلال منتقي التفسير داخل التطبيق.',
+      'tafseer_b3':
+          'يمكن للمستخدمين التبديل إلى مصادر تفسير أخرى يعرضها Quran.com من خلال منتقي التفسير داخل التطبيق.',
       'recitation_sources_title': 'مصادر التلاوة',
-      'recitation_b1': 'يتم تحميل فهرس التلاوات من نهايات الموارد في Quran.com API v4.',
-      'recitation_b2': 'يتم تقديم تشغيل صوت الآيات وملفات التلاوة القابلة للتنزيل من شبكة Quran.com الصوتية على verses.quran.com.',
+      'recitation_b1':
+          'يتم تحميل فهرس التلاوات من نهايات الموارد في Quran.com API v4.',
+      'recitation_b2':
+          'يتم تقديم تشغيل صوت الآيات وملفات التلاوة القابلة للتنزيل من شبكة Quran.com الصوتية على verses.quran.com.',
       'recitation_b3': 'يدعم هذا التطبيق حالياً هؤلاء القراء:',
       'reciter_label': 'القارئ',
       'other_sources_title': 'مصادر محتوى أخرى',
-      'other_b1': 'يتم تضمين تعريفات أحكام التجويد المستخدمة في الدروس والاختبارات محلياً في assets/tajweed/rules_db.json.',
-      'other_b2': 'تم الحصول على صور صفحات المصحف غير المتصلة في الأصل من مستودع GovarJabbar/Quran-PNG على GitHub ويتم توزيعها في هذا التطبيق عبر حزمة الصور القابلة للتنزيل والمستضافة على GitHub Releases.',
-      'other_b3': 'يستخدم عرض القرآن في التطبيق خط UthmanicHafs المضمن لإظهار نمط المصحف.',
+      'other_b1':
+          'يتم تضمين تعريفات أحكام التجويد المستخدمة في الدروس والاختبارات محلياً في assets/tajweed/rules_db.json.',
+      'other_b2':
+          'تم الحصول على صور صفحات المصحف غير المتصلة في الأصل من مستودع GovarJabbar/Quran-PNG على GitHub ويتم توزيعها في هذا التطبيق عبر حزمة الصور القابلة للتنزيل والمستضافة على GitHub Releases.',
+      'other_b3':
+          'يستخدم عرض القرآن في التطبيق خط UthmanicHafs المضمن لإظهار نمط المصحف.',
       'no_items_available': 'لا توجد عناصر متاحة',
     },
     'ur': {
@@ -1865,15 +1999,18 @@ class _SettingsStrings {
       'no_audio_urls_found': 'سورہ {surah} کے لیے آڈیو روابط نہیں ملے۔',
       'recitation_download_failed': 'تلاوت ڈاؤن لوڈ ناکام: {error}',
       'download_all_surahs_recitation': 'تمام سورتوں کی تلاوت ڈاؤن لوڈ کریں',
-      'large_download_confirm': 'اس میں کافی وقت اور اسٹوریج لگ سکتی ہے۔ کیا جاری رکھنا ہے؟',
+      'large_download_confirm':
+          'اس میں کافی وقت اور اسٹوریج لگ سکتی ہے۔ کیا جاری رکھنا ہے؟',
       'start': 'شروع کریں',
       'downloading_all_recitations': 'تمام تلاوتیں ڈاؤن لوڈ ہو رہی ہیں',
       'reciter_surah_compact': 'قاری {reciter} • سورہ {surah}',
       'completed_of_surahs': '{total} میں سے {done} سورتیں مکمل',
       'stop': 'روکیں',
       'recitation_download_stopped': 'تلاوت کا ڈاؤن لوڈ روک دیا گیا۔',
-      'all_surahs_recitation_completed': 'تمام سورتوں کی تلاوت کا ڈاؤن لوڈ مکمل ہو گیا۔',
-      'bulk_recitation_download_failed': 'اجتماعی تلاوت ڈاؤن لوڈ ناکام: {error}',
+      'all_surahs_recitation_completed':
+          'تمام سورتوں کی تلاوت کا ڈاؤن لوڈ مکمل ہو گیا۔',
+      'bulk_recitation_download_failed':
+          'اجتماعی تلاوت ڈاؤن لوڈ ناکام: {error}',
       'offline_recitation_downloads': 'آف لائن تلاوت ڈاؤن لوڈز',
       'reciter_id': 'قاری آئی ڈی: {id}',
       'download_one_surah': 'ایک سورہ ڈاؤن لوڈ کریں',
@@ -1888,7 +2025,8 @@ class _SettingsStrings {
       'downloading_all_tafseer': 'تمام تفاسیر ڈاؤن لوڈ ہو رہی ہیں',
       'tafseer_id_surah_compact': 'تفسیر آئی ڈی {id} • سورہ {surah}',
       'tafseer_download_stopped': 'تفسیر کا ڈاؤن لوڈ روک دیا گیا۔',
-      'all_surahs_tafseer_completed': 'تمام سورتوں کی تفسیر کا ڈاؤن لوڈ مکمل ہو گیا۔',
+      'all_surahs_tafseer_completed':
+          'تمام سورتوں کی تفسیر کا ڈاؤن لوڈ مکمل ہو گیا۔',
       'bulk_tafseer_download_failed': 'اجتماعی تفسیر ڈاؤن لوڈ ناکام: {error}',
       'download_tafseer_offline': 'آف لائن کے لیے تفسیر ڈاؤن لوڈ کریں',
       'current_source_id': 'موجودہ ماخذ آئی ڈی: {id}',
@@ -1916,25 +2054,37 @@ class _SettingsStrings {
       'delete_local_pack': 'مقامی پیک حذف کریں',
       'about_this_app': 'اس ایپ کے بارے میں',
       'quran_sources_ownership': 'قرآن کے ماخذ اور ملکیت',
-      'owned_operated': 'یہ ایپ Ebaid LLC کی ملکیت ہے اور اسی کے زیر انتظام ہے۔',
+      'owned_operated':
+          'یہ ایپ Ebaid LLC کی ملکیت ہے اور اسی کے زیر انتظام ہے۔',
       'quran_sources_title': 'قرآن کے ماخذ',
-      'quran_b1': 'قرآن کا متن، سورہ اور آیت کی ساخت، لفظ بہ لفظ ڈیٹا، اور تجوید مارک اپ Quran.com API v4 سے حاصل کیے جاتے ہیں۔',
-      'quran_b2': 'ایپ اپنی معاون زبانوں کے لیے یہ ترجمہ جاتی ماخذ استعمال کرتی ہے:',
-      'quran_b3': 'جب آپ ایپ کی زبان تبدیل کرتے ہیں تو ایپ اسی زبان کا ترجمہ مانگتی ہے۔ اگر ترجمہ دستیاب نہ ہو تو انگریزی استعمال ہوتی ہے۔',
-      'quran_b4': 'آن لائن مصحف صفحات کے روابط cdn.qurancdn.com اور static.qurancdn.com پر موجود تصاویر کی طرف اشارہ کرتے ہیں۔',
+      'quran_b1':
+          'قرآن کا متن، سورہ اور آیت کی ساخت، لفظ بہ لفظ ڈیٹا، اور تجوید مارک اپ Quran.com API v4 سے حاصل کیے جاتے ہیں۔',
+      'quran_b2':
+          'ایپ اپنی معاون زبانوں کے لیے یہ ترجمہ جاتی ماخذ استعمال کرتی ہے:',
+      'quran_b3':
+          'جب آپ ایپ کی زبان تبدیل کرتے ہیں تو ایپ اسی زبان کا ترجمہ مانگتی ہے۔ اگر ترجمہ دستیاب نہ ہو تو انگریزی استعمال ہوتی ہے۔',
+      'quran_b4':
+          'آن لائن مصحف صفحات کے روابط cdn.qurancdn.com اور static.qurancdn.com پر موجود تصاویر کی طرف اشارہ کرتے ہیں۔',
       'tafseer_sources_title': 'تفسیر کے ماخذ',
-      'tafseer_b1': 'تفسیر کی فہرست اور آیت بہ آیت تفسیر کا متن Quran.com API v4 کے وسائل اور tafsir endpoints سے لوڈ ہوتا ہے۔',
+      'tafseer_b1':
+          'تفسیر کی فہرست اور آیت بہ آیت تفسیر کا متن Quran.com API v4 کے وسائل اور tafsir endpoints سے لوڈ ہوتا ہے۔',
       'tafseer_b2': 'ایپ کی زبان کے مطابق طے شدہ تفسیر کے ماخذ یہ ہیں:',
-      'tafseer_b3': 'صارف ایپ کے اندر موجود تفسیر منتخب کنندہ کے ذریعے Quran.com کی دیگر تفاسیر بھی منتخب کر سکتے ہیں۔',
+      'tafseer_b3':
+          'صارف ایپ کے اندر موجود تفسیر منتخب کنندہ کے ذریعے Quran.com کی دیگر تفاسیر بھی منتخب کر سکتے ہیں۔',
       'recitation_sources_title': 'تلاوت کے ماخذ',
-      'recitation_b1': 'تلاوت کی فہرست Quran.com API v4 کے resource endpoints سے لوڈ ہوتی ہے۔',
-      'recitation_b2': 'آیات کی آڈیو پلے بیک اور ڈاؤن لوڈ ایبل تلاوت فائلیں verses.quran.com پر Quran.com آڈیو CDN سے دی جاتی ہیں۔',
+      'recitation_b1':
+          'تلاوت کی فہرست Quran.com API v4 کے resource endpoints سے لوڈ ہوتی ہے۔',
+      'recitation_b2':
+          'آیات کی آڈیو پلے بیک اور ڈاؤن لوڈ ایبل تلاوت فائلیں verses.quran.com پر Quran.com آڈیو CDN سے دی جاتی ہیں۔',
       'recitation_b3': 'یہ ایپ فی الحال ان قراء کی حمایت کرتی ہے:',
       'reciter_label': 'قاری',
       'other_sources_title': 'دیگر مواد کے ماخذ',
-      'other_b1': 'اسباق اور کوئز میں استعمال ہونے والے تجوید قوانین کی تعریفیں assets/tajweed/rules_db.json میں مقامی طور پر شامل ہیں۔',
-      'other_b2': 'آف لائن مصحف تصاویر اصل میں GitHub کے GovarJabbar/Quran-PNG repository سے لی گئی تھیں اور اس ایپ میں GitHub Releases پر موجود downloadable image pack کے ذریعے فراہم کی جاتی ہیں۔',
-      'other_b3': 'ایپ میں قرآنی متن کی نمائش کے لیے UthmanicHafs فونٹ استعمال ہوتا ہے۔',
+      'other_b1':
+          'اسباق اور کوئز میں استعمال ہونے والے تجوید قوانین کی تعریفیں assets/tajweed/rules_db.json میں مقامی طور پر شامل ہیں۔',
+      'other_b2':
+          'آف لائن مصحف تصاویر اصل میں GitHub کے GovarJabbar/Quran-PNG repository سے لی گئی تھیں اور اس ایپ میں GitHub Releases پر موجود downloadable image pack کے ذریعے فراہم کی جاتی ہیں۔',
+      'other_b3':
+          'ایپ میں قرآنی متن کی نمائش کے لیے UthmanicHafs فونٹ استعمال ہوتا ہے۔',
       'no_items_available': 'کوئی آئٹم دستیاب نہیں',
     },
     'tr': {
@@ -1962,7 +2112,8 @@ class _SettingsStrings {
       'no_audio_urls_found': '{surah}. sure için ses URLsi bulunamadı.',
       'recitation_download_failed': 'Tilavet indirme başarısız: {error}',
       'download_all_surahs_recitation': 'Tüm surelerin tilavetini indir',
-      'large_download_confirm': 'Bu işlem önemli miktarda zaman ve depolama gerektirebilir. Devam edilsin mi?',
+      'large_download_confirm':
+          'Bu işlem önemli miktarda zaman ve depolama gerektirebilir. Devam edilsin mi?',
       'start': 'Başlat',
       'downloading_all_recitations': 'Tüm tilavetler indiriliyor',
       'reciter_surah_compact': 'Kari {reciter} • Sure {surah}',
@@ -1970,7 +2121,8 @@ class _SettingsStrings {
       'stop': 'Durdur',
       'recitation_download_stopped': 'Tilavet indirme durduruldu.',
       'all_surahs_recitation_completed': 'Tüm surelerin tilaveti indirildi.',
-      'bulk_recitation_download_failed': 'Toplu tilavet indirme başarısız: {error}',
+      'bulk_recitation_download_failed':
+          'Toplu tilavet indirme başarısız: {error}',
       'offline_recitation_downloads': 'Çevrimdışı tilavet indirmeleri',
       'reciter_id': 'Kari kimliği: {id}',
       'download_one_surah': 'Bir sure indir',
@@ -2015,23 +2167,35 @@ class _SettingsStrings {
       'quran_sources_ownership': "Kur'an kaynakları ve sahiplik",
       'owned_operated': 'Bu uygulamanın sahibi ve işletmecisi Ebaid LLCdir.',
       'quran_sources_title': "Kur'an kaynakları",
-      'quran_b1': "Kur'an metni, sure ve ayet yapısı, kelime kelime veri ve tecvid işaretlemeleri Quran.com API v4ten alınır.",
-      'quran_b2': 'Uygulama, desteklenen arayüz dilleri için şu çeviri kaynaklarını kullanır:',
-      'quran_b3': 'Uygulama dilini değiştirdiğinizde uygulama o dile uygun çeviriyi ister. Bir çeviri yoksa İngilizceye döner.',
-      'quran_b4': 'Uzak mushaf sayfası başvuruları cdn.qurancdn.com ve static.qurancdn.com üzerindeki sayfa görsellerine işaret eder.',
+      'quran_b1':
+          "Kur'an metni, sure ve ayet yapısı, kelime kelime veri ve tecvid işaretlemeleri Quran.com API v4ten alınır.",
+      'quran_b2':
+          'Uygulama, desteklenen arayüz dilleri için şu çeviri kaynaklarını kullanır:',
+      'quran_b3':
+          'Uygulama dilini değiştirdiğinizde uygulama o dile uygun çeviriyi ister. Bir çeviri yoksa İngilizceye döner.',
+      'quran_b4':
+          'Uzak mushaf sayfası başvuruları cdn.qurancdn.com ve static.qurancdn.com üzerindeki sayfa görsellerine işaret eder.',
       'tafseer_sources_title': 'Tefsir kaynakları',
-      'tafseer_b1': 'Tefsir kataloğu ve ayet bazlı tefsir metni Quran.com API v4 kaynakları ve tafsir uç noktalarından yüklenir.',
-      'tafseer_b2': 'Uygulama diline göre yapılandırılan varsayılan tefsir kaynakları şunlardır:',
-      'tafseer_b3': 'Kullanıcılar uygulama içindeki tefsir seçicisi üzerinden Quran.com tarafından sunulan diğer tefsir kaynaklarına geçebilir.',
+      'tafseer_b1':
+          'Tefsir kataloğu ve ayet bazlı tefsir metni Quran.com API v4 kaynakları ve tafsir uç noktalarından yüklenir.',
+      'tafseer_b2':
+          'Uygulama diline göre yapılandırılan varsayılan tefsir kaynakları şunlardır:',
+      'tafseer_b3':
+          'Kullanıcılar uygulama içindeki tefsir seçicisi üzerinden Quran.com tarafından sunulan diğer tefsir kaynaklarına geçebilir.',
       'recitation_sources_title': 'Tilavet kaynakları',
-      'recitation_b1': 'Tilavet kataloğu Quran.com API v4 kaynak uç noktalarından yüklenir.',
-      'recitation_b2': 'Ayet ses oynatımı ve indirilebilir tilavet dosyaları verses.quran.com üzerindeki Quran.com ses CDNinden sunulur.',
+      'recitation_b1':
+          'Tilavet kataloğu Quran.com API v4 kaynak uç noktalarından yüklenir.',
+      'recitation_b2':
+          'Ayet ses oynatımı ve indirilebilir tilavet dosyaları verses.quran.com üzerindeki Quran.com ses CDNinden sunulur.',
       'recitation_b3': 'Bu uygulama şu karileri destekler:',
       'reciter_label': 'Kari',
       'other_sources_title': 'Diğer içerik kaynakları',
-      'other_b1': 'Derslerde ve quizlerde kullanılan tecvid kural tanımları assets/tajweed/rules_db.json içinde yerel olarak paketlenmiştir.',
-      'other_b2': 'Çevrimdışı mushaf sayfa görselleri ilk olarak GitHubdaki GovarJabbar/Quran-PNG deposundan alınmış ve bu uygulamada GitHub Releases üzerinde barındırılan indirilebilir görsel paket aracılığıyla sunulmuştur.',
-      'other_b3': "Uygulamadaki Kur'an gösterimi mushaf tarzı görünüm için gömülü UthmanicHafs yazı tipini kullanır.",
+      'other_b1':
+          'Derslerde ve quizlerde kullanılan tecvid kural tanımları assets/tajweed/rules_db.json içinde yerel olarak paketlenmiştir.',
+      'other_b2':
+          'Çevrimdışı mushaf sayfa görselleri ilk olarak GitHubdaki GovarJabbar/Quran-PNG deposundan alınmış ve bu uygulamada GitHub Releases üzerinde barındırılan indirilebilir görsel paket aracılığıyla sunulmuştur.',
+      'other_b3':
+          "Uygulamadaki Kur'an gösterimi mushaf tarzı görünüm için gömülü UthmanicHafs yazı tipini kullanır.",
       'no_items_available': 'Kullanılabilir öğe yok',
     },
     'fr': {
@@ -2055,20 +2219,29 @@ class _SettingsStrings {
       'downloading_recitation': 'Téléchargement de la récitation',
       'downloaded_of_ayahs': '{done} ayats téléchargées sur {total}',
       'surah_reciter_status': 'Sourate {surah} · Récitateur {reciter}',
-      'recitation_surah_downloaded': 'Récitation de la sourate {surah} téléchargée.',
-      'no_audio_urls_found': 'Aucune URL audio trouvée pour la sourate {surah}.',
-      'recitation_download_failed': 'Échec du téléchargement de la récitation : {error}',
-      'download_all_surahs_recitation': 'Télécharger la récitation de toutes les sourates',
-      'large_download_confirm': "Cela peut prendre du temps et beaucoup d'espace de stockage. Continuer ?",
+      'recitation_surah_downloaded':
+          'Récitation de la sourate {surah} téléchargée.',
+      'no_audio_urls_found':
+          'Aucune URL audio trouvée pour la sourate {surah}.',
+      'recitation_download_failed':
+          'Échec du téléchargement de la récitation : {error}',
+      'download_all_surahs_recitation':
+          'Télécharger la récitation de toutes les sourates',
+      'large_download_confirm':
+          "Cela peut prendre du temps et beaucoup d'espace de stockage. Continuer ?",
       'start': 'Démarrer',
       'downloading_all_recitations': 'Téléchargement de toutes les récitations',
       'reciter_surah_compact': 'Récitateur {reciter} • Sourate {surah}',
       'completed_of_surahs': '{done} sourates terminées sur {total}',
       'stop': 'Arrêter',
-      'recitation_download_stopped': 'Le téléchargement de la récitation a été arrêté.',
-      'all_surahs_recitation_completed': 'Le téléchargement de la récitation de toutes les sourates est terminé.',
-      'bulk_recitation_download_failed': 'Échec du téléchargement groupé de récitations : {error}',
-      'offline_recitation_downloads': 'Téléchargements de récitations hors ligne',
+      'recitation_download_stopped':
+          'Le téléchargement de la récitation a été arrêté.',
+      'all_surahs_recitation_completed':
+          'Le téléchargement de la récitation de toutes les sourates est terminé.',
+      'bulk_recitation_download_failed':
+          'Échec du téléchargement groupé de récitations : {error}',
+      'offline_recitation_downloads':
+          'Téléchargements de récitations hors ligne',
       'reciter_id': 'ID du récitateur : {id}',
       'download_one_surah': 'Télécharger une sourate',
       'download_all_surahs': 'Télécharger toutes les sourates',
@@ -2078,31 +2251,40 @@ class _SettingsStrings {
       'no_verses_returned': 'Aucun verset renvoyé pour cette sourate.',
       'tafseer_surah_downloaded': 'Tafsir de la sourate {surah} téléchargé.',
       'tafseer_download_failed': 'Échec du téléchargement du tafsir : {error}',
-      'download_all_surahs_tafseer': 'Télécharger le tafsir de toutes les sourates',
+      'download_all_surahs_tafseer':
+          'Télécharger le tafsir de toutes les sourates',
       'downloading_all_tafseer': 'Téléchargement de tous les tafsirs',
       'tafseer_id_surah_compact': 'ID du tafsir {id} • Sourate {surah}',
       'tafseer_download_stopped': 'Le téléchargement du tafsir a été arrêté.',
-      'all_surahs_tafseer_completed': 'Le téléchargement du tafsir de toutes les sourates est terminé.',
-      'bulk_tafseer_download_failed': 'Échec du téléchargement groupé du tafsir : {error}',
-      'download_tafseer_offline': 'Télécharger le tafsir pour le mode hors ligne',
+      'all_surahs_tafseer_completed':
+          'Le téléchargement du tafsir de toutes les sourates est terminé.',
+      'bulk_tafseer_download_failed':
+          'Échec du téléchargement groupé du tafsir : {error}',
+      'download_tafseer_offline':
+          'Télécharger le tafsir pour le mode hors ligne',
       'current_source_id': 'ID de la source actuelle : {id}',
       'quran_diagnostics_title': 'Diagnostic du Coran (7:101, 7:122)',
       'diagnostics_copied': 'Diagnostic copié',
       'copy': 'Copier',
       'close': 'Fermer',
       'working': 'En cours...',
-      'error_syncing_quran_data': 'Erreur lors de la synchronisation des données du Coran',
+      'error_syncing_quran_data':
+          'Erreur lors de la synchronisation des données du Coran',
       'checking_status': 'Vérification du statut...',
-      'ready_status': 'Prêt ({synced}/{total}) • Dernière synchronisation : {time}',
-      'syncing_surahs_status': 'Synchronisation de {synced}/{total} sourates...',
-      'not_fully_synced_status': 'Pas encore totalement synchronisé ({synced}/{total})',
+      'ready_status':
+          'Prêt ({synced}/{total}) • Dernière synchronisation : {time}',
+      'syncing_surahs_status':
+          'Synchronisation de {synced}/{total} sourates...',
+      'not_fully_synced_status':
+          'Pas encore totalement synchronisé ({synced}/{total})',
       'quran_text_offline': 'Texte coranique (hors ligne)',
       'download_resume': 'Télécharger / Reprendre',
       'resync_all': 'Tout resynchroniser',
       'clear_local_quran_cache': 'Effacer le cache coranique local',
       'refresh_status': 'Actualiser le statut',
       'show_diagnostics': 'Afficher le diagnostic',
-      'error_pack_checking': 'Erreur lors de la vérification/téléchargement du pack',
+      'error_pack_checking':
+          'Erreur lors de la vérification/téléchargement du pack',
       'installed_pages': 'Installé ({count} pages)',
       'not_installed_yet': 'Pas encore installé ({count}/{expected} pages)',
       'mushaf_image_pack': 'Pack d’images du mushaf',
@@ -2110,25 +2292,39 @@ class _SettingsStrings {
       'delete_local_pack': 'Supprimer le pack local',
       'about_this_app': 'À propos de cette application',
       'quran_sources_ownership': 'Sources du Coran et propriété',
-      'owned_operated': 'Cette application est détenue et exploitée par Ebaid LLC.',
+      'owned_operated':
+          'Cette application est détenue et exploitée par Ebaid LLC.',
       'quran_sources_title': 'Sources du Coran',
-      'quran_b1': 'Le texte coranique, la structure des sourates et des ayats, les données mot à mot et le balisage du tajwid proviennent de l’API v4 de Quran.com.',
-      'quran_b2': 'L’application utilise les sources de traduction suivantes pour les langues d’interface prises en charge :',
-      'quran_b3': 'Lorsque vous changez la langue de l’application, elle demande la traduction correspondante. Si elle est indisponible, elle revient à l’anglais.',
-      'quran_b4': 'Les références distantes des pages du mushaf pointent vers des images hébergées sur cdn.qurancdn.com et static.qurancdn.com.',
+      'quran_b1':
+          'Le texte coranique, la structure des sourates et des ayats, les données mot à mot et le balisage du tajwid proviennent de l’API v4 de Quran.com.',
+      'quran_b2':
+          'L’application utilise les sources de traduction suivantes pour les langues d’interface prises en charge :',
+      'quran_b3':
+          'Lorsque vous changez la langue de l’application, elle demande la traduction correspondante. Si elle est indisponible, elle revient à l’anglais.',
+      'quran_b4':
+          'Les références distantes des pages du mushaf pointent vers des images hébergées sur cdn.qurancdn.com et static.qurancdn.com.',
       'tafseer_sources_title': 'Sources du tafsir',
-      'tafseer_b1': 'Le catalogue du tafsir et le texte du tafsir verset par verset sont chargés depuis les ressources et endpoints tafsir de l’API v4 de Quran.com.',
-      'tafseer_b2': 'Les sources de tafsir par défaut configurées selon la langue de l’application sont :',
-      'tafseer_b3': 'Les utilisateurs peuvent choisir d’autres sources de tafsir renvoyées par Quran.com via le sélecteur intégré.',
+      'tafseer_b1':
+          'Le catalogue du tafsir et le texte du tafsir verset par verset sont chargés depuis les ressources et endpoints tafsir de l’API v4 de Quran.com.',
+      'tafseer_b2':
+          'Les sources de tafsir par défaut configurées selon la langue de l’application sont :',
+      'tafseer_b3':
+          'Les utilisateurs peuvent choisir d’autres sources de tafsir renvoyées par Quran.com via le sélecteur intégré.',
       'recitation_sources_title': 'Sources de récitation',
-      'recitation_b1': 'Le catalogue des récitations est chargé depuis les endpoints de ressources de l’API v4 de Quran.com.',
-      'recitation_b2': 'La lecture audio des versets et les fichiers de récitation téléchargeables sont fournis par le CDN audio de Quran.com sur verses.quran.com.',
-      'recitation_b3': 'Cette application prend actuellement en charge ces récitateur :',
+      'recitation_b1':
+          'Le catalogue des récitations est chargé depuis les endpoints de ressources de l’API v4 de Quran.com.',
+      'recitation_b2':
+          'La lecture audio des versets et les fichiers de récitation téléchargeables sont fournis par le CDN audio de Quran.com sur verses.quran.com.',
+      'recitation_b3':
+          'Cette application prend actuellement en charge ces récitateur :',
       'reciter_label': 'Récitateur',
       'other_sources_title': 'Autres sources de contenu',
-      'other_b1': 'Les définitions des règles de tajwid utilisées dans les leçons et les quiz sont intégrées localement dans assets/tajweed/rules_db.json.',
-      'other_b2': 'Les images de pages du mushaf hors ligne proviennent à l’origine du dépôt GitHub GovarJabbar/Quran-PNG et sont distribuées dans cette application via son pack d’images téléchargeable hébergé sur GitHub Releases.',
-      'other_b3': 'L’affichage coranique dans l’application utilise la police intégrée UthmanicHafs pour un rendu de style mushaf.',
+      'other_b1':
+          'Les définitions des règles de tajwid utilisées dans les leçons et les quiz sont intégrées localement dans assets/tajweed/rules_db.json.',
+      'other_b2':
+          'Les images de pages du mushaf hors ligne proviennent à l’origine du dépôt GitHub GovarJabbar/Quran-PNG et sont distribuées dans cette application via son pack d’images téléchargeable hébergé sur GitHub Releases.',
+      'other_b3':
+          'L’affichage coranique dans l’application utilise la police intégrée UthmanicHafs pour un rendu de style mushaf.',
       'no_items_available': 'Aucun élément disponible',
     },
     'id': {
@@ -2152,19 +2348,23 @@ class _SettingsStrings {
       'downloading_recitation': 'Mengunduh tilawah',
       'downloaded_of_ayahs': 'Mengunduh {done} dari {total} ayat',
       'surah_reciter_status': 'Surah {surah} · Qari {reciter}',
-      'recitation_surah_downloaded': 'Tilawah untuk surah {surah} berhasil diunduh.',
+      'recitation_surah_downloaded':
+          'Tilawah untuk surah {surah} berhasil diunduh.',
       'no_audio_urls_found': 'URL audio untuk surah {surah} tidak ditemukan.',
       'recitation_download_failed': 'Gagal mengunduh tilawah: {error}',
       'download_all_surahs_recitation': 'Unduh tilawah semua surah',
-      'large_download_confirm': 'Ini mungkin memerlukan waktu dan ruang penyimpanan yang besar. Lanjutkan?',
+      'large_download_confirm':
+          'Ini mungkin memerlukan waktu dan ruang penyimpanan yang besar. Lanjutkan?',
       'start': 'Mulai',
       'downloading_all_recitations': 'Mengunduh semua tilawah',
       'reciter_surah_compact': 'Qari {reciter} • Surah {surah}',
       'completed_of_surahs': 'Selesai {done} dari {total} surah',
       'stop': 'Berhenti',
       'recitation_download_stopped': 'Pengunduhan tilawah dihentikan.',
-      'all_surahs_recitation_completed': 'Pengunduhan tilawah semua surah selesai.',
-      'bulk_recitation_download_failed': 'Gagal mengunduh tilawah massal: {error}',
+      'all_surahs_recitation_completed':
+          'Pengunduhan tilawah semua surah selesai.',
+      'bulk_recitation_download_failed':
+          'Gagal mengunduh tilawah massal: {error}',
       'offline_recitation_downloads': 'Unduhan tilawah offline',
       'reciter_id': 'ID qari: {id}',
       'download_one_surah': 'Unduh satu surah',
@@ -2173,7 +2373,8 @@ class _SettingsStrings {
       'downloading_tafseer': 'Mengunduh tafsir',
       'surah_tafseer_status': 'Surah {surah} · ID tafsir {id}',
       'no_verses_returned': 'Tidak ada ayat yang dikembalikan untuk surah ini.',
-      'tafseer_surah_downloaded': 'Tafsir untuk surah {surah} berhasil diunduh.',
+      'tafseer_surah_downloaded':
+          'Tafsir untuk surah {surah} berhasil diunduh.',
       'tafseer_download_failed': 'Gagal mengunduh tafsir: {error}',
       'download_all_surahs_tafseer': 'Unduh tafsir semua surah',
       'downloading_all_tafseer': 'Mengunduh semua tafsir',
@@ -2188,7 +2389,8 @@ class _SettingsStrings {
       'copy': 'Salin',
       'close': 'Tutup',
       'working': 'Sedang bekerja...',
-      'error_syncing_quran_data': 'Terjadi kesalahan saat menyinkronkan data Al-Quran',
+      'error_syncing_quran_data':
+          'Terjadi kesalahan saat menyinkronkan data Al-Quran',
       'checking_status': 'Memeriksa status...',
       'ready_status': 'Siap ({synced}/{total}) • Sinkronisasi terakhir: {time}',
       'syncing_surahs_status': 'Menyinkronkan {synced}/{total} surah...',
@@ -2207,25 +2409,38 @@ class _SettingsStrings {
       'delete_local_pack': 'Hapus paket lokal',
       'about_this_app': 'Tentang aplikasi ini',
       'quran_sources_ownership': 'Sumber Al-Quran dan kepemilikan',
-      'owned_operated': 'Aplikasi ini dimiliki dan dioperasikan oleh Ebaid LLC.',
+      'owned_operated':
+          'Aplikasi ini dimiliki dan dioperasikan oleh Ebaid LLC.',
       'quran_sources_title': 'Sumber Al-Quran',
-      'quran_b1': 'Teks Al-Quran, struktur surah dan ayat, data kata per kata, dan markup tajwid diambil dari Quran.com API v4.',
-      'quran_b2': 'Aplikasi menggunakan sumber terjemahan berikut untuk bahasa antarmuka yang didukung:',
-      'quran_b3': 'Saat Anda mengganti bahasa aplikasi, aplikasi meminta terjemahan yang sesuai untuk bahasa itu. Jika tidak tersedia, aplikasi kembali ke bahasa Inggris.',
-      'quran_b4': 'Referensi halaman mushaf jarak jauh menunjuk ke gambar halaman yang dihosting di cdn.qurancdn.com dan static.qurancdn.com.',
+      'quran_b1':
+          'Teks Al-Quran, struktur surah dan ayat, data kata per kata, dan markup tajwid diambil dari Quran.com API v4.',
+      'quran_b2':
+          'Aplikasi menggunakan sumber terjemahan berikut untuk bahasa antarmuka yang didukung:',
+      'quran_b3':
+          'Saat Anda mengganti bahasa aplikasi, aplikasi meminta terjemahan yang sesuai untuk bahasa itu. Jika tidak tersedia, aplikasi kembali ke bahasa Inggris.',
+      'quran_b4':
+          'Referensi halaman mushaf jarak jauh menunjuk ke gambar halaman yang dihosting di cdn.qurancdn.com dan static.qurancdn.com.',
       'tafseer_sources_title': 'Sumber tafsir',
-      'tafseer_b1': 'Katalog tafsir dan teks tafsir per ayat dimuat dari resource dan endpoint tafsir Quran.com API v4.',
-      'tafseer_b2': 'Sumber tafsir default yang dikonfigurasi berdasarkan bahasa aplikasi adalah:',
-      'tafseer_b3': 'Pengguna dapat beralih ke sumber tafsir lain yang dikembalikan oleh Quran.com melalui pemilih tafsir di aplikasi.',
+      'tafseer_b1':
+          'Katalog tafsir dan teks tafsir per ayat dimuat dari resource dan endpoint tafsir Quran.com API v4.',
+      'tafseer_b2':
+          'Sumber tafsir default yang dikonfigurasi berdasarkan bahasa aplikasi adalah:',
+      'tafseer_b3':
+          'Pengguna dapat beralih ke sumber tafsir lain yang dikembalikan oleh Quran.com melalui pemilih tafsir di aplikasi.',
       'recitation_sources_title': 'Sumber tilawah',
-      'recitation_b1': 'Katalog tilawah dimuat dari endpoint resource Quran.com API v4.',
-      'recitation_b2': 'Pemutaran audio ayat dan file tilawah yang dapat diunduh disajikan dari CDN audio Quran.com di verses.quran.com.',
+      'recitation_b1':
+          'Katalog tilawah dimuat dari endpoint resource Quran.com API v4.',
+      'recitation_b2':
+          'Pemutaran audio ayat dan file tilawah yang dapat diunduh disajikan dari CDN audio Quran.com di verses.quran.com.',
       'recitation_b3': 'Aplikasi ini saat ini mendukung qari berikut:',
       'reciter_label': 'Qari',
       'other_sources_title': 'Sumber konten lainnya',
-      'other_b1': 'Definisi aturan tajwid yang digunakan dalam pelajaran dan kuis dibundel secara lokal di assets/tajweed/rules_db.json.',
-      'other_b2': 'Gambar halaman mushaf offline awalnya bersumber dari repositori GitHub GovarJabbar/Quran-PNG dan didistribusikan dalam aplikasi ini melalui paket gambar yang dapat diunduh yang dihosting di GitHub Releases.',
-      'other_b3': 'Tampilan Al-Quran dalam aplikasi menggunakan font UthmanicHafs bawaan untuk rendering bergaya mushaf.',
+      'other_b1':
+          'Definisi aturan tajwid yang digunakan dalam pelajaran dan kuis dibundel secara lokal di assets/tajweed/rules_db.json.',
+      'other_b2':
+          'Gambar halaman mushaf offline awalnya bersumber dari repositori GitHub GovarJabbar/Quran-PNG dan didistribusikan dalam aplikasi ini melalui paket gambar yang dapat diunduh yang dihosting di GitHub Releases.',
+      'other_b3':
+          'Tampilan Al-Quran dalam aplikasi menggunakan font UthmanicHafs bawaan untuk rendering bergaya mushaf.',
       'no_items_available': 'Tidak ada item tersedia',
     },
     'de': {
@@ -2245,23 +2460,29 @@ class _SettingsStrings {
       'surah_number_hint': 'z. B. 1',
       'cancel': 'Abbrechen',
       'download': 'Herunterladen',
-      'invalid_surah_number': 'Bitte geben Sie eine Zahl zwischen 1 und 114 ein',
+      'invalid_surah_number':
+          'Bitte geben Sie eine Zahl zwischen 1 und 114 ein',
       'downloading_recitation': 'Rezitation wird heruntergeladen',
       'downloaded_of_ayahs': '{done} von {total} Ayat heruntergeladen',
       'surah_reciter_status': 'Sura {surah} · Rezitator {reciter}',
-      'recitation_surah_downloaded': 'Rezitation für Sura {surah} heruntergeladen.',
+      'recitation_surah_downloaded':
+          'Rezitation für Sura {surah} heruntergeladen.',
       'no_audio_urls_found': 'Keine Audio-URLs für Sura {surah} gefunden.',
-      'recitation_download_failed': 'Herunterladen der Rezitation fehlgeschlagen: {error}',
+      'recitation_download_failed':
+          'Herunterladen der Rezitation fehlgeschlagen: {error}',
       'download_all_surahs_recitation': 'Rezitation aller Suren herunterladen',
-      'large_download_confirm': 'Dies kann viel Zeit und Speicherplatz benötigen. Fortfahren?',
+      'large_download_confirm':
+          'Dies kann viel Zeit und Speicherplatz benötigen. Fortfahren?',
       'start': 'Starten',
       'downloading_all_recitations': 'Alle Rezitationen werden heruntergeladen',
       'reciter_surah_compact': 'Rezitator {reciter} • Sura {surah}',
       'completed_of_surahs': '{done} von {total} Suren abgeschlossen',
       'stop': 'Stopp',
       'recitation_download_stopped': 'Rezitationsdownload wurde gestoppt.',
-      'all_surahs_recitation_completed': 'Der Download der Rezitation aller Suren ist abgeschlossen.',
-      'bulk_recitation_download_failed': 'Massen-Download der Rezitation fehlgeschlagen: {error}',
+      'all_surahs_recitation_completed':
+          'Der Download der Rezitation aller Suren ist abgeschlossen.',
+      'bulk_recitation_download_failed':
+          'Massen-Download der Rezitation fehlgeschlagen: {error}',
       'offline_recitation_downloads': 'Offline-Rezitationsdownloads',
       'reciter_id': 'Rezitator-ID: {id}',
       'download_one_surah': 'Eine Sura herunterladen',
@@ -2271,13 +2492,16 @@ class _SettingsStrings {
       'surah_tafseer_status': 'Sura {surah} · Tafsir-ID {id}',
       'no_verses_returned': 'Für diese Sura wurden keine Verse zurückgegeben.',
       'tafseer_surah_downloaded': 'Tafsir für Sura {surah} heruntergeladen.',
-      'tafseer_download_failed': 'Herunterladen des Tafsir fehlgeschlagen: {error}',
+      'tafseer_download_failed':
+          'Herunterladen des Tafsir fehlgeschlagen: {error}',
       'download_all_surahs_tafseer': 'Tafsir aller Suren herunterladen',
       'downloading_all_tafseer': 'Alle Tafsir werden heruntergeladen',
       'tafseer_id_surah_compact': 'Tafsir-ID {id} • Sura {surah}',
       'tafseer_download_stopped': 'Tafsir-Download wurde gestoppt.',
-      'all_surahs_tafseer_completed': 'Der Download des Tafsir aller Suren ist abgeschlossen.',
-      'bulk_tafseer_download_failed': 'Massen-Download des Tafsir fehlgeschlagen: {error}',
+      'all_surahs_tafseer_completed':
+          'Der Download des Tafsir aller Suren ist abgeschlossen.',
+      'bulk_tafseer_download_failed':
+          'Massen-Download des Tafsir fehlgeschlagen: {error}',
       'download_tafseer_offline': 'Tafsir für Offline-Nutzung herunterladen',
       'current_source_id': 'Aktuelle Quellen-ID: {id}',
       'quran_diagnostics_title': 'Koran-Diagnose (7:101, 7:122)',
@@ -2287,9 +2511,12 @@ class _SettingsStrings {
       'working': 'Wird ausgeführt...',
       'error_syncing_quran_data': 'Fehler beim Synchronisieren der Koran-Daten',
       'checking_status': 'Status wird geprüft...',
-      'ready_status': 'Bereit ({synced}/{total}) • Letzte Synchronisierung: {time}',
-      'syncing_surahs_status': '{synced}/{total} Suren werden synchronisiert...',
-      'not_fully_synced_status': 'Noch nicht vollständig synchronisiert ({synced}/{total})',
+      'ready_status':
+          'Bereit ({synced}/{total}) • Letzte Synchronisierung: {time}',
+      'syncing_surahs_status':
+          '{synced}/{total} Suren werden synchronisiert...',
+      'not_fully_synced_status':
+          'Noch nicht vollständig synchronisiert ({synced}/{total})',
       'quran_text_offline': 'Korantekst (offline)',
       'download_resume': 'Herunterladen / Fortsetzen',
       'resync_all': 'Alles erneut synchronisieren',
@@ -2304,25 +2531,39 @@ class _SettingsStrings {
       'delete_local_pack': 'Lokales Paket löschen',
       'about_this_app': 'Über diese App',
       'quran_sources_ownership': 'Koranquellen und Eigentum',
-      'owned_operated': 'Diese App gehört Ebaid LLC und wird von ihr betrieben.',
+      'owned_operated':
+          'Diese App gehört Ebaid LLC und wird von ihr betrieben.',
       'quran_sources_title': 'Koranquellen',
-      'quran_b1': 'Korantext, Sura- und Ayah-Struktur, Wort-für-Wort-Daten und Tajweed-Markup werden aus der Quran.com API v4 geladen.',
-      'quran_b2': 'Die App verwendet die folgenden Übersetzungsquellen für ihre unterstützten Oberflächensprachen:',
-      'quran_b3': 'Wenn Sie die App-Sprache wechseln, fordert die App die passende Übersetzung für diese Sprache an. Ist keine verfügbar, fällt sie auf Englisch zurück.',
-      'quran_b4': 'Entfernte Mushaf-Seitenverweise zeigen auf Seitenbilder, die auf cdn.qurancdn.com und static.qurancdn.com gehostet werden.',
+      'quran_b1':
+          'Korantext, Sura- und Ayah-Struktur, Wort-für-Wort-Daten und Tajweed-Markup werden aus der Quran.com API v4 geladen.',
+      'quran_b2':
+          'Die App verwendet die folgenden Übersetzungsquellen für ihre unterstützten Oberflächensprachen:',
+      'quran_b3':
+          'Wenn Sie die App-Sprache wechseln, fordert die App die passende Übersetzung für diese Sprache an. Ist keine verfügbar, fällt sie auf Englisch zurück.',
+      'quran_b4':
+          'Entfernte Mushaf-Seitenverweise zeigen auf Seitenbilder, die auf cdn.qurancdn.com und static.qurancdn.com gehostet werden.',
       'tafseer_sources_title': 'Tafsir-Quellen',
-      'tafseer_b1': 'Der Tafsir-Katalog und der ayahweise Tafsir-Text werden aus Ressourcen und Tafsir-Endpunkten der Quran.com API v4 geladen.',
-      'tafseer_b2': 'Die standardmäßig nach App-Sprache konfigurierten Tafsir-Quellen sind:',
-      'tafseer_b3': 'Benutzer können über die Tafsir-Auswahl in der App zu anderen von Quran.com bereitgestellten Tafsir-Quellen wechseln.',
+      'tafseer_b1':
+          'Der Tafsir-Katalog und der ayahweise Tafsir-Text werden aus Ressourcen und Tafsir-Endpunkten der Quran.com API v4 geladen.',
+      'tafseer_b2':
+          'Die standardmäßig nach App-Sprache konfigurierten Tafsir-Quellen sind:',
+      'tafseer_b3':
+          'Benutzer können über die Tafsir-Auswahl in der App zu anderen von Quran.com bereitgestellten Tafsir-Quellen wechseln.',
       'recitation_sources_title': 'Rezitationsquellen',
-      'recitation_b1': 'Der Rezitationskatalog wird aus Ressourcen-Endpunkten der Quran.com API v4 geladen.',
-      'recitation_b2': 'Ayah-Audiowiedergabe und herunterladbare Rezitationsdateien werden vom Quran.com-Audio-CDN unter verses.quran.com bereitgestellt.',
-      'recitation_b3': 'Diese App unterstützt derzeit die folgenden Rezitatoren:',
+      'recitation_b1':
+          'Der Rezitationskatalog wird aus Ressourcen-Endpunkten der Quran.com API v4 geladen.',
+      'recitation_b2':
+          'Ayah-Audiowiedergabe und herunterladbare Rezitationsdateien werden vom Quran.com-Audio-CDN unter verses.quran.com bereitgestellt.',
+      'recitation_b3':
+          'Diese App unterstützt derzeit die folgenden Rezitatoren:',
       'reciter_label': 'Rezitator',
       'other_sources_title': 'Weitere Inhaltsquellen',
-      'other_b1': 'Die in Lektionen und Quiz verwendeten Tajweed-Regeldefinitionen sind lokal in assets/tajweed/rules_db.json enthalten.',
-      'other_b2': 'Offline-Mushaf-Seitenbilder stammen ursprünglich aus dem GitHub-Repository GovarJabbar/Quran-PNG und werden in dieser App über ein auf GitHub Releases gehostetes herunterladbares Bildpaket verteilt.',
-      'other_b3': 'Die Korandarstellung in der App verwendet die integrierte Schrift UthmanicHafs für ein Mushaf-ähnliches Rendering.',
+      'other_b1':
+          'Die in Lektionen und Quiz verwendeten Tajweed-Regeldefinitionen sind lokal in assets/tajweed/rules_db.json enthalten.',
+      'other_b2':
+          'Offline-Mushaf-Seitenbilder stammen ursprünglich aus dem GitHub-Repository GovarJabbar/Quran-PNG und werden in dieser App über ein auf GitHub Releases gehostetes herunterladbares Bildpaket verteilt.',
+      'other_b3':
+          'Die Korandarstellung in der App verwendet die integrierte Schrift UthmanicHafs für ein Mushaf-ähnliches Rendering.',
       'no_items_available': 'Keine Elemente verfügbar',
     },
     'es': {
@@ -2346,19 +2587,25 @@ class _SettingsStrings {
       'downloading_recitation': 'Descargando recitación',
       'downloaded_of_ayahs': '{done} de {total} ayat descargadas',
       'surah_reciter_status': 'Sura {surah} · Recitador {reciter}',
-      'recitation_surah_downloaded': 'Se descargó la recitación de la sura {surah}.',
-      'no_audio_urls_found': 'No se encontraron URL de audio para la sura {surah}.',
+      'recitation_surah_downloaded':
+          'Se descargó la recitación de la sura {surah}.',
+      'no_audio_urls_found':
+          'No se encontraron URL de audio para la sura {surah}.',
       'recitation_download_failed': 'Error al descargar la recitación: {error}',
-      'download_all_surahs_recitation': 'Descargar la recitación de todas las suras',
-      'large_download_confirm': 'Esto puede requerir bastante tiempo y almacenamiento. ¿Continuar?',
+      'download_all_surahs_recitation':
+          'Descargar la recitación de todas las suras',
+      'large_download_confirm':
+          'Esto puede requerir bastante tiempo y almacenamiento. ¿Continuar?',
       'start': 'Iniciar',
       'downloading_all_recitations': 'Descargando todas las recitaciones',
       'reciter_surah_compact': 'Recitador {reciter} • Sura {surah}',
       'completed_of_surahs': '{done} de {total} suras completadas',
       'stop': 'Detener',
       'recitation_download_stopped': 'Se detuvo la descarga de la recitación.',
-      'all_surahs_recitation_completed': 'Se completó la descarga de la recitación de todas las suras.',
-      'bulk_recitation_download_failed': 'Error en la descarga masiva de recitaciones: {error}',
+      'all_surahs_recitation_completed':
+          'Se completó la descarga de la recitación de todas las suras.',
+      'bulk_recitation_download_failed':
+          'Error en la descarga masiva de recitaciones: {error}',
       'offline_recitation_downloads': 'Descargas de recitación sin conexión',
       'reciter_id': 'ID del recitador: {id}',
       'download_one_surah': 'Descargar una sura',
@@ -2373,8 +2620,10 @@ class _SettingsStrings {
       'downloading_all_tafseer': 'Descargando todos los tafsir',
       'tafseer_id_surah_compact': 'ID de tafsir {id} • Sura {surah}',
       'tafseer_download_stopped': 'Se detuvo la descarga del tafsir.',
-      'all_surahs_tafseer_completed': 'Se completó la descarga del tafsir de todas las suras.',
-      'bulk_tafseer_download_failed': 'Error en la descarga masiva del tafsir: {error}',
+      'all_surahs_tafseer_completed':
+          'Se completó la descarga del tafsir de todas las suras.',
+      'bulk_tafseer_download_failed':
+          'Error en la descarga masiva del tafsir: {error}',
       'download_tafseer_offline': 'Descargar tafsir para uso sin conexión',
       'current_source_id': 'ID de la fuente actual: {id}',
       'quran_diagnostics_title': 'Diagnóstico del Corán (7:101, 7:122)',
@@ -2384,9 +2633,11 @@ class _SettingsStrings {
       'working': 'Trabajando...',
       'error_syncing_quran_data': 'Error al sincronizar los datos del Corán',
       'checking_status': 'Comprobando estado...',
-      'ready_status': 'Listo ({synced}/{total}) • Última sincronización: {time}',
+      'ready_status':
+          'Listo ({synced}/{total}) • Última sincronización: {time}',
       'syncing_surahs_status': 'Sincronizando {synced}/{total} suras...',
-      'not_fully_synced_status': 'Aún no está totalmente sincronizado ({synced}/{total})',
+      'not_fully_synced_status':
+          'Aún no está totalmente sincronizado ({synced}/{total})',
       'quran_text_offline': 'Texto coránico (sin conexión)',
       'download_resume': 'Descargar / Reanudar',
       'resync_all': 'Volver a sincronizar todo',
@@ -2401,31 +2652,45 @@ class _SettingsStrings {
       'delete_local_pack': 'Eliminar paquete local',
       'about_this_app': 'Acerca de esta aplicación',
       'quran_sources_ownership': 'Fuentes del Corán y propiedad',
-      'owned_operated': 'Esta aplicación es propiedad de Ebaid LLC y está operada por ella.',
+      'owned_operated':
+          'Esta aplicación es propiedad de Ebaid LLC y está operada por ella.',
       'quran_sources_title': 'Fuentes del Corán',
-      'quran_b1': 'El texto coránico, la estructura de las suras y ayat, los datos palabra por palabra y el marcado de tajwid se obtienen de Quran.com API v4.',
-      'quran_b2': 'La aplicación utiliza las siguientes fuentes de traducción para sus idiomas de interfaz compatibles:',
-      'quran_b3': 'Cuando cambias el idioma de la aplicación, esta solicita la traducción correspondiente. Si no está disponible, vuelve al inglés.',
-      'quran_b4': 'Las referencias remotas de páginas del mushaf apuntan a imágenes alojadas en cdn.qurancdn.com y static.qurancdn.com.',
+      'quran_b1':
+          'El texto coránico, la estructura de las suras y ayat, los datos palabra por palabra y el marcado de tajwid se obtienen de Quran.com API v4.',
+      'quran_b2':
+          'La aplicación utiliza las siguientes fuentes de traducción para sus idiomas de interfaz compatibles:',
+      'quran_b3':
+          'Cuando cambias el idioma de la aplicación, esta solicita la traducción correspondiente. Si no está disponible, vuelve al inglés.',
+      'quran_b4':
+          'Las referencias remotas de páginas del mushaf apuntan a imágenes alojadas en cdn.qurancdn.com y static.qurancdn.com.',
       'tafseer_sources_title': 'Fuentes de tafsir',
-      'tafseer_b1': 'El catálogo de tafsir y el texto de tafsir por ayah se cargan desde los recursos y endpoints de tafsir de Quran.com API v4.',
-      'tafseer_b2': 'Las fuentes de tafsir predeterminadas configuradas por idioma de la aplicación son:',
-      'tafseer_b3': 'Los usuarios pueden cambiar a otras fuentes de tafsir devueltas por Quran.com mediante el selector de tafsir dentro de la aplicación.',
+      'tafseer_b1':
+          'El catálogo de tafsir y el texto de tafsir por ayah se cargan desde los recursos y endpoints de tafsir de Quran.com API v4.',
+      'tafseer_b2':
+          'Las fuentes de tafsir predeterminadas configuradas por idioma de la aplicación son:',
+      'tafseer_b3':
+          'Los usuarios pueden cambiar a otras fuentes de tafsir devueltas por Quran.com mediante el selector de tafsir dentro de la aplicación.',
       'recitation_sources_title': 'Fuentes de recitación',
-      'recitation_b1': 'El catálogo de recitaciones se carga desde los endpoints de recursos de Quran.com API v4.',
-      'recitation_b2': 'La reproducción de audio de ayat y los archivos de recitación descargables se sirven desde el CDN de audio de Quran.com en verses.quran.com.',
+      'recitation_b1':
+          'El catálogo de recitaciones se carga desde los endpoints de recursos de Quran.com API v4.',
+      'recitation_b2':
+          'La reproducción de audio de ayat y los archivos de recitación descargables se sirven desde el CDN de audio de Quran.com en verses.quran.com.',
       'recitation_b3': 'Actualmente esta aplicación admite estos recitadores:',
       'reciter_label': 'Recitador',
       'other_sources_title': 'Otras fuentes de contenido',
-      'other_b1': 'Las definiciones de reglas de tajwid utilizadas en las lecciones y cuestionarios se incluyen localmente en assets/tajweed/rules_db.json.',
-      'other_b2': 'Las imágenes de páginas del mushaf sin conexión se obtuvieron originalmente del repositorio de GitHub GovarJabbar/Quran-PNG y se distribuyen en esta aplicación mediante su paquete de imágenes descargable alojado en GitHub Releases.',
-      'other_b3': 'La visualización coránica en la aplicación utiliza la fuente integrada UthmanicHafs para un renderizado estilo mushaf.',
+      'other_b1':
+          'Las definiciones de reglas de tajwid utilizadas en las lecciones y cuestionarios se incluyen localmente en assets/tajweed/rules_db.json.',
+      'other_b2':
+          'Las imágenes de páginas del mushaf sin conexión se obtuvieron originalmente del repositorio de GitHub GovarJabbar/Quran-PNG y se distribuyen en esta aplicación mediante su paquete de imágenes descargable alojado en GitHub Releases.',
+      'other_b3':
+          'La visualización coránica en la aplicación utiliza la fuente integrada UthmanicHafs para un renderizado estilo mushaf.',
       'no_items_available': 'No hay elementos disponibles',
     },
   };
 
   String text(String key, [Map<String, String> replacements = const {}]) {
-    var value = _localized[_languageCode]?[key] ?? _localized['en']![key] ?? key;
+    var value =
+        _localized[_languageCode]?[key] ?? _localized['en']![key] ?? key;
     replacements.forEach((placeholder, replacement) {
       value = value.replaceAll('{$placeholder}', replacement);
     });
@@ -2444,9 +2709,9 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.04,
-            ),
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.04,
+        ),
       ),
     );
   }

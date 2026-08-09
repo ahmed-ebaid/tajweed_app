@@ -378,4 +378,30 @@ void main() {
     final first = await service.getFirstCachedSurahNumber();
     expect(first, 5);
   });
+
+  test('finds cached page anchor with its Juz metadata', () async {
+    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+    final cache = Hive.box('verse_cache');
+
+    await cache.put('quran_ar_surah_18', [
+      {
+        'verse_key': '18:1',
+        'page_number': 293,
+        'juz_number': 15,
+        'text_uthmani': 'ٱلْحَمْدُ',
+      },
+      {
+        'verse_key': '18:5',
+        'page_number': 294,
+        'juz_number': 15,
+        'text_uthmani': 'مَا لَهُم',
+      },
+    ]);
+
+    final anchor = await service.getCachedFirstVerseForPage(294);
+
+    expect(anchor, isNotNull);
+    expect(anchor!['verse_key'], '18:5');
+    expect(anchor['juz_number'], 15);
+  });
 }
