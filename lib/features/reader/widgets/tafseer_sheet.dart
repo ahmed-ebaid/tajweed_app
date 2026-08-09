@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/quran_api_service.dart';
+import '../../../shared/utils/arabic_utils.dart';
 import '../../../core/services/quran_offline_sync_service.dart';
 
 /// Bottom sheet that displays tafseer (commentary) for a single ayah.
@@ -8,12 +9,14 @@ class TafseerSheet extends StatefulWidget {
   final String verseKey; // e.g. '2:255'
   final int tafsirId;
   final String tafsirName;
+  final String surahName; // Arabic surah name, e.g. 'طه'
 
   const TafseerSheet({
     super.key,
     required this.verseKey,
     required this.tafsirId,
     this.tafsirName = '',
+    this.surahName = '',
   });
 
   @override
@@ -117,9 +120,9 @@ class _TafseerSheetState extends State<TafseerSheet> {
                     widget.tafsirName.isNotEmpty
                         ? strings.text('title_with_source', {
                             'source': widget.tafsirName,
-                            'verseKey': widget.verseKey,
+                            'verseKey': _localizedVerseKey(widget.verseKey, localeCode),
                           })
-                        : strings.text('title', {'verseKey': widget.verseKey}),
+                        : strings.text('title', {'verseKey': _localizedVerseKey(widget.verseKey, localeCode)}),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -177,6 +180,22 @@ class _TafseerSheetState extends State<TafseerSheet> {
     );
   }
 
+  /// Returns a localized verse reference.
+  /// Arabic/Urdu: 'طه: ٦١' (surah name + Arabic-Indic ayah number).
+  /// Others: '20:61' (unchanged).
+  String _localizedVerseKey(String verseKey, String localeCode) {
+    final parts = verseKey.split(':');
+    if (parts.length != 2) return verseKey;
+    final ayahNum = int.tryParse(parts[1]);
+    if (ayahNum == null) return verseKey;
+
+    if (localeCode == 'ar' || localeCode == 'ur') {
+      final name = widget.surahName.isNotEmpty ? widget.surahName : parts[0];
+      return '$name: ${ArabicUtils.toArabicNumerals(ayahNum)}';
+    }
+    return verseKey;
+  }
+
   /// Strip HTML tags from tafseer text for plain display.
   static String _stripHtml(String html) {
     return html
@@ -209,15 +228,15 @@ class _TafseerSheetStrings {
       'empty': 'No tafseer text was returned for this ayah with source ID {tafsirId}.',
     },
     'ar': {
-      'title': 'التفسير — الآية {verseKey}',
-      'title_with_source': '{source} — الآية {verseKey}',
+      'title': 'التفسير — {verseKey}',
+      'title_with_source': '{source} — {verseKey}',
       'close': 'إغلاق',
       'load_failed': 'تعذر تحميل التفسير.\n{error}',
       'empty': 'لم يتم إرجاع نص تفسير لهذه الآية باستخدام مصدر التفسير {tafsirId}.',
     },
     'ur': {
-      'title': 'تفسیر — آیت {verseKey}',
-      'title_with_source': '{source} — آیت {verseKey}',
+      'title': 'تفسیر — {verseKey}',
+      'title_with_source': '{source} — {verseKey}',
       'close': 'بند کریں',
       'load_failed': 'تفسیر لوڈ نہ ہو سکی۔\n{error}',
       'empty': 'اس آیت کے لیے تفسیر کے ماخذ {tafsirId} سے کوئی متن واپس نہیں آیا۔',

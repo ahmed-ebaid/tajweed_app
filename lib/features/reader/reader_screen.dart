@@ -1867,6 +1867,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         verseKey: verseKey,
         tafsirId: tafsirId,
         tafsirName: tafsirName,
+        surahName: _surahArabicName(ayah.surahNumber),
       ),
     );
   }
@@ -2049,7 +2050,22 @@ class _ReaderScreenState extends State<ReaderScreen>
                   bookmark.ayah,
                   caller: '[ayah-mode/bookmark-tap]',
                 );
-            _scrollToAyah(bookmark.ayah);
+            _setRestoreGuard(bookmark.ayah, durationMs: 2200);
+            _scrollToAyah(
+              bookmark.ayah,
+              maxAttempts: 20,
+              alignment: 0.0,
+              allowSeedJump: true,
+            );
+            Future.delayed(const Duration(milliseconds: 650), () {
+              if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+              _scrollToAyah(
+                bookmark.ayah,
+                maxAttempts: 8,
+                alignment: 0.0,
+                allowSeedJump: true,
+              );
+            });
             return;
           }
 

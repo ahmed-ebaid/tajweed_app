@@ -23,7 +23,131 @@ class TafseerProvider extends ChangeNotifier {
     'es': 169, // Temporary fallback (English Ibn Kathir) until Spanish default is configured
   };
 
-  /// Known names for default tafsir IDs (used when no name has been persisted yet).
+  /// Localized display names for known tafsir IDs, keyed by language code.
+  static const Map<String, Map<int, String>> _localizedTafsirNames = {
+    'en': {
+      169: 'Ibn Kathir (Abridged)',
+      16: 'Tafsir Muyassar',
+      160: 'Tafsir Ibn Kathir',
+      14: 'Tafsir Ibn Kathir',
+      15: 'Tafsir al-Tabari',
+      90: 'Al-Qurtubi',
+      91: 'Al-Sa\'di',
+      93: 'Al-Wasit (Tantawi)',
+      94: 'Al-Baghawi',
+      52: 'Diyanet İşleri',
+      31: 'Muhammad Hamidullah',
+      33: 'Kemenag',
+      27: 'Bubenheim & Elyas',
+    },
+    'ar': {
+      169: 'تفسير ابن كثير (مختصر)',
+      16: 'التفسير الميسر',
+      160: 'تفسير ابن كثير',
+      14: 'تفسير ابن كثير',
+      15: 'تفسير الطبري',
+      90: 'تفسير القرطبي',
+      91: 'تفسير السعدي',
+      93: 'التفسير الوسيط (الطنطاوي)',
+      94: 'تفسير البغوي',
+      52: 'ديانت إشلري',
+      31: 'محمد حميد الله',
+      33: 'كيميناغ',
+      27: 'بوبنهايم وإلياس',
+    },
+    'ur': {
+      169: 'تفسیر ابن کثیر (مختصر)',
+      16: 'تفسیر میسر',
+      160: 'تفسیر ابن کثیر',
+      14: 'تفسیر ابن کثیر',
+      15: 'تفسیر الطبری',
+      90: 'تفسیر القرطبی',
+      91: 'تفسیر السعدی',
+      93: 'التفسیر الوسیط (طنطاوی)',
+      94: 'تفسیر البغوی',
+      52: 'دیانت اشلری',
+      31: 'محمد حمید اللہ',
+      33: 'کیمیناغ',
+      27: 'بوبنہائم اور الیاس',
+    },
+    'tr': {
+      169: 'İbn Kesir (Kısaltılmış)',
+      16: 'Tefsîrü\'l-Müyesser',
+      160: 'İbn Kesir Tefsiri',
+      14: 'İbn Kesir Tefsiri',
+      15: 'Taberi Tefsiri',
+      90: 'Kurtubi Tefsiri',
+      91: 'Sa\'di Tefsiri',
+      93: 'El-Vasît (Tantâvî)',
+      94: 'Begavî Tefsiri',
+      52: 'Diyanet İşleri',
+      31: 'Muhammad Hamidullah',
+      33: 'Kemenag',
+      27: 'Bubenheim & Elyas',
+    },
+    'fr': {
+      169: 'Ibn Kathir (Abrégé)',
+      16: 'Tafsir Muyassar',
+      160: 'Tafsir Ibn Kathir',
+      14: 'Tafsir Ibn Kathir',
+      15: 'Tafsir al-Tabari',
+      90: 'Al-Qurtubi',
+      91: 'Al-Sa\'di',
+      93: 'Al-Wasit (Tantawi)',
+      94: 'Al-Baghawi',
+      52: 'Diyanet İşleri',
+      31: 'Muhammad Hamidullah',
+      33: 'Kemenag',
+      27: 'Bubenheim & Elyas',
+    },
+    'id': {
+      169: 'Ibn Kathir (Ringkas)',
+      16: 'Tafsir Muyassar',
+      160: 'Tafsir Ibn Kathir',
+      14: 'Tafsir Ibn Kathir',
+      15: 'Tafsir al-Tabari',
+      90: 'Al-Qurtubi',
+      91: 'Al-Sa\'di',
+      93: 'Al-Wasit (Tantawi)',
+      94: 'Al-Baghawi',
+      52: 'Diyanet İşleri',
+      31: 'Muhammad Hamidullah',
+      33: 'Kemenag',
+      27: 'Bubenheim & Elyas',
+    },
+    'de': {
+      169: 'Ibn Kathir (Kurzfassung)',
+      16: 'Tafsir Muyassar',
+      160: 'Tafsir Ibn Kathir',
+      14: 'Tafsir Ibn Kathir',
+      15: 'Tafsir al-Tabari',
+      90: 'Al-Qurtubi',
+      91: 'Al-Sa\'di',
+      93: 'Al-Wasit (Tantawi)',
+      94: 'Al-Baghawi',
+      52: 'Diyanet İşleri',
+      31: 'Muhammad Hamidullah',
+      33: 'Kemenag',
+      27: 'Bubenheim & Elyas',
+    },
+    'es': {
+      169: 'Ibn Kathir (Abreviado)',
+      16: 'Tafsir Muyassar',
+      160: 'Tafsir Ibn Kathir',
+      14: 'Tafsir Ibn Kathir',
+      15: 'Tafsir al-Tabari',
+      90: 'Al-Qurtubi',
+      91: 'Al-Sa\'di',
+      93: 'Al-Wasit (Tantawi)',
+      94: 'Al-Baghawi',
+      52: 'Diyanet İşleri',
+      31: 'Muhammad Hamidullah',
+      33: 'Kemenag',
+      27: 'Bubenheim & Elyas',
+    },
+  };
+
+  /// Fallback names (language-neutral) for default tafsir IDs.
   static const Map<int, String> _defaultTafsirNames = {
     169: 'Ibn Kathir (Abridged)',
     16: 'التفسير الميسر',
@@ -36,7 +160,20 @@ class TafseerProvider extends ChangeNotifier {
 
   int get selectedTafsirId => _selectedTafsirId;
   String get activeLangCode => _activeLangCode;
-  String get selectedTafsirName => _selectedTafsirName;
+
+  /// Returns the localized name for a given tafsir ID and language code, or null.
+  static String? localizedTafsirName(String langCode, int? id) {
+    if (id == null) return null;
+    return _localizedTafsirNames[langCode]?[id];
+  }
+
+  /// Returns the localized display name for the selected tafsir.
+  /// Uses the localized map first, then falls back to the persisted name.
+  String get selectedTafsirName {
+    final localized = _localizedTafsirNames[_activeLangCode]?[_selectedTafsirId];
+    if (localized != null) return localized;
+    return _selectedTafsirName;
+  }
 
   TafseerProvider({String langCode = 'en'}) {
     final box = Hive.box(_boxKey);
