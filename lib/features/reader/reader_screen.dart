@@ -4018,7 +4018,8 @@ class _AyahTile extends StatelessWidget {
               Text(
                 ayah.translation(langCode),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontStyle: FontStyle.italic,
+                      fontStyle: FontStyle.normal,
+                      fontWeight: FontWeight.w500,
                       fontSize:
                           (Theme.of(context).textTheme.bodySmall?.fontSize ??
                                   12) +
