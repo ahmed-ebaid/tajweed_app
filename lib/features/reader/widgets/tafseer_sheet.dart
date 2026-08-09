@@ -229,7 +229,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
       if (!mounted) return;
       setState(() {
         _selectedTafsirId = source.id;
-        _selectedTafsirName = source.name;
+        _selectedTafsirName = source.displayName;
         _text = text;
         _error = null;
       });

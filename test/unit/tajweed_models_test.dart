@@ -10,11 +10,31 @@ void main() {
       }
     });
 
-    test('every rule has a distinct color', () {
-      final colors = TajweedRule.values.map((r) => r.color.value).toList();
-      // Allow shared colors only for madd variants (all blue)
+    test('major rule groups use distinct color-blind-safe colors', () {
+      final colors = TajweedRule.values.map((r) => r.color.toARGB32()).toList();
       final unique = colors.toSet();
-      expect(unique.length, greaterThan(5));
+      expect(unique.length, 8);
+      expect(
+        TajweedRule.maddTabeei.color,
+        TajweedRule.maddSilahKubra.color,
+      );
+      expect(
+        TajweedRule.idghamWithGhunnah.color,
+        TajweedRule.idghamShafawi.color,
+      );
+      expect(TajweedRule.ikhfa.color, TajweedRule.ikhfaShafawi.color);
+      expect(TajweedRule.ghunnah.color, TajweedRule.iqlab.color);
+      expect(
+        {
+          TajweedRule.maddTabeei.color,
+          TajweedRule.idghamWithGhunnah.color,
+          TajweedRule.ikhfa.color,
+          TajweedRule.ghunnah.color,
+          TajweedRule.qalqalah.color,
+          TajweedRule.izhar.color,
+        }.length,
+        6,
+      );
     });
 
     test('every rule has a nameKey', () {
@@ -59,6 +79,39 @@ void main() {
         words: [],
       );
       expect(ayah.translation('de'), equals('Im Namen Allahs'));
+    });
+
+    test('plain Arabic falls back to word text for sharing', () {
+      const ayah = Ayah(
+        surahNumber: 1,
+        ayahNumber: 1,
+        pageNumber: 1,
+        arabic: '',
+        translations: {},
+        words: [
+          TajweedWord(arabic: 'بِسْمِ', spans: []),
+          TajweedWord(arabic: 'اللَّهِ', spans: []),
+        ],
+      );
+
+      expect(ayah.plainArabicText(), 'بِسْمِ اللَّهِ');
+    });
+
+    test('plain Arabic falls back to unmarked tajweed segments', () {
+      const ayah = Ayah(
+        surahNumber: 1,
+        ayahNumber: 1,
+        pageNumber: 1,
+        arabic: '',
+        translations: {},
+        words: [],
+        tajweedSegments: [
+          TajweedSegment(text: '<ghunnah>إِنَّ</ghunnah>'),
+          TajweedSegment(text: 'ا'),
+        ],
+      );
+
+      expect(ayah.plainArabicText(), 'إِنَّا');
     });
   });
 
