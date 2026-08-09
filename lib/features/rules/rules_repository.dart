@@ -35,7 +35,6 @@ class RulesRepository {
       exampleArabic: ['إِنَّ', 'ثُمَّ', 'مِنَّا'],
       triggerLetters: ['ن', 'م'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.qalqalah,
       names: {
@@ -66,7 +65,6 @@ class RulesRepository {
       exampleArabic: ['قَدْ', 'يَبْسُطُ', 'بَعْدَ'],
       triggerLetters: ['ق', 'ط', 'ب', 'ج', 'د'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.maddTabeei,
       names: {
@@ -97,7 +95,6 @@ class RulesRepository {
       exampleArabic: ['قَالَ', 'يَقُولُ', 'قِيلَ'],
       triggerLetters: ['ا', 'و', 'ي'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.maddMuttasil,
       names: {
@@ -128,7 +125,6 @@ class RulesRepository {
       exampleArabic: ['جَاءَ', 'سَاءَ', 'شَاءَ'],
       triggerLetters: ['ا', 'و', 'ي'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.maddMunfasil,
       names: {
@@ -159,7 +155,6 @@ class RulesRepository {
       exampleArabic: ['فِي أَنفُسِكُمْ', 'قَالُوا آمَنَّا', 'بِمَا أُنزِلَ'],
       triggerLetters: ['ا', 'و', 'ي'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.maddSilahSughra,
       names: {
@@ -190,7 +185,6 @@ class RulesRepository {
       exampleArabic: ['بِهِۦ عِلْمٌ', 'إِنَّهُۥ كَانَ'],
       triggerLetters: ['ه'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.maddSilahKubra,
       names: {
@@ -221,7 +215,6 @@ class RulesRepository {
       exampleArabic: ['بِهِۦٓ إِلَّا', 'لَهُۥٓ أَجْرٌ'],
       triggerLetters: ['ه'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.idghamWithGhunnah,
       names: {
@@ -252,7 +245,6 @@ class RulesRepository {
       exampleArabic: ['مِن يَّقُولُ', 'مِن نِّعْمَةٍ'],
       triggerLetters: ['ي', 'ن', 'م', 'و'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.idghamWithoutGhunnah,
       names: {
@@ -282,7 +274,6 @@ class RulesRepository {
       exampleArabic: ['مِن رَّبِّكَ', 'هُدًى لِّلْمُتَّقِينَ'],
       triggerLetters: ['ل', 'ر'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.ikhfa,
       names: {
@@ -329,7 +320,6 @@ class RulesRepository {
         'ظ',
       ],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.iqlab,
       names: {
@@ -359,7 +349,6 @@ class RulesRepository {
       exampleArabic: ['مِنْ بَعْدِ', 'سَمِيعٌ بَصِيرٌ'],
       triggerLetters: ['ب'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.izhar,
       names: {
@@ -390,7 +379,6 @@ class RulesRepository {
       exampleArabic: ['مَنْ آمَنَ', 'عَلِيمٌ حَكِيمٌ'],
       triggerLetters: ['ء', 'ه', 'ع', 'ح', 'غ', 'خ'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.shaddah,
       names: {
@@ -416,7 +404,6 @@ class RulesRepository {
       exampleArabic: ['إِيَّاكَ', 'الرَّحْمَٰنِ', 'ثُمَّ'],
       triggerLetters: [],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.waqf,
       names: {
@@ -441,10 +428,9 @@ class RulesRepository {
             'Tanda waqaf yang menunjukkan tempat berhenti atau menyambung bacaan.',
         'de': 'Pausenzeichen, die Stellen für Halt oder Weiterlesen anzeigen.',
       },
-      exampleArabic: ['ۚ', 'ۛ', 'ۗ'],
+      exampleArabic: ['ۘ', 'ۙ', 'ۚ', 'ۗ', 'ۖ', 'ۛ', 'ۜ'],
       triggerLetters: [],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.sajdah,
       names: {
@@ -468,7 +454,6 @@ class RulesRepository {
       exampleArabic: ['۩'],
       triggerLetters: [],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.maddLazim,
       names: {
@@ -497,7 +482,6 @@ class RulesRepository {
       exampleArabic: ['الضَّالِّينَ', 'ٓالم'],
       triggerLetters: ['ا', 'و', 'ي'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.idghamShafawi,
       names: {
@@ -522,7 +506,6 @@ class RulesRepository {
       exampleArabic: ['لَكُم مَّا'],
       triggerLetters: ['م'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.idghamMutajanisayn,
       names: {
@@ -549,7 +532,6 @@ class RulesRepository {
       exampleArabic: ['قَد تَّبَيَّنَ'],
       triggerLetters: [],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.ikhfaShafawi,
       names: {
@@ -573,7 +555,6 @@ class RulesRepository {
       exampleArabic: ['تَرْمِيهِم بِحِجَارَةٍ'],
       triggerLetters: ['ب'],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.hamzatWasl,
       names: {
@@ -600,7 +581,6 @@ class RulesRepository {
       exampleArabic: ['ٱهْدِنَا', 'ٱسْمُ'],
       triggerLetters: [],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.laamShamsiyah,
       names: {
@@ -641,7 +621,6 @@ class RulesRepository {
         'ن',
       ],
     ),
-
     TajweedRuleDefinition(
       rule: TajweedRule.silent,
       names: {

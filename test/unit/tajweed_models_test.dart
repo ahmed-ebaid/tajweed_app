@@ -10,31 +10,19 @@ void main() {
       }
     });
 
-    test('major rule groups use distinct color-blind-safe colors', () {
+    test('every rule has a distinct palette color', () {
       final colors = TajweedRule.values.map((r) => r.color.toARGB32()).toList();
-      final unique = colors.toSet();
-      expect(unique.length, 8);
-      expect(
-        TajweedRule.maddTabeei.color,
-        TajweedRule.maddSilahKubra.color,
-      );
-      expect(
-        TajweedRule.idghamWithGhunnah.color,
-        TajweedRule.idghamShafawi.color,
-      );
-      expect(TajweedRule.ikhfa.color, TajweedRule.ikhfaShafawi.color);
-      expect(TajweedRule.ghunnah.color, TajweedRule.iqlab.color);
-      expect(
-        {
-          TajweedRule.maddTabeei.color,
-          TajweedRule.idghamWithGhunnah.color,
-          TajweedRule.ikhfa.color,
-          TajweedRule.ghunnah.color,
-          TajweedRule.qalqalah.color,
-          TajweedRule.izhar.color,
-        }.length,
-        6,
-      );
+      expect(colors.toSet().length, TajweedRule.values.length);
+    });
+
+    test('related multi-rule groups provide non-color cues', () {
+      expect(TajweedRule.maddTabeei.underlineStyle, isNotNull);
+      expect(TajweedRule.maddMuttasil.underlineStyle, isNotNull);
+      expect(TajweedRule.idghamWithGhunnah.underlineStyle, isNotNull);
+      expect(TajweedRule.idghamWithoutGhunnah.underlineStyle, isNotNull);
+      expect(TajweedRule.ikhfa.underlineStyle, isNotNull);
+      expect(TajweedRule.ikhfaShafawi.underlineStyle, isNotNull);
+      expect(TajweedRule.waqf.underlineStyle, isNull);
     });
 
     test('every rule has a nameKey', () {
