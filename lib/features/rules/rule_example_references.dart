@@ -15,6 +15,8 @@ class RuleExampleReferences {
     TajweedRule.maddMuttasil: '078026',
     TajweedRule.maddMunfasil: '108001',
     TajweedRule.maddLazim: '036001',
+    TajweedRule.maddSilahSughra: '018005',
+    TajweedRule.maddSilahKubra: '002255',
     TajweedRule.idghamWithGhunnah: '078026',
     TajweedRule.idghamWithoutGhunnah: '056003',
     TajweedRule.idghamShafawi: '026060',

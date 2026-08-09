@@ -14,11 +14,13 @@ class QuranApiService {
   final Dio _dio;
 
   QuranApiService()
-      : _dio = Dio(BaseOptions(
+    : _dio = Dio(
+        BaseOptions(
           baseUrl: _baseUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
-        ));
+        ),
+      );
 
   // ─── Surahs ───────────────────────────────────────────────────────────────
 
@@ -50,7 +52,7 @@ class QuranApiService {
         'fields': 'page_number,verse_key',
         'word_fields':
             'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration,audio_url',
-        'translations': _translationIdFor(langCode),
+        'translations': translationIdFor(langCode),
         'audio': reciterId,
         'page': page ?? 1,
         'per_page': 50,
@@ -90,7 +92,7 @@ class QuranApiService {
         'fields': 'text_uthmani,page_number,verse_key',
         'word_fields':
             'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,audio_url',
-        'translations': _translationIdFor(langCode),
+        'translations': translationIdFor(langCode),
         'audio': reciterId,
       },
     );
@@ -221,9 +223,9 @@ class QuranApiService {
   /// Fetches the list of available reciters from the resources API.
   Future<List<Map<String, dynamic>>> fetchAvailableReciters() async {
     final response = await _dio.get('/resources/recitations');
-    return List<Map<String, dynamic>>.from(response.data['recitations'])
-        .where((reciter) => (reciter['id'] as int?) != 7)
-        .toList(growable: false);
+    return List<Map<String, dynamic>>.from(
+      response.data['recitations'],
+    ).where((reciter) => (reciter['id'] as int?) != 7).toList(growable: false);
   }
 
   // ─── Search ───────────────────────────────────────────────────────────────
@@ -234,11 +236,7 @@ class QuranApiService {
   }) async {
     final response = await _dio.get(
       '/search',
-      queryParameters: {
-        'q': query,
-        'language': langCode,
-        'size': 20,
-      },
+      queryParameters: {'q': query, 'language': langCode, 'size': 20},
     );
     return List<Map<String, dynamic>>.from(response.data['search']['results']);
   }
@@ -292,7 +290,7 @@ class QuranApiService {
   // ─── Translation IDs ──────────────────────────────────────────────────────
 
   /// Maps language codes to Quran.com translation resource IDs.
-  static String _translationIdFor(String langCode) {
+  static String translationIdFor(String langCode) {
     switch (langCode) {
       case 'ar':
         return '16'; // Muhammad Taqī-ud-Dīn al-Hilālī (Arabic tafsir)
@@ -307,9 +305,9 @@ class QuranApiService {
       case 'de':
         return '27'; // Adul Hye & Ahmad von Denffer
       case 'es':
-        return '131'; // Temporary fallback to English until Spanish resource ID is configured
+        return '83'; // Sheikh Isa Garcia
       default:
-        return '131'; // Dr. Mustafa Khattab (English)
+        return '85'; // M.A.S. Abdel Haleem (English)
     }
   }
 }
