@@ -1868,6 +1868,9 @@ class _ReaderScreenState extends State<ReaderScreen>
         tafsirId: tafsirId,
         tafsirName: tafsirName,
         surahName: _surahArabicName(ayah.surahNumber),
+        onTafsirSelected: (id, name) {
+          return tafseerProvider.setTafsir(id, name: name);
+        },
       ),
     );
   }
