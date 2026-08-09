@@ -118,7 +118,11 @@ class QuranApiService {
         final key = f['verse_key'] as String? ?? '';
         final url = f['url'] as String? ?? '';
         if (key.isNotEmpty && url.isNotEmpty) {
-          map[key] = url.startsWith('http') ? url : '$_audioBaseUrl/$url';
+          map[key] = url.startsWith('http')
+              ? url
+              : url.startsWith('//')
+                  ? 'https:$url'
+                  : '$_audioBaseUrl/$url';
         }
       }
 

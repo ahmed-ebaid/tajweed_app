@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_localizations.dart';
@@ -134,6 +133,7 @@ class SettingsScreen extends StatelessWidget {
         5: 'هاني الرفاعي',
         6: 'الحصري',
         8: 'المنشاوي (مجوّد)',
+        9: 'المنشاوي (مرتّل)',
         10: 'سعود الشريم',
         11: 'محمد الطبلاوي',
         12: 'الحصري (معلّم)',
@@ -148,6 +148,7 @@ class SettingsScreen extends StatelessWidget {
       5: 'Hani ar-Rifai',
       6: 'Al-Husary',
       8: 'Al-Minshawi (Mujawwad)',
+      9: 'Al-Minshawi (Murattal)',
       10: 'Sa`ud ash-Shuraym',
       11: 'Mohamed al-Tablawi',
       12: 'Al-Husary (Muallim)',
@@ -233,7 +234,12 @@ class SettingsScreen extends StatelessWidget {
               })
               .toList(growable: false);
         },
-        itemTitle: (t) => '${t['name'] ?? ''} — ${t['author_name'] ?? ''}',
+        itemTitle: (t) {
+          final id = t['id'] as int?;
+          final localized = TafseerProvider.localizedTafsirName(langCode, id);
+          final displayName = localized ?? '${t['name'] ?? ''}';
+          return '$displayName — ${t['author_name'] ?? ''}';
+        },
         isSelected: (t) =>
             (t['id'] as int?) ==
             context.read<TafseerProvider>().selectedTafsirId,
@@ -1099,58 +1105,6 @@ class _QuranDataTileState extends State<_QuranDataTile> {
     }
   }
 
-  Future<void> _showDiagnostics() async {
-    final s = _SettingsStrings.of(context);
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final diagnostics = await _syncService.getDiagnostics(
-        surahNumber: 7,
-        ayahNumbers: const [101, 122],
-      );
-      if (!mounted) return;
-
-      final report = diagnostics.toMultilineString();
-      await showDialog<void>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(s.text('quran_diagnostics_title')),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(child: SelectableText(report)),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: report));
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(s.text('diagnostics_copied'))),
-                  );
-                },
-                child: Text(s.text('copy')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(s.text('close')),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final s = _SettingsStrings.of(context);
@@ -1203,8 +1157,6 @@ class _QuranDataTileState extends State<_QuranDataTile> {
                   _clear();
                 } else if (value == 'refresh') {
                   _refreshStatus();
-                } else if (value == 'diagnostics') {
-                  _showDiagnostics();
                 }
               },
               itemBuilder: (_) => [
@@ -1223,10 +1175,6 @@ class _QuranDataTileState extends State<_QuranDataTile> {
                 PopupMenuItem(
                   value: 'refresh',
                   child: Text(s.text('refresh_status')),
-                ),
-                PopupMenuItem(
-                  value: 'diagnostics',
-                  child: Text(s.text('show_diagnostics')),
                 ),
               ],
             ),
@@ -1808,8 +1756,6 @@ class _SettingsStrings {
       'bulk_tafseer_download_failed': 'Bulk tafseer download failed: {error}',
       'download_tafseer_offline': 'Download tafseer for offline',
       'current_source_id': 'Current source ID: {id}',
-      'quran_diagnostics_title': 'Quran Diagnostics (7:101, 7:122)',
-      'diagnostics_copied': 'Diagnostics copied',
       'copy': 'Copy',
       'close': 'Close',
       'working': 'Working...',
@@ -1823,7 +1769,6 @@ class _SettingsStrings {
       'resync_all': 'Re-sync all',
       'clear_local_quran_cache': 'Clear local Quran cache',
       'refresh_status': 'Refresh status',
-      'show_diagnostics': 'Show diagnostics',
       'error_pack_checking': 'Error while checking/downloading pack',
       'installed_pages': 'Installed ({count} pages)',
       'not_installed_yet': 'Not installed yet ({count}/{expected} pages)',
@@ -1918,8 +1863,6 @@ class _SettingsStrings {
       'bulk_tafseer_download_failed': 'فشل تنزيل التفسير دفعة واحدة: {error}',
       'download_tafseer_offline': 'تنزيل التفسير للاستخدام دون اتصال',
       'current_source_id': 'معرف المصدر الحالي: {id}',
-      'quran_diagnostics_title': 'تشخيص القرآن (7:101، 7:122)',
-      'diagnostics_copied': 'تم نسخ التشخيص',
       'copy': 'نسخ',
       'close': 'إغلاق',
       'working': 'جارٍ العمل...',
@@ -1933,7 +1876,6 @@ class _SettingsStrings {
       'resync_all': 'إعادة مزامنة الكل',
       'clear_local_quran_cache': 'مسح ذاكرة القرآن المحلية',
       'refresh_status': 'تحديث الحالة',
-      'show_diagnostics': 'عرض التشخيص',
       'error_pack_checking': 'خطأ أثناء فحص/تنزيل الحزمة',
       'installed_pages': 'مثبت ({count} صفحة)',
       'not_installed_yet': 'غير مثبت بعد ({count}/{expected} صفحات)',
@@ -2030,8 +1972,6 @@ class _SettingsStrings {
       'bulk_tafseer_download_failed': 'اجتماعی تفسیر ڈاؤن لوڈ ناکام: {error}',
       'download_tafseer_offline': 'آف لائن کے لیے تفسیر ڈاؤن لوڈ کریں',
       'current_source_id': 'موجودہ ماخذ آئی ڈی: {id}',
-      'quran_diagnostics_title': 'قرآن تشخیص (7:101، 7:122)',
-      'diagnostics_copied': 'تشخیص کا متن کاپی ہو گیا',
       'copy': 'کاپی',
       'close': 'بند کریں',
       'working': 'کام جاری ہے...',
@@ -2045,7 +1985,6 @@ class _SettingsStrings {
       'resync_all': 'سب دوبارہ ہم آہنگ کریں',
       'clear_local_quran_cache': 'مقامی قرآن کیش صاف کریں',
       'refresh_status': 'حالت تازہ کریں',
-      'show_diagnostics': 'تشخیص دکھائیں',
       'error_pack_checking': 'پیک چیک/ڈاؤن لوڈ کرتے وقت خرابی',
       'installed_pages': 'انسٹال شدہ ({count} صفحات)',
       'not_installed_yet': 'ابھی انسٹال نہیں ({count}/{expected} صفحات)',
@@ -2141,8 +2080,6 @@ class _SettingsStrings {
       'bulk_tafseer_download_failed': 'Toplu tefsir indirme başarısız: {error}',
       'download_tafseer_offline': 'Çevrimdışı kullanım için tefsir indir',
       'current_source_id': 'Geçerli kaynak kimliği: {id}',
-      'quran_diagnostics_title': "Kur'an Tanılama (7:101, 7:122)",
-      'diagnostics_copied': 'Tanılama kopyalandı',
       'copy': 'Kopyala',
       'close': 'Kapat',
       'working': 'Çalışıyor...',
@@ -2156,7 +2093,6 @@ class _SettingsStrings {
       'resync_all': 'Tümünü yeniden eşitle',
       'clear_local_quran_cache': "Yerel Kur'an önbelleğini temizle",
       'refresh_status': 'Durumu yenile',
-      'show_diagnostics': 'Tanılamayı göster',
       'error_pack_checking': 'Paket kontrolü/indirmesi sırasında hata',
       'installed_pages': 'Yüklü ({count} sayfa)',
       'not_installed_yet': 'Henüz yüklü değil ({count}/{expected} sayfa)',
@@ -2263,8 +2199,6 @@ class _SettingsStrings {
       'download_tafseer_offline':
           'Télécharger le tafsir pour le mode hors ligne',
       'current_source_id': 'ID de la source actuelle : {id}',
-      'quran_diagnostics_title': 'Diagnostic du Coran (7:101, 7:122)',
-      'diagnostics_copied': 'Diagnostic copié',
       'copy': 'Copier',
       'close': 'Fermer',
       'working': 'En cours...',
@@ -2282,7 +2216,6 @@ class _SettingsStrings {
       'resync_all': 'Tout resynchroniser',
       'clear_local_quran_cache': 'Effacer le cache coranique local',
       'refresh_status': 'Actualiser le statut',
-      'show_diagnostics': 'Afficher le diagnostic',
       'error_pack_checking':
           'Erreur lors de la vérification/téléchargement du pack',
       'installed_pages': 'Installé ({count} pages)',
@@ -2384,8 +2317,6 @@ class _SettingsStrings {
       'bulk_tafseer_download_failed': 'Gagal mengunduh tafsir massal: {error}',
       'download_tafseer_offline': 'Unduh tafsir untuk offline',
       'current_source_id': 'ID sumber saat ini: {id}',
-      'quran_diagnostics_title': 'Diagnostik Quran (7:101, 7:122)',
-      'diagnostics_copied': 'Diagnostik disalin',
       'copy': 'Salin',
       'close': 'Tutup',
       'working': 'Sedang bekerja...',
@@ -2400,7 +2331,6 @@ class _SettingsStrings {
       'resync_all': 'Sinkron ulang semua',
       'clear_local_quran_cache': 'Hapus cache Quran lokal',
       'refresh_status': 'Segarkan status',
-      'show_diagnostics': 'Tampilkan diagnostik',
       'error_pack_checking': 'Kesalahan saat memeriksa/mengunduh paket',
       'installed_pages': 'Terpasang ({count} halaman)',
       'not_installed_yet': 'Belum terpasang ({count}/{expected} halaman)',
@@ -2504,8 +2434,6 @@ class _SettingsStrings {
           'Massen-Download des Tafsir fehlgeschlagen: {error}',
       'download_tafseer_offline': 'Tafsir für Offline-Nutzung herunterladen',
       'current_source_id': 'Aktuelle Quellen-ID: {id}',
-      'quran_diagnostics_title': 'Koran-Diagnose (7:101, 7:122)',
-      'diagnostics_copied': 'Diagnose kopiert',
       'copy': 'Kopieren',
       'close': 'Schließen',
       'working': 'Wird ausgeführt...',
@@ -2522,7 +2450,6 @@ class _SettingsStrings {
       'resync_all': 'Alles erneut synchronisieren',
       'clear_local_quran_cache': 'Lokalen Koran-Cache löschen',
       'refresh_status': 'Status aktualisieren',
-      'show_diagnostics': 'Diagnose anzeigen',
       'error_pack_checking': 'Fehler beim Prüfen/Herunterladen des Pakets',
       'installed_pages': 'Installiert ({count} Seiten)',
       'not_installed_yet': 'Noch nicht installiert ({count}/{expected} Seiten)',
@@ -2626,8 +2553,6 @@ class _SettingsStrings {
           'Error en la descarga masiva del tafsir: {error}',
       'download_tafseer_offline': 'Descargar tafsir para uso sin conexión',
       'current_source_id': 'ID de la fuente actual: {id}',
-      'quran_diagnostics_title': 'Diagnóstico del Corán (7:101, 7:122)',
-      'diagnostics_copied': 'Diagnóstico copiado',
       'copy': 'Copiar',
       'close': 'Cerrar',
       'working': 'Trabajando...',
@@ -2643,7 +2568,6 @@ class _SettingsStrings {
       'resync_all': 'Volver a sincronizar todo',
       'clear_local_quran_cache': 'Borrar caché local del Corán',
       'refresh_status': 'Actualizar estado',
-      'show_diagnostics': 'Mostrar diagnóstico',
       'error_pack_checking': 'Error al comprobar/descargar el paquete',
       'installed_pages': 'Instalado ({count} páginas)',
       'not_installed_yet': 'Aún no instalado ({count}/{expected} páginas)',
