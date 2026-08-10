@@ -105,11 +105,11 @@ flutter pub get
 ```
 
 Quran Foundation Content API requests use isolated app-owned Cloudflare
-Workers. All app builds default to the production Worker so development and
-beta testing use the complete Quran dataset. Content requests require an
-Apple App Attest proof from a genuine physical-device installation; unsupported
-platforms and older builds fail closed. Override the URL to test a
-development-signed physical-device build against prelive with:
+Workers. Release and Profile builds use the production Worker and complete
+Quran dataset. Content requests require an Apple App Attest proof from a
+genuine physical-device installation; unsupported platforms and older builds
+fail closed. Production accepts only distribution attestations, so test a
+Debug build on a physical device against prelive with:
 
 ```bash
 flutter run \
