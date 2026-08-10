@@ -1,33 +1,46 @@
 import 'package:dio/dio.dart';
 import '../models/tajweed_models.dart';
 
-/// Wraps the Quran.com v4 API.
-/// Docs: https://api.quran.com/api/v4
+/// Accesses Quran Foundation content through the app-owned backend proxy.
 class QuranApiService {
-  static const _baseUrl = 'https://api.quran.com/api/v4';
+  static const contentApiBaseUrl = String.fromEnvironment(
+    'QURAN_CONTENT_API_BASE_URL',
+    defaultValue: 'https://tajweed-quran-proxy.ebaidllc.workers.dev/v1/content',
+  );
+  static const _searchApiBaseUrl = 'https://api.quran.com/api/v4';
   static const _audioBaseUrl = 'https://verses.quran.com';
   static const _mushafImageBaseUrls = [
     'https://cdn.qurancdn.com/images/svg/pages',
     'https://static.qurancdn.com/images/svg/pages',
   ];
 
-  final Dio _dio;
+  final Dio _contentDio;
+  final Dio _searchDio;
 
-  QuranApiService()
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: _baseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
+  QuranApiService({Dio? contentClient, Dio? searchClient})
+      : _contentDio = contentClient ??
+            Dio(
+              BaseOptions(
+                baseUrl: contentApiBaseUrl,
+                connectTimeout: const Duration(seconds: 10),
+                receiveTimeout: const Duration(seconds: 15),
+              ),
+            ),
+        _searchDio = searchClient ??
+            Dio(
+              BaseOptions(
+                baseUrl: _searchApiBaseUrl,
+                connectTimeout: const Duration(seconds: 10),
+                receiveTimeout: const Duration(seconds: 15),
+              ),
+            );
 
   // ─── Surahs ───────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> fetchSurahList({
     required String langCode,
   }) async {
-    final response = await _dio.get(
+    final response = await _contentDio.get(
       '/chapters',
       queryParameters: {'language': langCode},
     );
@@ -44,7 +57,7 @@ class QuranApiService {
     int reciterId = 1, // AbdulBasit Mujawwad
     int? page,
   }) async {
-    final response = await _dio.get(
+    final response = await _contentDio.get(
       '/verses/by_chapter/$surahNumber',
       queryParameters: {
         'language': langCode,
@@ -67,7 +80,7 @@ class QuranApiService {
     required String langCode,
   }) async {
     final safePage = pageNumber.clamp(1, 604);
-    final response = await _dio.get(
+    final response = await _contentDio.get(
       '/verses/by_page/$safePage',
       queryParameters: {
         'language': langCode,
@@ -84,7 +97,7 @@ class QuranApiService {
     required String langCode,
     int reciterId = 1, // AbdulBasit Mujawwad
   }) async {
-    final response = await _dio.get(
+    final response = await _contentDio.get(
       '/verses/by_key/$surahNumber:$ayahNumber',
       queryParameters: {
         'language': langCode,
@@ -109,7 +122,7 @@ class QuranApiService {
     int page = 1;
 
     while (true) {
-      final response = await _dio.get(
+      final response = await _contentDio.get(
         '/recitations/$reciterId/by_chapter/$surahNumber',
         queryParameters: {'page': page, 'per_page': 50},
       );
@@ -140,7 +153,7 @@ class QuranApiService {
   Future<Map<String, String>> fetchTajweedText({
     required int chapterNumber,
   }) async {
-    final response = await _dio.get(
+    final response = await _contentDio.get(
       '/quran/verses/uthmani_tajweed',
       queryParameters: {'chapter_number': chapterNumber},
     );
@@ -189,7 +202,7 @@ class QuranApiService {
   /// Fetches juz data and builds a map of surah:ayah → juz number for boundary markers.
   /// Returns { juzNumber: { chapterNumber: "startAyah-endAyah" } }.
   Future<List<Map<String, dynamic>>> fetchJuzList() async {
-    final response = await _dio.get('/juzs');
+    final response = await _contentDio.get('/juzs');
     final raw = response.data['juzs'] as List<dynamic>? ?? [];
     // API may return duplicates — deduplicate by juz_number
     final seen = <int>{};
@@ -208,7 +221,9 @@ class QuranApiService {
     required int tafsirId,
     required String verseKey,
   }) async {
-    final response = await _dio.get('/tafsirs/$tafsirId/by_ayah/$verseKey');
+    final response = await _contentDio.get(
+      '/tafsirs/$tafsirId/by_ayah/$verseKey',
+    );
     final tafsirRaw = response.data['tafsir'];
     final tafsir = tafsirRaw is Map
         ? Map<String, dynamic>.from(tafsirRaw)
@@ -218,7 +233,7 @@ class QuranApiService {
 
   /// Fetches the list of available tafsirs from the resources API.
   Future<List<Map<String, dynamic>>> fetchAvailableTafsirs() async {
-    final response = await _dio.get('/resources/tafsirs');
+    final response = await _contentDio.get('/resources/tafsirs');
     return List<Map<String, dynamic>>.from(response.data['tafsirs']);
   }
 
@@ -226,7 +241,7 @@ class QuranApiService {
 
   /// Fetches the list of available reciters from the resources API.
   Future<List<Map<String, dynamic>>> fetchAvailableReciters() async {
-    final response = await _dio.get('/resources/recitations');
+    final response = await _contentDio.get('/resources/recitations');
     return List<Map<String, dynamic>>.from(
       response.data['recitations'],
     ).where((reciter) => (reciter['id'] as int?) != 7).toList(growable: false);
@@ -238,7 +253,7 @@ class QuranApiService {
     required String query,
     required String langCode,
   }) async {
-    final response = await _dio.get(
+    final response = await _searchDio.get(
       '/search',
       queryParameters: {'q': query, 'language': langCode, 'size': 20},
     );
