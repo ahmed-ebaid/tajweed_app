@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tajweed-quran-proxy",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-10",
+  "workers_dev": true,
+  "vars": {
+    "QF_ENV": "prelive"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

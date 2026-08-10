@@ -32,6 +32,9 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+backend/**/node_modules/
+backend/**/.dev.vars
+backend/**/.wrangler/
 
 # Symbolication related
 app.*.symbols
