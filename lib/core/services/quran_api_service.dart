@@ -1,12 +1,26 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/tajweed_models.dart';
 
 /// Accesses Quran Foundation content through the app-owned backend proxy.
 class QuranApiService {
-  static const contentApiBaseUrl = String.fromEnvironment(
+  static const _configuredContentApiBaseUrl = String.fromEnvironment(
     'QURAN_CONTENT_API_BASE_URL',
-    defaultValue: 'https://tajweed-quran-proxy.ebaidllc.workers.dev/v1/content',
   );
+  static const _preliveContentApiBaseUrl =
+      'https://tajweed-quran-proxy.ebaidllc.workers.dev/v1/content';
+  static const _productionContentApiBaseUrl =
+      'https://tajweed-quran-proxy-production.ebaidllc.workers.dev/v1/content';
+
+  static String get contentApiBaseUrl {
+    if (_configuredContentApiBaseUrl.isNotEmpty) {
+      return _configuredContentApiBaseUrl;
+    }
+    return kReleaseMode
+        ? _productionContentApiBaseUrl
+        : _preliveContentApiBaseUrl;
+  }
+
   static const _searchApiBaseUrl = 'https://api.quran.com/api/v4';
   static const _audioBaseUrl = 'https://verses.quran.com';
   static const _mushafImageBaseUrls = [

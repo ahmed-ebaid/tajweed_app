@@ -12,15 +12,27 @@ cp .dev.vars.example .dev.vars
 npm run dev
 ```
 
-Never commit `.dev.vars`. Production secrets must be configured with:
+Never commit `.dev.vars`. Configure prelive secrets on the existing Worker with:
 
 ```bash
-npx wrangler secret put QF_CLIENT_ID
-npx wrangler secret put QF_CLIENT_SECRET
+npx wrangler secret put QF_CLIENT_ID --env=""
+npx wrangler secret put QF_CLIENT_SECRET --env=""
 ```
 
-Use `QF_ENV=prelive` until pre-production verification succeeds. Set
-`QF_ENV=production` only in the production Worker environment.
+Configure the independent production Worker with the production credentials:
+
+```bash
+npx wrangler secret put QF_CLIENT_ID --env production
+npx wrangler secret put QF_CLIENT_SECRET --env production
+npm run deploy:production
+```
+
+The deployments and credentials remain isolated:
+
+| Environment | Worker | Quran Foundation environment |
+| --- | --- | --- |
+| Prelive | `tajweed-quran-proxy` | `prelive` |
+| Production | `tajweed-quran-proxy-production` | `production` |
 
 ## Routes
 
@@ -40,4 +52,5 @@ not exposed by this Content API Worker and will be integrated separately.
 npm run check
 npm test
 npm run deploy:dry-run
+npm run deploy:production:dry-run
 ```
