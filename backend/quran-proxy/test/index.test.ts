@@ -1,4 +1,5 @@
-import {afterEach, describe, expect, it, vi} from "vitest";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
+import {issueAccessToken} from "../src/attestation";
 import {
   type Env,
   type Fetcher,
@@ -10,7 +11,28 @@ const env: Env = {
   QF_CLIENT_ID: "client-id",
   QF_CLIENT_SECRET: "client-secret",
   QF_ENV: "prelive",
+  APPLE_BUNDLE_ID: "com.ebaidllc.tajweedpractice",
+  APPLE_TEAM_ID: "Y6484R42R9",
+  ATT_TOKEN_SECRET: "test-token-secret-with-at-least-32-characters",
+  ATTESTATION_STATE: {
+    getByName: () => {
+      throw new Error("Attestation state was not expected in this test");
+    },
+  } as unknown as DurableObjectNamespace,
 };
+const testKeyId = `${"A".repeat(43)}=`;
+let authorization: string;
+
+beforeEach(async () => {
+  const access = await issueAccessToken(testKeyId, env);
+  authorization = `Bearer ${access.token}`;
+});
+
+function contentRequest(url: string, init: RequestInit = {}): Request {
+  const headers = new Headers(init.headers);
+  headers.set("authorization", authorization);
+  return new Request(url, {...init, headers});
+}
 
 function tokenResponse(token = "token-1"): Response {
   return Response.json({access_token: token, expires_in: 3600});
@@ -56,15 +78,19 @@ describe("Quran Foundation proxy", () => {
 
   it("rejects unsupported methods, paths, and query keys", async () => {
     const post = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters", {method: "POST"}),
+      contentRequest("https://proxy.example/v2/content/chapters", {
+        method: "POST",
+      }),
       env,
     );
     const path = await handleRequest(
-      new Request("https://proxy.example/v1/content/admin/secrets"),
+      contentRequest("https://proxy.example/v2/content/admin/secrets"),
       env,
     );
     const query = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters?redirect=https://x"),
+      contentRequest(
+        "https://proxy.example/v2/content/chapters?redirect=https://x",
+      ),
       env,
     );
     const healthPost = await handleRequest(
@@ -78,18 +104,31 @@ describe("Quran Foundation proxy", () => {
     expect(healthPost.status).toBe(405);
   });
 
+  it("rejects Content API calls without App Attest authorization", async () => {
+    const fetcher = vi.fn<Fetcher>();
+    const response = await handleRequest(
+      new Request("https://proxy.example/v2/content/chapters"),
+      env,
+      fetcher,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({error: "Unauthorized"});
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("rejects search, encoded paths, and oversized query values", async () => {
     const search = await handleRequest(
-      new Request("https://proxy.example/v1/content/search?q=mercy"),
+      contentRequest("https://proxy.example/v2/content/search?q=mercy"),
       env,
     );
     const encodedPath = await handleRequest(
-      new Request("https://proxy.example/v1/content/verses%2Fby_page%2F1"),
+      contentRequest("https://proxy.example/v2/content/verses%2Fby_page%2F1"),
       env,
     );
     const oversizedQuery = await handleRequest(
-      new Request(
-        `https://proxy.example/v1/content/chapters?language=${"a".repeat(501)}`,
+      contentRequest(
+        `https://proxy.example/v2/content/chapters?language=${"a".repeat(501)}`,
       ),
       env,
     );
@@ -106,16 +145,16 @@ describe("Quran Foundation proxy", () => {
       .mockResolvedValueOnce(Response.json({records: []}));
 
     const sync = await handleRequest(
-      new Request(
-        "https://proxy.example/v1/content/resources/sync" +
+      contentRequest(
+        "https://proxy.example/v2/content/resources/sync" +
           "?bootstrap=true&resources=translations%3A85&per_page=100",
       ),
       env,
       fetcher,
     );
     const snapshot = await handleRequest(
-      new Request(
-        "https://proxy.example/v1/content/resources/snapshots/translations/85",
+      contentRequest(
+        "https://proxy.example/v2/content/resources/snapshots/translations/85",
       ),
       env,
       fetcher,
@@ -128,8 +167,8 @@ describe("Quran Foundation proxy", () => {
 
   it("rejects unsupported snapshot resource groups", async () => {
     const response = await handleRequest(
-      new Request(
-        "https://proxy.example/v1/content/resources/snapshots/articles/1",
+      contentRequest(
+        "https://proxy.example/v2/content/resources/snapshots/articles/1",
       ),
       env,
     );
@@ -140,7 +179,7 @@ describe("Quran Foundation proxy", () => {
   it("rejects missing configuration without calling upstream", async () => {
     const fetcher = vi.fn<Fetcher>();
     const response = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       {...env, QF_CLIENT_SECRET: ""},
       fetcher,
     );
@@ -156,12 +195,14 @@ describe("Quran Foundation proxy", () => {
       .mockResolvedValueOnce(Response.json({juzs: []}));
 
     const first = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters?language=en"),
+      contentRequest(
+        "https://proxy.example/v2/content/chapters?language=en",
+      ),
       env,
       fetcher,
     );
     const second = await handleRequest(
-      new Request("https://proxy.example/v1/content/juzs"),
+      contentRequest("https://proxy.example/v2/content/juzs"),
       env,
       fetcher,
     );
@@ -186,7 +227,7 @@ describe("Quran Foundation proxy", () => {
       .mockResolvedValueOnce(Response.json({chapters: []}));
 
     const response = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );
@@ -206,7 +247,7 @@ describe("Quran Foundation proxy", () => {
       .mockResolvedValueOnce(new Response(null, {status: 401}));
 
     const response = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );
@@ -227,12 +268,12 @@ describe("Quran Foundation proxy", () => {
       .mockResolvedValueOnce(Response.json({juzs: []}));
 
     const first = handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );
     const second = handleRequest(
-      new Request("https://proxy.example/v1/content/juzs"),
+      contentRequest("https://proxy.example/v2/content/juzs"),
       env,
       fetcher,
     );
@@ -255,12 +296,12 @@ describe("Quran Foundation proxy", () => {
       .mockResolvedValueOnce(Response.json({juzs: []}));
 
     await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );
     await handleRequest(
-      new Request("https://proxy.example/v1/content/juzs"),
+      contentRequest("https://proxy.example/v2/content/juzs"),
       env,
       fetcher,
     );
@@ -282,10 +323,11 @@ describe("Quran Foundation proxy", () => {
     );
 
     const responsePromise = handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
     await vi.advanceTimersByTimeAsync(15_000);
     const response = await responsePromise;
 
@@ -318,7 +360,7 @@ describe("Quran Foundation proxy", () => {
       );
 
     const response = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );
@@ -340,7 +382,7 @@ describe("Quran Foundation proxy", () => {
       );
 
     const response = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );
@@ -361,7 +403,7 @@ describe("Quran Foundation proxy", () => {
       );
 
     const response = await handleRequest(
-      new Request("https://proxy.example/v1/content/chapters"),
+      contentRequest("https://proxy.example/v2/content/chapters"),
       env,
       fetcher,
     );

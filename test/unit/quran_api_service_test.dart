@@ -56,7 +56,7 @@ void main() {
         contentAdapter.requests.single.uri.host,
         'tajweed-quran-proxy-production.ebaidllc.workers.dev',
       );
-      expect(contentAdapter.requests.single.uri.path, '/v1/content/chapters');
+      expect(contentAdapter.requests.single.uri.path, '/v2/content/chapters');
     });
 
     test('keeps Search on its separate API endpoint', () async {

@@ -1,4 +1,14 @@
-export interface Env {
+import {
+  type AttestationEnv,
+  AttestationState,
+  attestationStub,
+  isKeyId,
+  issueAccessToken,
+  validateAttestationConfiguration,
+  verifyAccessToken,
+} from "./attestation";
+
+export interface Env extends AttestationEnv {
   QF_CLIENT_ID: string;
   QF_CLIENT_SECRET: string;
   QF_ENV: "prelive" | "production";
@@ -19,9 +29,11 @@ export type Fetcher = (
   init?: RequestInit,
 ) => Promise<Response>;
 
-const CONTENT_PREFIX = "/v1/content/";
+const CONTENT_PREFIX = "/v2/content/";
+const ATTESTATION_PREFIX = "/v1/attest/";
 const TOKEN_SAFETY_WINDOW_MS = 60_000;
 const UPSTREAM_TIMEOUT_MS = 15_000;
+const MAX_ATTESTATION_REQUEST_LENGTH = 256 * 1024;
 const MAX_QUERY_VALUE_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 128;
 const MAX_UPSTREAM_CONTENT_LENGTH = 10 * 1024 * 1024;
@@ -237,6 +249,78 @@ async function callContentApi(
   return response;
 }
 
+async function handleAttestationRequest(
+  request: Request,
+  url: URL,
+  env: Env,
+  requestId: string,
+): Promise<Response> {
+  if (request.method !== "POST") {
+    return json({error: "Method not allowed"}, 405, requestId, {
+      allow: "POST",
+    });
+  }
+  const operation = url.pathname.slice(ATTESTATION_PREFIX.length);
+  if (!["challenge", "register", "token"].includes(operation)) {
+    return json({error: "Not found"}, 404, requestId);
+  }
+
+  const contentLength = Number(request.headers.get("content-length"));
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > MAX_ATTESTATION_REQUEST_LENGTH
+  ) {
+    return json({error: "Request body is too large"}, 413, requestId);
+  }
+
+  let rawBody: string;
+  let body: Record<string, unknown>;
+  try {
+    rawBody = await request.text();
+    if (rawBody.length > MAX_ATTESTATION_REQUEST_LENGTH) {
+      return json({error: "Request body is too large"}, 413, requestId);
+    }
+    const parsed: unknown = JSON.parse(rawBody);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return json({error: "Invalid request"}, 400, requestId);
+    }
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return json({error: "Invalid request"}, 400, requestId);
+  }
+
+  const keyId = body.key_id;
+  if (!isKeyId(keyId)) {
+    return json({error: "Invalid request"}, 400, requestId);
+  }
+
+  const internal = await attestationStub(env, keyId).fetch(
+    new Request(`https://attestation.internal/${operation}`, {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: rawBody,
+    }),
+  );
+  const internalBody: unknown = await internal.json();
+  if (!internal.ok) {
+    return json(internalBody, internal.status, requestId);
+  }
+
+  if (operation === "token") {
+    const access = await issueAccessToken(keyId, env);
+    return json(
+      {
+        access_token: access.token,
+        token_type: "Bearer",
+        expires_in: access.expiresIn,
+      },
+      200,
+      requestId,
+    );
+  }
+  return json(internalBody, internal.status, requestId);
+}
+
 export async function handleRequest(
   request: Request,
   env: Env,
@@ -245,15 +329,20 @@ export async function handleRequest(
   const requestId = requestIdFor(request);
   const url = new URL(request.url);
 
-  if (request.method !== "GET") {
-    return json({error: "Method not allowed"}, 405, requestId, {
-      allow: "GET",
-    });
-  }
   if (url.pathname === "/health") {
+    if (request.method !== "GET") {
+      return json({error: "Method not allowed"}, 405, requestId, {
+        allow: "GET",
+      });
+    }
     return json({status: "ok", environment: env.QF_ENV}, 200, requestId);
   }
   if (url.pathname === "/oauth/callback") {
+    if (request.method !== "GET") {
+      return json({error: "Method not allowed"}, 405, requestId, {
+        allow: "GET",
+      });
+    }
     return json(
       {
         status: "reserved",
@@ -263,14 +352,31 @@ export async function handleRequest(
       requestId,
     );
   }
+  if (url.pathname.startsWith(ATTESTATION_PREFIX)) {
+    const configurationError = validateAttestationConfiguration(env);
+    if (configurationError) {
+      console.error(`[${requestId}] ${configurationError}`);
+      return json({error: "Service unavailable"}, 503, requestId);
+    }
+    return handleAttestationRequest(request, url, env, requestId);
+  }
   if (!url.pathname.startsWith(CONTENT_PREFIX)) {
     return json({error: "Not found"}, 404, requestId);
   }
+  if (request.method !== "GET") {
+    return json({error: "Method not allowed"}, 405, requestId, {
+      allow: "GET",
+    });
+  }
 
-  const configurationError = validateConfiguration(env);
+  const configurationError =
+    validateConfiguration(env) ?? validateAttestationConfiguration(env);
   if (configurationError) {
     console.error(`[${requestId}] ${configurationError}`);
     return json({error: "Service unavailable"}, 503, requestId);
+  }
+  if (!await verifyAccessToken(request.headers.get("authorization"), env)) {
+    return json({error: "Unauthorized"}, 401, requestId);
   }
 
   const validationError = validateContentRequest(url);
@@ -297,8 +403,9 @@ export async function handleRequest(
     headers.set("content-type", upstream.headers.get("content-type") ??
       "application/json");
     headers.set("x-request-id", requestId);
-    const cacheControl = upstream.headers.get("cache-control");
-    if (cacheControl) headers.set("cache-control", cacheControl);
+    headers.set("cache-control", "private, no-store");
+    headers.set("cdn-cache-control", "no-store");
+    headers.set("cloudflare-cdn-cache-control", "no-store");
     return new Response(upstream.body, {status: upstream.status, headers});
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -306,6 +413,8 @@ export async function handleRequest(
     return json({error: "Upstream service unavailable"}, 502, requestId);
   }
 }
+
+export {AttestationState};
 
 export default {
   fetch(request: Request, env: Env): Promise<Response> {

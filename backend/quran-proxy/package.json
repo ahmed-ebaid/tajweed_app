@@ -15,11 +15,15 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260801.1",
+    "@types/node": "^24.13.3",
     "typescript": "5.9.2",
     "vitest": "3.2.7",
     "wrangler": "4.118.0"
   },
   "overrides": {
     "sharp": "0.35.1"
+  },
+  "dependencies": {
+    "node-app-attest": "^1.0.1"
   }
 }

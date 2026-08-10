@@ -4,7 +4,7 @@ publish_to: none
 version: 0.9.0+9
 
 environment:
-  sdk: ">=3.2.0 <4.0.0"
+  sdk: ">=3.12.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -43,6 +43,7 @@ dependencies:
   shimmer: ^3.0.0              # Loading skeletons
   go_router: ^17.1.0           # Declarative routing
   share_plus: ^13.1.0           # Native share sheet for sharing rule summaries
+  app_attest: ^0.2.1
 
 dev_dependencies:
   flutter_test:

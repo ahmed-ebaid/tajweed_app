@@ -17,6 +17,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.4.1"
+  app_attest:
+    dependency: "direct main"
+    description:
+      name: app_attest
+      sha256: "4ef28bc63690337abbde35d5eb075030d645a591c932e8db0490ce54f2ce5755"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   archive:
     dependency: "direct main"
     description:
