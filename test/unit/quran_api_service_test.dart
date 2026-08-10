@@ -54,7 +54,7 @@ void main() {
       expect(contentAdapter.requests, hasLength(1));
       expect(
         contentAdapter.requests.single.uri.host,
-        'tajweed-quran-proxy.ebaidllc.workers.dev',
+        'tajweed-quran-proxy-production.ebaidllc.workers.dev',
       );
       expect(contentAdapter.requests.single.uri.path, '/v1/content/chapters');
     });

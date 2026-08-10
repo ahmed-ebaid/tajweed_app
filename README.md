@@ -105,12 +105,13 @@ flutter pub get
 ```
 
 Quran Foundation Content API requests use isolated app-owned Cloudflare
-Workers. Debug builds default to prelive, while release builds default to the
-production Worker. Override the URL for another environment with:
+Workers. All app builds default to the production Worker so development and
+beta testing use the complete Quran dataset. Override the URL to test against
+prelive with:
 
 ```bash
 flutter run \
-  --dart-define=QURAN_CONTENT_API_BASE_URL=https://example.workers.dev/v1/content
+  --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v1/content
 ```
 
 Quran Search remains on its separate API until the required Search OAuth scope

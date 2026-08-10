@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import '../models/tajweed_models.dart';
 
 class QuranContentMutation {
@@ -104,8 +103,6 @@ class QuranApiService {
   static const _configuredContentApiBaseUrl = String.fromEnvironment(
     'QURAN_CONTENT_API_BASE_URL',
   );
-  static const _preliveContentApiBaseUrl =
-      'https://tajweed-quran-proxy.ebaidllc.workers.dev/v1/content';
   static const _productionContentApiBaseUrl =
       'https://tajweed-quran-proxy-production.ebaidllc.workers.dev/v1/content';
 
@@ -113,9 +110,7 @@ class QuranApiService {
     if (_configuredContentApiBaseUrl.isNotEmpty) {
       return _configuredContentApiBaseUrl;
     }
-    return kReleaseMode
-        ? _productionContentApiBaseUrl
-        : _preliveContentApiBaseUrl;
+    return _productionContentApiBaseUrl;
   }
 
   static const _searchApiBaseUrl = 'https://api.quran.com/api/v4';
