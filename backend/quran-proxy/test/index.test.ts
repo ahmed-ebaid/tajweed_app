@@ -36,6 +36,24 @@ describe("Quran Foundation proxy", () => {
     });
   });
 
+  it("serves an inert OAuth callback placeholder", async () => {
+    const fetcher = vi.fn<Fetcher>();
+    const response = await handleRequest(
+      new Request(
+        "https://proxy.example/oauth/callback?code=ignored&state=ignored",
+      ),
+      {...env, QF_CLIENT_SECRET: ""},
+      fetcher,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      status: "reserved",
+      message: "User OAuth is not enabled for this application.",
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("rejects unsupported methods, paths, and query keys", async () => {
     const post = await handleRequest(
       new Request("https://proxy.example/v1/content/chapters", {method: "POST"}),
