@@ -104,8 +104,9 @@ tajweed_practice/
 flutter pub get
 ```
 
-Quran Foundation Content API requests use the app-owned Cloudflare Worker.
-Override its URL for another environment with:
+Quran Foundation Content API requests use isolated app-owned Cloudflare
+Workers. Debug builds default to prelive, while release builds default to the
+production Worker. Override the URL for another environment with:
 
 ```bash
 flutter run \

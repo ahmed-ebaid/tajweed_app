@@ -6,9 +6,12 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "deploy:dry-run": "wrangler deploy --dry-run",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy:dry-run": "wrangler deploy --env=\"\" --dry-run",
+    "deploy:production:dry-run": "wrangler deploy --env production --dry-run",
+    "dev": "wrangler dev --env=\"\"",
+    "deploy": "wrangler deploy --env=\"\"",
+    "deploy:prelive": "wrangler deploy --env=\"\"",
+    "deploy:production": "wrangler deploy --env production"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260801.1",
