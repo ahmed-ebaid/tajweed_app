@@ -247,6 +247,16 @@ export async function handleRequest(
   if (url.pathname === "/health") {
     return json({status: "ok", environment: env.QF_ENV}, 200, requestId);
   }
+  if (url.pathname === "/oauth/callback") {
+    return json(
+      {
+        status: "reserved",
+        message: "User OAuth is not enabled for this application.",
+      },
+      200,
+      requestId,
+    );
+  }
   if (!url.pathname.startsWith(CONTENT_PREFIX)) {
     return json({error: "Not found"}, 404, requestId);
   }

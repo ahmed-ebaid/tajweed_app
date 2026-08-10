@@ -25,6 +25,7 @@ Use `QF_ENV=prelive` until pre-production verification succeeds. Set
 ## Routes
 
 - `GET /health`
+- `GET /oauth/callback` (reserved placeholder; user OAuth is not enabled)
 - `GET /v1/content/<allowlisted Content API path>`
 
 The proxy forwards only the Content API paths and query keys required by the
