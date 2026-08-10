@@ -3,11 +3,28 @@
   "name": "tajweed-quran-proxy",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-10",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
   "vars": {
-    "QF_ENV": "prelive"
+    "QF_ENV": "prelive",
+    "APPLE_TEAM_ID": "Y6484R42R9",
+    "APPLE_BUNDLE_ID": "com.ebaidllc.tajweedpractice"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ATTESTATION_STATE",
+        "class_name": "AttestationState"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["AttestationState"]
+    }
+  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
@@ -16,8 +33,24 @@
     "production": {
       "name": "tajweed-quran-proxy-production",
       "vars": {
-        "QF_ENV": "production"
-      }
+        "QF_ENV": "production",
+        "APPLE_TEAM_ID": "Y6484R42R9",
+        "APPLE_BUNDLE_ID": "com.ebaidllc.tajweedpractice"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "ATTESTATION_STATE",
+            "class_name": "AttestationState"
+          }
+        ]
+      },
+      "migrations": [
+        {
+          "tag": "v1",
+          "new_sqlite_classes": ["AttestationState"]
+        }
+      ]
     }
   }
 }

@@ -106,12 +106,14 @@ flutter pub get
 
 Quran Foundation Content API requests use isolated app-owned Cloudflare
 Workers. All app builds default to the production Worker so development and
-beta testing use the complete Quran dataset. Override the URL to test against
-prelive with:
+beta testing use the complete Quran dataset. Content requests require an
+Apple App Attest proof from a genuine physical-device installation; unsupported
+platforms and older builds fail closed. Override the URL to test a
+development-signed physical-device build against prelive with:
 
 ```bash
 flutter run \
-  --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v1/content
+  --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v2/content
 ```
 
 Quran Search remains on its separate API until the required Search OAuth scope

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../models/tajweed_models.dart';
+import 'quran_attestation_service.dart';
 
 class QuranContentMutation {
   final String type;
@@ -104,7 +105,7 @@ class QuranApiService {
     'QURAN_CONTENT_API_BASE_URL',
   );
   static const _productionContentApiBaseUrl =
-      'https://tajweed-quran-proxy-production.ebaidllc.workers.dev/v1/content';
+      'https://tajweed-quran-proxy-production.ebaidllc.workers.dev/v2/content';
 
   static String get contentApiBaseUrl {
     if (_configuredContentApiBaseUrl.isNotEmpty) {
@@ -123,8 +124,11 @@ class QuranApiService {
   final Dio _contentDio;
   final Dio _searchDio;
 
-  QuranApiService({Dio? contentClient, Dio? searchClient})
-      : _contentDio = contentClient ??
+  QuranApiService({
+    Dio? contentClient,
+    Dio? searchClient,
+    QuranAttestationService? attestationService,
+  })  : _contentDio = contentClient ??
             Dio(
               BaseOptions(
                 baseUrl: contentApiBaseUrl,
@@ -139,7 +143,49 @@ class QuranApiService {
                 connectTimeout: const Duration(seconds: 10),
                 receiveTimeout: const Duration(seconds: 15),
               ),
-            );
+            ) {
+    if (contentClient == null) {
+      final attestation = attestationService ??
+          QuranAttestationService.forContentApi(contentApiBaseUrl);
+      _contentDio.interceptors.add(
+        QueuedInterceptorsWrapper(
+          onRequest: (options, handler) async {
+            try {
+              options.headers['authorization'] =
+                  'Bearer ${await attestation.accessToken()}';
+              handler.next(options);
+            } catch (error, stackTrace) {
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  error: error,
+                  stackTrace: stackTrace,
+                  type: DioExceptionType.unknown,
+                ),
+              );
+            }
+          },
+          onError: (error, handler) async {
+            if (error.response?.statusCode != 401 ||
+                error.requestOptions.extra['appAttestRetried'] == true) {
+              handler.next(error);
+              return;
+            }
+            try {
+              attestation.invalidateAccessToken();
+              final options = error.requestOptions;
+              options.extra['appAttestRetried'] = true;
+              options.headers['authorization'] =
+                  'Bearer ${await attestation.accessToken()}';
+              handler.resolve(await _contentDio.fetch(options));
+            } catch (_) {
+              handler.next(error);
+            }
+          },
+        ),
+      );
+    }
+  }
 
   // ─── Surahs ───────────────────────────────────────────────────────────────
 
