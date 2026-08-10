@@ -1,96 +1,54 @@
 # Tajweed Practice — Flutter Project
 
-A multilingual Quran tajweed practice app supporting English, Arabic, Urdu, Turkish, French, Indonesian, and German.
+A multilingual Quran tajweed practice app supporting English, Arabic, Urdu,
+Turkish, French, Indonesian, German, and Spanish.
 
 ---
 
 ## Project structure
 
-```
-tajweed_practice/
+```text
+tajweed_app/
 ├── lib/
-│   ├── main.dart                          # App entry point, MultiProvider setup
-│   │
+│   ├── main.dart                     # App bootstrap
+│   ├── root_scaffold.dart            # Main navigation shell
 │   ├── core/
-│   │   ├── l10n/
-│   │   │   └── app_localizations.dart     # All 6 language strings + delegate
-│   │   ├── models/
-│   │   │   └── tajweed_models.dart        # TajweedRule, Ayah, QuizQuestion, etc.
-│   │   ├── providers/
-│   │   │   ├── locale_provider.dart       # Language switching + RTL detection
-│   │   │   ├── streak_provider.dart       # Daily streak tracking (Hive)
-│   │   │   └── recitation_provider.dart   # Recording state + feedback
+│   │   ├── l10n/                     # Eight-language localization
+│   │   ├── models/                   # Quran and tajweed domain models
+│   │   ├── providers/                # Reader, progress, tafsir, and settings state
 │   │   ├── services/
-│   │   │   ├── quran_api_service.dart     # Quran.Foundation API client
-│   │   │   ├── tarteel_service.dart       # Tarteel AI recitation feedback API
-│   │   │   └── audio_service.dart         # just_audio playback wrapper
+│   │   │   ├── quran_api_service.dart
+│   │   │   ├── quran_attestation_service.dart
+│   │   │   ├── quran_content_sync_service.dart
+│   │   │   ├── quran_offline_sync_service.dart
+│   │   │   ├── mushaf_assets_service.dart
+│   │   │   └── audio_service.dart
 │   │   └── theme/
-│   │       └── app_theme.dart             # Light + dark MaterialTheme
-│   │
 │   ├── features/
 │   │   ├── home/
-│   │   │   └── home_screen.dart           # Dashboard, streak, quick-access cards
-│   │   │
-│   │   ├── reader/
-│   │   │   ├── reader_screen.dart         # Surah picker + scrollable ayah list
-│   │   │   ├── reader_view_model.dart     # Surah loading, audio, word detail
-│   │   │   └── widgets/
-│   │   │       ├── tajweed_text.dart      # RichText with per-letter color spans
-│   │   │       ├── tajweed_legend.dart    # Scrollable color key
-│   │   │       ├── word_detail_sheet.dart # Bottom sheet: rule explanation
-│   │   │       └── audio_player_bar.dart  # Mini player with waveform
-│   │   │
+│   │   ├── reader/                   # Ayah and Mushaf reading experiences
 │   │   ├── quiz/
-│   │   │   ├── quiz_screen.dart           # MCQ quiz with progress bar
-│   │   │   ├── quiz_view_model.dart       # Question cycling, score tracking
-│   │   │   └── widgets/
-│   │   │       ├── quiz_card.dart         # Arabic text + question card
-│   │   │       ├── option_tile.dart       # Answer option with feedback state
-│   │   │       └── quiz_results_sheet.dart
-│   │   │
 │   │   ├── rules/
-│   │   │   ├── rules_screen.dart          # Searchable + filterable rule list
-│   │   │   ├── rule_detail_screen.dart    # Expanded rule with examples + audio
-│   │   │   └── rules_repository.dart     # Static rule definitions (all languages)
-│   │   │
-│   │   ├── record/
-│   │   │   ├── record_screen.dart         # Ayah selector + record button
-│   │   │   ├── record_view_model.dart     # mic permissions, upload, feedback
-│   │   │   └── widgets/
-│   │   │       ├── waveform_visualizer.dart
-│   │   │       └── feedback_panel.dart    # Per-rule score bars
-│   │   │
-│   │   └── settings/
-│   │       ├── settings_screen.dart
-│   │       └── language_selector_screen.dart  # Language picker with native names
-│   │
-│   └── shared/
-│       ├── widgets/
-│       │   ├── app_bottom_nav.dart        # Persistent bottom navigation
-│       │   ├── streak_bar.dart            # Day-dot streak widget
-│       │   └── loading_skeleton.dart      # Shimmer placeholders
-│       └── utils/
-│           ├── rtl_utils.dart             # TextDirection helpers
-│           └── arabic_utils.dart          # Arabic text shaping utilities
-│
+│   │   └── settings/                 # Preferences, About, and attributions
+│   └── shared/                       # Reusable widgets and utilities
+├── backend/quran-proxy/
+│   ├── src/
+│   │   ├── index.ts                  # Quran.Foundation proxy routes
+│   │   └── attestation.ts            # Apple App Attest verification
+│   ├── test/                         # Worker and attestation tests
+│   ├── wrangler.jsonc                # Prelive/production Cloudflare config
+│   └── README.md                     # Proxy setup and deployment
+├── ios/Runner/
+│   ├── Runner.entitlements           # Production App Attest
+│   └── RunnerDebug.entitlements      # Development App Attest
 ├── assets/
-│   ├── fonts/
-│   │   ├── UthmanicHafs_V22.ttf          # Primary Quranic font
-│   │   ├── Amiri-Regular.ttf
-│   │   └── Amiri-Bold.ttf
-│   ├── images/
-│   ├── lottie/
-│   │   └── celebration.json              # Quiz correct-answer animation
+│   ├── app_icon/
 │   └── tajweed/
-│       └── rules_db.json                 # Local tajweed rule definitions (offline)
-│
+├── docs/                             # Public privacy and support pages
 ├── test/
 │   ├── unit/
-│   │   ├── tajweed_models_test.dart
-│   │   └── quran_api_service_test.dart
-│   └── widget/
-│       └── tajweed_text_test.dart
-│
+│   ├── widget/
+│   └── manual/
 ├── pubspec.yaml
 └── README.md
 ```
@@ -100,50 +58,37 @@ tajweed_practice/
 ## Setup
 
 ### 1. Install dependencies
+
 ```bash
 flutter pub get
 ```
 
-Quran Foundation Content API requests use isolated app-owned Cloudflare
-Workers. Release and Profile builds use the production Worker and complete
-Quran dataset. Content requests require an Apple App Attest proof from a
-genuine physical-device installation; unsupported platforms and older builds
-fail closed. Production accepts only distribution attestations, so test a
-Debug build on a physical device against prelive with:
+### 2. Run on a physical iPhone
+
+Quran.Foundation Content API requests use isolated app-owned Cloudflare
+Workers protected by Apple App Attest. The app requires iOS 15 or later and
+does not support the Simulator. Production accepts only distribution
+attestations, so run Debug builds against prelive:
 
 ```bash
 flutter run \
   --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v2/content
 ```
 
-Quran Search remains on its separate API until the required Search OAuth scope
-is approved and proxied.
+To prepare generated Swift package metadata before opening Xcode:
 
-### 2. Download fonts
-- **UthmanicHafs**: https://fonts.qurancomplex.gov.sa
-- **Amiri**: https://www.amirifont.org
-
-Place `.ttf` files in `assets/fonts/`.
-
-### 3. Android permissions (android/app/src/main/AndroidManifest.xml)
-```xml
-<uses-permission android:name="android.permission.RECORD_AUDIO"/>
-<uses-permission android:name="android.permission.INTERNET"/>
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-```
-
-### 4. iOS permissions (ios/Runner/Info.plist)
-```xml
-<key>NSMicrophoneUsageDescription</key>
-<string>Used to record your Quran recitation for tajweed feedback.</string>
-```
-
-### 5. Run
 ```bash
-flutter run
+flutter build ios --release --config-only --no-codesign
+open ios/Runner.xcworkspace
 ```
 
-### 6. Offline audit for shifted end-token tajweed (release check)
+Release and Profile builds use the production Worker and complete Quran
+dataset. Android, macOS, Simulator, and older builds fail closed until an
+equivalent platform attestation flow is implemented. Quran Search remains on
+its separate API until the required Search OAuth scope is approved and proxied.
+
+### 3. Offline audit for shifted end-token tajweed
+
 Run this before beta release to detect all ayahs where the end token has shifted tajweed payload:
 
 1) Generate a full 6236-ayah words dump:
@@ -172,7 +117,8 @@ Input JSON can be either:
 - `{ "verses": [ ... ] }`
 - per-surah map like `{ "1": [ ... ], "2": [ ... ] }`
 
-### 7. Release integrity gate (required)
+### 4. Release integrity gate
+
 Before every release candidate, run both checks below:
 
 ```bash
@@ -198,11 +144,12 @@ CI enforcement:
 ## Key architecture decisions
 
 ### Multilingual (i18n)
-- All UI strings are in `AppLocalizations` with keys for all 7 languages (EN, AR, UR, TR, FR, ID, DE)
+- All UI strings are in `AppLocalizations` for eight languages: EN, AR, UR, TR, FR, ID, DE, and ES
 - `LocaleProvider` persists the chosen locale in Hive and notifies the whole app
 - `isRtl` flag in `LocaleProvider` is used to set `Directionality` at the widget level
 - Arabic Quranic text is always RTL regardless of app language; UI chrome flips for Arabic/Urdu
 - German uses Quran.com translation ID 27 (Adul Hye & Ahmad von Denffer)
+- Spanish uses Quran.com translation ID 83 (Sheikh Isa Garcia)
 
 ### Tajweed highlighting
 - The Quran.Foundation Content API returns a `tajweed` character code per word
@@ -211,9 +158,16 @@ CI enforcement:
 - Tapping a span opens `WordDetailSheet` explaining the rule in the current UI language
 
 ### Audio
-- Playback: `just_audio` streams from `verses.quran.com` CDN (Mishary reciter default)
-- Recording: `record` package captures microphone; saved locally with `path_provider`
-- Waveform: `audio_waveforms` visualizes both playback and recording in real time
+- Reader playback uses selectable Quran.Foundation recitations and defaults to AbdulBasit Mujawwad
+- Tajweed rule examples use Mahmoud Khalil Al-Husary's Al-Muallim recitation
+- `just_audio` streams verse audio and `AudioCacheService` stores optional offline downloads
+
+### API attestation
+- `QuranAttestationService` registers an Apple App Attest key and generates assertions
+- The Cloudflare Worker validates Apple's certificate chain, app identity, one-time challenge, and monotonic assertion counter
+- Successful assertions receive environment-bound bearer tokens valid for ten minutes
+- Protected `/v2/content` routes reject missing, forged, expired, or cross-environment tokens
+- App Attest private keys remain in Apple's Secure Enclave; only the key identifier is stored locally
 
 ### Offline support
 - Hive caches fetched verses, translations, Tafseer, recitation metadata, and
@@ -225,7 +179,7 @@ CI enforcement:
   the underlying raw datasets
 - Failed refreshes preserve the last valid local cache
 - `rules_db.json` bundles all tajweed rule definitions for fully offline rules library
-- Streak data, quiz progress, and recitation history are all stored locally in Hive
+- Streak data, quiz progress, bookmarks, and reader settings are stored locally in Hive
 
 ---
 

@@ -64,8 +64,12 @@ accepts development attestations from physical development devices.
 characters in each environment. Rotating it immediately invalidates all
 outstanding bearer tokens. Do not reuse Quran.Foundation credentials.
 
-App Attest requires a physical iOS 14+ device. Simulator, macOS, Android, and
+The app requires a physical iOS 15+ device. Simulator, macOS, Android, and
 older app builds cannot call protected Content routes.
+
+The legacy public `/v1/content` namespace is intentionally not routed. Health
+and challenge issuance remain public, but neither endpoint returns Quran
+content or grants access without a valid Apple attestation and assertion.
 
 Quran Foundation Search uses a separate API and OAuth scope. It is intentionally
 not exposed by this Content API Worker and will be integrated separately.
