@@ -2,6 +2,103 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/tajweed_models.dart';
 
+class QuranContentMutation {
+  final String type;
+  final String resourceGroup;
+  final int resourceId;
+  final String? recordKey;
+  final Map<String, dynamic>? data;
+
+  const QuranContentMutation({
+    required this.type,
+    required this.resourceGroup,
+    required this.resourceId,
+    required this.recordKey,
+    required this.data,
+  });
+
+  factory QuranContentMutation.fromJson(Map<String, dynamic> json) {
+    final resourceId = json['resource_id'];
+    if (resourceId is! int) {
+      throw const FormatException('Content Sync mutation has no resource ID');
+    }
+    final rawData = json['data'];
+    return QuranContentMutation(
+      type: json['type']?.toString() ?? '',
+      resourceGroup: json['resource_group']?.toString() ?? '',
+      resourceId: resourceId,
+      recordKey: json['record_key']?.toString(),
+      data: rawData is Map ? Map<String, dynamic>.from(rawData) : null,
+    );
+  }
+}
+
+class QuranContentSyncPage {
+  final bool hasMore;
+  final String? nextPageUrl;
+  final String? nextSyncToken;
+  final List<QuranContentMutation> mutations;
+
+  const QuranContentSyncPage({
+    required this.hasMore,
+    required this.nextPageUrl,
+    required this.nextSyncToken,
+    required this.mutations,
+  });
+
+  factory QuranContentSyncPage.fromJson(Map<String, dynamic> json) {
+    final rawSync = json['sync'];
+    if (rawSync is! Map) {
+      throw const FormatException('Content Sync response is malformed');
+    }
+    final sync = Map<String, dynamic>.from(rawSync);
+    final rawMutations = sync['mutations'];
+    return QuranContentSyncPage(
+      hasMore: sync['has_more'] == true,
+      nextPageUrl: sync['next_page_url']?.toString(),
+      nextSyncToken: sync['next_sync_token']?.toString(),
+      mutations: rawMutations is List
+          ? rawMutations
+              .whereType<Map>()
+              .map(
+                (item) => QuranContentMutation.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class QuranContentSnapshot {
+  final String resourceGroup;
+  final int resourceId;
+  final List<Map<String, dynamic>> records;
+
+  const QuranContentSnapshot({
+    required this.resourceGroup,
+    required this.resourceId,
+    required this.records,
+  });
+
+  factory QuranContentSnapshot.fromJson(Map<String, dynamic> json) {
+    final resourceId = json['resource_id'];
+    final rawRecords = json['records'];
+    if (resourceId is! int || rawRecords is! List) {
+      throw const FormatException('Content snapshot is malformed');
+    }
+    return QuranContentSnapshot(
+      resourceGroup: json['resource_group']?.toString() ?? '',
+      resourceId: resourceId,
+      records: rawRecords
+          .whereType<Map>()
+          .map((record) => Map<String, dynamic>.from(record))
+          .toList(growable: false),
+    );
+  }
+}
+
 /// Accesses Quran Foundation content through the app-owned backend proxy.
 class QuranApiService {
   static const _configuredContentApiBaseUrl = String.fromEnvironment(
@@ -259,6 +356,56 @@ class QuranApiService {
     return List<Map<String, dynamic>>.from(
       response.data['recitations'],
     ).where((reciter) => (reciter['id'] as int?) != 7).toList(growable: false);
+  }
+
+  Future<QuranContentSyncPage> fetchContentSyncPage({
+    required String resources,
+    String? syncToken,
+    String? nextPageUrl,
+  }) async {
+    Map<String, dynamic> query;
+    if (nextPageUrl != null) {
+      final uri = Uri.parse(nextPageUrl);
+      if (!uri.path.endsWith('/resources/sync')) {
+        throw const FormatException('Unexpected Content Sync next-page URL');
+      }
+      query = Map<String, dynamic>.from(uri.queryParameters);
+    } else {
+      query = {
+        'resources': resources,
+        'per_page': 100,
+        if (syncToken == null) 'bootstrap': true,
+        if (syncToken != null) 'sync_token': syncToken,
+      };
+    }
+
+    final response = await _contentDio.get(
+      '/resources/sync',
+      queryParameters: query,
+    );
+    return QuranContentSyncPage.fromJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
+  }
+
+  Future<QuranContentSnapshot> fetchContentSnapshot({
+    required String resourceGroup,
+    required int resourceId,
+  }) async {
+    const supportedGroups = {'translations', 'tafsirs', 'recitations'};
+    if (!supportedGroups.contains(resourceGroup)) {
+      throw ArgumentError.value(
+        resourceGroup,
+        'resourceGroup',
+        'Unsupported Content Sync resource group',
+      );
+    }
+    final response = await _contentDio.get(
+      '/resources/snapshots/$resourceGroup/$resourceId',
+    );
+    return QuranContentSnapshot.fromJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
   }
 
   // ─── Search ───────────────────────────────────────────────────────────────

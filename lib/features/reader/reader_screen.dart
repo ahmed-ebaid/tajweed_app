@@ -23,6 +23,7 @@ import '../../core/services/audio_cache_service.dart';
 import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
+import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/mushaf_assets_service.dart';
 import '../reader/widgets/audio_player_bar.dart';
 import '../reader/widgets/tajweed_text.dart';
@@ -55,6 +56,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   final _audio = AudioService();
   final _audioCache = AudioCacheService();
   final _quranOfflineSync = QuranOfflineSyncService();
+  final _contentSync = QuranContentSyncService();
   late final ScrollController _scrollController;
   final PageController _mushafPageController = PageController();
   StreamSubscription<PlayerState>? _playerStateSub;
@@ -751,12 +753,22 @@ class _ReaderScreenState extends State<ReaderScreen>
         );
       }
 
-      Map<String, String> audioMap = <String, String>{};
+      Map<String, String> audioMap = _contentSync.getCachedRecitationMap(
+        reciterId: reciterId,
+        surahNumber: _selectedSurah,
+      );
       try {
-        audioMap = await _api.fetchAudioFiles(
-          reciterId: reciterId,
-          surahNumber: _selectedSurah,
-        );
+        if (audioMap.isEmpty) {
+          audioMap = await _api.fetchAudioFiles(
+            reciterId: reciterId,
+            surahNumber: _selectedSurah,
+          );
+          await _contentSync.cacheRecitationMap(
+            reciterId: reciterId,
+            surahNumber: _selectedSurah,
+            audioUrls: audioMap,
+          );
+        }
       } catch (_) {
         // Audio URLs are optional when offline. Cached audio still works.
       }
@@ -1627,9 +1639,20 @@ class _ReaderScreenState extends State<ReaderScreen>
     try {
       var audioMap = _audioUrls;
       if (audioMap.isEmpty) {
+        audioMap = _contentSync.getCachedRecitationMap(
+          reciterId: reciterId,
+          surahNumber: _selectedSurah,
+        );
+      }
+      if (audioMap.isEmpty) {
         audioMap = await _api.fetchAudioFiles(
           reciterId: reciterId,
           surahNumber: _selectedSurah,
+        );
+        await _contentSync.cacheRecitationMap(
+          reciterId: reciterId,
+          surahNumber: _selectedSurah,
+          audioUrls: audioMap,
         );
       }
 

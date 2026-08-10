@@ -39,6 +39,29 @@ class AudioCacheService {
     return count;
   }
 
+  Future<void> clearReciter(int reciterId) async {
+    final box = Hive.box(_boxKey);
+    final keys = box.keys
+        .whereType<String>()
+        .where(
+          (key) =>
+              key.startsWith('r${reciterId}_') ||
+              key.startsWith('meta_r${reciterId}_'),
+        )
+        .toList(growable: false);
+
+    for (final key in keys) {
+      final path = box.get(key);
+      if (path is String && path.isNotEmpty) {
+        final file = File(path);
+        if (file.existsSync()) {
+          await file.delete();
+        }
+      }
+    }
+    await box.deleteAll(keys);
+  }
+
   Future<void> downloadSurah({
     required int reciterId,
     required int surahNumber,
@@ -46,7 +69,8 @@ class AudioCacheService {
     required void Function(int done, int total) onProgress,
   }) async {
     final dir = await getApplicationDocumentsDirectory();
-    final surahDir = Directory('${dir.path}/audio_cache/r$reciterId/s$surahNumber');
+    final surahDir =
+        Directory('${dir.path}/audio_cache/r$reciterId/s$surahNumber');
     if (!surahDir.existsSync()) {
       surahDir.createSync(recursive: true);
     }
@@ -72,7 +96,8 @@ class AudioCacheService {
 
       if (!file.existsSync()) {
         final raw = e.value;
-        final url = raw.startsWith('http') ? raw : 'https://verses.quran.com/$raw';
+        final url =
+            raw.startsWith('http') ? raw : 'https://verses.quran.com/$raw';
         await _dio.download(url, filePath);
       }
 

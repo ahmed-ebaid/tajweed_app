@@ -39,9 +39,12 @@ The deployments and credentials remain isolated:
 - `GET /health`
 - `GET /oauth/callback` (reserved placeholder; user OAuth is not enabled)
 - `GET /v1/content/<allowlisted Content API path>`
+- `GET /v1/content/resources/sync`
+- `GET /v1/content/resources/snapshots/{translations|tafsirs|recitations}/{id}`
 
 The proxy forwards only the Content API paths and query keys required by the
 mobile app. It does not expose a generic upstream URL proxy.
+Content Sync and snapshot `Cache-Control: no-store` headers are preserved.
 
 Quran Foundation Search uses a separate API and OAuth scope. It is intentionally
 not exposed by this Content API Worker and will be integrated separately.

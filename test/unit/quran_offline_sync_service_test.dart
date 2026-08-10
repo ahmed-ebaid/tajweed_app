@@ -110,6 +110,62 @@ void main() {
     expect(secondApi.tajweedCalls, 0);
   });
 
+  test('completed cache refreshes at the exact seven-day boundary', () async {
+    var now = DateTime.utc(2026, 8, 1);
+    final firstApi = _FakeQuranApiService();
+    final service = QuranOfflineSyncService(
+      api: firstApi,
+      now: () => now,
+    );
+    await service.syncAll();
+
+    now = now.add(const Duration(days: 7) - const Duration(milliseconds: 1));
+    final beforeBoundaryApi = _FakeQuranApiService();
+    await QuranOfflineSyncService(
+      api: beforeBoundaryApi,
+      now: () => now,
+    ).ensureBackgroundSync();
+    expect(beforeBoundaryApi.versesCalls, 0);
+
+    now = now.add(const Duration(milliseconds: 1));
+    final boundaryApi = _FakeQuranApiService();
+    await QuranOfflineSyncService(
+      api: boundaryApi,
+      now: () => now,
+    ).ensureBackgroundSync();
+    expect(
+      boundaryApi.versesCalls,
+      QuranOfflineSyncService.totalSurahs,
+    );
+  });
+
+  test('failed seven-day refresh retains the last complete cache', () async {
+    var now = DateTime.utc(2026, 8, 1);
+    final service = QuranOfflineSyncService(
+      api: _FakeQuranApiService(),
+      now: () => now,
+    );
+    await service.syncAll();
+    final oldSurah3 = await service.getCachedSurah(3);
+    final completedAt = (await service.getStatus()).lastCompletedAt;
+
+    now = now.add(const Duration(days: 7));
+    final failingService = QuranOfflineSyncService(
+      api: _FakeQuranApiService(failAtSurahs: {3}),
+      now: () => now,
+    );
+    await expectLater(
+      failingService.ensureBackgroundSync(),
+      throwsException,
+    );
+
+    expect(await failingService.getCachedSurah(3), oldSurah3);
+    final status = await failingService.getStatus();
+    expect(status.completed, isTrue);
+    expect(status.lastCompletedAt, completedAt);
+    expect(status.lastError, contains('forced failure at surah 3'));
+  });
+
   test('syncAll persists lastError and resets inProgress on failure', () async {
     final fakeApi = _FakeQuranApiService(failAtSurahs: {3});
     final service = QuranOfflineSyncService(api: fakeApi);

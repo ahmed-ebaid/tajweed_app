@@ -65,7 +65,7 @@ class QuranOfflineDiagnostics {
 
 class QuranOfflineSyncService {
   static const int totalSurahs = 114;
-  static bool _isSyncRunning = false;
+  static Future<void>? _activeSync;
   static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
     '\u0651([\u064B-\u0650])',
   );
@@ -99,11 +99,16 @@ class QuranOfflineSyncService {
   static const String _syncCompletedAtKey = 'quran_sync_completed_at';
   static const String _syncLastSurahKey = 'quran_sync_last_surah';
   static const String _syncLastErrorKey = 'quran_sync_last_error';
+  static const Duration _validationInterval = Duration(days: 7);
 
   final QuranApiService _api;
+  final DateTime Function() _now;
 
-  QuranOfflineSyncService({QuranApiService? api})
-    : _api = api ?? QuranApiService();
+  QuranOfflineSyncService({
+    QuranApiService? api,
+    DateTime Function()? now,
+  })  : _api = api ?? QuranApiService(),
+        _now = now ?? DateTime.now;
 
   static String _surahCacheKey(int surahNumber) =>
       'quran_ar_surah_$surahNumber';
@@ -121,8 +126,7 @@ class QuranOfflineSyncService {
   Future<QuranOfflineSyncStatus> getStatus() async {
     final completedAtMs = _settingsBox.get(_syncCompletedAtKey) as int?;
     final syncedSurahs = _countSyncedSurahs();
-    final completed =
-        syncedSurahs >= totalSurahs &&
+    final completed = syncedSurahs >= totalSurahs &&
         (_settingsBox.get(_syncVersionKey, defaultValue: 0) as int) >=
             _syncSchemaVersion;
 
@@ -210,10 +214,22 @@ class QuranOfflineSyncService {
   Future<void> ensureBackgroundSync({
     void Function(int done, int total)? onProgress,
   }) async {
-    if (_isSyncRunning) return;
+    final activeSync = _activeSync;
+    if (activeSync != null) {
+      await activeSync;
+      return;
+    }
 
     final status = await getStatus();
-    if (status.completed) return;
+    if (status.completed) {
+      final lastCompletedAt = status.lastCompletedAt;
+      if (lastCompletedAt != null &&
+          _now().isBefore(lastCompletedAt.add(_validationInterval))) {
+        return;
+      }
+      await syncAll(onProgress: onProgress, refreshCached: true);
+      return;
+    }
 
     // Recover from app restarts where the previous run was terminated and
     // left the persisted in-progress flag behind.
@@ -226,7 +242,14 @@ class QuranOfflineSyncService {
     // Migration-only schema updates can make the cache fully ready without
     // requiring a network re-download. Re-check before syncing.
     final afterMigration = await getStatus();
-    if (afterMigration.completed) return;
+    if (afterMigration.completed) {
+      final lastCompletedAt = afterMigration.lastCompletedAt;
+      if (lastCompletedAt == null ||
+          !_now().isBefore(lastCompletedAt.add(_validationInterval))) {
+        await syncAll(onProgress: onProgress, refreshCached: true);
+      }
+      return;
+    }
 
     await syncAll(onProgress: onProgress);
   }
@@ -234,17 +257,34 @@ class QuranOfflineSyncService {
   Future<void> forceResync({
     void Function(int done, int total)? onProgress,
   }) async {
+    final activeSync = _activeSync;
+    if (activeSync != null) await activeSync;
     await clearQuranCache();
     await syncAll(onProgress: onProgress);
   }
 
-  Future<void> syncAll({void Function(int done, int total)? onProgress}) async {
-    if (_isSyncRunning) return;
-    _isSyncRunning = true;
+  Future<void> syncAll({
+    void Function(int done, int total)? onProgress,
+    bool refreshCached = false,
+  }) {
+    final current = _activeSync;
+    if (current != null) return current;
+    final sync = _runSyncAll(
+      onProgress: onProgress,
+      refreshCached: refreshCached,
+    ).whenComplete(() => _activeSync = null);
+    _activeSync = sync;
+    return sync;
+  }
 
+  Future<void> _runSyncAll({
+    void Function(int done, int total)? onProgress,
+    required bool refreshCached,
+  }) async {
     final currentVersion =
         (_settingsBox.get(_syncVersionKey, defaultValue: 0) as int?) ?? 0;
-    final needsFullRefresh = currentVersion < _syncSchemaVersion;
+    final needsFullRefresh =
+        refreshCached || currentVersion < _syncSchemaVersion;
 
     _settingsBox.put(_syncInProgressKey, true);
     _settingsBox.delete(_syncLastErrorKey);
@@ -284,14 +324,13 @@ class QuranOfflineSyncService {
       _settingsBox.put(_syncVersionKey, _syncSchemaVersion);
       _settingsBox.put(
         _syncCompletedAtKey,
-        DateTime.now().millisecondsSinceEpoch,
+        _now().millisecondsSinceEpoch,
       );
     } catch (e) {
       _settingsBox.put(_syncLastErrorKey, e.toString());
       rethrow;
     } finally {
       _settingsBox.put(_syncInProgressKey, false);
-      _isSyncRunning = false;
     }
   }
 
@@ -407,8 +446,7 @@ class QuranOfflineSyncService {
   bool _isSurahCached(int surahNumber) {
     final versesRaw = _cacheBox.get(_surahCacheKey(surahNumber));
     final tajweedRaw = _cacheBox.get(_tajweedCacheKey(surahNumber));
-    final hasVerses =
-        (versesRaw is List && versesRaw.isNotEmpty) ||
+    final hasVerses = (versesRaw is List && versesRaw.isNotEmpty) ||
         (_loadLegacySurahRaw(surahNumber)?.isNotEmpty ?? false);
     final hasTajweed = tajweedRaw is Map && tajweedRaw.isNotEmpty;
     return hasVerses && hasTajweed;
