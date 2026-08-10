@@ -104,6 +104,17 @@ tajweed_practice/
 flutter pub get
 ```
 
+Quran Foundation Content API requests use the app-owned Cloudflare Worker.
+Override its URL for another environment with:
+
+```bash
+flutter run \
+  --dart-define=QURAN_CONTENT_API_BASE_URL=https://example.workers.dev/v1/content
+```
+
+Quran Search remains on its separate API until the required Search OAuth scope
+is approved and proxied.
+
 ### 2. Download fonts
 - **UthmanicHafs**: https://fonts.qurancomplex.gov.sa
 - **Amiri**: https://www.amirifont.org
