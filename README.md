@@ -21,7 +21,7 @@ tajweed_practice/
 │   │   │   ├── streak_provider.dart       # Daily streak tracking (Hive)
 │   │   │   └── recitation_provider.dart   # Recording state + feedback
 │   │   ├── services/
-│   │   │   ├── quran_api_service.dart     # Quran.com v4 API wrapper
+│   │   │   ├── quran_api_service.dart     # Quran.Foundation API client
 │   │   │   ├── tarteel_service.dart       # Tarteel AI recitation feedback API
 │   │   │   └── audio_service.dart         # just_audio playback wrapper
 │   │   └── theme/
@@ -202,7 +202,7 @@ CI enforcement:
 - German uses Quran.com translation ID 27 (Adul Hye & Ahmad von Denffer)
 
 ### Tajweed highlighting
-- The Quran.com API returns a `tajweed` character code per word
+- The Quran.Foundation Content API returns a `tajweed` character code per word
 - `QuranApiService.ruleFromCode()` maps codes → `TajweedRule` enum
 - `TajweedText` widget builds a `RichText` with `TextSpan` per letter, each colored by its rule
 - Tapping a span opens `WordDetailSheet` explaining the rule in the current UI language
@@ -212,19 +212,23 @@ CI enforcement:
 - Recording: `record` package captures microphone; saved locally with `path_provider`
 - Waveform: `audio_waveforms` visualizes both playback and recording in real time
 
-### AI recitation feedback
-- After recording, audio is uploaded to the **Tarteel AI API** (`tarteel.ai`)
-- Response includes per-ayah and per-word tajweed scores
-- `RecitationFeedback` model maps scores to `TajweedRule` for the feedback panel
-
 ### Offline support
-- Hive caches fetched verses, translations, and audio file paths
+- Hive caches fetched verses, translations, Tafseer, recitation metadata, and
+  audio file paths for app features only
+- Quran text is revalidated when its last successful validation is seven days
+  old; reconnecting after an offline period promptly retries overdue checks
+- Quran.Foundation Content Sync mutation tokens and replacement snapshots keep
+  cached translations, Tafseer, and recitations current without redistributing
+  the underlying raw datasets
+- Failed refreshes preserve the last valid local cache
 - `rules_db.json` bundles all tajweed rule definitions for fully offline rules library
 - Streak data, quiz progress, and recitation history are all stored locally in Hive
 
 ---
 
 ## API references
-- Quran.com API v4: https://api.quran.com/api/v4
-- Tarteel AI: https://tarteel.ai/api (requires free API key)
+- Quran.Foundation Content APIs:
+  https://api-docs.quran.foundation/docs/category/content-apis
+- Quran.Foundation Content Sync:
+  `/content/api/v4/resources/sync`
 - Audio CDN: https://verses.quran.com/{reciterId}/{surah}{ayah}.mp3

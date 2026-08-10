@@ -11,6 +11,7 @@ import '../../core/services/audio_cache_service.dart';
 import '../../core/services/mushaf_assets_service.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
+import '../../core/services/quran_content_sync_service.dart';
 import 'language_selector_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -234,6 +235,7 @@ class _RecitationDownloadTile extends StatefulWidget {
 
 class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
   final QuranApiService _api = QuranApiService();
+  final QuranContentSyncService _contentSync = QuranContentSyncService();
   final AudioCacheService _audioCache = AudioCacheService();
   bool _busy = false;
   bool _cancelBulkRecitation = false;
@@ -300,10 +302,21 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
     bool showDialogProgress = true,
   }) async {
     final s = _SettingsStrings.of(context);
-    final audioMap = await _api.fetchAudioFiles(
+    var audioMap = _contentSync.getCachedRecitationMap(
       reciterId: reciterId,
       surahNumber: surahNumber,
     );
+    if (audioMap.isEmpty) {
+      audioMap = await _api.fetchAudioFiles(
+        reciterId: reciterId,
+        surahNumber: surahNumber,
+      );
+      await _contentSync.cacheRecitationMap(
+        reciterId: reciterId,
+        surahNumber: surahNumber,
+        audioUrls: audioMap,
+      );
+    }
     if (audioMap.isEmpty) return false;
 
     final progress = ValueNotifier<Map<String, int>>({'done': 0, 'total': 1});
@@ -1428,6 +1441,10 @@ class _AboutSourcesSheet extends StatelessWidget {
               Text(s.text('owned_operated'), style: textTheme.bodyLarge),
               const SizedBox(height: 20),
               _AboutSectionTitle(title: s.text('quran_sources_title')),
+              const _AboutBullet(
+                text:
+                    'Quran content and metadata are provided by Quran.Foundation through the app-owned secure proxy.',
+              ),
               _AboutBullet(text: s.text('quran_b1')),
               _AboutBullet(text: s.text('quran_b2')),
               _AboutBullet(text: s.text('quran_b3')),
@@ -1750,7 +1767,7 @@ class _SettingsStrings {
       'owned_operated': 'This app is owned and operated by Ebaid LLC.',
       'quran_sources_title': 'Quran sources',
       'quran_b1':
-          'Quran text, surah and ayah structure, word-by-word data, and tajweed markup are fetched from the Quran.com API v4.',
+          'Quran text, surah and ayah structure, word-by-word data, and tajweed markup are fetched from the Quran.Foundation Content API.',
       'quran_b2':
           'The app uses these translation sources for its supported interface languages:',
       'quran_b3':
@@ -1759,15 +1776,15 @@ class _SettingsStrings {
           'Remote Mushaf page references point to Quran CDN page images hosted at cdn.qurancdn.com and static.qurancdn.com.',
       'tafseer_sources_title': 'Tafseer sources',
       'tafseer_b1':
-          'The tafseer catalog and verse-by-verse tafseer text are loaded from Quran.com API v4 resources and tafsir endpoints.',
+          'The tafseer catalog and verse-by-verse tafseer text are loaded from Quran.Foundation Content API resources and Tafseer endpoints.',
       'tafseer_b2': 'Default tafseer sources configured by app language are:',
       'tafseer_b3':
-          'Users can switch to other tafseer sources returned by Quran.com through the in-app tafseer picker.',
+          'Users can switch to other Tafseer sources provided by Quran.Foundation through the in-app Tafseer picker.',
       'recitation_sources_title': 'Recitation sources',
       'recitation_b1':
-          'The recitation catalog is loaded from Quran.com API v4 resource endpoints.',
+          'The recitation catalog is loaded from Quran.Foundation Content API resource endpoints.',
       'recitation_b2':
-          'Verse audio playback and downloadable recitation files are served from the Quran.com audio CDN at verses.quran.com.',
+          'Verse audio playback and downloadable recitation files are served from the Quran.Foundation audio CDN at verses.quran.com.',
       'recitation_b3': 'This app currently supports these reciters:',
       'reciter_label': 'Reciter',
       'other_sources_title': 'Other content sources',

@@ -99,6 +99,44 @@ describe("Quran Foundation proxy", () => {
     expect(oversizedQuery.status).toBe(400);
   });
 
+  it("allows Content Sync and supported resource snapshots", async () => {
+    const fetcher = vi.fn<Fetcher>()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(Response.json({sync: {mutations: []}}))
+      .mockResolvedValueOnce(Response.json({records: []}));
+
+    const sync = await handleRequest(
+      new Request(
+        "https://proxy.example/v1/content/resources/sync" +
+          "?bootstrap=true&resources=translations%3A85&per_page=100",
+      ),
+      env,
+      fetcher,
+    );
+    const snapshot = await handleRequest(
+      new Request(
+        "https://proxy.example/v1/content/resources/snapshots/translations/85",
+      ),
+      env,
+      fetcher,
+    );
+
+    expect(sync.status).toBe(200);
+    expect(snapshot.status).toBe(200);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects unsupported snapshot resource groups", async () => {
+    const response = await handleRequest(
+      new Request(
+        "https://proxy.example/v1/content/resources/snapshots/articles/1",
+      ),
+      env,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("rejects missing configuration without calling upstream", async () => {
     const fetcher = vi.fn<Fetcher>();
     const response = await handleRequest(

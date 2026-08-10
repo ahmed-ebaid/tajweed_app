@@ -7,6 +7,7 @@ import 'package:tajweed_practice/core/services/quran_api_service.dart';
 
 class _RecordingAdapter implements HttpClientAdapter {
   final List<RequestOptions> requests = [];
+  final Map<String, Map<String, Object?>> responseBodies = {};
 
   @override
   Future<ResponseBody> fetch(
@@ -15,13 +16,14 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    final body = switch (options.path) {
-      '/chapters' => {'chapters': <Object>[]},
-      '/search' => {
-          'search': {'results': <Object>[]},
-        },
-      _ => <String, Object>{},
-    };
+    final body = responseBodies[options.path] ??
+        switch (options.path) {
+          '/chapters' => {'chapters': <Object>[]},
+          '/search' => {
+              'search': {'results': <Object>[]},
+            },
+          _ => <String, Object>{},
+        };
     return ResponseBody.fromString(
       jsonEncode(body),
       200,
@@ -72,6 +74,50 @@ void main() {
       expect(searchAdapter.requests, hasLength(1));
       expect(searchAdapter.requests.single.uri.host, 'api.quran.com');
       expect(searchAdapter.requests.single.uri.path, '/api/v4/search');
+    });
+
+    test('parses Content Sync pages and sends the canonical bootstrap query',
+        () async {
+      final adapter = _RecordingAdapter();
+      final contentClient = Dio(
+        BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
+      )..httpClientAdapter = adapter;
+      final service = QuranApiService(
+        contentClient: contentClient,
+        searchClient: Dio(),
+      );
+
+      adapter.responseBodies['/resources/sync'] = {
+        'sync': {
+          'has_more': false,
+          'next_page_url': null,
+          'next_sync_token': 'final-token',
+          'mutations': [
+            {
+              'type': 'ROW_UPDATE',
+              'resource_group': 'translations',
+              'resource_id': 85,
+              'record_key': '401704',
+              'data': {'id': 401704, 'verse_key': '1:1', 'text': 'Updated'},
+            },
+          ],
+        },
+      };
+
+      final page = await service.fetchContentSyncPage(
+        resources: 'translations:85',
+      );
+
+      expect(page.nextSyncToken, 'final-token');
+      expect(page.mutations.single.recordKey, '401704');
+      expect(
+        adapter.requests.single.queryParameters,
+        {
+          'resources': 'translations:85',
+          'per_page': 100,
+          'bootstrap': true,
+        },
+      );
     });
   });
 
