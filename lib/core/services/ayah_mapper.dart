@@ -44,6 +44,9 @@ class AyahMapper {
     final ayahNumber = int.tryParse(parts[1]) ?? 1;
     final pageNumber = json['page_number'] as int? ?? 1;
     final juzNumber = json['juz_number'] as int?;
+    final hizbNumber = json['hizb_number'] as int?;
+    final rubElHizbNumber = json['rub_el_hizb_number'] as int?;
+    final sajdahNumber = json['sajdah_number'] as int?;
     final forceRubElHizb =
         surahNumber == 2 && (ayahNumber == 142 || ayahNumber == 177);
     final forceSajdahGlyph = _isSajdahAyah(surahNumber, ayahNumber);
@@ -164,6 +167,9 @@ class AyahMapper {
       ayahNumber: ayahNumber,
       pageNumber: pageNumber,
       juzNumber: juzNumber,
+      hizbNumber: hizbNumber,
+      rubElHizbNumber: rubElHizbNumber,
+      sajdahNumber: sajdahNumber,
       arabic: arabic,
       translations: translations,
       words: wordsWithMaddSilah,

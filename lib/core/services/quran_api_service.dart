@@ -201,7 +201,8 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': true,
-        'fields': 'page_number,verse_key',
+        'fields':
+            'page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
         'word_fields':
             'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration,audio_url',
         'translations': translationIdFor(langCode),
@@ -224,7 +225,8 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': 'true',
-        'fields': 'text_uthmani,page_number,verse_key,juz_number',
+        'fields':
+            'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
         'word_fields': 'text_uthmani,char_type_name',
         'per_page': 50,
       },
@@ -244,7 +246,8 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': true,
-        'fields': 'text_uthmani,page_number,verse_key',
+        'fields':
+            'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
         'word_fields':
             'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,audio_url',
         'translations': translationIdFor(langCode),

@@ -177,7 +177,8 @@ CI enforcement:
 - Hive caches fetched verses, translations, Tafseer, recitation metadata, and
   audio file paths for app features only
 - Quran text is revalidated when its last successful validation is seven days
-  old; reconnecting after an offline period promptly retries overdue checks
+  old; checks run at startup, on foreground resume, every 12 hours while the app
+  remains open, and promptly after connectivity returns
 - Quran.Foundation Content Sync mutation tokens and replacement snapshots keep
   cached translations, Tafseer, and recitations current without redistributing
   the underlying raw datasets

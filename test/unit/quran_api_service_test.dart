@@ -67,6 +67,8 @@ void main() {
             'text_uthmani': 'ٱلْحَمْدُ لِلَّهِ',
             'page_number': 293,
             'juz_number': 15,
+            'hizb_number': 30,
+            'rub_el_hizb_number': 119,
           },
         ],
       };
@@ -80,7 +82,8 @@ void main() {
       expect(adapter.requests.single.queryParameters, {
         'language': 'ar',
         'words': 'true',
-        'fields': 'text_uthmani,page_number,verse_key,juz_number',
+        'fields':
+            'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
         'word_fields': 'text_uthmani,char_type_name',
         'per_page': 50,
       });
