@@ -176,6 +176,26 @@ void main() {
       expect(url, equals('https://verses.quran.com/7/001001.mp3'));
     });
 
+    group('QuranApiService.normalizeAudioUrl', () {
+      test('normalizes Quran Foundation protocol-relative audio URLs', () {
+        expect(
+          QuranApiService.normalizeAudioUrl(
+            '//mirrors.quranicaudio.com/everyayah/'
+            'Husary_Muallim_128kbps/055064.mp3',
+          ),
+          'https://mirrors.quranicaudio.com/everyayah/'
+          'Husary_Muallim_128kbps/055064.mp3',
+        );
+      });
+
+      test('resolves relative verse CDN paths', () {
+        expect(
+          QuranApiService.normalizeAudioUrl('/12/055064.mp3'),
+          'https://verses.quran.com/12/055064.mp3',
+        );
+      });
+    });
+
     test('handles double-digit surah and ayah', () {
       final service = QuranApiService();
       final url = service.audioUrl(

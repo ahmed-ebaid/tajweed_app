@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -1529,9 +1530,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         );
 
     if (rawUrl.isEmpty) return '';
-    return rawUrl.startsWith('http')
-        ? rawUrl
-        : 'https://verses.quran.com/$rawUrl';
+    return QuranApiService.normalizeAudioUrl(rawUrl) ?? '';
   }
 
   Future<bool> _waitForCurrentAyahCompletion() async {
@@ -3124,6 +3123,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                                   pageFuture: _loadMushafTextPage(pageNumber),
                                   isLandscape: isLandscape,
                                   textScale: _mushafTextScale,
+                                  surahNameFor: _surahArabicName,
                                   onRetry: () =>
                                       _retryMushafTextPage(pageNumber),
                                 ),
@@ -3199,6 +3199,7 @@ class _MushafTextPage extends StatelessWidget {
   final Future<List<Ayah>> pageFuture;
   final bool isLandscape;
   final double textScale;
+  final String Function(int surahNumber) surahNameFor;
   final VoidCallback onRetry;
 
   const _MushafTextPage({
@@ -3206,6 +3207,7 @@ class _MushafTextPage extends StatelessWidget {
     required this.pageFuture,
     required this.isLandscape,
     required this.textScale,
+    required this.surahNameFor,
     required this.onRetry,
   });
 
@@ -3292,34 +3294,6 @@ class _MushafTextPage extends StatelessWidget {
           );
         }
         final fontSize = (isLandscape ? 22.0 : 26.0) * textScale;
-        final pageText = StringBuffer();
-        final markers = <_MushafBoundaryPlacement>[];
-        for (var index = 0; index < ayahs.length; index++) {
-          final ayah = ayahs[index];
-          final arabic = ayah.plainArabicText();
-          if (arabic.isEmpty) continue;
-          final previousRubNumber = index == 0
-              ? null
-              : ayahs[index - 1].rubElHizbNumber;
-          final startsRubElHizb =
-              ayah.rubElHizbNumber != null &&
-              (index == 0
-                  ? arabic.contains('\u06DE')
-                  : previousRubNumber != ayah.rubElHizbNumber);
-          if (startsRubElHizb) {
-            markers.add(
-              _MushafBoundaryPlacement(
-                textOffset: pageText.length,
-                symbol: '\u06DE',
-                label: _rubElHizbLabel(ayah),
-                semanticLabel: 'Hizb boundary',
-              ),
-            );
-          }
-          pageText.write(
-            '$arabic \u06DD${_arabicIndicDigits(ayah.ayahNumber)} ',
-          );
-        }
         final textStyle = TextStyle(
           fontFamily: 'AmiriQuran',
           fontSize: fontSize,
@@ -3327,6 +3301,15 @@ class _MushafTextPage extends StatelessWidget {
           color: const Color(0xFF050807),
           fontWeight: FontWeight.w500,
         );
+        final sections = <List<Ayah>>[];
+        for (final ayah in ayahs) {
+          if (sections.isEmpty ||
+              sections.last.last.surahNumber != ayah.surahNumber) {
+            sections.add(<Ayah>[ayah]);
+          } else {
+            sections.last.add(ayah);
+          }
+        }
 
         return Semantics(
           label: 'Quran page $pageNumber',
@@ -3335,16 +3318,69 @@ class _MushafTextPage extends StatelessWidget {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(vertical: isLandscape ? 10 : 16),
-              child: _MushafFlowText(
-                text: pageText.toString(),
-                style: textStyle,
-                markers: markers,
-                horizontalInset: isLandscape ? 20 : 14,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final section in sections) ...[
+                    if (section.first.ayahNumber == 1)
+                      _MushafSurahOpener(
+                        surahName: surahNameFor(section.first.surahNumber),
+                        showBasmala:
+                            section.first.surahNumber != 1 &&
+                            section.first.surahNumber != 9,
+                        isLandscape: isLandscape,
+                      ),
+                    _buildFlowText(
+                      section,
+                      style: textStyle,
+                      horizontalInset: isLandscape ? 20 : 14,
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildFlowText(
+    List<Ayah> ayahs, {
+    required TextStyle style,
+    required double horizontalInset,
+  }) {
+    final text = StringBuffer();
+    final markers = <_MushafBoundaryPlacement>[];
+    for (var index = 0; index < ayahs.length; index++) {
+      final ayah = ayahs[index];
+      final arabic = ayah.plainArabicText();
+      if (arabic.isEmpty) continue;
+      final previousRubNumber = index == 0
+          ? null
+          : ayahs[index - 1].rubElHizbNumber;
+      final startsRubElHizb =
+          ayah.rubElHizbNumber != null &&
+          (index == 0
+              ? arabic.contains('\u06DE')
+              : previousRubNumber != ayah.rubElHizbNumber);
+      if (startsRubElHizb) {
+        markers.add(
+          _MushafBoundaryPlacement(
+            textOffset: text.length,
+            symbol: '\u06DE',
+            label: _rubElHizbLabel(ayah),
+            semanticLabel: 'Hizb boundary',
+          ),
+        );
+      }
+      text.write('$arabic \u06DD${_arabicIndicDigits(ayah.ayahNumber)} ');
+    }
+    return _MushafFlowText(
+      text: text.toString(),
+      style: style,
+      markers: markers,
+      horizontalInset: horizontalInset,
     );
   }
 
@@ -3374,6 +3410,99 @@ class _MushafTextPage extends StatelessWidget {
       3 => 'نِصْفُ الْحِزْبِ',
       _ => 'ثَلَاثَةُ أَرْبَاعِ الْحِزْبِ',
     };
+  }
+}
+
+class _MushafSurahOpener extends StatelessWidget {
+  static const _bismillah = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+
+  final String surahName;
+  final bool showBasmala;
+  final bool isLandscape;
+
+  const _MushafSurahOpener({
+    required this.surahName,
+    required this.showBasmala,
+    required this.isLandscape,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        isLandscape ? 20 : 14,
+        isLandscape ? 4 : 6,
+        isLandscape ? 20 : 14,
+        6,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: isLandscape ? 34 : 40,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5EFE9),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFF0B5C45), width: 1.2),
+            ),
+            child: Row(
+              children: [
+                const _MushafSurahOrnament(),
+                Expanded(
+                  child: Text(
+                    'سُورَةُ $surahName',
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    style: TextStyle(
+                      fontFamily: 'AmiriQuran',
+                      fontSize: isLandscape ? 20 : 23,
+                      height: 1.2,
+                      color: const Color(0xFF083F31),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const _MushafSurahOrnament(),
+              ],
+            ),
+          ),
+          if (showBasmala)
+            Padding(
+              padding: EdgeInsets.only(top: isLandscape ? 2 : 4),
+              child: Text(
+                _bismillah,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  fontFamily: 'AmiriQuran',
+                  fontSize: isLandscape ? 22 : 26,
+                  height: 1.5,
+                  color: const Color(0xFF050807),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MushafSurahOrnament extends StatelessWidget {
+  const _MushafSurahOrnament();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 12,
+      height: 12,
+      transform: Matrix4.rotationZ(math.pi / 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFB8860B),
+        border: Border.all(color: const Color(0xFF0B5C45), width: 1),
+      ),
+    );
   }
 }
 
