@@ -213,6 +213,9 @@ class Ayah {
   final int ayahNumber;
   final int pageNumber;
   final int? juzNumber;
+  final int? hizbNumber;
+  final int? rubElHizbNumber;
+  final int? sajdahNumber;
   final String arabic;
   final Map<String, String> translations; // langCode → translation
   final List<TajweedWord> words;
@@ -224,6 +227,9 @@ class Ayah {
     required this.ayahNumber,
     required this.pageNumber,
     this.juzNumber,
+    this.hizbNumber,
+    this.rubElHizbNumber,
+    this.sajdahNumber,
     required this.arabic,
     required this.translations,
     required this.words,
