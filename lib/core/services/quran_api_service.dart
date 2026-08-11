@@ -223,8 +223,9 @@ class QuranApiService {
       '/verses/by_page/$safePage',
       queryParameters: {
         'language': langCode,
-        'words': 'false',
+        'words': 'true',
         'fields': 'text_uthmani,page_number,verse_key,juz_number',
+        'word_fields': 'text_uthmani,char_type_name',
         'per_page': 50,
       },
     );

@@ -79,8 +79,9 @@ void main() {
       expect(verses.single['verse_key'], '18:1');
       expect(adapter.requests.single.queryParameters, {
         'language': 'ar',
-        'words': 'false',
+        'words': 'true',
         'fields': 'text_uthmani,page_number,verse_key,juz_number',
+        'word_fields': 'text_uthmani,char_type_name',
         'per_page': 50,
       });
     });
