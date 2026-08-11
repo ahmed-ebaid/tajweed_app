@@ -36,8 +36,6 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
   bool _loadingAyah = true;
 
   static const int _ruleReciterId = 12;
-  static const _audioBaseUrl =
-      'https://mirrors.quranicaudio.com/everyayah/Husary_Muallim_128kbps';
 
   ({int surah, int ayah})? _exampleReference() {
     return RuleExampleReferences.referenceFor(widget.definition.rule);
@@ -175,16 +173,6 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     return const Rect.fromLTWH(1, 1, 1, 1);
   }
 
-  String? _toAbsoluteAudioUrl(String? url) {
-    if (url == null) return null;
-    final trimmed = url.trim();
-    if (trimmed.isEmpty) return null;
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    return 'https://verses.quran.com/$trimmed';
-  }
-
   Future<void> _shareRule() async {
     final l10n = AppLocalizations.of(context);
     final langCode = context.read<LocaleProvider>().locale.languageCode;
@@ -217,19 +205,9 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     }
 
     final quranText = shareAyah?.arabic.trim();
-    final quranTranslation = shareAyah?.translation(langCode).trim() ?? '';
-    final previewAudioUrl = _toAbsoluteAudioUrl(shareAyah?.audioUrl);
     final ref = shareAyah == null
         ? _exampleReference()
         : (surah: shareAyah.surahNumber, ayah: shareAyah.ayahNumber);
-    final fallbackAudioCode = RuleExampleReferences.audioCodes[def.rule];
-    final fallbackAudioUrl = fallbackAudioCode == null
-        ? null
-        : _toAbsoluteAudioUrl('$_audioBaseUrl/$fallbackAudioCode.mp3');
-    final recitationAudioUrl =
-        (previewAudioUrl != null && previewAudioUrl.isNotEmpty)
-        ? previewAudioUrl
-        : fallbackAudioUrl;
     final quranRef = ref == null
         ? null
         : '${l10n.get('surah')} ${ref.surah}, ${l10n.get('ayah')} ${ref.ayah}';
@@ -263,32 +241,11 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
           '${l10n.get('quran_text')}${quranRef == null ? '' : ' ($quranRef)'}:',
         )
         ..add(quranText);
-
-      if (quranTranslation.isNotEmpty) {
-        lines
-          ..add('')
-          ..add('${l10n.get('translation')}:')
-          ..add(quranTranslation);
-      }
-
-      if (recitationAudioUrl != null && recitationAudioUrl.isNotEmpty) {
-        lines
-          ..add('')
-          ..add('${l10n.get('recitation_audio')} (${l10n.get('listen_here')}):')
-          ..add(recitationAudioUrl);
-      }
     } else if (examples.isNotEmpty) {
       lines
         ..add('')
         ..add('${l10n.get('quran_text')}:')
         ..add(examples.join(' '));
-
-      if (recitationAudioUrl != null && recitationAudioUrl.isNotEmpty) {
-        lines
-          ..add('')
-          ..add('${l10n.get('recitation_audio')} (${l10n.get('listen_here')}):')
-          ..add(recitationAudioUrl);
-      }
     }
 
     if (pronunciationTips.isNotEmpty) {
@@ -410,13 +367,14 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  final code = RuleExampleReferences.audioCodes[def.rule];
-                  if (code == null) return;
+                  final url = QuranApiService.normalizeAudioUrl(
+                    _exampleAyah?.audioUrl,
+                  );
+                  if (url == null) return;
                   if (_playing) {
                     _audio.stop();
                     setState(() => _playing = false);
                   } else {
-                    final url = '$_audioBaseUrl/$code.mp3';
                     _audio.playUrl(url);
                     setState(() => _playing = true);
                   }
