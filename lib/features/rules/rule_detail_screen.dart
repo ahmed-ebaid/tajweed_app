@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/app_links.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/locale_provider.dart';
@@ -234,8 +235,6 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
         : '${l10n.get('surah')} ${ref.surah}, ${l10n.get('ayah')} ${ref.ayah}';
 
     final appName = l10n.appName.trim();
-    final appComingSoon = l10n.get('app_coming_soon').trim();
-
     final lines = <String>[
       if (localizedName.isNotEmpty) localizedName,
       if (arabicName.isNotEmpty && arabicName != localizedName) arabicName,
@@ -301,18 +300,21 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
 
     lines
       ..add('')
-      ..add('$appName - $appComingSoon');
+      ..add(appName)
+      ..add(AppLinks.appStore);
 
     final text = lines.join('\n');
     final subject = localizedName.isNotEmpty ? localizedName : appName;
     final originRect = _shareOriginRect();
 
     try {
-      await SharePlus.instance.share(ShareParams(
-        text: text,
-        subject: subject,
-        sharePositionOrigin: originRect,
-      ));
+      await SharePlus.instance.share(
+        ShareParams(
+          text: text,
+          subject: subject,
+          sharePositionOrigin: originRect,
+        ),
+      );
     } catch (error) {
       debugPrint('Rule share failed: $error');
     }
