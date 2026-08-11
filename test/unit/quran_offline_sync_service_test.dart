@@ -31,18 +31,16 @@ class _FakeQuranApiService extends QuranApiService {
         'page_number': surahNumber,
         'text_uthmani': 'رَبِّ',
         'words': [
-          {
-            'char_type_name': 'word',
-            'text_uthmani': 'رَبِّ',
-          },
+          {'char_type_name': 'word', 'text_uthmani': 'رَبِّ'},
         ],
       },
     ];
   }
 
   @override
-  Future<Map<String, String>> fetchTajweedText(
-      {required int chapterNumber}) async {
+  Future<Map<String, String>> fetchTajweedText({
+    required int chapterNumber,
+  }) async {
     tajweedCalls++;
     return {'$chapterNumber:1': '<tajweed class="ghunnah">رَبِّ</tajweed>'};
   }
@@ -95,6 +93,24 @@ void main() {
     expect(fakeApi.tajweedCalls, QuranOfflineSyncService.totalSurahs);
   });
 
+  test('returns every cached verse assigned to a Mushaf page', () async {
+    await Hive.box('verse_cache').put('quran_ar_surah_1', [
+      {'verse_key': '1:7', 'page_number': 2, 'text_uthmani': 'نَصٌّ'},
+    ]);
+    await Hive.box('verse_cache').put('quran_ar_surah_2', [
+      {'verse_key': '2:1', 'page_number': 2, 'text_uthmani': 'نَصٌّ'},
+      {'verse_key': '2:2', 'page_number': 3, 'text_uthmani': 'نَصٌّ'},
+    ]);
+
+    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+    final verses = await service.getCachedVersesForPage(2);
+
+    expect(
+      verses.map((verse) => verse['verse_key']),
+      orderedEquals(['1:7', '2:1']),
+    );
+  });
+
   test('ensureBackgroundSync does nothing when already completed', () async {
     final firstApi = _FakeQuranApiService();
     final service = QuranOfflineSyncService(api: firstApi);
@@ -113,10 +129,7 @@ void main() {
   test('completed cache refreshes at the exact seven-day boundary', () async {
     var now = DateTime.utc(2026, 8, 1);
     final firstApi = _FakeQuranApiService();
-    final service = QuranOfflineSyncService(
-      api: firstApi,
-      now: () => now,
-    );
+    final service = QuranOfflineSyncService(api: firstApi, now: () => now);
     await service.syncAll();
 
     now = now.add(const Duration(days: 7) - const Duration(milliseconds: 1));
@@ -133,10 +146,7 @@ void main() {
       api: boundaryApi,
       now: () => now,
     ).ensureBackgroundSync();
-    expect(
-      boundaryApi.versesCalls,
-      QuranOfflineSyncService.totalSurahs,
-    );
+    expect(boundaryApi.versesCalls, QuranOfflineSyncService.totalSurahs);
   });
 
   test('failed seven-day refresh retains the last complete cache', () async {
@@ -154,10 +164,7 @@ void main() {
       api: _FakeQuranApiService(failAtSurahs: {3}),
       now: () => now,
     );
-    await expectLater(
-      failingService.ensureBackgroundSync(),
-      throwsException,
-    );
+    await expectLater(failingService.ensureBackgroundSync(), throwsException);
 
     expect(await failingService.getCachedSurah(3), oldSurah3);
     final status = await failingService.getStatus();
@@ -199,8 +206,10 @@ void main() {
 
     final statusAfterResync = await service.getStatus();
     expect(statusAfterResync.completed, isTrue);
-    expect(fakeApi.versesCalls,
-        initialCalls + QuranOfflineSyncService.totalSurahs);
+    expect(
+      fakeApi.versesCalls,
+      initialCalls + QuranOfflineSyncService.totalSurahs,
+    );
 
     final surah114 = await service.getCachedSurah(114);
     expect(surah114, isNotNull);
@@ -226,108 +235,105 @@ void main() {
     expect(await service.getCachedTajweedMap(1), isEmpty);
   });
 
-  test('status does not count surah as synced when tajweed map is missing',
-      () async {
-    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
-    final cacheBox = Hive.box('verse_cache');
+  test(
+    'status does not count surah as synced when tajweed map is missing',
+    () async {
+      final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+      final cacheBox = Hive.box('verse_cache');
 
-    await cacheBox.put('quran_ar_surah_1', [
-      {
-        'verse_key': '1:1',
-        'page_number': 1,
-        'text_uthmani': 'رَبِّ',
-      }
-    ]);
+      await cacheBox.put('quran_ar_surah_1', [
+        {'verse_key': '1:1', 'page_number': 1, 'text_uthmani': 'رَبِّ'},
+      ]);
 
-    final status = await service.getStatus();
-    expect(status.syncedSurahs, 0);
-    expect(status.completed, isFalse);
-  });
+      final status = await service.getStatus();
+      expect(status.syncedSurahs, 0);
+      expect(status.completed, isFalse);
+    },
+  );
 
-  test('status counts surah only when verses and tajweed map both exist',
-      () async {
-    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
-    final cacheBox = Hive.box('verse_cache');
+  test(
+    'status counts surah only when verses and tajweed map both exist',
+    () async {
+      final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+      final cacheBox = Hive.box('verse_cache');
 
-    await cacheBox.put('quran_ar_surah_1', [
-      {
-        'verse_key': '1:1',
-        'page_number': 1,
-        'text_uthmani': 'رَبِّ',
-      }
-    ]);
-    await cacheBox.put('quran_tajweed_surah_1',
-        {'1:1': '<tajweed class="ghunnah">رَبِّ</tajweed>'});
+      await cacheBox.put('quran_ar_surah_1', [
+        {'verse_key': '1:1', 'page_number': 1, 'text_uthmani': 'رَبِّ'},
+      ]);
+      await cacheBox.put('quran_tajweed_surah_1', {
+        '1:1': '<tajweed class="ghunnah">رَبِّ</tajweed>',
+      });
 
-    final status = await service.getStatus();
-    expect(status.syncedSurahs, 1);
-    expect(status.completed, isFalse);
-  });
+      final status = await service.getStatus();
+      expect(status.syncedSurahs, 1);
+      expect(status.completed, isFalse);
+    },
+  );
 
-  test('ensureBackgroundSync recovers from stale inProgress after restart',
-      () async {
-    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
-    final settings = Hive.box('settings');
+  test(
+    'ensureBackgroundSync recovers from stale inProgress after restart',
+    () async {
+      final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+      final settings = Hive.box('settings');
 
-    await settings.put('quran_sync_in_progress', true);
-    await service.ensureBackgroundSync();
+      await settings.put('quran_sync_in_progress', true);
+      await service.ensureBackgroundSync();
 
-    final status = await service.getStatus();
-    expect(status.inProgress, isFalse);
-    expect(status.completed, isTrue);
-    expect(status.syncedSurahs, QuranOfflineSyncService.totalSurahs);
-  });
+      final status = await service.getStatus();
+      expect(status.inProgress, isFalse);
+      expect(status.completed, isTrue);
+      expect(status.syncedSurahs, QuranOfflineSyncService.totalSurahs);
+    },
+  );
 
-  test('outdated schema cache remains readable before refresh completes',
-      () async {
-    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
-    final settings = Hive.box('settings');
-    final cache = Hive.box('verse_cache');
+  test(
+    'outdated schema cache remains readable before refresh completes',
+    () async {
+      final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+      final settings = Hive.box('settings');
+      final cache = Hive.box('verse_cache');
 
-    await settings.put('quran_sync_version', 1);
-    await cache.put('quran_ar_surah_1', [
-      {
-        'verse_key': '1:1',
-        'page_number': 1,
-        'text_uthmani': 'رَبِّ',
-      }
-    ]);
-    await cache.put('quran_tajweed_surah_1',
-        {'1:1': '<tajweed class="ghunnah">رَبِّ</tajweed>'});
+      await settings.put('quran_sync_version', 1);
+      await cache.put('quran_ar_surah_1', [
+        {'verse_key': '1:1', 'page_number': 1, 'text_uthmani': 'رَبِّ'},
+      ]);
+      await cache.put('quran_tajweed_surah_1', {
+        '1:1': '<tajweed class="ghunnah">رَبِّ</tajweed>',
+      });
 
-    final verses = await service.getCachedSurah(1);
-    final tajweedMap = await service.getCachedTajweedMap(1);
-    expect(verses, isNotNull);
-    expect(tajweedMap, isNotEmpty);
-  });
+      final verses = await service.getCachedSurah(1);
+      final tajweedMap = await service.getCachedTajweedMap(1);
+      expect(verses, isNotNull);
+      expect(tajweedMap, isNotEmpty);
+    },
+  );
 
-  test('outdated schema refresh does not wipe existing cache on failure',
-      () async {
-    final service = QuranOfflineSyncService(
-      api: _FakeQuranApiService(failAtSurahs: {3}),
-    );
-    final settings = Hive.box('settings');
-    final cache = Hive.box('verse_cache');
+  test(
+    'outdated schema refresh does not wipe existing cache on failure',
+    () async {
+      final service = QuranOfflineSyncService(
+        api: _FakeQuranApiService(failAtSurahs: {3}),
+      );
+      final settings = Hive.box('settings');
+      final cache = Hive.box('verse_cache');
 
-    await settings.put('quran_sync_version', 1);
-    await cache.put('quran_ar_surah_1', [
-      {
-        'verse_key': '1:1',
-        'page_number': 1,
-        'text_uthmani': 'رَبِّ',
-      }
-    ]);
-    await cache.put('quran_tajweed_surah_1',
-        {'1:1': '<tajweed class="ghunnah">رَبِّ</tajweed>'});
+      await settings.put('quran_sync_version', 1);
+      await cache.put('quran_ar_surah_1', [
+        {'verse_key': '1:1', 'page_number': 1, 'text_uthmani': 'رَبِّ'},
+      ]);
+      await cache.put('quran_tajweed_surah_1', {
+        '1:1': '<tajweed class="ghunnah">رَبِّ</tajweed>',
+      });
 
-    await expectLater(service.syncAll(), throwsException);
+      await expectLater(service.syncAll(), throwsException);
 
-    final stillCached = await service.getCachedSurah(1);
-    final stillTajweed = await service.getCachedTajweedMap(1);
-    expect(stillCached, isNotNull);
-    expect(stillCached!.isNotEmpty, isTrue);
-    expect(stillTajweed, isNotEmpty);
-  });
+      final stillCached = await service.getCachedSurah(1);
+      final stillTajweed = await service.getCachedTajweedMap(1);
+      expect(stillCached, isNotNull);
+      expect(stillCached!.isNotEmpty, isTrue);
+      expect(stillTajweed, isNotEmpty);
+    },
+  );
 
   test('ensureBackgroundSync migrates old cached text normalization', () async {
     final service = QuranOfflineSyncService(api: _FakeQuranApiService());
@@ -341,15 +347,13 @@ void main() {
         'page_number': 165,
         'text_uthmani': 'رَبِّ',
         'words': [
-          {
-            'char_type_name': 'word',
-            'text_uthmani': 'رَبِّ',
-          }
+          {'char_type_name': 'word', 'text_uthmani': 'رَبِّ'},
         ],
-      }
+      },
     ]);
-    await cache.put('quran_tajweed_surah_7',
-        {'7:122': '<tajweed class="ghunnah">رَبِّ</tajweed>'});
+    await cache.put('quran_tajweed_surah_7', {
+      '7:122': '<tajweed class="ghunnah">رَبِّ</tajweed>',
+    });
 
     await service.ensureBackgroundSync();
 
@@ -365,32 +369,26 @@ void main() {
     expect(wordText.contains('\u0650\u0651'), isTrue);
   });
 
-  test('getFirstCachedSurahNumber returns earliest fully cached surah',
-      () async {
-    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
-    final cache = Hive.box('verse_cache');
+  test(
+    'getFirstCachedSurahNumber returns earliest fully cached surah',
+    () async {
+      final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+      final cache = Hive.box('verse_cache');
 
-    await cache.put('quran_ar_surah_3', [
-      {
-        'verse_key': '3:1',
-        'page_number': 50,
-        'text_uthmani': 'الم',
-      }
-    ]);
-    await cache.put('quran_tajweed_surah_3', {'3:1': 'x'});
+      await cache.put('quran_ar_surah_3', [
+        {'verse_key': '3:1', 'page_number': 50, 'text_uthmani': 'الم'},
+      ]);
+      await cache.put('quran_tajweed_surah_3', {'3:1': 'x'});
 
-    await cache.put('quran_ar_surah_2', [
-      {
-        'verse_key': '2:1',
-        'page_number': 2,
-        'text_uthmani': 'الم',
-      }
-    ]);
-    await cache.put('quran_tajweed_surah_2', {'2:1': 'x'});
+      await cache.put('quran_ar_surah_2', [
+        {'verse_key': '2:1', 'page_number': 2, 'text_uthmani': 'الم'},
+      ]);
+      await cache.put('quran_tajweed_surah_2', {'2:1': 'x'});
 
-    final first = await service.getFirstCachedSurahNumber();
-    expect(first, 2);
-  });
+      final first = await service.getFirstCachedSurahNumber();
+      expect(first, 2);
+    },
+  );
 
   test('reads legacy reader cache key format for offline surah', () async {
     final service = QuranOfflineSyncService(api: _FakeQuranApiService());
@@ -402,12 +400,9 @@ void main() {
         'page_number': 165,
         'text_uthmani': 'رَبِّ',
         'words': [
-          {
-            'char_type_name': 'word',
-            'text_uthmani': 'رَبِّ',
-          }
+          {'char_type_name': 'word', 'text_uthmani': 'رَبِّ'},
         ],
-      }
+      },
     ]);
 
     final surah = await service.getCachedSurah(7);
@@ -424,11 +419,7 @@ void main() {
     final cache = Hive.box('verse_cache');
 
     await cache.put('5_en', [
-      {
-        'verse_key': '5:1',
-        'page_number': 106,
-        'text_uthmani': 'يَـٰٓأَيُّهَا',
-      }
+      {'verse_key': '5:1', 'page_number': 106, 'text_uthmani': 'يَـٰٓأَيُّهَا'},
     ]);
 
     final first = await service.getFirstCachedSurahNumber();

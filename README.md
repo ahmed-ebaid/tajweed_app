@@ -21,7 +21,6 @@ tajweed_app/
 │   │   │   ├── quran_attestation_service.dart
 │   │   │   ├── quran_content_sync_service.dart
 │   │   │   ├── quran_offline_sync_service.dart
-│   │   │   ├── mushaf_assets_service.dart
 │   │   │   └── audio_service.dart
 │   │   └── theme/
 │   ├── features/
@@ -43,6 +42,7 @@ tajweed_app/
 │   └── RunnerDebug.entitlements      # Development App Attest
 ├── assets/
 │   ├── app_icon/
+│   ├── fonts/                         # Amiri Quran font and SIL OFL license
 │   └── tajweed/
 ├── docs/                             # Public privacy and support pages
 ├── test/
@@ -84,8 +84,7 @@ open ios/Runner.xcworkspace
 
 Release and Profile builds use the production Worker and complete Quran
 dataset. Android, macOS, Simulator, and older builds fail closed until an
-equivalent platform attestation flow is implemented. Quran Search remains on
-its separate API until the required Search OAuth scope is approved and proxied.
+equivalent platform attestation flow is implemented.
 
 ### 3. Offline audit for shifted end-token tajweed
 
@@ -148,8 +147,8 @@ CI enforcement:
 - `LocaleProvider` persists the chosen locale in Hive and notifies the whole app
 - `isRtl` flag in `LocaleProvider` is used to set `Directionality` at the widget level
 - Arabic Quranic text is always RTL regardless of app language; UI chrome flips for Arabic/Urdu
-- German uses Quran.com translation ID 27 (Adul Hye & Ahmad von Denffer)
-- Spanish uses Quran.com translation ID 83 (Sheikh Isa Garcia)
+- German uses Quran.Foundation translation resource ID 27 (Adul Hye & Ahmad von Denffer)
+- Spanish uses Quran.Foundation translation resource ID 83 (Sheikh Isa Garcia)
 
 ### Tajweed highlighting
 - The Quran.Foundation Content API returns a `tajweed` character code per word
@@ -161,6 +160,11 @@ CI enforcement:
 - Reader playback uses selectable Quran.Foundation recitations and defaults to AbdulBasit Mujawwad
 - Tajweed rule examples use Mahmoud Khalil Al-Husary's Al-Muallim recitation
 - `just_audio` streams verse audio and `AudioCacheService` stores optional offline downloads
+
+### Mushaf pages
+- The 604-page reader uses Quran.Foundation Uthmani verse text and page metadata
+- Pages are rendered locally as text; the app does not download or redistribute Mushaf page images
+- The bundled Amiri Quran font is provided by the Amiri Project under the SIL Open Font License 1.1
 
 ### API attestation
 - `QuranAttestationService` registers an Apple App Attest key and generates assertions
@@ -189,3 +193,4 @@ CI enforcement:
 - Quran.Foundation Content Sync:
   `/content/api/v4/resources/sync`
 - Audio CDN: https://verses.quran.com/{reciterId}/{surah}{ayah}.mp3
+- Amiri Quran font: https://github.com/aliftype/amiri
