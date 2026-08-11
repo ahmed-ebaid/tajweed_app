@@ -8,7 +8,6 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/providers/recitation_provider.dart';
 import '../../core/providers/tafseer_provider.dart';
 import '../../core/services/audio_cache_service.dart';
-import '../../core/services/mushaf_assets_service.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
@@ -104,9 +103,6 @@ class SettingsScreen extends StatelessWidget {
           const Divider(height: 0.5, indent: 16),
           _SectionLabel(label: s.text('quran_data_section')),
           const _QuranDataTile(),
-          const Divider(height: 0.5, indent: 16),
-          _SectionLabel(label: s.text('mushaf_pages_section')),
-          const _MushafPackTile(),
           const Divider(height: 0.5, indent: 16),
           _SectionLabel(label: s.text('about_section')),
           ListTile(
@@ -1165,157 +1161,6 @@ class _QuranDataTileState extends State<_QuranDataTile> {
   }
 }
 
-class _MushafPackTile extends StatefulWidget {
-  const _MushafPackTile();
-
-  @override
-  State<_MushafPackTile> createState() => _MushafPackTileState();
-}
-
-class _MushafPackTileState extends State<_MushafPackTile> {
-  MushafAssetsStatus? _status;
-  bool _busy = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshStatus();
-  }
-
-  Future<void> _refreshStatus() async {
-    setState(() {
-      _error = null;
-    });
-    try {
-      final status = await MushafAssetsService.getStatus();
-      if (!mounted) return;
-      setState(() {
-        _status = status;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-      });
-    }
-  }
-
-  Future<void> _download({required bool force}) async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      if (force) {
-        await MushafAssetsService.forceRedownload();
-      } else {
-        await MushafAssetsService.getMushafPagesDir();
-      }
-      await _refreshStatus();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _deletePack() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await MushafAssetsService.clearMushafPages();
-      await _refreshStatus();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = _SettingsStrings.of(context);
-    final status = _status;
-    final installed = status?.installed ?? false;
-
-    String subtitle;
-    if (_busy) {
-      subtitle = s.text('working');
-    } else if (_error != null) {
-      subtitle = s.text('error_pack_checking');
-    } else if (status == null) {
-      subtitle = s.text('checking_status');
-    } else if (installed) {
-      subtitle = s.text('installed_pages', {'count': '${status.pageCount}'});
-    } else {
-      subtitle = s.text('not_installed_yet', {
-        'count': '${status.pageCount}',
-        'expected': '${MushafAssetsService.expectedPageCount}',
-      });
-    }
-
-    return ListTile(
-      leading: const Icon(Icons.image_outlined),
-      title: Text(s.text('mushaf_image_pack')),
-      subtitle: Text(subtitle),
-      trailing: _busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'download') {
-                  _download(force: false);
-                } else if (value == 'redownload') {
-                  _download(force: true);
-                } else if (value == 'delete') {
-                  _deletePack();
-                } else if (value == 'refresh') {
-                  _refreshStatus();
-                }
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'download',
-                  child: Text(s.text('download')),
-                ),
-                PopupMenuItem(
-                  value: 'redownload',
-                  child: Text(s.text('redownload')),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Text(s.text('delete_local_pack')),
-                ),
-                PopupMenuItem(
-                  value: 'refresh',
-                  child: Text(s.text('refresh_status')),
-                ),
-              ],
-            ),
-    );
-  }
-}
-
 class _AboutSourcesTile extends StatelessWidget {
   const _AboutSourcesTile();
 
@@ -1359,8 +1204,8 @@ class _AboutSourcesSheet extends StatelessWidget {
     MapEntry('Urdu', 'Tafsir Ibn Kathir (Urdu)'),
     MapEntry('Turkish', 'Diyanet Isleri'),
     MapEntry('French', 'Muhammad Hamidullah'),
-    MapEntry('Indonesian', 'Quran.com resource ID 33'),
-    MapEntry('German', 'Quran.com resource ID 27'),
+    MapEntry('Indonesian', 'Quran.Foundation resource ID 33'),
+    MapEntry('German', 'Quran.Foundation resource ID 27'),
     MapEntry('Spanish', 'Fallback to Ibn Kathir (Abridged) in English'),
   ];
 
@@ -1773,7 +1618,7 @@ class _SettingsStrings {
       'quran_b3':
           'When you switch the app language, the app requests the matching translation for that language. If a translation is unavailable, it falls back to English.',
       'quran_b4':
-          'Remote Mushaf page references point to Quran CDN page images hosted at cdn.qurancdn.com and static.qurancdn.com.',
+          'Mushaf page text and page mappings are loaded through the app backend from the Quran.Foundation Content API.',
       'tafseer_sources_title': 'Tafseer sources',
       'tafseer_b1':
           'The tafseer catalog and verse-by-verse tafseer text are loaded from Quran.Foundation Content API resources and Tafseer endpoints.',
@@ -1791,9 +1636,9 @@ class _SettingsStrings {
       'other_b1':
           'Tajweed rule definitions used in lessons and quizzes are bundled locally in assets/tajweed/rules_db.json.',
       'other_b2':
-          'Offline Mushaf page images were originally sourced from the GovarJabbar/Quran-PNG repository on GitHub and are distributed in this app through its downloadable image pack hosted on GitHub Releases.',
+          'Mushaf pages are rendered from Quran.Foundation Uthmani text and page metadata; the app does not redistribute page images.',
       'other_b3':
-          'Quranic display in the app uses the bundled UthmanicHafs font asset for Mushaf-style rendering.',
+          'Mushaf text uses the Amiri Quran font by the Amiri Project, licensed under the SIL Open Font License 1.1.',
       'no_items_available': 'No items available',
     },
     'ar': {
@@ -1874,33 +1719,33 @@ class _SettingsStrings {
       'owned_operated': 'هذا التطبيق مملوك ومدار بواسطة شركة Ebaid LLC.',
       'quran_sources_title': 'مصادر القرآن',
       'quran_b1':
-          'يتم جلب نص القرآن وبنية السور والآيات وبيانات الكلمات وعلامات التجويد من واجهة Quran.com API v4.',
+          'يتم جلب نص القرآن وبنية السور والآيات وبيانات الكلمات وعلامات التجويد من واجهة Quran.Foundation Content API.',
       'quran_b2':
           'يستخدم التطبيق مصادر الترجمة التالية للغات الواجهة المدعومة:',
       'quran_b3':
           'عند تغيير لغة التطبيق، يطلب التطبيق الترجمة المطابقة لتلك اللغة. وإذا لم تتوفر ترجمة، يعود إلى الإنجليزية.',
       'quran_b4':
-          'تشير مراجع صفحات المصحف البعيدة إلى صور صفحات مستضافة على cdn.qurancdn.com و static.qurancdn.com.',
+          'يتم تحميل نص صفحات المصحف وخرائط الصفحات عبر خادم التطبيق من واجهة Quran.Foundation Content API.',
       'tafseer_sources_title': 'مصادر التفسير',
       'tafseer_b1':
-          'يتم تحميل فهرس التفسير ونصوص التفسير لكل آية من موارد ونهايات tafsir في Quran.com API v4.',
+          'يتم تحميل فهرس التفسير ونصوص التفسير لكل آية من موارد ونهايات tafsir في Quran.Foundation Content API.',
       'tafseer_b2': 'مصادر التفسير الافتراضية حسب لغة التطبيق هي:',
       'tafseer_b3':
-          'يمكن للمستخدمين التبديل إلى مصادر تفسير أخرى يعرضها Quran.com من خلال منتقي التفسير داخل التطبيق.',
+          'يمكن للمستخدمين التبديل إلى مصادر تفسير أخرى يعرضها Quran.Foundation من خلال منتقي التفسير داخل التطبيق.',
       'recitation_sources_title': 'مصادر التلاوة',
       'recitation_b1':
-          'يتم تحميل فهرس التلاوات من نهايات الموارد في Quran.com API v4.',
+          'يتم تحميل فهرس التلاوات من نهايات الموارد في Quran.Foundation Content API.',
       'recitation_b2':
-          'يتم تقديم تشغيل صوت الآيات وملفات التلاوة القابلة للتنزيل من شبكة Quran.com الصوتية على verses.quran.com.',
+          'يتم تقديم تشغيل صوت الآيات وملفات التلاوة القابلة للتنزيل من شبكة Quran.Foundation الصوتية على verses.quran.com.',
       'recitation_b3': 'يدعم هذا التطبيق حالياً هؤلاء القراء:',
       'reciter_label': 'القارئ',
       'other_sources_title': 'مصادر محتوى أخرى',
       'other_b1':
           'يتم تضمين تعريفات أحكام التجويد المستخدمة في الدروس والاختبارات محلياً في assets/tajweed/rules_db.json.',
       'other_b2':
-          'تم الحصول على صور صفحات المصحف غير المتصلة في الأصل من مستودع GovarJabbar/Quran-PNG على GitHub ويتم توزيعها في هذا التطبيق عبر حزمة الصور القابلة للتنزيل والمستضافة على GitHub Releases.',
+          'تُعرض صفحات المصحف من نص عثماني وبيانات الصفحات من Quran.Foundation، ولا يعيد التطبيق توزيع صور صفحات المصحف.',
       'other_b3':
-          'يستخدم عرض القرآن في التطبيق خط UthmanicHafs المضمن لإظهار نمط المصحف.',
+          'يستخدم نص المصحف خط Amiri Quran من مشروع Amiri، المرخص بموجب رخصة SIL Open Font License 1.1.',
       'no_items_available': 'لا توجد عناصر متاحة',
     },
     'ur': {
@@ -1984,33 +1829,33 @@ class _SettingsStrings {
           'یہ ایپ Ebaid LLC کی ملکیت ہے اور اسی کے زیر انتظام ہے۔',
       'quran_sources_title': 'قرآن کے ماخذ',
       'quran_b1':
-          'قرآن کا متن، سورہ اور آیت کی ساخت، لفظ بہ لفظ ڈیٹا، اور تجوید مارک اپ Quran.com API v4 سے حاصل کیے جاتے ہیں۔',
+          'قرآن کا متن، سورہ اور آیت کی ساخت، لفظ بہ لفظ ڈیٹا، اور تجوید مارک اپ Quran.Foundation Content API سے حاصل کیے جاتے ہیں۔',
       'quran_b2':
           'ایپ اپنی معاون زبانوں کے لیے یہ ترجمہ جاتی ماخذ استعمال کرتی ہے:',
       'quran_b3':
           'جب آپ ایپ کی زبان تبدیل کرتے ہیں تو ایپ اسی زبان کا ترجمہ مانگتی ہے۔ اگر ترجمہ دستیاب نہ ہو تو انگریزی استعمال ہوتی ہے۔',
       'quran_b4':
-          'آن لائن مصحف صفحات کے روابط cdn.qurancdn.com اور static.qurancdn.com پر موجود تصاویر کی طرف اشارہ کرتے ہیں۔',
+          'مصحف صفحات کا متن اور صفحہ معلومات ایپ کے بیک اینڈ کے ذریعے Quran.Foundation Content API سے حاصل ہوتے ہیں۔',
       'tafseer_sources_title': 'تفسیر کے ماخذ',
       'tafseer_b1':
-          'تفسیر کی فہرست اور آیت بہ آیت تفسیر کا متن Quran.com API v4 کے وسائل اور tafsir endpoints سے لوڈ ہوتا ہے۔',
+          'تفسیر کی فہرست اور آیت بہ آیت تفسیر کا متن Quran.Foundation Content API کے وسائل اور tafsir endpoints سے لوڈ ہوتا ہے۔',
       'tafseer_b2': 'ایپ کی زبان کے مطابق طے شدہ تفسیر کے ماخذ یہ ہیں:',
       'tafseer_b3':
-          'صارف ایپ کے اندر موجود تفسیر منتخب کنندہ کے ذریعے Quran.com کی دیگر تفاسیر بھی منتخب کر سکتے ہیں۔',
+          'صارف ایپ کے اندر موجود تفسیر منتخب کنندہ کے ذریعے Quran.Foundation کی دیگر تفاسیر بھی منتخب کر سکتے ہیں۔',
       'recitation_sources_title': 'تلاوت کے ماخذ',
       'recitation_b1':
-          'تلاوت کی فہرست Quran.com API v4 کے resource endpoints سے لوڈ ہوتی ہے۔',
+          'تلاوت کی فہرست Quran.Foundation Content API کے resource endpoints سے لوڈ ہوتی ہے۔',
       'recitation_b2':
-          'آیات کی آڈیو پلے بیک اور ڈاؤن لوڈ ایبل تلاوت فائلیں verses.quran.com پر Quran.com آڈیو CDN سے دی جاتی ہیں۔',
+          'آیات کی آڈیو پلے بیک اور ڈاؤن لوڈ ایبل تلاوت فائلیں verses.quran.com پر Quran.Foundation آڈیو CDN سے دی جاتی ہیں۔',
       'recitation_b3': 'یہ ایپ فی الحال ان قراء کی حمایت کرتی ہے:',
       'reciter_label': 'قاری',
       'other_sources_title': 'دیگر مواد کے ماخذ',
       'other_b1':
           'اسباق اور کوئز میں استعمال ہونے والے تجوید قوانین کی تعریفیں assets/tajweed/rules_db.json میں مقامی طور پر شامل ہیں۔',
       'other_b2':
-          'آف لائن مصحف تصاویر اصل میں GitHub کے GovarJabbar/Quran-PNG repository سے لی گئی تھیں اور اس ایپ میں GitHub Releases پر موجود downloadable image pack کے ذریعے فراہم کی جاتی ہیں۔',
+          'مصحف کے صفحات Quran.Foundation کے عثمانی متن اور صفحہ معلومات سے دکھائے جاتے ہیں؛ ایپ صفحات کی تصاویر تقسیم نہیں کرتی۔',
       'other_b3':
-          'ایپ میں قرآنی متن کی نمائش کے لیے UthmanicHafs فونٹ استعمال ہوتا ہے۔',
+          'مصحف کے متن کے لیے Amiri Project کا Amiri Quran فونٹ استعمال ہوتا ہے، جو SIL Open Font License 1.1 کے تحت ہے۔',
       'no_items_available': 'کوئی آئٹم دستیاب نہیں',
     },
     'tr': {
@@ -2091,34 +1936,34 @@ class _SettingsStrings {
       'owned_operated': 'Bu uygulamanın sahibi ve işletmecisi Ebaid LLCdir.',
       'quran_sources_title': "Kur'an kaynakları",
       'quran_b1':
-          "Kur'an metni, sure ve ayet yapısı, kelime kelime veri ve tecvid işaretlemeleri Quran.com API v4ten alınır.",
+          "Kur'an metni, sure ve ayet yapısı, kelime kelime veri ve tecvid işaretlemeleri Quran.Foundation Content API'den alınır.",
       'quran_b2':
           'Uygulama, desteklenen arayüz dilleri için şu çeviri kaynaklarını kullanır:',
       'quran_b3':
           'Uygulama dilini değiştirdiğinizde uygulama o dile uygun çeviriyi ister. Bir çeviri yoksa İngilizceye döner.',
       'quran_b4':
-          'Uzak mushaf sayfası başvuruları cdn.qurancdn.com ve static.qurancdn.com üzerindeki sayfa görsellerine işaret eder.',
+          'Mushaf sayfa metni ve sayfa eşlemeleri uygulama arka ucu üzerinden Quran.Foundation Content API’den yüklenir.',
       'tafseer_sources_title': 'Tefsir kaynakları',
       'tafseer_b1':
-          'Tefsir kataloğu ve ayet bazlı tefsir metni Quran.com API v4 kaynakları ve tafsir uç noktalarından yüklenir.',
+          'Tefsir kataloğu ve ayet bazlı tefsir metni Quran.Foundation Content API kaynakları ve tafsir uç noktalarından yüklenir.',
       'tafseer_b2':
           'Uygulama diline göre yapılandırılan varsayılan tefsir kaynakları şunlardır:',
       'tafseer_b3':
-          'Kullanıcılar uygulama içindeki tefsir seçicisi üzerinden Quran.com tarafından sunulan diğer tefsir kaynaklarına geçebilir.',
+          'Kullanıcılar uygulama içindeki tefsir seçicisi üzerinden Quran.Foundation tarafından sunulan diğer tefsir kaynaklarına geçebilir.',
       'recitation_sources_title': 'Tilavet kaynakları',
       'recitation_b1':
-          'Tilavet kataloğu Quran.com API v4 kaynak uç noktalarından yüklenir.',
+          'Tilavet kataloğu Quran.Foundation Content API kaynak uç noktalarından yüklenir.',
       'recitation_b2':
-          'Ayet ses oynatımı ve indirilebilir tilavet dosyaları verses.quran.com üzerindeki Quran.com ses CDNinden sunulur.',
+          'Ayet ses oynatımı ve indirilebilir tilavet dosyaları verses.quran.com üzerindeki Quran.Foundation ses CDNinden sunulur.',
       'recitation_b3': 'Bu uygulama şu karileri destekler:',
       'reciter_label': 'Kari',
       'other_sources_title': 'Diğer içerik kaynakları',
       'other_b1':
           'Derslerde ve quizlerde kullanılan tecvid kural tanımları assets/tajweed/rules_db.json içinde yerel olarak paketlenmiştir.',
       'other_b2':
-          'Çevrimdışı mushaf sayfa görselleri ilk olarak GitHubdaki GovarJabbar/Quran-PNG deposundan alınmış ve bu uygulamada GitHub Releases üzerinde barındırılan indirilebilir görsel paket aracılığıyla sunulmuştur.',
+          'Mushaf sayfaları Quran.Foundation Uthmani metni ve sayfa verilerinden oluşturulur; uygulama sayfa görsellerini dağıtmaz.',
       'other_b3':
-          "Uygulamadaki Kur'an gösterimi mushaf tarzı görünüm için gömülü UthmanicHafs yazı tipini kullanır.",
+          'Mushaf metni, SIL Open Font License 1.1 ile lisanslanan Amiri Project Amiri Quran yazı tipini kullanır.',
       'no_items_available': 'Kullanılabilir öğe yok',
     },
     'fr': {
@@ -2216,25 +2061,25 @@ class _SettingsStrings {
           'Cette application est détenue et exploitée par Ebaid LLC.',
       'quran_sources_title': 'Sources du Coran',
       'quran_b1':
-          'Le texte coranique, la structure des sourates et des ayats, les données mot à mot et le balisage du tajwid proviennent de l’API v4 de Quran.com.',
+          'Le texte coranique, la structure des sourates et des ayats, les données mot à mot et le balisage du tajwid proviennent de l’API Quran.Foundation Content.',
       'quran_b2':
           'L’application utilise les sources de traduction suivantes pour les langues d’interface prises en charge :',
       'quran_b3':
           'Lorsque vous changez la langue de l’application, elle demande la traduction correspondante. Si elle est indisponible, elle revient à l’anglais.',
       'quran_b4':
-          'Les références distantes des pages du mushaf pointent vers des images hébergées sur cdn.qurancdn.com et static.qurancdn.com.',
+          'Le texte et les correspondances des pages du mushaf sont chargés via le backend de l’application depuis l’API Quran.Foundation Content.',
       'tafseer_sources_title': 'Sources du tafsir',
       'tafseer_b1':
-          'Le catalogue du tafsir et le texte du tafsir verset par verset sont chargés depuis les ressources et endpoints tafsir de l’API v4 de Quran.com.',
+          'Le catalogue du tafsir et le texte du tafsir verset par verset sont chargés depuis les ressources et endpoints tafsir de l’API Quran.Foundation Content.',
       'tafseer_b2':
           'Les sources de tafsir par défaut configurées selon la langue de l’application sont :',
       'tafseer_b3':
-          'Les utilisateurs peuvent choisir d’autres sources de tafsir renvoyées par Quran.com via le sélecteur intégré.',
+          'Les utilisateurs peuvent choisir d’autres sources de tafsir renvoyées par Quran.Foundation via le sélecteur intégré.',
       'recitation_sources_title': 'Sources de récitation',
       'recitation_b1':
-          'Le catalogue des récitations est chargé depuis les endpoints de ressources de l’API v4 de Quran.com.',
+          'Le catalogue des récitations est chargé depuis les endpoints de ressources de l’API Quran.Foundation Content.',
       'recitation_b2':
-          'La lecture audio des versets et les fichiers de récitation téléchargeables sont fournis par le CDN audio de Quran.com sur verses.quran.com.',
+          'La lecture audio des versets et les fichiers de récitation téléchargeables sont fournis par le CDN audio de Quran.Foundation sur verses.quran.com.',
       'recitation_b3':
           'Cette application prend actuellement en charge ces récitateur :',
       'reciter_label': 'Récitateur',
@@ -2242,9 +2087,9 @@ class _SettingsStrings {
       'other_b1':
           'Les définitions des règles de tajwid utilisées dans les leçons et les quiz sont intégrées localement dans assets/tajweed/rules_db.json.',
       'other_b2':
-          'Les images de pages du mushaf hors ligne proviennent à l’origine du dépôt GitHub GovarJabbar/Quran-PNG et sont distribuées dans cette application via son pack d’images téléchargeable hébergé sur GitHub Releases.',
+          'Les pages du mushaf sont rendues à partir du texte uthmani et des métadonnées de page de Quran.Foundation ; l’application ne redistribue pas d’images de pages.',
       'other_b3':
-          'L’affichage coranique dans l’application utilise la police intégrée UthmanicHafs pour un rendu de style mushaf.',
+          'Le texte du mushaf utilise la police Amiri Quran du projet Amiri, sous licence SIL Open Font License 1.1.',
       'no_items_available': 'Aucun élément disponible',
     },
     'id': {
@@ -2330,34 +2175,34 @@ class _SettingsStrings {
           'Aplikasi ini dimiliki dan dioperasikan oleh Ebaid LLC.',
       'quran_sources_title': 'Sumber Al-Quran',
       'quran_b1':
-          'Teks Al-Quran, struktur surah dan ayat, data kata per kata, dan markup tajwid diambil dari Quran.com API v4.',
+          'Teks Al-Quran, struktur surah dan ayat, data kata per kata, dan markup tajwid diambil dari Quran.Foundation Content API.',
       'quran_b2':
           'Aplikasi menggunakan sumber terjemahan berikut untuk bahasa antarmuka yang didukung:',
       'quran_b3':
           'Saat Anda mengganti bahasa aplikasi, aplikasi meminta terjemahan yang sesuai untuk bahasa itu. Jika tidak tersedia, aplikasi kembali ke bahasa Inggris.',
       'quran_b4':
-          'Referensi halaman mushaf jarak jauh menunjuk ke gambar halaman yang dihosting di cdn.qurancdn.com dan static.qurancdn.com.',
+          'Teks dan pemetaan halaman mushaf dimuat melalui backend aplikasi dari Quran.Foundation Content API.',
       'tafseer_sources_title': 'Sumber tafsir',
       'tafseer_b1':
-          'Katalog tafsir dan teks tafsir per ayat dimuat dari resource dan endpoint tafsir Quran.com API v4.',
+          'Katalog tafsir dan teks tafsir per ayat dimuat dari resource dan endpoint tafsir Quran.Foundation Content API.',
       'tafseer_b2':
           'Sumber tafsir default yang dikonfigurasi berdasarkan bahasa aplikasi adalah:',
       'tafseer_b3':
-          'Pengguna dapat beralih ke sumber tafsir lain yang dikembalikan oleh Quran.com melalui pemilih tafsir di aplikasi.',
+          'Pengguna dapat beralih ke sumber tafsir lain yang disediakan oleh Quran.Foundation melalui pemilih tafsir di aplikasi.',
       'recitation_sources_title': 'Sumber tilawah',
       'recitation_b1':
-          'Katalog tilawah dimuat dari endpoint resource Quran.com API v4.',
+          'Katalog tilawah dimuat dari endpoint resource Quran.Foundation Content API.',
       'recitation_b2':
-          'Pemutaran audio ayat dan file tilawah yang dapat diunduh disajikan dari CDN audio Quran.com di verses.quran.com.',
+          'Pemutaran audio ayat dan file tilawah yang dapat diunduh disajikan dari CDN audio Quran.Foundation di verses.quran.com.',
       'recitation_b3': 'Aplikasi ini saat ini mendukung qari berikut:',
       'reciter_label': 'Qari',
       'other_sources_title': 'Sumber konten lainnya',
       'other_b1':
           'Definisi aturan tajwid yang digunakan dalam pelajaran dan kuis dibundel secara lokal di assets/tajweed/rules_db.json.',
       'other_b2':
-          'Gambar halaman mushaf offline awalnya bersumber dari repositori GitHub GovarJabbar/Quran-PNG dan didistribusikan dalam aplikasi ini melalui paket gambar yang dapat diunduh yang dihosting di GitHub Releases.',
+          'Halaman mushaf dirender dari teks Uthmani dan metadata halaman Quran.Foundation; aplikasi tidak mendistribusikan ulang gambar halaman.',
       'other_b3':
-          'Tampilan Al-Quran dalam aplikasi menggunakan font UthmanicHafs bawaan untuk rendering bergaya mushaf.',
+          'Teks mushaf menggunakan font Amiri Quran dari Amiri Project, berlisensi SIL Open Font License 1.1.',
       'no_items_available': 'Tidak ada item tersedia',
     },
     'de': {
@@ -2449,25 +2294,25 @@ class _SettingsStrings {
           'Diese App gehört Ebaid LLC und wird von ihr betrieben.',
       'quran_sources_title': 'Koranquellen',
       'quran_b1':
-          'Korantext, Sura- und Ayah-Struktur, Wort-für-Wort-Daten und Tajweed-Markup werden aus der Quran.com API v4 geladen.',
+          'Korantext, Sura- und Ayah-Struktur, Wort-für-Wort-Daten und Tajweed-Markup werden aus der Quran.Foundation Content API geladen.',
       'quran_b2':
           'Die App verwendet die folgenden Übersetzungsquellen für ihre unterstützten Oberflächensprachen:',
       'quran_b3':
           'Wenn Sie die App-Sprache wechseln, fordert die App die passende Übersetzung für diese Sprache an. Ist keine verfügbar, fällt sie auf Englisch zurück.',
       'quran_b4':
-          'Entfernte Mushaf-Seitenverweise zeigen auf Seitenbilder, die auf cdn.qurancdn.com und static.qurancdn.com gehostet werden.',
+          'Mushaf-Seitentext und Seitenzuordnungen werden über das App-Backend aus der Quran.Foundation Content API geladen.',
       'tafseer_sources_title': 'Tafsir-Quellen',
       'tafseer_b1':
-          'Der Tafsir-Katalog und der ayahweise Tafsir-Text werden aus Ressourcen und Tafsir-Endpunkten der Quran.com API v4 geladen.',
+          'Der Tafsir-Katalog und der ayahweise Tafsir-Text werden aus Ressourcen und Tafsir-Endpunkten der Quran.Foundation Content API geladen.',
       'tafseer_b2':
           'Die standardmäßig nach App-Sprache konfigurierten Tafsir-Quellen sind:',
       'tafseer_b3':
-          'Benutzer können über die Tafsir-Auswahl in der App zu anderen von Quran.com bereitgestellten Tafsir-Quellen wechseln.',
+          'Benutzer können über die Tafsir-Auswahl in der App zu anderen von Quran.Foundation bereitgestellten Tafsir-Quellen wechseln.',
       'recitation_sources_title': 'Rezitationsquellen',
       'recitation_b1':
-          'Der Rezitationskatalog wird aus Ressourcen-Endpunkten der Quran.com API v4 geladen.',
+          'Der Rezitationskatalog wird aus Ressourcen-Endpunkten der Quran.Foundation Content API geladen.',
       'recitation_b2':
-          'Ayah-Audiowiedergabe und herunterladbare Rezitationsdateien werden vom Quran.com-Audio-CDN unter verses.quran.com bereitgestellt.',
+          'Ayah-Audiowiedergabe und herunterladbare Rezitationsdateien werden vom Quran.Foundation-Audio-CDN unter verses.quran.com bereitgestellt.',
       'recitation_b3':
           'Diese App unterstützt derzeit die folgenden Rezitatoren:',
       'reciter_label': 'Rezitator',
@@ -2475,9 +2320,9 @@ class _SettingsStrings {
       'other_b1':
           'Die in Lektionen und Quiz verwendeten Tajweed-Regeldefinitionen sind lokal in assets/tajweed/rules_db.json enthalten.',
       'other_b2':
-          'Offline-Mushaf-Seitenbilder stammen ursprünglich aus dem GitHub-Repository GovarJabbar/Quran-PNG und werden in dieser App über ein auf GitHub Releases gehostetes herunterladbares Bildpaket verteilt.',
+          'Mushaf-Seiten werden aus Uthmani-Text und Seitenmetadaten von Quran.Foundation gerendert; die App verteilt keine Seitenbilder.',
       'other_b3':
-          'Die Korandarstellung in der App verwendet die integrierte Schrift UthmanicHafs für ein Mushaf-ähnliches Rendering.',
+          'Der Mushaf-Text verwendet die Schrift Amiri Quran des Amiri Project unter der SIL Open Font License 1.1.',
       'no_items_available': 'Keine Elemente verfügbar',
     },
     'es': {
@@ -2567,34 +2412,34 @@ class _SettingsStrings {
           'Esta aplicación es propiedad de Ebaid LLC y está operada por ella.',
       'quran_sources_title': 'Fuentes del Corán',
       'quran_b1':
-          'El texto coránico, la estructura de las suras y ayat, los datos palabra por palabra y el marcado de tajwid se obtienen de Quran.com API v4.',
+          'El texto coránico, la estructura de las suras y ayat, los datos palabra por palabra y el marcado de tajwid se obtienen de Quran.Foundation Content API.',
       'quran_b2':
           'La aplicación utiliza las siguientes fuentes de traducción para sus idiomas de interfaz compatibles:',
       'quran_b3':
           'Cuando cambias el idioma de la aplicación, esta solicita la traducción correspondiente. Si no está disponible, vuelve al inglés.',
       'quran_b4':
-          'Las referencias remotas de páginas del mushaf apuntan a imágenes alojadas en cdn.qurancdn.com y static.qurancdn.com.',
+          'El texto y las asignaciones de páginas del mushaf se cargan mediante el backend de la aplicación desde la API de contenido de Quran.Foundation.',
       'tafseer_sources_title': 'Fuentes de tafsir',
       'tafseer_b1':
-          'El catálogo de tafsir y el texto de tafsir por ayah se cargan desde los recursos y endpoints de tafsir de Quran.com API v4.',
+          'El catálogo de tafsir y el texto de tafsir por ayah se cargan desde los recursos y endpoints de tafsir de Quran.Foundation Content API.',
       'tafseer_b2':
           'Las fuentes de tafsir predeterminadas configuradas por idioma de la aplicación son:',
       'tafseer_b3':
-          'Los usuarios pueden cambiar a otras fuentes de tafsir devueltas por Quran.com mediante el selector de tafsir dentro de la aplicación.',
+          'Los usuarios pueden cambiar a otras fuentes de tafsir proporcionadas por Quran.Foundation mediante el selector de tafsir dentro de la aplicación.',
       'recitation_sources_title': 'Fuentes de recitación',
       'recitation_b1':
-          'El catálogo de recitaciones se carga desde los endpoints de recursos de Quran.com API v4.',
+          'El catálogo de recitaciones se carga desde los endpoints de recursos de Quran.Foundation Content API.',
       'recitation_b2':
-          'La reproducción de audio de ayat y los archivos de recitación descargables se sirven desde el CDN de audio de Quran.com en verses.quran.com.',
+          'La reproducción de audio de ayat y los archivos de recitación descargables se sirven desde el CDN de audio de Quran.Foundation en verses.quran.com.',
       'recitation_b3': 'Actualmente esta aplicación admite estos recitadores:',
       'reciter_label': 'Recitador',
       'other_sources_title': 'Otras fuentes de contenido',
       'other_b1':
           'Las definiciones de reglas de tajwid utilizadas en las lecciones y cuestionarios se incluyen localmente en assets/tajweed/rules_db.json.',
       'other_b2':
-          'Las imágenes de páginas del mushaf sin conexión se obtuvieron originalmente del repositorio de GitHub GovarJabbar/Quran-PNG y se distribuyen en esta aplicación mediante su paquete de imágenes descargable alojado en GitHub Releases.',
+          'Las páginas del mushaf se renderizan con texto uthmani y metadatos de Quran.Foundation; la aplicación no redistribuye imágenes de páginas.',
       'other_b3':
-          'La visualización coránica en la aplicación utiliza la fuente integrada UthmanicHafs para un renderizado estilo mushaf.',
+          'El texto del mushaf utiliza la fuente Amiri Quran del proyecto Amiri, bajo la SIL Open Font License 1.1.',
       'no_items_available': 'No hay elementos disponibles',
     },
   };
