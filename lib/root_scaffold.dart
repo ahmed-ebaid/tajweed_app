@@ -21,19 +21,42 @@ class RootScaffold extends StatefulWidget {
   State<RootScaffold> createState() => _RootScaffoldState();
 }
 
-class _RootScaffoldState extends State<RootScaffold> {
+class _RootScaffoldState extends State<RootScaffold>
+    with WidgetsBindingObserver {
+  static const _foregroundMaintenanceInterval = Duration(hours: 12);
+
   int _currentIndex = 0;
   final QuranOfflineSyncService _quranOfflineSync = QuranOfflineSyncService();
   final QuranContentSyncService _contentSync = QuranContentSyncService();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _foregroundMaintenanceTimer;
   bool _wasOffline = false;
+  bool _isForeground = true;
 
   @override
   void initState() {
     super.initState();
-    _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
+    WidgetsBinding.instance.addObserver(this);
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      _onConnectivityChanged,
+    );
+    _foregroundMaintenanceTimer = Timer.periodic(
+      _foregroundMaintenanceInterval,
+      (_) {
+        if (_isForeground && !_wasOffline) {
+          unawaited(_runOfflineMaintenance());
+        }
+      },
+    );
     unawaited(_initializeOfflineMaintenance());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isForeground = state == AppLifecycleState.resumed;
+    if (_isForeground) {
+      unawaited(_runOfflineMaintenance());
+    }
   }
 
   Future<void> _initializeOfflineMaintenance() async {
@@ -59,9 +82,7 @@ class _RootScaffoldState extends State<RootScaffold> {
     }
   }
 
-  Future<void> _runOfflineMaintenance({
-    bool ignoreBackoff = false,
-  }) async {
+  Future<void> _runOfflineMaintenance({bool ignoreBackoff = false}) async {
     try {
       await _contentSync.syncIfDue(ignoreBackoff: ignoreBackoff);
     } catch (error) {
@@ -81,6 +102,8 @@ class _RootScaffoldState extends State<RootScaffold> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _foregroundMaintenanceTimer?.cancel();
     unawaited(_connectivitySubscription?.cancel());
     super.dispose();
   }
@@ -101,10 +124,7 @@ class _RootScaffoldState extends State<RootScaffold> {
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: screens,
-        ),
+        body: IndexedStack(index: _currentIndex, children: screens),
         bottomNavigationBar: AppBottomNav(
           currentIndex: _currentIndex,
           onTap: _switchTab,
@@ -119,7 +139,8 @@ class _RootScaffoldState extends State<RootScaffold> {
                 foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
                 elevation: 0,
                 onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                ),
                 child: const Icon(Icons.settings_outlined, size: 20),
               ),
         floatingActionButtonLocation: FloatingActionButtonLocation.miniEndTop,

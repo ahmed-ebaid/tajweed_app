@@ -51,7 +51,7 @@ class TajweedText extends StatelessWidget {
   final bool strictFocusedRuleOnly;
   final Set<TajweedRule> suppressedRules;
   final void Function(TajweedRule rule, String word, String? wordAudioUrl)?
-      onRuleTapped;
+  onRuleTapped;
 
   const TajweedText({
     super.key,
@@ -69,10 +69,8 @@ class TajweedText extends StatelessWidget {
 
   // Slight stroke-like shadow to make thin harakat marks read clearer.
   static List<Shadow> _diacriticShadows(Color color) => [
-        Shadow(
-            color: color.withValues(alpha: 0.10),
-            offset: const Offset(0.10, 0)),
-      ];
+    Shadow(color: color.withValues(alpha: 0.10), offset: const Offset(0.10, 0)),
+  ];
 
   TextStyle _arabicStyle({
     required Color color,
@@ -121,8 +119,9 @@ class TajweedText extends StatelessWidget {
         child: RichText(
           textAlign: TextAlign.right,
           softWrap: !compactFlow,
-          textWidthBasis:
-              compactFlow ? TextWidthBasis.longestLine : TextWidthBasis.parent,
+          textWidthBasis: compactFlow
+              ? TextWidthBasis.longestLine
+              : TextWidthBasis.parent,
           textHeightBehavior: TextHeightBehavior(
             // Keep first-line ascent on native font metrics; this avoids
             // clipping high Quranic marks in ayah-by-ayah mode.
@@ -136,9 +135,7 @@ class TajweedText extends StatelessWidget {
                   leading: 0.34,
                 )
               : null,
-          text: TextSpan(
-            children: _buildSpans(context, baseColor),
-          ),
+          text: TextSpan(children: _buildSpans(context, baseColor)),
         ),
       ),
     );
@@ -188,10 +185,12 @@ class TajweedText extends StatelessWidget {
       }
 
       if (wi < ayah.words.length - 1) {
-        spans.add(TextSpan(
-          text: ' ',
-          style: _baseSeparatorStyle(baseColor, isActiveWord: isActiveWord),
-        ));
+        spans.add(
+          TextSpan(
+            text: ' ',
+            style: _baseSeparatorStyle(baseColor, isActiveWord: isActiveWord),
+          ),
+        );
       }
     }
 
@@ -208,19 +207,20 @@ class TajweedText extends StatelessWidget {
       // Amiri Quran, renders as ornate brackets enclosing the following digits.
       // Using separate ﴿/﴾ characters caused bidi mis-ordering on line breaks.
       text: '\u00A0\u06DD$arabicAyahNumber',
-      style: _arabicStyle(
-        color: const Color(0xFF8B6B2A),
-        size: fontSize - 2,
-        weight: FontWeight.w700,
-      ).copyWith(
-        shadows: [
-          Shadow(
-            color: baseColor.withValues(alpha: 0.14),
-            offset: const Offset(0.2, 0.2),
-            blurRadius: 1,
+      style:
+          _arabicStyle(
+            color: const Color(0xFF8B6B2A),
+            size: fontSize - 2,
+            weight: FontWeight.w700,
+          ).copyWith(
+            shadows: [
+              Shadow(
+                color: baseColor.withValues(alpha: 0.14),
+                offset: const Offset(0.2, 0.2),
+                blurRadius: 1,
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -234,7 +234,10 @@ class TajweedText extends StatelessWidget {
   }
 
   List<InlineSpan> _buildWordSpans(
-      TajweedWord word, Color baseColor, bool isActiveWord) {
+    TajweedWord word,
+    Color baseColor,
+    bool isActiveWord,
+  ) {
     final result = <InlineSpan>[];
     final text = _normalizeForCurrentAyah(word.arabic);
     final graphemeMap = _GraphemeMap.fromText(text);
@@ -256,20 +259,24 @@ class TajweedText extends StatelessWidget {
       // Uncolored text before this span
       if (cursor < start) {
         final beforeText = graphemeMap.slice(cursor, start);
-        result.addAll(_buildGraphemeTextSpans(
-          beforeText,
-          _baseWordStyle(baseColor, isActiveWord: isActiveWord),
-        ));
+        result.addAll(
+          _buildGraphemeTextSpans(
+            beforeText,
+            _baseWordStyle(baseColor, isActiveWord: isActiveWord),
+          ),
+        );
       }
 
       // Colored span
       final spanText = graphemeMap.slice(start, end);
       final rule = span.rule;
       if (suppressedRules.contains(rule)) {
-        result.addAll(_buildGraphemeTextSpans(
-          spanText,
-          _baseWordStyle(baseColor, isActiveWord: isActiveWord),
-        ));
+        result.addAll(
+          _buildGraphemeTextSpans(
+            spanText,
+            _baseWordStyle(baseColor, isActiveWord: isActiveWord),
+          ),
+        );
         cursor = end;
         continue;
       }
@@ -281,7 +288,10 @@ class TajweedText extends StatelessWidget {
             spanText,
             style,
             onTap: () => onRuleTapped!(
-                rule, _normalizeArabicText(word.arabic), word.audioUrl),
+              rule,
+              _normalizeArabicText(word.arabic),
+              word.audioUrl,
+            ),
           ),
         );
       } else {
@@ -294,10 +304,12 @@ class TajweedText extends StatelessWidget {
     // Remaining text after last span
     if (cursor < graphemeMap.length) {
       final remaining = graphemeMap.slice(cursor, graphemeMap.length);
-      result.addAll(_buildGraphemeTextSpans(
-        remaining,
-        _baseWordStyle(baseColor, isActiveWord: isActiveWord),
-      ));
+      result.addAll(
+        _buildGraphemeTextSpans(
+          remaining,
+          _baseWordStyle(baseColor, isActiveWord: isActiveWord),
+        ),
+      );
     }
 
     return result;
@@ -334,8 +346,9 @@ class TajweedText extends StatelessWidget {
           TextSpan(
             text: plainText.toString(),
             style: style,
-            recognizer:
-                onTap != null ? (TapGestureRecognizer()..onTap = onTap) : null,
+            recognizer: onTap != null
+                ? (TapGestureRecognizer()..onTap = onTap)
+                : null,
           ),
         );
         plainText.clear();
@@ -359,8 +372,9 @@ class TajweedText extends StatelessWidget {
               markerRule: markerRule,
               isSajdah: markerRule == TajweedRule.sajdah,
             ),
-            recognizer:
-                onTap != null ? (TapGestureRecognizer()..onTap = onTap) : null,
+            recognizer: onTap != null
+                ? (TapGestureRecognizer()..onTap = onTap)
+                : null,
           ),
         );
       }
@@ -392,8 +406,9 @@ class TajweedText extends StatelessWidget {
         spans.addAll(_buildGraphemeTextSpans(text, _baseWordStyle(baseColor)));
         continue;
       }
-      final style =
-          rule == null ? _baseWordStyle(baseColor) : _styleFor(rule, baseColor);
+      final style = rule == null
+          ? _baseWordStyle(baseColor)
+          : _styleFor(rule, baseColor);
       if (rule != null && onRuleTapped != null) {
         spans.addAll(
           _buildGraphemeTextSpans(
@@ -430,38 +445,52 @@ class TajweedText extends StatelessWidget {
     required TajweedRule? markerRule,
     required bool isSajdah,
   }) {
+    if (isSajdah) {
+      return sajdahMarkerStyle(style, color: markerRule?.color ?? style.color);
+    }
+
     // Keep marker glyphs on a dedicated font path instead of sharing the
     // body-text font. This reduces iOS fallback differences for U+06DE.
     final markerBase = style.copyWith(
       color: markerRule?.color ?? style.color,
       decoration: TextDecoration.none,
-      fontFamily: isSajdah ? 'Noto Naskh Arabic' : 'Scheherazade New',
-      fontFamilyFallback: isSajdah
-          ? const [
-              'Noto Naskh Arabic',
-              'Geeza Pro',
-              'Amiri Quran',
-              'Amiri',
-            ]
-          : const [
-              'Scheherazade New',
-              'Amiri Quran',
-              'Noto Naskh Arabic',
-              'Geeza Pro',
-              'Amiri',
-            ],
+      fontFamily: 'Scheherazade New',
+      fontFamilyFallback: const [
+        'Scheherazade New',
+        'Amiri Quran',
+        'Noto Naskh Arabic',
+        'Geeza Pro',
+        'Amiri',
+      ],
     );
-    return isSajdah
-        ? GoogleFonts.notoNaskhArabic(textStyle: markerBase)
-        : GoogleFonts.scheherazadeNew(textStyle: markerBase);
+    return GoogleFonts.scheherazadeNew(textStyle: markerBase);
   }
 
-  TextStyle _styleFor(TajweedRule rule, Color baseColor,
-      {bool isActiveWord = false}) {
+  static TextStyle sajdahMarkerStyle(TextStyle style, {Color? color}) {
+    final markerBase = style.copyWith(
+      color: color ?? style.color,
+      decoration: TextDecoration.none,
+      fontFamily: 'Noto Naskh Arabic',
+      fontFamilyFallback: const [
+        'Noto Naskh Arabic',
+        'Geeza Pro',
+        'Amiri Quran',
+        'Amiri',
+      ],
+    );
+    return GoogleFonts.notoNaskhArabic(textStyle: markerBase);
+  }
+
+  TextStyle _styleFor(
+    TajweedRule rule,
+    Color baseColor, {
+    bool isActiveWord = false,
+  }) {
     return _arabicStyle(
       color: _resolvedRuleColor(rule, baseColor),
-      backgroundColor:
-          isActiveWord ? const Color(0xFFFFE08A).withValues(alpha: 0.65) : null,
+      backgroundColor: isActiveWord
+          ? const Color(0xFFFFE08A).withValues(alpha: 0.65)
+          : null,
     );
   }
 
@@ -479,8 +508,9 @@ class TajweedText extends StatelessWidget {
   }
 
   static String _normalizeArabicText(String text) {
-    final reordered =
-        text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (
+      match,
+    ) {
       return '${match.group(1)}\u0651';
     });
 
@@ -611,11 +641,7 @@ class TajweedLegend extends StatelessWidget {
   final List<TajweedRule> rules;
   final String langCode;
 
-  const TajweedLegend({
-    super.key,
-    required this.rules,
-    required this.langCode,
-  });
+  const TajweedLegend({super.key, required this.rules, required this.langCode});
 
   @override
   Widget build(BuildContext context) {

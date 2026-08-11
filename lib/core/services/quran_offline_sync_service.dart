@@ -104,11 +104,9 @@ class QuranOfflineSyncService {
   final QuranApiService _api;
   final DateTime Function() _now;
 
-  QuranOfflineSyncService({
-    QuranApiService? api,
-    DateTime Function()? now,
-  })  : _api = api ?? QuranApiService(),
-        _now = now ?? DateTime.now;
+  QuranOfflineSyncService({QuranApiService? api, DateTime Function()? now})
+    : _api = api ?? QuranApiService(),
+      _now = now ?? DateTime.now;
 
   static String _surahCacheKey(int surahNumber) =>
       'quran_ar_surah_$surahNumber';
@@ -126,7 +124,8 @@ class QuranOfflineSyncService {
   Future<QuranOfflineSyncStatus> getStatus() async {
     final completedAtMs = _settingsBox.get(_syncCompletedAtKey) as int?;
     final syncedSurahs = _countSyncedSurahs();
-    final completed = syncedSurahs >= totalSurahs &&
+    final completed =
+        syncedSurahs >= totalSurahs &&
         (_settingsBox.get(_syncVersionKey, defaultValue: 0) as int) >=
             _syncSchemaVersion;
 
@@ -178,17 +177,25 @@ class QuranOfflineSyncService {
   Future<Map<String, dynamic>?> getCachedFirstVerseForPage(
     int pageNumber,
   ) async {
+    final verses = await getCachedVersesForPage(pageNumber);
+    return verses.isEmpty ? null : verses.first;
+  }
+
+  Future<List<Map<String, dynamic>>> getCachedVersesForPage(
+    int pageNumber,
+  ) async {
     final safePage = pageNumber.clamp(1, 604);
+    final matches = <Map<String, dynamic>>[];
     for (int surah = 1; surah <= totalSurahs; surah++) {
       final verses = await getCachedSurah(surah);
       if (verses == null) continue;
       for (final verse in verses) {
         if (verse['page_number'] == safePage) {
-          return verse;
+          matches.add(verse);
         }
       }
     }
-    return null;
+    return matches;
   }
 
   Future<Map<String, String>> getCachedTafsirMap({
@@ -322,10 +329,7 @@ class QuranOfflineSyncService {
       }
 
       _settingsBox.put(_syncVersionKey, _syncSchemaVersion);
-      _settingsBox.put(
-        _syncCompletedAtKey,
-        _now().millisecondsSinceEpoch,
-      );
+      _settingsBox.put(_syncCompletedAtKey, _now().millisecondsSinceEpoch);
     } catch (e) {
       _settingsBox.put(_syncLastErrorKey, e.toString());
       rethrow;
@@ -446,7 +450,8 @@ class QuranOfflineSyncService {
   bool _isSurahCached(int surahNumber) {
     final versesRaw = _cacheBox.get(_surahCacheKey(surahNumber));
     final tajweedRaw = _cacheBox.get(_tajweedCacheKey(surahNumber));
-    final hasVerses = (versesRaw is List && versesRaw.isNotEmpty) ||
+    final hasVerses =
+        (versesRaw is List && versesRaw.isNotEmpty) ||
         (_loadLegacySurahRaw(surahNumber)?.isNotEmpty ?? false);
     final hasTajweed = tajweedRaw is Map && tajweedRaw.isNotEmpty;
     return hasVerses && hasTajweed;
