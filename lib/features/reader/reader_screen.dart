@@ -9,6 +9,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/constants/app_links.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/bookmark_provider.dart';
@@ -49,8 +50,6 @@ class _ReaderScreenState extends State<ReaderScreen>
   static const String _readerViewModeKey = 'reader_view_mode';
   static const String _ayahContentModeKey = 'ayah_content_mode';
   static const String _mushafTextScaleKey = 'mushaf_text_scale';
-  static const String _appShareUrl =
-      'https://github.com/ahmed-ebaid/tajweed_app';
   static const String _juzListCacheKey = 'reader_juz_list';
 
   final _api = QuranApiService();
@@ -1964,7 +1963,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (translation.isNotEmpty) '',
       if (translation.isNotEmpty) translation,
       '',
-      _appShareUrl,
+      AppLinks.appStore,
     ].join('\n');
 
     try {

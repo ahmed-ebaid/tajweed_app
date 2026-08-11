@@ -31,7 +31,7 @@
   <p>The App does not add names, email addresses, bookmarks, notes, or advertising identifiers to these requests. Like most internet services, the service operators may receive ordinary connection information such as an IP address, request headers, and timestamps under their own privacy practices.</p>
 
   <h2>Offline Quran Content</h2>
-  <p>Quran text, translations, Tafseer, recitation metadata, and selected audio may be cached locally for offline reading and listening. Mushaf pages are rendered locally from Quran.Foundation Uthmani text and page metadata; the App does not download or redistribute page images. When the device is online, the App periodically validates cached Quran content and applies Quran.Foundation updates, deletions, and invalidations. Cached content is used inside the App and is not exposed as a downloadable raw dataset.</p>
+  <p>Quran text, translations, Tafseer, recitation metadata, and selected audio may be cached locally for offline reading and listening. Mushaf pages are rendered locally from Quran.Foundation Uthmani text and page metadata; the App does not download or redistribute page images. When the device is online, the App checks for due cache maintenance at startup, on foreground resume, every 12 hours while it remains open, and after connectivity returns. Quran content is revalidated when its last successful validation is seven days old, and Quran.Foundation updates, deletions, and invalidations are applied. Cached content is used inside the App and is not exposed as a downloadable raw dataset.</p>
 
   <h2>Microphone Access</h2>
   <p>If enabled, microphone access is used exclusively for local recitation practice. Recordings remain on the device and are not uploaded by the current version of the App.</p>
