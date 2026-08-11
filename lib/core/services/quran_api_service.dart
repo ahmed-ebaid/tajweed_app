@@ -59,13 +59,13 @@ class QuranContentSyncPage {
       nextSyncToken: sync['next_sync_token']?.toString(),
       mutations: rawMutations is List
           ? rawMutations
-              .whereType<Map>()
-              .map(
-                (item) => QuranContentMutation.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
-              )
-              .toList(growable: false)
+                .whereType<Map>()
+                .map(
+                  (item) => QuranContentMutation.fromJson(
+                    Map<String, dynamic>.from(item),
+                  ),
+                )
+                .toList(growable: false)
           : const [],
     );
   }
@@ -114,38 +114,25 @@ class QuranApiService {
     return _productionContentApiBaseUrl;
   }
 
-  static const _searchApiBaseUrl = 'https://api.quran.com/api/v4';
   static const _audioBaseUrl = 'https://verses.quran.com';
-  static const _mushafImageBaseUrls = [
-    'https://cdn.qurancdn.com/images/svg/pages',
-    'https://static.qurancdn.com/images/svg/pages',
-  ];
 
   final Dio _contentDio;
-  final Dio _searchDio;
 
   QuranApiService({
     Dio? contentClient,
-    Dio? searchClient,
     QuranAttestationService? attestationService,
-  })  : _contentDio = contentClient ??
-            Dio(
-              BaseOptions(
-                baseUrl: contentApiBaseUrl,
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 15),
-              ),
-            ),
-        _searchDio = searchClient ??
-            Dio(
-              BaseOptions(
-                baseUrl: _searchApiBaseUrl,
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 15),
-              ),
-            ) {
+  }) : _contentDio =
+           contentClient ??
+           Dio(
+             BaseOptions(
+               baseUrl: contentApiBaseUrl,
+               connectTimeout: const Duration(seconds: 10),
+               receiveTimeout: const Duration(seconds: 15),
+             ),
+           ) {
     if (contentClient == null) {
-      final attestation = attestationService ??
+      final attestation =
+          attestationService ??
           QuranAttestationService.forContentApi(contentApiBaseUrl);
       _contentDio.interceptors.add(
         QueuedInterceptorsWrapper(
@@ -214,7 +201,8 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': true,
-        'fields': 'page_number,verse_key',
+        'fields':
+            'page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
         'word_fields':
             'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration,audio_url',
         'translations': translationIdFor(langCode),
@@ -236,7 +224,11 @@ class QuranApiService {
       '/verses/by_page/$safePage',
       queryParameters: {
         'language': langCode,
-        'fields': 'page_number,verse_key',
+        'words': 'true',
+        'fields':
+            'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
+        'word_fields': 'text_uthmani,char_type_name',
+        'per_page': 50,
       },
     );
     return List<Map<String, dynamic>>.from(response.data['verses'] ?? const []);
@@ -254,7 +246,8 @@ class QuranApiService {
       queryParameters: {
         'language': langCode,
         'words': true,
-        'fields': 'text_uthmani,page_number,verse_key',
+        'fields':
+            'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
         'word_fields':
             'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,audio_url',
         'translations': translationIdFor(langCode),
@@ -286,8 +279,8 @@ class QuranApiService {
           map[key] = url.startsWith('http')
               ? url
               : url.startsWith('//')
-                  ? 'https:$url'
-                  : '$_audioBaseUrl/$url';
+              ? 'https:$url'
+              : '$_audioBaseUrl/$url';
         }
       }
 
@@ -331,22 +324,6 @@ class QuranApiService {
     final s = surahNumber.toString().padLeft(3, '0');
     final a = ayahNumber.toString().padLeft(3, '0');
     return '$_audioBaseUrl/$reciterId/$s$a.mp3';
-  }
-
-  /// Returns Madani Mushaf SVG page image URL (page001.svg .. page604.svg).
-  String mushafPageSvgUrl(int pageNumber) {
-    final safePage = pageNumber.clamp(1, 604);
-    final padded = safePage.toString().padLeft(3, '0');
-    return '${_mushafImageBaseUrls.first}/page$padded.svg';
-  }
-
-  /// Returns fallback URL candidates for a Mushaf page SVG.
-  List<String> mushafPageSvgUrlCandidates(int pageNumber) {
-    final safePage = pageNumber.clamp(1, 604);
-    final padded = safePage.toString().padLeft(3, '0');
-    return _mushafImageBaseUrls
-        .map((base) => '$base/page$padded.svg')
-        .toList(growable: false);
   }
 
   // ─── Juz Mappings ──────────────────────────────────────────────────────────
@@ -447,19 +424,6 @@ class QuranApiService {
     return QuranContentSnapshot.fromJson(
       Map<String, dynamic>.from(response.data as Map),
     );
-  }
-
-  // ─── Search ───────────────────────────────────────────────────────────────
-
-  Future<List<Map<String, dynamic>>> search({
-    required String query,
-    required String langCode,
-  }) async {
-    final response = await _searchDio.get(
-      '/search',
-      queryParameters: {'q': query, 'language': langCode, 'size': 20},
-    );
-    return List<Map<String, dynamic>>.from(response.data['search']['results']);
   }
 
   // ─── Tajweed code mapping ─────────────────────────────────────────────────

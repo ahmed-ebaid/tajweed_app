@@ -16,12 +16,10 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    final body = responseBodies[options.path] ??
+    final body =
+        responseBodies[options.path] ??
         switch (options.path) {
           '/chapters' => {'chapters': <Object>[]},
-          '/search' => {
-              'search': {'results': <Object>[]},
-            },
           _ => <String, Object>{},
         };
     return ResponseBody.fromString(
@@ -44,10 +42,7 @@ void main() {
       final contentClient = Dio(
         BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
       )..httpClientAdapter = contentAdapter;
-      final service = QuranApiService(
-        contentClient: contentClient,
-        searchClient: Dio(),
-      );
+      final service = QuranApiService(contentClient: contentClient);
 
       await service.fetchSurahList(langCode: 'en');
 
@@ -59,66 +54,80 @@ void main() {
       expect(contentAdapter.requests.single.uri.path, '/v2/content/chapters');
     });
 
-    test('keeps Search on its separate API endpoint', () async {
-      final searchAdapter = _RecordingAdapter();
-      final searchClient = Dio(
-        BaseOptions(baseUrl: 'https://api.quran.com/api/v4'),
-      )..httpClientAdapter = searchAdapter;
-      final service = QuranApiService(
-        contentClient: Dio(),
-        searchClient: searchClient,
-      );
-
-      await service.search(query: 'mercy', langCode: 'en');
-
-      expect(searchAdapter.requests, hasLength(1));
-      expect(searchAdapter.requests.single.uri.host, 'api.quran.com');
-      expect(searchAdapter.requests.single.uri.path, '/api/v4/search');
-    });
-
-    test('parses Content Sync pages and sends the canonical bootstrap query',
-        () async {
+    test('requests Uthmani text and metadata for Mushaf pages', () async {
       final adapter = _RecordingAdapter();
       final contentClient = Dio(
         BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
       )..httpClientAdapter = adapter;
-      final service = QuranApiService(
-        contentClient: contentClient,
-        searchClient: Dio(),
-      );
-
-      adapter.responseBodies['/resources/sync'] = {
-        'sync': {
-          'has_more': false,
-          'next_page_url': null,
-          'next_sync_token': 'final-token',
-          'mutations': [
-            {
-              'type': 'ROW_UPDATE',
-              'resource_group': 'translations',
-              'resource_id': 85,
-              'record_key': '401704',
-              'data': {'id': 401704, 'verse_key': '1:1', 'text': 'Updated'},
-            },
-          ],
-        },
+      final service = QuranApiService(contentClient: contentClient);
+      adapter.responseBodies['/verses/by_page/293'] = {
+        'verses': [
+          {
+            'verse_key': '18:1',
+            'text_uthmani': 'ٱلْحَمْدُ لِلَّهِ',
+            'page_number': 293,
+            'juz_number': 15,
+            'hizb_number': 30,
+            'rub_el_hizb_number': 119,
+          },
+        ],
       };
 
-      final page = await service.fetchContentSyncPage(
-        resources: 'translations:85',
+      final verses = await service.fetchVersesByPage(
+        pageNumber: 293,
+        langCode: 'ar',
       );
 
-      expect(page.nextSyncToken, 'final-token');
-      expect(page.mutations.single.recordKey, '401704');
-      expect(
-        adapter.requests.single.queryParameters,
-        {
+      expect(verses.single['verse_key'], '18:1');
+      expect(adapter.requests.single.queryParameters, {
+        'language': 'ar',
+        'words': 'true',
+        'fields':
+            'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
+        'word_fields': 'text_uthmani,char_type_name',
+        'per_page': 50,
+      });
+    });
+
+    test(
+      'parses Content Sync pages and sends the canonical bootstrap query',
+      () async {
+        final adapter = _RecordingAdapter();
+        final contentClient = Dio(
+          BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
+        )..httpClientAdapter = adapter;
+        final service = QuranApiService(contentClient: contentClient);
+
+        adapter.responseBodies['/resources/sync'] = {
+          'sync': {
+            'has_more': false,
+            'next_page_url': null,
+            'next_sync_token': 'final-token',
+            'mutations': [
+              {
+                'type': 'ROW_UPDATE',
+                'resource_group': 'translations',
+                'resource_id': 85,
+                'record_key': '401704',
+                'data': {'id': 401704, 'verse_key': '1:1', 'text': 'Updated'},
+              },
+            ],
+          },
+        };
+
+        final page = await service.fetchContentSyncPage(
+          resources: 'translations:85',
+        );
+
+        expect(page.nextSyncToken, 'final-token');
+        expect(page.mutations.single.recordKey, '401704');
+        expect(adapter.requests.single.queryParameters, {
           'resources': 'translations:85',
           'per_page': 100,
           'bootstrap': true,
-        },
-      );
-    });
+        });
+      },
+    );
   });
 
   group('QuranApiService.ruleFromCode', () {

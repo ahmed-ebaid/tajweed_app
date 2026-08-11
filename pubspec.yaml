@@ -1,7 +1,7 @@
 name: tajweed_practice
 description: A multilingual Quran tajweed practice application
 publish_to: none
-version: 0.9.0+10
+version: 0.9.1+13
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -17,17 +17,15 @@ dependencies:
   riverpod: ^2.6.1              # pinned – hive_generator blocks riverpod 3.x (analyzer conflict)
 
   # Audio playback & recording
-  just_audio: ^0.10.5          # Quran audio streaming (Quran.com CDN)
+  just_audio: ^0.10.5          # Quran audio streaming (Quran.Foundation CDN)
 
   # Networking & data
-  dio: ^5.4.1                  # HTTP client for Quran.com API & Tarteel AI
-  cached_network_image: ^3.3.1
+  dio: ^5.4.1                  # HTTP client for Quran.Foundation and Tarteel AI
   connectivity_plus: ^7.0.0
 
   # Local storage & caching
   hive_flutter: ^1.1.0         # Offline verse cache, progress, streak data
   path_provider: ^2.1.2
-  archive: ^4.0.9              # ZIP extraction for bundled Mushaf pages
 
   # Arabic text & Quranic fonts
   google_fonts: ^8.0.2         # Fallback; Uthmanic Hafs loaded as asset font
@@ -39,7 +37,6 @@ dependencies:
   # UI utilities
   cupertino_icons: ^1.0.8
   lottie: ^3.0.0               # Animations (e.g., celebration on quiz completion)
-  flutter_svg: ^2.0.9
   shimmer: ^3.0.0              # Loading skeletons
   go_router: ^17.1.0           # Declarative routing
   share_plus: ^13.1.0           # Native share sheet for sharing rule summaries
@@ -58,3 +55,9 @@ flutter:
 
   assets:
     - assets/tajweed/            # Local tajweed rule JSON database
+    - assets/fonts/OFL-Amiri.txt
+
+  fonts:
+    - family: AmiriQuran
+      fonts:
+        - asset: assets/fonts/AmiriQuran.ttf
