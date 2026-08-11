@@ -274,8 +274,8 @@ class QuranApiService {
       final files = response.data['audio_files'] as List<dynamic>? ?? [];
       for (final f in files) {
         final key = f['verse_key'] as String? ?? '';
-        final url = f['url'] as String? ?? '';
-        if (key.isNotEmpty && url.isNotEmpty) {
+        final url = normalizeAudioUrl(f['url'] as String?);
+        if (key.isNotEmpty && url != null) {
           map[key] = url.startsWith('http')
               ? url
               : url.startsWith('//')
@@ -324,6 +324,17 @@ class QuranApiService {
     final s = surahNumber.toString().padLeft(3, '0');
     final a = ayahNumber.toString().padLeft(3, '0');
     return '$_audioBaseUrl/$reciterId/$s$a.mp3';
+  }
+
+  static String? normalizeAudioUrl(String? url) {
+    if (url == null) return null;
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return null;
+    if (trimmed.startsWith('//')) return 'https:$trimmed';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return '$_audioBaseUrl/${trimmed.replaceFirst(RegExp(r'^/+'), '')}';
   }
 
   // ─── Juz Mappings ──────────────────────────────────────────────────────────
