@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/services/quran_api_service.dart';
 import 'package:tajweed_practice/core/services/quran_offline_sync_service.dart';
 import 'package:tajweed_practice/features/reader/widgets/tafseer_sheet.dart';
+import 'package:tajweed_practice/core/constants/app_links.dart';
 
 class _FakeQuranApiService extends QuranApiService {
   _FakeQuranApiService({
@@ -82,6 +83,20 @@ void main() {
     expect(sources.first.label, 'Al-Tabari — Al-Tabari');
   });
 
+  test('Tafseer share content includes attribution and the app link', () {
+    final content = TafseerShareContent.build(
+      heading: 'Tafseer — Ayah 1:1',
+      sourceLine: 'Source: Ibn Kathir',
+      tafseerText: 'Commentary text',
+      appName: 'Tajweed',
+    );
+
+    expect(content, contains('Tafseer — Ayah 1:1'));
+    expect(content, contains('Source: Ibn Kathir'));
+    expect(content, contains('Commentary text'));
+    expect(content, contains(AppLinks.appStore));
+  });
+
   testWidgets('successful selection updates content and persists globally', (
     tester,
   ) async {
@@ -104,9 +119,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const ValueKey('tafseer-source-dropdown-169')),
-    );
+    await tester.tap(find.byKey(const ValueKey('tafseer-source-dropdown-169')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tafsir al-Tabari — Al-Tabari').last);
     await tester.pumpAndSettle();
@@ -118,6 +131,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('Tafsir al-Tabari'), findsNWidgets(2));
+    expect(find.byTooltip('Share Tafseer'), findsOneWidget);
   });
 
   testWidgets('failed selection retains previous content and selection', (
@@ -136,9 +150,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const ValueKey('tafseer-source-dropdown-169')),
-    );
+    await tester.tap(find.byKey(const ValueKey('tafseer-source-dropdown-169')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tafsir al-Tabari — Al-Tabari').last);
     await tester.pumpAndSettle();
