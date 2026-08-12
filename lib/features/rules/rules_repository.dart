@@ -80,7 +80,7 @@ class RulesRepository {
         'en':
             'Natural elongation of a long vowel for exactly 2 counts. Triggered by alif after fathah, waw after dammah, or ya after kasrah.',
         'ar':
-            'مد الحرف مقدار حركتين لوجود حرف المد (الألف أو الواو أو الياء) دون سبب يوجب زيادة المد.',
+            'مد الحرف لوجود حرف المد (الألف أو الواو أو الياء) دون سبب يوجب زيادة المد. مقداره: ٢ حركة.',
         'ur':
             'طبعی مد جو فتحہ کے بعد الف، ضمہ کے بعد واو، یا کسرہ کے بعد یاء آنے پر دو حرکات کا ہوتا ہے۔',
         'tr':
@@ -110,7 +110,7 @@ class RulesRepository {
         'en':
             'Obligatory connected madd: a madd letter followed by hamza in the same word. Duration: 4–5 counts.',
         'ar':
-            'مد واجب يحدث عندما يأتي حرف المد وبعده همزة في كلمة واحدة. مقداره أربع إلى خمس حركات.',
+            'مد واجب يحدث عندما يأتي حرف المد وبعده همزة في كلمة واحدة. مقداره: ٤–٥ حركات.',
         'ur':
             'واجب متصل مد: جب حرف مد اور ہمزہ ایک ہی لفظ میں ہوں۔ مقدار: چار سے پانچ حرکات۔',
         'tr':
@@ -140,7 +140,7 @@ class RulesRepository {
         'en':
             'Permissible separated madd: a madd letter at the end of one word followed by hamza at the start of the next word. Duration: 2–5 counts (reader\'s choice).',
         'ar':
-            'مد جائز يحدث عندما يأتي حرف المد في آخر كلمة وهمزة في أول الكلمة التالية. مقداره من حركتين إلى خمس.',
+            'مد جائز يحدث عندما يأتي حرف المد في آخر كلمة وهمزة في أول الكلمة التالية. مقداره: ٢–٥ حركات.',
         'ur':
             'جائز منفصل مد: جب حرف مد ایک لفظ کے آخر میں اور ہمزہ اگلے لفظ کے شروع میں ہو۔ مقدار: دو سے پانچ حرکات۔',
         'tr':
@@ -170,7 +170,7 @@ class RulesRepository {
         'en':
             'Minor connecting elongation of the pronoun ha when it falls between two vowelled letters and is not followed by hamza. Duration: 2 counts.',
         'ar':
-            'مد هاء الضمير الواقعة بين متحركين إذا لم يأت بعدها همز، ومقداره حركتان.',
+            'مد هاء الضمير الواقعة بين متحركين إذا لم يأت بعدها همز. مقداره: ٢ حركة.',
         'ur':
             'ضمیر کی ہاء دو متحرک حروف کے درمیان ہو اور اس کے بعد ہمزہ نہ ہو تو اسے دو حرکات کھینچا جاتا ہے۔',
         'tr':
@@ -200,7 +200,7 @@ class RulesRepository {
         'en':
             'Major connecting elongation of the pronoun ha when it falls between two vowelled letters and is followed by hamza. Duration: 4–5 counts.',
         'ar':
-            'مد هاء الضمير الواقعة بين متحركين إذا جاء بعدها همز، ومقداره أربع إلى خمس حركات.',
+            'مد هاء الضمير الواقعة بين متحركين إذا جاء بعدها همز. مقداره: ٤–٥ حركات.',
         'ur':
             'ضمیر کی ہاء دو متحرک حروف کے درمیان ہو اور اس کے بعد ہمزہ آئے تو اسے چار سے پانچ حرکات کھینچا جاتا ہے۔',
         'tr':
@@ -468,7 +468,8 @@ class RulesRepository {
       descriptions: {
         'en':
             'A compulsory madd prolonged for 6 counts when a madd letter is followed by a permanent sukoon or shaddah.',
-        'ar': 'مد لازم يُمد ست حركات عند وقوع حرف المد قبل سكون أصلي أو شدة.',
+        'ar':
+            'مد لازم عند وقوع حرف المد قبل سكون أصلي أو شدة. مقداره: ٦ حركات.',
         'ur': 'مد لازم میں حرفِ مد کو چھ حرکات تک کھینچا جاتا ہے۔',
         'tr':
             'Med harfinden sonra asli sükûn veya şedde gelirse 6 hareke uzatılır.',
