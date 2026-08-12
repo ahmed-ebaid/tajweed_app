@@ -25,12 +25,22 @@ class RuleExampleReferences {
     TajweedRule.ikhfaShafawi: '079014',
     TajweedRule.iqlab: '080016',
     TajweedRule.izhar: '101011',
-    TajweedRule.shaddah: '055064',
-    TajweedRule.waqf: '103001',
+    TajweedRule.shaddah: '001002',
+    TajweedRule.waqf: '006036',
     TajweedRule.sajdah: '053062',
     TajweedRule.hamzatWasl: '052001',
     TajweedRule.laamShamsiyah: '052001',
     TajweedRule.silent: '020028',
+  };
+
+  static const Map<TajweedRule, Set<int>> forcedHighlightWordIndices = {
+    TajweedRule.izhar: {0},
+    TajweedRule.shaddah: {2},
+  };
+
+  static const Map<TajweedRule, Map<int, String>>
+  forcedMarkersAfterWordIndices = {
+    TajweedRule.waqf: {3: 'ۘ'},
   };
 
   static AyahReference? referenceFor(TajweedRule rule) {

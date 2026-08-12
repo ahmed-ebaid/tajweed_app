@@ -66,7 +66,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.shaddah:
         return const Color(0xFF6B4C3B);
       case TajweedRule.waqf:
-        return const Color(0xFF5F6368);
+        return const Color(0xFF9A6700);
       case TajweedRule.sajdah:
         return const Color(0xFF37474F);
       case TajweedRule.hamzatWasl:
