@@ -81,4 +81,22 @@ void main() {
       expect(description, contains('آخر الكلمة'));
     },
   );
+
+  test('Arabic madd descriptions show numeric count ranges', () {
+    const expectedCounts = {
+      TajweedRule.maddTabeei: '٢ حركة',
+      TajweedRule.maddMuttasil: '٤–٥ حركات',
+      TajweedRule.maddMunfasil: '٢–٥ حركات',
+      TajweedRule.maddSilahSughra: '٢ حركة',
+      TajweedRule.maddSilahKubra: '٤–٥ حركات',
+      TajweedRule.maddLazim: '٦ حركات',
+    };
+
+    for (final entry in expectedCounts.entries) {
+      final description = RulesRepository.findByRule(
+        entry.key,
+      )!.description('ar');
+      expect(description, contains(entry.value), reason: entry.key.name);
+    }
+  });
 }
