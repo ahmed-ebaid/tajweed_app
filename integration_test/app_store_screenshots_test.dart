@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:provider/provider.dart';
+import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/providers/bookmark_provider.dart';
 import 'package:tajweed_practice/core/providers/daily_lesson_provider.dart';
 import 'package:tajweed_practice/core/providers/locale_provider.dart';
@@ -15,9 +16,11 @@ import 'package:tajweed_practice/core/services/quran_api_service.dart';
 import 'package:tajweed_practice/features/quiz/quiz_screen.dart';
 import 'package:tajweed_practice/features/reader/reader_screen.dart';
 import 'package:tajweed_practice/features/reader/widgets/tafseer_sheet.dart';
+import 'package:tajweed_practice/features/reader/widgets/word_detail_sheet.dart';
 import 'package:tajweed_practice/features/rules/rule_detail_screen.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/rules_screen.dart';
+import 'package:tajweed_practice/features/settings/language_selector_screen.dart';
 import 'package:tajweed_practice/features/settings/settings_screen.dart';
 import 'package:tajweed_practice/main.dart';
 
@@ -61,6 +64,31 @@ void main() {
     await binding.takeScreenshot('02-ayah-reader');
 
     final readerContext = tester.element(find.byType(ReaderScreen));
+    showModalBottomSheet<void>(
+      context: readerContext,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (_) => const WordDetailSheet(
+        rule: TajweedRule.maddTabeei,
+        word: 'ٱلرَّحْمَـٰنِ',
+        ayah: Ayah(
+          surahNumber: 1,
+          ayahNumber: 1,
+          pageNumber: 1,
+          arabic: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
+          translations: {
+            'en': 'In the name of God, the Lord of Mercy, the Giver of Mercy!',
+          },
+          words: [],
+        ),
+      ),
+    );
+    await _finishTransition(tester);
+    expect(find.byType(WordDetailSheet), findsOneWidget);
+    await binding.takeScreenshot('09-word-tajweed');
+    Navigator.of(readerContext).pop();
+    await _finishTransition(tester);
+
     showModalBottomSheet<void>(
       context: readerContext,
       isScrollControlled: true,
@@ -113,6 +141,13 @@ void main() {
     await _finishTransition(tester);
     expect(find.byType(SettingsScreen), findsOneWidget);
     await binding.takeScreenshot('08-settings');
+
+    navigator.push(
+      MaterialPageRoute<void>(builder: (_) => const LanguageSelectorScreen()),
+    );
+    await _finishTransition(tester);
+    expect(find.byType(LanguageSelectorScreen), findsOneWidget);
+    await binding.takeScreenshot('10-languages');
   });
 }
 
