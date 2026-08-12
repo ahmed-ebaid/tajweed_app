@@ -124,4 +124,4 @@ the App does not request microphone or speech-recognition permission.
   connection and App Attest information.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Upload the final screenshot sets and select build 21.
+- Upload the final screenshot sets and select build 22.
