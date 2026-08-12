@@ -2266,15 +2266,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                 TajweedLegend(rules: TajweedRule.values, langCode: langCode),
                 const Divider(height: 0.5),
               ],
-              // DEBUG: Show audio map status in ayah mode only
-              Container(
-                color: const Color(0xFFF5F5F5),
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  '📻 Audio URLs: ${_audioUrls.length} | Offline: $_downloadedAyahs/$_totalAyahs | Last read: $_selectedSurah:${context.watch<BookmarkProvider>().lastReadAyah}',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF666)),
-                ),
-              ),
             ],
             Expanded(
               child: _loading
@@ -4195,15 +4186,20 @@ class _JuzMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     final juzLabel = AppLocalizations.of(context).get('juz');
     final langCode = Localizations.localeOf(context).languageCode;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = isDark ? theme.colorScheme.primary : const Color(0xFFB8860B);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5E6C8),
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHigh
+            : const Color(0xFFF5E6C8),
         border: Border.symmetric(
           horizontal: BorderSide(
-            color: const Color(0xFFD4A940).withValues(alpha: 0.5),
+            color: accent.withValues(alpha: 0.5),
             width: 0.5,
           ),
         ),
@@ -4215,8 +4211,7 @@ class _JuzMarker extends StatelessWidget {
             fontFamily: 'UthmanicHafs',
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xFFB8860B),
-          ),
+          ).copyWith(color: accent),
         ),
       ),
     );
@@ -4447,17 +4442,27 @@ class _BasmalaOpener extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
+    final accent = isDark
+        ? colorScheme.primary.withValues(alpha: 0.78)
+        : const Color(0xFFD4A940);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFFF8E8), Color(0xFFF5E6C8)],
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    colorScheme.surfaceContainerHigh,
+                    colorScheme.surfaceContainer,
+                  ]
+                : const [Color(0xFFFFF8E8), Color(0xFFF5E6C8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFD4A940), width: 0.8),
+          border: Border.all(color: accent, width: 0.8),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -4469,13 +4474,13 @@ class _BasmalaOpener extends StatelessWidget {
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.rtl,
                 style: theme.textTheme.labelLarge?.copyWith(
-                  color: const Color(0xFF8B6B2A),
+                  color: isDark ? colorScheme.primary : const Color(0xFF8B6B2A),
                   fontWeight: FontWeight.w700,
                 ),
               ),
               if (showBasmala) ...[
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   _bismillah,
                   textAlign: TextAlign.center,
                   textDirection: TextDirection.rtl,
@@ -4483,7 +4488,9 @@ class _BasmalaOpener extends StatelessWidget {
                     fontFamily: 'UthmanicHafs',
                     fontSize: 28,
                     height: 1.8,
-                    color: Color(0xFF3F3122),
+                    color: isDark
+                        ? colorScheme.onSurface
+                        : const Color(0xFF3F3122),
                   ),
                 ),
               ],
