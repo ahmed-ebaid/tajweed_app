@@ -1,7 +1,8 @@
 # Tajweed Practice — Flutter Project
 
 A multilingual Quran tajweed practice app supporting English, Arabic, Urdu,
-Turkish, French, Indonesian, German, and Spanish.
+Turkish, French, Indonesian, German, and Spanish. The registered product name
+is **Tajweed Practice** and its App Store display name is **Tajweed**.
 
 ---
 
@@ -44,7 +45,7 @@ tajweed_app/
 │   ├── app_icon/
 │   ├── fonts/                         # Amiri Quran font and SIL OFL license
 │   └── tajweed/
-├── docs/                             # Public privacy and support pages
+├── docs/                             # Public privacy, terms, and support pages
 ├── test/
 │   ├── unit/
 │   ├── widget/
@@ -193,5 +194,37 @@ CI enforcement:
   https://api-docs.quran.foundation/docs/category/content-apis
 - Quran.Foundation Content Sync:
   `/content/api/v4/resources/sync`
+- Quran.Foundation Developer Terms:
+  https://api-docs.quran.com/legal/developer-terms/
+- Quran.Foundation Developer Privacy Policy Packet:
+  https://api-docs.quran.foundation/legal/developer-privacy/
 - Audio CDN: https://verses.quran.com/{reciterId}/{surah}{ayah}.mp3
 - Amiri Quran font: https://github.com/aliftype/amiri
+
+---
+
+## Public documentation
+
+- Product page: https://ahmed-ebaid.github.io/tajweed_app/
+- Privacy Policy: https://ahmed-ebaid.github.io/tajweed_app/privacy-policy.html
+- Terms of Use: https://ahmed-ebaid.github.io/tajweed_app/terms-of-use.html
+- Support: https://ahmed-ebaid.github.io/tajweed_app/support.html
+
+---
+
+## App Store release
+
+The public version is read from `pubspec.yaml`; the value `1.0.0+21` produces
+App Store version **1.0.0** and internal build **21**.
+
+Before submission:
+
+1. Run the complete Flutter test suite and analyzer.
+2. Run the release integrity gate documented above.
+3. Archive with the production Quran proxy configuration and export the IPA.
+4. Confirm the hosted Privacy Policy, Terms of Use, and Support URLs.
+5. Upload current App Store screenshots, complete listing metadata, and submit
+   the accepted build for App Review.
+
+Prepared English listing copy, review notes, and the screenshot plan are in
+`release/app-store-listing.md`.

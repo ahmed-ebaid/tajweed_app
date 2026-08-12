@@ -3,49 +3,81 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tajweed App – Privacy Policy</title>
+  <title>Tajweed Practice – Privacy Policy</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
     h1 { color: #1D9E75; }
     h2 { margin-top: 2em; }
+    a { color: #1D9E75; }
     .date { color: #666; font-size: 0.9em; }
   </style>
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="date">Last updated: August 10, 2026</p>
+  <p class="date">Effective and last updated: August 12, 2026</p>
 
-  <p><strong>Tajweed</strong> ("the App") is developed by Ebaid LLC. This policy explains how we handle your information.</p>
+  <p><strong>Tajweed Practice</strong>, displayed as <strong>Tajweed</strong> in the App Store ("the App"), is developed and operated by Ebaid LLC. This policy explains what information the App handles, why it is handled, and the choices available to you.</p>
 
-  <h2>Information We Collect</h2>
-  <p>The App does not require an account and does not send bookmarks, notes, reading history, selected reciters, or other user preferences to Quran.Foundation. These items are stored locally on your device.</p>
+  <h2>Scope and Quran.Foundation Services</h2>
+  <p>The App uses Quran.Foundation APIs and content services to provide Quran text, word data, tajweed markup, translations, Tafseer, recitation metadata, audio, and content updates. Quran.Foundation operates services in the broader Quran.com and QuranReflect ecosystem. The App does not access QuranReflect accounts, reflections, posts, or other user-generated content, and it is not an official Quran.Foundation, Quran.com, or QuranReflect application.</p>
 
-  <h2>Network Requests</h2>
-  <p>The App makes network requests only when needed to provide Quran content, fonts, and audio:</p>
+  <h2>Information Stored on Your Device</h2>
+  <p>The App does not require an account. The following information may be stored locally so the App can provide features you choose to use:</p>
   <ul>
-    <li><strong>Ebaid LLC Cloudflare Worker</strong> (tajweed-quran-proxy.ebaidllc.workers.dev and tajweed-quran-proxy-production.ebaidllc.workers.dev) — securely proxies Quran.Foundation Content API requests without exposing API credentials in the App</li>
-    <li><strong>Quran.Foundation</strong> (apis.quran.foundation) — provides Quran text, word data, tajweed markup, translations, Tafseer, recitation metadata, and Content Sync updates through the Worker</li>
-    <li><strong>Quran.Foundation CDN</strong> (verses.quran.com / audio.qurancdn.com) — provides audio recitation files</li>
-    <li><strong>Google Fonts</strong> (fonts.gstatic.com) — for Arabic font rendering</li>
+    <li>language, reciter, Tafseer, theme, and reader preferences;</li>
+    <li>bookmarks, reading position, lesson progress, quiz progress, and streak activity;</li>
+    <li>cached Quran text, translations, Tafseer, recitation metadata, fonts, and downloaded audio.</li>
   </ul>
-  <p>The App does not add names, email addresses, bookmarks, notes, or advertising identifiers to these requests. Like most internet services, the service operators may receive ordinary connection information such as an IP address, request headers, and timestamps under their own privacy practices.</p>
+  <p>This local information is not sent to Ebaid LLC or Quran.Foundation. The current version does not create a cloud profile or synchronize this information between devices.</p>
 
-  <h2>Offline Quran Content</h2>
-  <p>Quran text, translations, Tafseer, recitation metadata, and selected audio may be cached locally for offline reading and listening. Mushaf pages are rendered locally from Quran.Foundation Uthmani text and page metadata; the App does not download or redistribute page images. When the device is online, the App checks for due cache maintenance at startup, on foreground resume, every 12 hours while it remains open, and after connectivity returns. Quran content is revalidated when its last successful validation is seven days old, and Quran.Foundation updates, deletions, and invalidations are applied. Cached content is used inside the App and is not exposed as a downloadable raw dataset.</p>
+  <h2>Network and Technical Information</h2>
+  <p>When the App retrieves online content, ordinary technical information may be processed automatically, including IP address, request headers, timestamps, requested resource, and Apple App Attest verification material. This information is used to deliver requested content, protect API credentials, prevent abuse, diagnose failures, and maintain service security. The App does not add your name, email address, bookmarks, notes, recordings, advertising identifier, or reading history to these requests.</p>
 
-  <h2>Microphone Access</h2>
-  <p>If enabled, microphone access is used exclusively for local recitation practice. Recordings remain on the device and are not uploaded by the current version of the App.</p>
+  <h2>Service Providers and Disclosures</h2>
+  <p>The App uses the following service providers:</p>
+  <ul>
+    <li><strong>Ebaid LLC Cloudflare Workers</strong> (tajweed-quran-proxy.ebaidllc.workers.dev and tajweed-quran-proxy-production.ebaidllc.workers.dev) to authenticate App requests and securely proxy Quran.Foundation Content API requests without exposing API credentials in the App;</li>
+    <li><strong>Quran.Foundation</strong> (apis.quran.foundation), including services associated with the Quran.com ecosystem, to provide Quran content and metadata;</li>
+    <li><strong>Quran.Foundation content and audio delivery</strong> (including verses.quran.com and audio.qurancdn.com) to provide recitation files; and</li>
+    <li><strong>Google Fonts</strong> (fonts.gstatic.com) when a required fallback font is not already available locally.</li>
+  </ul>
+  <p>These providers may process ordinary connection information under their own privacy practices and may process it in countries other than your own. Ebaid LLC does not sell, rent, mine, or share your personal information for advertising, behavioral profiling, or data-broker purposes. Information may be disclosed if required by law or reasonably necessary to protect the App, its users, or service providers.</p>
 
-  <h2>Analytics &amp; Tracking</h2>
-  <p>The App does <strong>not</strong> use any analytics, advertising, or tracking frameworks.</p>
+  <h2>Religious and Sensitive Information</h2>
+  <p>Quran reading, learning activity, and bookmarks may reveal religious beliefs or practices and may be treated as sensitive information in some jurisdictions. The App minimizes this risk by keeping those activities on your device, not requiring an account, not using analytics or advertising SDKs, and not transmitting this activity to Ebaid LLC or Quran.Foundation. The App does not use religious activity to train artificial intelligence models.</p>
+
+  <h2>Legal Bases</h2>
+  <p>Where applicable law requires a legal basis, local information is handled at your request to provide the App's features and settings. Network and security information is processed as necessary to provide requested Quran content and for the legitimate interests of securing, maintaining, and preventing misuse of the service.</p>
+
+  <h2>Retention and Deletion</h2>
+  <p>Local preferences and progress remain until you remove them or uninstall the App. Cached Quran content and downloaded audio remain until they are cleared, replaced during content maintenance, or removed with the App. Technical service logs, if retained by Ebaid LLC or its providers, are kept only as long as reasonably necessary for security, abuse prevention, troubleshooting, and legal obligations.</p>
+  <p>You can delete individual bookmarks or downloaded content where controls are provided. Uninstalling the App removes its locally stored data from the device, subject to normal device backups controlled by Apple and your settings.</p>
+
+  <h2>Your Rights and Choices</h2>
+  <p>Depending on your location, you may have rights to request access, correction, deletion, restriction, objection, or information about personal data processing. Because the App does not maintain user accounts or receive your local App data, Ebaid LLC generally cannot identify or retrieve information stored only on your device. You may contact us about network or support information using the details below.</p>
+
+  <h2>Analytics, Advertising, and Tracking</h2>
+  <p>The App does not use analytics, advertising, cross-app tracking, or third-party advertising profiles.</p>
 
   <h2>Children's Privacy</h2>
-  <p>The App is suitable for all ages and does not knowingly collect information from children.</p>
+  <p>The App is suitable for a general audience and does not knowingly collect personal information from children. No account is required, and learning activity remains on the device. A parent or guardian may contact us with a privacy concern.</p>
+
+  <h2>Security</h2>
+  <p>The App uses encrypted HTTPS connections, an app-owned proxy, short-lived access tokens, and Apple App Attest to protect Quran.Foundation API access. No method of storage or transmission is completely secure, but Ebaid LLC applies reasonable technical safeguards appropriate to the limited information processed.</p>
 
   <h2>Changes to This Policy</h2>
-  <p>We may update this policy from time to time. Changes will be posted on this page with a revised date.</p>
+  <p>We may update this policy as the App, service providers, or legal requirements change. The revised policy will be posted on this page with a new effective date. Material changes will also be communicated in the App or App Store listing when appropriate.</p>
 
   <h2>Contact</h2>
-  <p>If you have questions about this policy, please contact us via the App Store listing or open an issue on our GitHub repository.</p>
+  <p>For privacy questions or requests, contact:</p>
+  <address>
+    Ebaid LLC<br>
+    1291 Rhodes Ln<br>
+    Naperville, IL 60540<br>
+    United States<br>
+    <a href="mailto:ahmed@ebaidllc.com">ahmed@ebaidllc.com</a>
+  </address>
+
+  <p><a href="terms-of-use.html">Terms of Use</a> · <a href="support.html">Support</a></p>
 </body>
 </html>

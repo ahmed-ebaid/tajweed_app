@@ -51,10 +51,6 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Tajweed needs microphone access to record your Quran recitation for tajweed feedback.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Tajweed uses speech recognition to analyse your recitation accuracy.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

@@ -262,7 +262,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
         ? null
         : '${l10n.get('surah')} ${ref.surah}, ${l10n.get('ayah')} ${ref.ayah}';
 
-    final appName = l10n.appName.trim();
+    const appName = AppLinks.productName;
     final lines = <String>[
       if (localizedName.isNotEmpty) localizedName,
       if (arabicName.isNotEmpty && arabicName != localizedName) arabicName,
