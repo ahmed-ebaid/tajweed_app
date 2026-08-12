@@ -1,8 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_links.dart';
-import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/tafseer_provider.dart';
 import '../../../core/services/quran_api_service.dart';
 import '../../../core/services/quran_offline_sync_service.dart';
@@ -287,7 +287,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
       heading: strings.text('share_heading', {'verseKey': verseReference}),
       sourceLine: strings.text('share_source', {'source': source}),
       tafseerText: text,
-      appName: AppLocalizations.of(context).appName,
+      appName: AppLinks.productName,
     );
 
     try {
@@ -368,7 +368,11 @@ class _TafseerSheetState extends State<TafseerSheet> {
                           strippedText.isEmpty
                       ? null
                       : _shareTafseer,
-                  icon: const Icon(Icons.share_rounded),
+                  icon: const Icon(CupertinoIcons.share, size: 22),
+                  color: const Color(0xFF1D9E75),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
                 ),
                 IconButton(
                   tooltip: strings.text('close'),

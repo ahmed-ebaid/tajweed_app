@@ -1288,7 +1288,11 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutSectionTitle(title: s.text('quran_sources_title')),
               const _AboutBullet(
                 text:
-                    'Quran content and metadata are provided by Quran.Foundation through the app-owned secure proxy.',
+                    'Tajweed Practice is displayed as Tajweed in the App Store and is independently owned and operated by Ebaid LLC.',
+              ),
+              const _AboutBullet(
+                text:
+                    'Quran content and metadata are provided by Quran.Foundation through the app-owned secure proxy. Quran.Foundation operates services in the Quran.com and QuranReflect ecosystem; this app does not access QuranReflect accounts or user-generated content and is not an official Quran.Foundation application.',
               ),
               _AboutBullet(text: s.text('quran_b1')),
               _AboutBullet(text: s.text('quran_b2')),

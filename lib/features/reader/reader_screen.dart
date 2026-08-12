@@ -10,7 +10,6 @@ import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/constants/app_links.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/bookmark_provider.dart';
@@ -26,6 +25,7 @@ import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
+import 'ayah_share_content.dart';
 import '../reader/widgets/audio_player_bar.dart';
 import '../reader/widgets/single_page_scroll_physics.dart';
 import '../reader/widgets/tajweed_text.dart';
@@ -1955,15 +1955,11 @@ class _ReaderScreenState extends State<ReaderScreen>
     final surahName = _surahDisplayName(ayah.surahNumber);
     final translation = shareAyah.translation('en');
     final arabic = shareAyah.plainArabicText();
-    final text = <String>[
-      '$surahName ${ayah.surahNumber}:${ayah.ayahNumber}',
-      if (arabic.isNotEmpty) '',
-      if (arabic.isNotEmpty) arabic,
-      if (translation.isNotEmpty) '',
-      if (translation.isNotEmpty) translation,
-      '',
-      AppLinks.appStore,
-    ].join('\n');
+    final text = AyahShareContent.build(
+      heading: '$surahName ${ayah.surahNumber}:${ayah.ayahNumber}',
+      arabicText: arabic,
+      translation: translation,
+    );
 
     try {
       await SharePlus.instance.share(

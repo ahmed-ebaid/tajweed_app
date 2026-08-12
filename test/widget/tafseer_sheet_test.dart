@@ -88,12 +88,14 @@ void main() {
       heading: 'Tafseer — Ayah 1:1',
       sourceLine: 'Source: Ibn Kathir',
       tafseerText: 'Commentary text',
-      appName: 'Tajweed',
+      appName: AppLinks.productName,
     );
 
     expect(content, contains('Tafseer — Ayah 1:1'));
     expect(content, contains('Source: Ibn Kathir'));
     expect(content, contains('Commentary text'));
+    expect(content, contains('\n${AppLinks.productName}\n'));
+    expect(content, isNot(contains('تعلم التجويد')));
     expect(content, contains(AppLinks.appStore));
   });
 
