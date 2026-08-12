@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../core/constants/app_links.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/tafseer_provider.dart';
 import '../../../core/services/quran_api_service.dart';
 import '../../../core/services/quran_offline_sync_service.dart';
@@ -44,14 +47,35 @@ class TafseerSourceOption {
     final options = byId.values.toList(growable: true);
     options.sort((left, right) {
       final byName = left.displayName.toLowerCase().compareTo(
-            right.displayName.toLowerCase(),
-          );
+        right.displayName.toLowerCase(),
+      );
       if (byName != 0) return byName;
       return left.authorName.toLowerCase().compareTo(
-            right.authorName.toLowerCase(),
-          );
+        right.authorName.toLowerCase(),
+      );
     });
     return options;
+  }
+}
+
+class TafseerShareContent {
+  const TafseerShareContent._();
+
+  static String build({
+    required String heading,
+    required String sourceLine,
+    required String tafseerText,
+    required String appName,
+  }) {
+    return [
+      heading,
+      sourceLine,
+      '',
+      tafseerText.trim(),
+      '',
+      appName,
+      AppLinks.appStore,
+    ].join('\n');
   }
 }
 
@@ -65,7 +89,7 @@ class TafseerSheet extends StatefulWidget {
   final QuranApiService? api;
   final QuranOfflineSyncService? offlineSync;
   final Future<void> Function(int tafsirId, String tafsirName)?
-      onTafsirSelected;
+  onTafsirSelected;
 
   const TafseerSheet({
     super.key,
@@ -88,6 +112,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
   late final QuranOfflineSyncService _offlineSync;
   late int _selectedTafsirId;
   late String _selectedTafsirName;
+  final GlobalKey _shareButtonKey = GlobalKey();
 
   List<TafseerSourceOption> _sources = const [];
   String? _text;
@@ -168,10 +193,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
       final sources = TafseerSourceOption.fromApiList(
         TafseerProvider.sourcesForLanguage(allSources, widget.languageCode),
         displayNameForSource: (source) {
-          return TafseerProvider.sourceDisplayName(
-            widget.languageCode,
-            source,
-          );
+          return TafseerProvider.sourceDisplayName(widget.languageCode, source);
         },
       );
       if (!sources.any((source) => source.id == _selectedTafsirId) &&
@@ -186,8 +208,8 @@ class _TafseerSheetState extends State<TafseerSheet> {
         );
         sources.sort(
           (left, right) => left.displayName.toLowerCase().compareTo(
-                right.displayName.toLowerCase(),
-              ),
+            right.displayName.toLowerCase(),
+          ),
         );
       }
       if (sources.isEmpty) {
@@ -213,8 +235,9 @@ class _TafseerSheetState extends State<TafseerSheet> {
     }
 
     final source = _sources.firstWhere((item) => item.id == tafsirId);
-    final failureMessage =
-        _TafseerSheetStrings.of(context).text('switch_failed');
+    final failureMessage = _TafseerSheetStrings.of(
+      context,
+    ).text('switch_failed');
     setState(() {
       _switching = true;
       _selectionError = null;
@@ -238,6 +261,45 @@ class _TafseerSheetState extends State<TafseerSheet> {
       setState(() => _selectionError = failureMessage);
     } finally {
       if (mounted) setState(() => _switching = false);
+    }
+  }
+
+  Rect _shareOriginRect() {
+    final renderObject =
+        _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderObject != null && renderObject.hasSize) {
+      return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    }
+    return const Rect.fromLTWH(1, 1, 1, 1);
+  }
+
+  Future<void> _shareTafseer() async {
+    final strings = _TafseerSheetStrings.of(context);
+    final text = _stripHtml(_text ?? '');
+    if (text.isEmpty) return;
+
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final verseReference = _localizedVerseKey(widget.verseKey, localeCode);
+    final source = _selectedTafsirName.trim().isNotEmpty
+        ? _selectedTafsirName.trim()
+        : '$_selectedTafsirId';
+    final content = TafseerShareContent.build(
+      heading: strings.text('share_heading', {'verseKey': verseReference}),
+      sourceLine: strings.text('share_source', {'source': source}),
+      tafseerText: text,
+      appName: AppLocalizations.of(context).appName,
+    );
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: content,
+          subject: strings.text('share_heading', {'verseKey': verseReference}),
+          sharePositionOrigin: _shareOriginRect(),
+        ),
+      );
+    } catch (error) {
+      debugPrint('Tafseer share failed: $error');
     }
   }
 
@@ -269,8 +331,11 @@ class _TafseerSheetState extends State<TafseerSheet> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.menu_book_rounded,
-                    color: Color(0xFF1D9E75), size: 22),
+                const Icon(
+                  Icons.menu_book_rounded,
+                  color: Color(0xFF1D9E75),
+                  size: 22,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -289,9 +354,21 @@ class _TafseerSheetState extends State<TafseerSheet> {
                             ),
                           }),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                ),
+                IconButton(
+                  key: _shareButtonKey,
+                  tooltip: strings.text('share'),
+                  onPressed:
+                      _loading ||
+                          _switching ||
+                          _error != null ||
+                          strippedText.isEmpty
+                      ? null
+                      : _shareTafseer,
+                  icon: const Icon(Icons.share_rounded),
                 ),
                 IconButton(
                   tooltip: strings.text('close'),
@@ -316,46 +393,42 @@ class _TafseerSheetState extends State<TafseerSheet> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            strings
-                                .text('load_failed', {'error': _error ?? ''}),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      )
-                    : showEmptyState
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                strings.text(
-                                  'empty',
-                                  {'tafsirId': '$_selectedTafsirId'},
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          )
-                        : SingleChildScrollView(
-                            controller: controller,
-                            padding: const EdgeInsets.all(16),
-                            child: SelectableText(
-                              strippedText,
-                              textDirection:
-                                  isRtl ? TextDirection.rtl : TextDirection.ltr,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    height: 1.8,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ),
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        strings.text('load_failed', {'error': _error ?? ''}),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                : showEmptyState
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        strings.text('empty', {
+                          'tafsirId': '$_selectedTafsirId',
+                        }),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    controller: controller,
+                    padding: const EdgeInsets.all(16),
+                    child: SelectableText(
+                      strippedText,
+                      textDirection: isRtl
+                          ? TextDirection.rtl
+                          : TextDirection.ltr,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        height: 1.8,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -482,6 +555,9 @@ class _TafseerSheetStrings {
       'retry': 'Retry',
       'switch_failed':
           'Could not load the selected Tafseer. The previous source remains selected.',
+      'share': 'Share Tafseer',
+      'share_heading': 'Tafseer — Ayah {verseKey}',
+      'share_source': 'Source: {source}',
     },
     'ar': {
       'title': 'التفسير — {verseKey}',
@@ -495,6 +571,9 @@ class _TafseerSheetStrings {
       'sources_failed': 'تعذر تحميل مصادر التفسير.',
       'retry': 'إعادة المحاولة',
       'switch_failed': 'تعذر تحميل التفسير المحدد. سيبقى المصدر السابق محددًا.',
+      'share': 'مشاركة التفسير',
+      'share_heading': 'تفسير الآية {verseKey}',
+      'share_source': 'المصدر: {source}',
     },
     'ur': {
       'title': 'تفسیر — {verseKey}',
@@ -508,6 +587,9 @@ class _TafseerSheetStrings {
       'sources_failed': 'تفسیر کے مآخذ لوڈ نہیں ہو سکے۔',
       'retry': 'دوبارہ کوشش کریں',
       'switch_failed': 'منتخب تفسیر لوڈ نہیں ہو سکی۔ پچھلا ماخذ منتخب رہے گا۔',
+      'share': 'تفسیر شیئر کریں',
+      'share_heading': 'آیت {verseKey} کی تفسیر',
+      'share_source': 'ماخذ: {source}',
     },
     'tr': {
       'title': 'Tefsir — Ayet {verseKey}',
@@ -522,6 +604,9 @@ class _TafseerSheetStrings {
       'retry': 'Yeniden dene',
       'switch_failed':
           'Seçilen tefsir yüklenemedi. Önceki kaynak seçili kalacak.',
+      'share': 'Tefsiri paylaş',
+      'share_heading': 'Ayet {verseKey} tefsiri',
+      'share_source': 'Kaynak: {source}',
     },
     'fr': {
       'title': 'Tafsir — Ayah {verseKey}',
@@ -536,6 +621,9 @@ class _TafseerSheetStrings {
       'retry': 'Réessayer',
       'switch_failed':
           "Impossible de charger le tafsir sélectionné. La source précédente reste sélectionnée.",
+      'share': 'Partager le tafsir',
+      'share_heading': 'Tafsir — Ayah {verseKey}',
+      'share_source': 'Source : {source}',
     },
     'id': {
       'title': 'Tafsir — Ayat {verseKey}',
@@ -550,6 +638,9 @@ class _TafseerSheetStrings {
       'retry': 'Coba lagi',
       'switch_failed':
           'Tafsir yang dipilih tidak dapat dimuat. Sumber sebelumnya tetap dipilih.',
+      'share': 'Bagikan tafsir',
+      'share_heading': 'Tafsir — Ayat {verseKey}',
+      'share_source': 'Sumber: {source}',
     },
     'de': {
       'title': 'Tafsir — Ayah {verseKey}',
@@ -564,6 +655,9 @@ class _TafseerSheetStrings {
       'retry': 'Erneut versuchen',
       'switch_failed':
           'Der ausgewählte Tafsir konnte nicht geladen werden. Die vorherige Quelle bleibt ausgewählt.',
+      'share': 'Tafsir teilen',
+      'share_heading': 'Tafsir — Ayah {verseKey}',
+      'share_source': 'Quelle: {source}',
     },
     'es': {
       'title': 'Tafsir — Aleya {verseKey}',
@@ -578,6 +672,9 @@ class _TafseerSheetStrings {
       'retry': 'Reintentar',
       'switch_failed':
           'No se pudo cargar el tafsir seleccionado. La fuente anterior seguirá seleccionada.',
+      'share': 'Compartir tafsir',
+      'share_heading': 'Tafsir — Aleya {verseKey}',
+      'share_source': 'Fuente: {source}',
     },
   };
 
