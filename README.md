@@ -1,8 +1,7 @@
 # Tajweed Practice — Flutter Project
 
 A multilingual Quran tajweed practice app supporting English, Arabic, Urdu,
-Turkish, French, Indonesian, German, and Spanish. The registered product name
-is **Tajweed Practice** and its App Store display name is **Tajweed**.
+Turkish, French, Indonesian, German, and Spanish.
 
 ---
 
