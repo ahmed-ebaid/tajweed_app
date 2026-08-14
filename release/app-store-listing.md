@@ -2,21 +2,21 @@
 
 ## App information
 
-- **App Store name:** Tajweed
-- **Registered product name:** Tajweed Practice
+- **App Store name:** Tajweed Practice
+- **Device display name:** Tajweed
 - **Subtitle:** Read, Listen & Learn Tajweed
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.0.0
-- **Build:** 21
+- **Build:** 23
 
 ## URLs
 
 - **Support:** https://ahmed-ebaid.github.io/tajweed_app/support.html
 - **Privacy Policy:** https://ahmed-ebaid.github.io/tajweed_app/privacy-policy.html
 - **Terms of Use:** https://ahmed-ebaid.github.io/tajweed_app/terms-of-use.html
-- **Marketing:** https://ahmed-ebaid.github.io/tajweed_app/
+- **Marketing:** https://ebaidllc.com/
 
 ## Promotional text
 
@@ -96,6 +96,8 @@ capture and must not obscure Quran content.
 6. **Rules Library** — “Explore every Tajweed rule”
 7. **Rule detail and audio** — “Understand and hear each rule”
 8. **Offline settings** — “Keep selected content available offline”
+9. **Interactive word guidance** — “Tap highlighted text to learn the rule”
+10. **Language selector** — “Read in eight supported languages”
 
 Capture at least:
 
@@ -111,7 +113,7 @@ and does not bypass App Attest in production code.
 
 ## App Review notes
 
-Tajweed Practice is displayed as “Tajweed” on the App Store and device.
+Tajweed Practice is independently owned and operated by Ebaid LLC.
 Quran.Foundation Content API requests are routed through an Ebaid LLC
 Cloudflare Worker and protected by Apple App Attest. No login is required, and
 the App does not request microphone or speech-recognition permission.

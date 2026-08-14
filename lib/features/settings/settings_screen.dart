@@ -1288,7 +1288,7 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutSectionTitle(title: s.text('quran_sources_title')),
               const _AboutBullet(
                 text:
-                    'Tajweed Practice is displayed as Tajweed in the App Store and is independently owned and operated by Ebaid LLC.',
+                   'Tajweed Practice is independently owned and operated by Ebaid LLC.',
               ),
               const _AboutBullet(
                 text:
