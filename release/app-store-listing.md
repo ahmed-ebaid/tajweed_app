@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.0.0
-- **Build:** 22
+- **Build:** 23
 
 ## URLs
 
@@ -113,7 +113,7 @@ and does not bypass App Attest in production code.
 
 ## App Review notes
 
-Tajweed Practice is displayed as “Tajweed” beneath the app icon on the device.
+Tajweed Practice is independently owned and operated by Ebaid LLC.
 Quran.Foundation Content API requests are routed through an Ebaid LLC
 Cloudflare Worker and protected by Apple App Attest. No login is required, and
 the App does not request microphone or speech-recognition permission.
