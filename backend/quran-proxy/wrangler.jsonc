@@ -32,6 +32,9 @@
   "env": {
     "production": {
       "name": "tajweed-quran-proxy-production",
+      "observability": {
+        "enabled": false
+      },
       "vars": {
         "QF_ENV": "production",
         "APPLE_TEAM_ID": "Y6484R42R9",
