@@ -120,10 +120,9 @@ the App does not request microphone or speech-recognition permission.
 
 ## Manual App Store Connect confirmations
 
-- Confirm App Privacy answers against the final production logging and retention
-  configuration. The app does not track users or transmit bookmarks, progress,
-  or preferences, but service infrastructure may process ordinary
-  connection and App Attest information.
+- Production Workers Logs are disabled. Cloudflare may process ordinary
+  connection and App Attest information in real time, but the app does not
+  retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Upload the final screenshot sets and select build 22.
+- Upload the final screenshot sets and select build 23.
