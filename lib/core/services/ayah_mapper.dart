@@ -3,6 +3,16 @@ import 'package:flutter/foundation.dart';
 import '../models/tajweed_models.dart';
 import 'quran_api_service.dart';
 
+class _PronouncedLetterPosition {
+  final int wordIndex;
+  final String letter;
+
+  const _PronouncedLetterPosition({
+    required this.wordIndex,
+    required this.letter,
+  });
+}
+
 /// Maps raw Quran.com API v4 JSON responses into typed [Ayah] models
 /// with word-level tajweed annotations.
 class AyahMapper {
@@ -136,7 +146,8 @@ class AyahMapper {
           );
         })
         .toList();
-    final wordsWithMaddSilah = _applyMaddSilahRules(words);
+    final wordsWithCorrectedMadd = _correctMaddMuttasilRules(words);
+    final wordsWithMaddSilah = _applyMaddSilahRules(wordsWithCorrectedMadd);
 
     if (_debugMarkerAyahs &&
         surahNumber == 2 &&
@@ -365,6 +376,85 @@ class AyahMapper {
     return result;
   }
 
+  static List<TajweedWord> _correctMaddMuttasilRules(List<TajweedWord> words) {
+    const hamzaLetters = {'ء', 'أ', 'إ', 'آ', 'ٱ'};
+
+    return [
+      for (int wordIndex = 0; wordIndex < words.length; wordIndex++)
+        TajweedWord(
+          arabic: words[wordIndex].arabic,
+          audioUrl: words[wordIndex].audioUrl,
+          spans: [
+            for (final span in words[wordIndex].spans)
+              if (span.rule == TajweedRule.maddMuttasil)
+                TajweedSpan(
+                  start: span.start,
+                  end: span.end,
+                  rule: switch (_nextPronouncedLetterPosition(
+                    words,
+                    wordIndex: wordIndex,
+                    characterIndex: span.end,
+                  )) {
+                    final position?
+                        when position.wordIndex > wordIndex &&
+                            hamzaLetters.contains(position.letter) =>
+                      TajweedRule.maddMunfasil,
+                    _ => TajweedRule.maddMuttasil,
+                  },
+                )
+              else
+                span,
+          ],
+        ),
+    ];
+  }
+
+  static _PronouncedLetterPosition? _nextPronouncedLetterPosition(
+    List<TajweedWord> words, {
+    required int wordIndex,
+    required int characterIndex,
+  }) {
+    for (
+      int currentWord = wordIndex;
+      currentWord < words.length;
+      currentWord++
+    ) {
+      final word = words[currentWord];
+      final start = currentWord == wordIndex ? characterIndex : 0;
+      for (int i = start; i < word.arabic.length; i++) {
+        final codeUnit = word.arabic.codeUnitAt(i);
+        if (_isArabicCombiningMark(codeUnit) ||
+            word.arabic[i].trim().isEmpty ||
+            _isWaqfMark(codeUnit) ||
+            _isCoveredByRule(word.spans, i, TajweedRule.silent)) {
+          continue;
+        }
+        return _PronouncedLetterPosition(
+          wordIndex: currentWord,
+          letter: word.arabic[i],
+        );
+      }
+    }
+    return null;
+  }
+
+  static bool _isCoveredByRule(
+    List<TajweedSpan> spans,
+    int characterIndex,
+    TajweedRule rule,
+  ) {
+    return spans.any(
+      (span) =>
+          span.rule == rule &&
+          span.start <= characterIndex &&
+          characterIndex < span.end,
+    );
+  }
+
+  static bool _isWaqfMark(int codeUnit) {
+    return codeUnit >= 0x06D6 && codeUnit <= 0x06DC;
+  }
+
   static String? _nextPronouncedLetter(
     List<TajweedWord> words, {
     required int wordIndex,
@@ -437,9 +527,26 @@ class AyahMapper {
       int idx = -1;
       int endIdx = -1;
 
+      // Prefer the rule's source offset. Searching only by its inner text can
+      // select an earlier identical sequence, as in ءَابَآءَنَآ.
+      final sourcePrefix = _normalizeArabicText(
+        _stripHtmlPreserveSpacing(tajweedHtml.substring(0, match.start)),
+      );
+      if (sourcePrefix.length <= arabicText.length) {
+        final sourceMatch = _flexibleMatch(
+          arabicText,
+          ruleText,
+          sourcePrefix.length,
+        );
+        if (sourceMatch != null && sourceMatch[0] == sourcePrefix.length) {
+          idx = sourceMatch[0];
+          endIdx = sourceMatch[1];
+        }
+      }
+
       // Pass 1: exact match
       final exactIdx = arabicText.indexOf(ruleText, searchFrom);
-      if (exactIdx >= 0) {
+      if (idx < 0 && exactIdx >= 0) {
         idx = exactIdx;
         endIdx = exactIdx + ruleText.length;
       }
