@@ -327,6 +327,7 @@ class AyahMapper {
       arabic: textForDisplay,
       spans: spans,
       audioUrl: w['audio_url'] as String?,
+      lineNumber: w['line_number'] as int?,
     );
   }
 
@@ -369,7 +370,12 @@ class AyahMapper {
 
       spans.sort((a, b) => a.start.compareTo(b.start));
       result.add(
-        TajweedWord(arabic: word.arabic, spans: spans, audioUrl: word.audioUrl),
+        TajweedWord(
+          arabic: word.arabic,
+          spans: spans,
+          audioUrl: word.audioUrl,
+          lineNumber: word.lineNumber,
+        ),
       );
     }
 
@@ -384,6 +390,7 @@ class AyahMapper {
         TajweedWord(
           arabic: words[wordIndex].arabic,
           audioUrl: words[wordIndex].audioUrl,
+          lineNumber: words[wordIndex].lineNumber,
           spans: [
             for (final span in words[wordIndex].spans)
               if (span.rule == TajweedRule.maddMuttasil)

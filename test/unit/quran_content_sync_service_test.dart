@@ -13,10 +13,7 @@ class _FakeContentApi extends QuranApiService {
   final List<String?> requestedTokens = [];
   int pageIndex = 0;
 
-  _FakeContentApi({
-    required this.pages,
-    this.snapshots = const {},
-  });
+  _FakeContentApi({required this.pages, this.snapshots = const {}});
 
   @override
   Future<QuranContentSyncPage> fetchContentSyncPage({
@@ -93,61 +90,59 @@ void main() {
     }
   });
 
-  test('bootstrap snapshot atomically replaces cached translation rows',
-      () async {
-    await cache.put('quran_ar_surah_1', [
-      {
-        'verse_key': '1:1',
-        'translations': [
-          {'id': 1, 'resource_id': 85, 'text': 'Old translation'},
+  test(
+    'bootstrap snapshot atomically replaces cached translation rows',
+    () async {
+      await cache.put('quran_ar_surah_1', [
+        {
+          'verse_key': '1:1',
+          'translations': [
+            {'id': 1, 'resource_id': 85, 'text': 'Old translation'},
+          ],
+        },
+      ]);
+      final api = _FakeContentApi(
+        pages: const [
+          QuranContentSyncPage(
+            hasMore: false,
+            nextPageUrl: null,
+            nextSyncToken: 'token-1',
+            mutations: [
+              QuranContentMutation(
+                type: 'RESOURCE_INVALIDATE',
+                resourceGroup: 'translations',
+                resourceId: 85,
+                recordKey: null,
+                data: null,
+              ),
+            ],
+          ),
         ],
-      },
-    ]);
-    final api = _FakeContentApi(
-      pages: const [
-        QuranContentSyncPage(
-          hasMore: false,
-          nextPageUrl: null,
-          nextSyncToken: 'token-1',
-          mutations: [
-            QuranContentMutation(
-              type: 'RESOURCE_INVALIDATE',
-              resourceGroup: 'translations',
-              resourceId: 85,
-              recordKey: null,
-              data: null,
-            ),
-          ],
-        ),
-      ],
-      snapshots: const {
-        'translations:85': QuranContentSnapshot(
-          resourceGroup: 'translations',
-          resourceId: 85,
-          records: [
-            {
-              'id': 401704,
-              'verse_key': '1:1',
-              'text': 'Current translation',
-            },
-          ],
-        ),
-      },
-    );
+        snapshots: const {
+          'translations:85': QuranContentSnapshot(
+            resourceGroup: 'translations',
+            resourceId: 85,
+            records: [
+              {'id': 401704, 'verse_key': '1:1', 'text': 'Current translation'},
+            ],
+          ),
+        },
+      );
 
-    await QuranContentSyncService(
-      api: api,
-      cacheBox: cache,
-      audioBox: Hive.box('audio_cache'),
-      settingsBox: settings,
-      clearReciter: (_) async {},
-    ).syncIfDue();
+      await QuranContentSyncService(
+        api: api,
+        cacheBox: cache,
+        audioBox: Hive.box('audio_cache'),
+        settingsBox: settings,
+        clearReciter: (_) async {},
+      ).syncIfDue();
 
-    final verses = (cache.get('quran_ar_surah_1') as List).cast<Map>();
-    final translations = (verses.single['translations'] as List).cast<Map>();
-    expect(translations.single['text'], 'Current translation');
-    expect(settings.get('qf_content_sync_token'), 'token-1');
-  });
+      final verses = (cache.get('quran_ar_surah_1') as List).cast<Map>();
+      final translations = (verses.single['translations'] as List).cast<Map>();
+      expect(translations.single['text'], 'Current translation');
+      expect(settings.get('qf_content_sync_token'), 'token-1');
+    },
+  );
 
   test('pagination persists only the final sync token', () async {
     await cache.put('quran_ar_surah_1', [
@@ -162,7 +157,8 @@ void main() {
       pages: const [
         QuranContentSyncPage(
           hasMore: true,
-          nextPageUrl: 'https://apis.quran.foundation/api/v4/resources/sync'
+          nextPageUrl:
+              'https://apis.quran.foundation/api/v4/resources/sync'
               '?cursor=next',
           nextSyncToken: 'intermediate-token',
           mutations: [],
@@ -179,11 +175,7 @@ void main() {
           resourceGroup: 'translations',
           resourceId: 85,
           records: [
-            {
-              'id': 401704,
-              'verse_key': '1:1',
-              'text': 'Current',
-            },
+            {'id': 401704, 'verse_key': '1:1', 'text': 'Current'},
           ],
         ),
       },
@@ -211,12 +203,7 @@ void main() {
       },
     ]);
     await cache.put('qf_resource_translations_85', [
-      {
-        'id': 401704,
-        'verse_key': '1:1',
-        'resource_id': 85,
-        'text': 'Current',
-      },
+      {'id': 401704, 'verse_key': '1:1', 'resource_id': 85, 'text': 'Current'},
     ]);
     await settings.putAll({
       'qf_content_sync_resource_filter': 'translations:85',
@@ -244,11 +231,7 @@ void main() {
           resourceGroup: 'translations',
           resourceId: 85,
           records: [
-            {
-              'id': 401704,
-              'verse_key': '1:1',
-              'text': 'Current',
-            },
+            {'id': 401704, 'verse_key': '1:1', 'text': 'Current'},
           ],
         ),
       },
@@ -302,11 +285,7 @@ void main() {
           resourceGroup: 'translations',
           resourceId: 85,
           records: [
-            {
-              'id': 401704,
-              'verse_key': '1:1',
-              'text': 'Current',
-            },
+            {'id': 401704, 'verse_key': '1:1', 'text': 'Current'},
           ],
         ),
       },
@@ -321,10 +300,7 @@ void main() {
     ).syncIfDue();
 
     expect(api.requestedTokens, ['expired-token', null]);
-    expect(
-      settings.get('qf_content_sync_token'),
-      'replacement-token',
-    );
+    expect(settings.get('qf_content_sync_token'), 'replacement-token');
   });
 
   test('failed snapshot keeps the previous cache and sync token', () async {
@@ -376,36 +352,154 @@ void main() {
     expect(settings.get('qf_content_sync_failure_count'), 1);
   });
 
-  test('recitation invalidation replaces URLs and clears stale audio',
-      () async {
-    await cache.put('qf_recitation_1_surah_1', {'1:1': 'old.mp3'});
-    await cache.put('qf_resource_recitations_1', [
-      {'id': 1, 'verse_key': '1:1', 'url': 'old.mp3'},
+  test(
+    'recitation invalidation replaces URLs and clears stale audio',
+    () async {
+      await cache.put('qf_recitation_1_surah_1', {'1:1': 'old.mp3'});
+      await cache.put('qf_resource_recitations_1', [
+        {'id': 1, 'verse_key': '1:1', 'url': 'old.mp3'},
+      ]);
+      var clearedReciter = 0;
+      final api = _FakeContentApi(
+        pages: const [
+          QuranContentSyncPage(
+            hasMore: false,
+            nextPageUrl: null,
+            nextSyncToken: 'token-1',
+            mutations: [
+              QuranContentMutation(
+                type: 'RESOURCE_INVALIDATE',
+                resourceGroup: 'recitations',
+                resourceId: 1,
+                recordKey: null,
+                data: null,
+              ),
+            ],
+          ),
+        ],
+        snapshots: const {
+          'recitations:1': QuranContentSnapshot(
+            resourceGroup: 'recitations',
+            resourceId: 1,
+            records: [
+              {'id': 2, 'verse_key': '1:1', 'url': 'new.mp3'},
+            ],
+          ),
+        },
+      );
+
+      await QuranContentSyncService(
+        api: api,
+        cacheBox: cache,
+        audioBox: Hive.box('audio_cache'),
+        settingsBox: settings,
+        clearReciter: (id) async => clearedReciter = id,
+      ).syncIfDue();
+
+      expect(cache.get('qf_recitation_1_surah_1'), {'1:1': 'new.mp3'});
+      expect(clearedReciter, 1);
+    },
+  );
+
+  test(
+    'concurrent validation requests share one in-flight operation',
+    () async {
+      await cache.put('quran_ar_surah_1', [
+        {
+          'verse_key': '1:1',
+          'translations': [
+            {'id': 401704, 'resource_id': 85, 'text': 'Current'},
+          ],
+        },
+      ]);
+      final api = _BlockingContentApi();
+      final service = QuranContentSyncService(
+        api: api,
+        cacheBox: cache,
+        audioBox: Hive.box('audio_cache'),
+        settingsBox: settings,
+        clearReciter: (_) async {},
+      );
+
+      final first = service.syncIfDue();
+      final second = service.syncIfDue();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(api.snapshotCalls, 1);
+
+      api.snapshotCompleter.complete(
+        const QuranContentSnapshot(
+          resourceGroup: 'translations',
+          resourceId: 85,
+          records: [
+            {'id': 401704, 'verse_key': '1:1', 'text': 'Current'},
+          ],
+        ),
+      );
+      await Future.wait([first, second]);
+
+      expect(api.snapshotCalls, 1);
+      expect(api.pageCalls, 1);
+    },
+  );
+
+  test('validation becomes due at the seven-day boundary', () async {
+    final validatedAt = DateTime.utc(2026, 8, 1, 12);
+    await cache.put('quran_ar_surah_1', [
+      {
+        'verse_key': '1:1',
+        'translations': [
+          {'resource_id': 85, 'text': 'Current'},
+        ],
+      },
     ]);
-    var clearedReciter = 0;
+    await settings.putAll({
+      'qf_content_sync_resource_filter': 'translations:85',
+      'qf_content_sync_validated_at': validatedAt.millisecondsSinceEpoch,
+    });
+
+    expect(
+      QuranContentSyncService(
+        api: _FakeContentApi(pages: const []),
+        cacheBox: cache,
+        audioBox: Hive.box('audio_cache'),
+        settingsBox: settings,
+        now: () => validatedAt
+            .add(const Duration(days: 7))
+            .subtract(const Duration(milliseconds: 1)),
+        clearReciter: (_) async {},
+      ).isValidationDue,
+      isFalse,
+    );
+    expect(
+      QuranContentSyncService(
+        api: _FakeContentApi(pages: const []),
+        cacheBox: cache,
+        audioBox: Hive.box('audio_cache'),
+        settingsBox: settings,
+        now: () => validatedAt.add(const Duration(days: 7)),
+        clearReciter: (_) async {},
+      ).isValidationDue,
+      isTrue,
+    );
+  });
+
+  test('ad-hoc Tafseer cache participates in Content Sync', () async {
+    await cache.put('tafsir_169_surah_1', {'1:1': 'Cached Tafseer'});
     final api = _FakeContentApi(
       pages: const [
         QuranContentSyncPage(
           hasMore: false,
           nextPageUrl: null,
           nextSyncToken: 'token-1',
-          mutations: [
-            QuranContentMutation(
-              type: 'RESOURCE_INVALIDATE',
-              resourceGroup: 'recitations',
-              resourceId: 1,
-              recordKey: null,
-              data: null,
-            ),
-          ],
+          mutations: [],
         ),
       ],
       snapshots: const {
-        'recitations:1': QuranContentSnapshot(
-          resourceGroup: 'recitations',
-          resourceId: 1,
+        'tafsirs:169': QuranContentSnapshot(
+          resourceGroup: 'tafsirs',
+          resourceId: 169,
           records: [
-            {'id': 2, 'verse_key': '1:1', 'url': 'new.mp3'},
+            {'id': 1, 'verse_key': '1:1', 'text': 'Current Tafseer'},
           ],
         ),
       },
@@ -416,49 +510,9 @@ void main() {
       cacheBox: cache,
       audioBox: Hive.box('audio_cache'),
       settingsBox: settings,
-      clearReciter: (id) async => clearedReciter = id,
+      clearReciter: (_) async {},
     ).syncIfDue();
 
-    expect(cache.get('qf_recitation_1_surah_1'), {'1:1': 'new.mp3'});
-    expect(clearedReciter, 1);
-  });
-
-  test('concurrent validation requests share one in-flight operation',
-      () async {
-    await cache.put('quran_ar_surah_1', [
-      {
-        'verse_key': '1:1',
-        'translations': [
-          {'id': 401704, 'resource_id': 85, 'text': 'Current'},
-        ],
-      },
-    ]);
-    final api = _BlockingContentApi();
-    final service = QuranContentSyncService(
-      api: api,
-      cacheBox: cache,
-      audioBox: Hive.box('audio_cache'),
-      settingsBox: settings,
-      clearReciter: (_) async {},
-    );
-
-    final first = service.syncIfDue();
-    final second = service.syncIfDue();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(api.snapshotCalls, 1);
-
-    api.snapshotCompleter.complete(
-      const QuranContentSnapshot(
-        resourceGroup: 'translations',
-        resourceId: 85,
-        records: [
-          {'id': 401704, 'verse_key': '1:1', 'text': 'Current'},
-        ],
-      ),
-    );
-    await Future.wait([first, second]);
-
-    expect(api.snapshotCalls, 1);
-    expect(api.pageCalls, 1);
+    expect(cache.get('tafsir_169_surah_1'), {'1:1': 'Current Tafseer'});
   });
 }
