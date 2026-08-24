@@ -172,7 +172,7 @@ void main() {
       'page_number': 294,
       'text_uthmani': 'مَا لَهُم بِهِۦ مِنْ عِلْمٍ',
       'words': const [
-        {'char_type_name': 'word', 'text_uthmani': 'بِهِۦ'},
+        {'char_type_name': 'word', 'text_uthmani': 'بِهِۦ', 'line_number': 7},
         {'char_type_name': 'word', 'text_uthmani': 'مِنْ'},
       ],
     });
@@ -183,6 +183,7 @@ void main() {
       ),
       isTrue,
     );
+    expect(ayah.words.first.lineNumber, 7);
   });
 
   test('classifies madd silah kubra before hamza', () {

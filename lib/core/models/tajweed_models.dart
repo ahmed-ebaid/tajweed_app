@@ -184,8 +184,14 @@ class TajweedWord {
   final String arabic;
   final List<TajweedSpan> spans;
   final String? audioUrl;
+  final int? lineNumber;
 
-  const TajweedWord({required this.arabic, required this.spans, this.audioUrl});
+  const TajweedWord({
+    required this.arabic,
+    required this.spans,
+    this.audioUrl,
+    this.lineNumber,
+  });
 }
 
 class TajweedSpan {
