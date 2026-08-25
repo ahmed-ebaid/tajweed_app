@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.0.0
+# App Store listing — Tajweed 1.1.0
 
 ## App information
 
@@ -8,8 +8,8 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.0.0
-- **Build:** 23
+- **Version:** 1.1.0
+- **Build:** 27
 
 ## URLs
 
@@ -74,13 +74,13 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Welcome to Tajweed 1.0.0.
+Tajweed 1.1 brings the Ayah reader’s color-coded guidance to the Mushaf.
 
-- Read in Ayah-by-Ayah or Mushaf view
-- Learn with expanded Tajweed rules and focused audio examples
-- Listen to multiple reciters and download content for offline use
-- Explore translations and Tafseer
-- Share Ayahs, Tafseer, and Tajweed rules with consistent app attribution
+- Read with Tajweed colors in the QCF V2 Madina Mushaf layout
+- View the Tajweed palette and turn highlighting on or off
+- Pinch to enlarge Mushaf pages while preserving printed line breaks
+- Improved Madd Silah and Madd Muttasil highlighting
+- More reliable seven-day Quran content synchronization
 
 ## Screenshot set
 
