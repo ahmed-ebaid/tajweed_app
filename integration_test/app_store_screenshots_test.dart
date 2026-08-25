@@ -24,11 +24,16 @@ import 'package:tajweed_practice/features/settings/language_selector_screen.dart
 import 'package:tajweed_practice/features/settings/settings_screen.dart';
 import 'package:tajweed_practice/main.dart';
 
+const _screenshotLanguageCode = String.fromEnvironment(
+  'SCREENSHOT_LOCALE',
+  defaultValue: 'en',
+);
+
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('capture App Store screens', (tester) async {
-    await _initializeFixtureStorage();
+    await _initializeFixtureStorage(_screenshotLanguageCode);
     final localeProvider = LocaleProvider();
 
     await tester.pumpWidget(
@@ -42,7 +47,7 @@ void main() {
           ChangeNotifierProvider(create: (_) => ReaderNavigationProvider()),
           ChangeNotifierProvider(create: (_) => RecitationProvider()),
           ChangeNotifierProxyProvider<LocaleProvider, TafseerProvider>(
-            create: (_) => TafseerProvider(langCode: 'en'),
+            create: (_) => TafseerProvider(langCode: _screenshotLanguageCode),
             update: (_, locale, provider) {
               final value =
                   provider ??
@@ -77,9 +82,21 @@ void main() {
           pageNumber: 1,
           arabic: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
           translations: {
-            'en': 'In the name of God, the Lord of Mercy, the Giver of Mercy!',
+            _screenshotLanguageCode: _screenshotLanguageCode == 'ar'
+                ? 'بسم الله الرحمن الرحيم'
+                : 'In the name of God, the Lord of Mercy, the Giver of Mercy!',
           },
-          words: [],
+          words: [
+            TajweedWord(arabic: 'بِسْمِ', spans: []),
+            TajweedWord(arabic: 'ٱللَّهِ', spans: []),
+            TajweedWord(
+              arabic: 'ٱلرَّحْمَـٰنِ',
+              spans: [
+                TajweedSpan(start: 9, end: 11, rule: TajweedRule.maddTabeei),
+              ],
+            ),
+            TajweedWord(arabic: 'ٱلرَّحِيمِ', spans: []),
+          ],
         ),
       ),
     );
@@ -95,9 +112,11 @@ void main() {
       builder: (_) => TafseerSheet(
         verseKey: '1:1',
         tafsirId: 169,
-        tafsirName: 'Ibn Kathir (Abridged)',
+        tafsirName: _screenshotLanguageCode == 'ar'
+            ? 'تفسير ابن كثير'
+            : 'Ibn Kathir (Abridged)',
         surahName: 'الفاتحة',
-        languageCode: 'en',
+        languageCode: _screenshotLanguageCode,
         api: _ScreenshotQuranApiService(),
       ),
     );
@@ -108,7 +127,7 @@ void main() {
     await _finishTransition(tester);
     expect(find.byType(TafseerSheet), findsNothing);
 
-    await tester.tap(find.byTooltip('Switch to Page view'));
+    await tester.tap(find.byIcon(Icons.chrome_reader_mode_outlined));
     await _waitForUi(tester, seconds: 3);
     expect(find.byIcon(Icons.view_list_outlined), findsOneWidget);
     await binding.takeScreenshot('04-mushaf');
@@ -142,6 +161,23 @@ void main() {
     expect(find.byType(SettingsScreen), findsOneWidget);
     await binding.takeScreenshot('08-settings');
 
+    await tester.tap(
+      find.text(
+        _screenshotLanguageCode == 'ar' ? 'حول هذا التطبيق' : 'About this app',
+      ),
+    );
+    await _finishTransition(tester);
+    expect(
+      find.textContaining(
+        _screenshotLanguageCode == 'ar'
+            ? 'يتم توفير محتوى القرآن'
+            : 'Quran content and metadata are provided',
+      ),
+      findsOneWidget,
+    );
+    navigator.pop();
+    await _finishTransition(tester);
+
     navigator.push(
       MaterialPageRoute<void>(builder: (_) => const LanguageSelectorScreen()),
     );
@@ -153,7 +189,9 @@ void main() {
 
 Future<void> _waitForUi(WidgetTester tester, {int seconds = 2}) async {
   await tester.pump();
-  await tester.pump(Duration(seconds: seconds));
+  for (var i = 0; i < seconds * 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
 Future<void> _finishTransition(WidgetTester tester) async {
@@ -165,18 +203,22 @@ Future<void> _finishTransition(WidgetTester tester) async {
 class _ScreenshotQuranApiService extends QuranApiService {
   @override
   Future<List<Map<String, dynamic>>> fetchAvailableTafsirs() async {
-    return const [
+    return [
       {
         'id': 169,
-        'name': 'Ibn Kathir (Abridged)',
-        'author_name': 'Hafiz Ibn Kathir',
-        'language_name': 'english',
+        'name': _screenshotLanguageCode == 'ar'
+            ? 'تفسير ابن كثير'
+            : 'Ibn Kathir (Abridged)',
+        'author_name': _screenshotLanguageCode == 'ar'
+            ? 'الحافظ ابن كثير'
+            : 'Hafiz Ibn Kathir',
+        'language_name': _screenshotLanguageCode == 'ar' ? 'arabic' : 'english',
       },
     ];
   }
 }
 
-Future<void> _initializeFixtureStorage() async {
+Future<void> _initializeFixtureStorage(String languageCode) async {
   await Hive.initFlutter('app_store_screenshots');
   for (final name in [
     'settings',
@@ -189,13 +231,16 @@ Future<void> _initializeFixtureStorage() async {
     await box.clear();
   }
 
-  await Hive.box('settings').put('reader_surah_list_en', [
+  await Hive.box('settings').put('locale', languageCode);
+  await Hive.box('settings').put('reader_surah_list_$languageCode', [
     {
       'id': 1,
       'name_simple': 'Al-Fatihah',
       'name_arabic': 'الفاتحة',
       'verses_count': 7,
-      'translated_name': {'name': 'The Opener'},
+      'translated_name': {
+        'name': languageCode == 'ar' ? 'الفاتحة' : 'The Opener',
+      },
     },
   ]);
   await Hive.box('verse_cache').put('quran_ar_surah_1', _alFatihahFixture);
@@ -203,118 +248,198 @@ Future<void> _initializeFixtureStorage() async {
     'verse_cache',
   ).put('quran_tajweed_surah_1', <String, String>{});
   await Hive.box('verse_cache').put('tafsir_169_surah_1', {
-    '1:1':
-        'In the opening of the Quran, the servant begins by remembering God, '
-        'seeking His mercy, and recognizing that every blessing comes from Him.',
+    '1:1': languageCode == 'ar'
+        ? 'يفتتح العبد قراءة القرآن بذكر الله، مستعينًا برحمته، ومقرًّا بأن '
+              'كل نعمة منه سبحانه.'
+        : 'In the opening of the Quran, the servant begins by remembering God, '
+              'seeking His mercy, and recognizing that every blessing comes '
+              'from Him.',
   });
 }
 
-const _alFatihahFixture = <Map<String, dynamic>>[
-  {
-    'verse_key': '1:1',
-    'text_uthmani': 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
-    'page_number': 1,
-    'juz_number': 1,
-    'hizb_number': 1,
-    'rub_el_hizb_number': 1,
-    'translations': [
-      {
-        'resource_id': 85,
-        'text': 'In the name of God, the Lord of Mercy, the Giver of Mercy!',
-      },
-    ],
-    'words': [
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'بِسْمِ',
-        'text_uthmani_tajweed': 'بِسۡمِ',
-        'translation': {'text': 'In the name'},
-      },
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'ٱللَّهِ',
-        'text_uthmani_tajweed': '<rule class=ham_wasl>ٱ</rule>للَّهِ',
-        'translation': {'text': 'of God'},
-      },
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'ٱلرَّحْمَـٰنِ',
-        'text_uthmani_tajweed':
+final _alFatihahFixture = <Map<String, dynamic>>[
+  _fixtureAyah(
+    1,
+    arabic: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
+    translation: 'In the name of God, the Lord of Mercy, the Giver of Mercy!',
+    words: [
+      _fixtureWord('بِسْمِ', 2, tajweed: 'بِسۡمِ'),
+      _fixtureWord(
+        'ٱللَّهِ',
+        2,
+        tajweed: '<rule class=ham_wasl>ٱ</rule>للَّهِ',
+      ),
+      _fixtureWord(
+        'ٱلرَّحْمَـٰنِ',
+        2,
+        tajweed:
             '<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>رَّحۡمَ<rule class=madda_normal>ـٰ</rule>نِ',
-        'translation': {'text': 'the Lord of Mercy'},
-      },
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'ٱلرَّحِيمِ',
-        'text_uthmani_tajweed':
+      ),
+      _fixtureWord(
+        'ٱلرَّحِيمِ',
+        2,
+        tajweed:
             '<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>رَّح<rule class=madda_permissible>ِي</rule>مِ',
-        'translation': {'text': 'the Giver of Mercy'},
-      },
+      ),
     ],
-  },
-  {
-    'verse_key': '1:2',
-    'text_uthmani': 'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ',
-    'page_number': 1,
-    'juz_number': 1,
-    'hizb_number': 1,
-    'rub_el_hizb_number': 1,
-    'translations': [
-      {'resource_id': 85, 'text': 'Praise belongs to God, Lord of the Worlds,'},
-    ],
-    'words': [
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'ٱلْحَمْدُ',
-        'text_uthmani_tajweed': 'ٱلۡحَمۡدُ',
-        'translation': {'text': 'Praise belongs'},
-      },
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'لِلَّهِ',
-        'text_uthmani_tajweed': 'لِلَّهِ',
-        'translation': {'text': 'to God'},
-      },
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'رَبِّ',
-        'text_uthmani_tajweed': 'رَبِّ',
-        'translation': {'text': 'Lord'},
-      },
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'ٱلْعَـٰلَمِينَ',
-        'text_uthmani_tajweed':
+  ),
+  _fixtureAyah(
+    2,
+    arabic: 'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ',
+    translation: 'Praise belongs to God, Lord of the Worlds,',
+    words: [
+      _fixtureWord('ٱلْحَمْدُ', 3, tajweed: 'ٱلۡحَمۡدُ'),
+      _fixtureWord('لِلَّهِ', 3),
+      _fixtureWord('رَبِّ', 3),
+      _fixtureWord(
+        'ٱلْعَـٰلَمِينَ',
+        3,
+        tajweed:
             '<rule class=ham_wasl>ٱ</rule>لۡعَ<rule class=madda_normal>ـٰ</rule>لَم<rule class=madda_permissible>ِي</rule>نَ',
-        'translation': {'text': 'of the Worlds'},
-      },
+      ),
     ],
-  },
-  {
-    'verse_key': '1:3',
-    'text_uthmani': 'ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
+  ),
+  _fixtureAyah(
+    3,
+    arabic: 'ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
+    translation: 'the Lord of Mercy, the Giver of Mercy,',
+    words: [
+      _fixtureWord(
+        'ٱلرَّحْمَـٰنِ',
+        4,
+        tajweed:
+            'ٱ<rule class=laam_shamsiyah>ل</rule>رَّحۡمَ<rule class=madda_normal>ـٰ</rule>نِ',
+      ),
+      _fixtureWord(
+        'ٱلرَّحِيمِ',
+        4,
+        tajweed:
+            '<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>رَّح<rule class=madda_permissible>ِي</rule>مِ',
+      ),
+    ],
+  ),
+  _fixtureAyah(
+    4,
+    arabic: 'مَـٰلِكِ يَوْمِ ٱلدِّينِ',
+    translation: 'Master of the Day of Judgment.',
+    words: [
+      _fixtureWord(
+        'مَـٰلِكِ',
+        4,
+        tajweed: 'مَ<rule class=madda_normal>ـٰ</rule>لِكِ',
+      ),
+      _fixtureWord('يَوْمِ', 4, tajweed: 'يَوۡمِ'),
+      _fixtureWord(
+        'ٱلدِّينِ',
+        4,
+        tajweed:
+            '<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>دّ<rule class=madda_permissible>ِي</rule>نِ',
+      ),
+    ],
+  ),
+  _fixtureAyah(
+    5,
+    arabic: 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ',
+    translation: 'You alone we worship; You alone we ask for help.',
+    words: [
+      _fixtureWord('إِيَّاكَ', 5),
+      _fixtureWord('نَعْبُدُ', 5, tajweed: 'نَعۡبُدُ'),
+      _fixtureWord('وَإِيَّاكَ', 5),
+      _fixtureWord(
+        'نَسْتَعِينُ',
+        5,
+        tajweed: 'نَسۡتَع<rule class=madda_permissible>ِي</rule>نُ',
+      ),
+    ],
+  ),
+  _fixtureAyah(
+    6,
+    arabic: 'ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ',
+    translation: 'Guide us to the straight path:',
+    words: [
+      _fixtureWord('ٱهْدِنَا', 5, tajweed: 'ٱهۡدِنَا'),
+      _fixtureWord(
+        'ٱلصِّرَٰطَ',
+        6,
+        tajweed:
+            '<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>صِّر<rule class=madda_normal><rule class=custom-alef-maksora>ٰ</rule></rule>طَ',
+      ),
+      _fixtureWord(
+        'ٱلْمُسْتَقِيمَ',
+        6,
+        tajweed:
+            '<rule class=ham_wasl>ٱ</rule>لۡمُسۡتَق<rule class=madda_permissible>ِي</rule>مَ',
+      ),
+    ],
+  ),
+  _fixtureAyah(
+    7,
+    arabic:
+        'صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ',
+    translation:
+        'the path of those You have blessed, those who incur no anger and who have not gone astray.',
+    words: [
+      _fixtureWord(
+        'صِرَٰطَ',
+        6,
+        tajweed:
+            'صِر<rule class=madda_normal><rule class=custom-alef-maksora>ٰ</rule></rule>طَ',
+      ),
+      _fixtureWord(
+        'ٱلَّذِينَ',
+        6,
+        tajweed: '<rule class=ham_wasl>ٱ</rule>لَّذِينَ',
+      ),
+      _fixtureWord('أَنْعَمْتَ', 6, tajweed: 'أَنۡعَمۡتَ'),
+      _fixtureWord('عَلَيْهِمْ', 7, tajweed: 'عَلَيۡهِمۡ'),
+      _fixtureWord('غَيْرِ', 7, tajweed: 'غَيۡرِ'),
+      _fixtureWord(
+        'ٱلْمَغْضُوبِ',
+        7,
+        tajweed: '<rule class=ham_wasl>ٱ</rule>لۡمَغۡضُوبِ',
+      ),
+      _fixtureWord('عَلَيْهِمْ', 7, tajweed: 'عَلَيۡهِمۡ'),
+      _fixtureWord('وَلَا', 8),
+      _fixtureWord(
+        'ٱلضَّآلِّينَ',
+        8,
+        tajweed:
+            '<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>ضّ<rule class=madda_necessary>َا</rule>ٓلّ<rule class=madda_permissible>ِي</rule>نَ',
+      ),
+    ],
+  ),
+];
+
+Map<String, dynamic> _fixtureAyah(
+  int ayahNumber, {
+  required String arabic,
+  required String translation,
+  required List<Map<String, dynamic>> words,
+}) {
+  return {
+    'verse_key': '1:$ayahNumber',
+    'text_uthmani': arabic,
     'page_number': 1,
     'juz_number': 1,
     'hizb_number': 1,
     'rub_el_hizb_number': 1,
     'translations': [
-      {'resource_id': 85, 'text': 'the Lord of Mercy, the Giver of Mercy,'},
+      {'resource_id': 85, 'text': translation},
     ],
-    'words': [
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'ٱلرَّحْمَـٰنِ',
-        'text_uthmani_tajweed':
-            'ٱ<rule class=laam_shamsiyah>ل</rule>رَّحۡمَ<rule class=madda_normal>ـٰ</rule>نِ',
-        'translation': {'text': 'the Lord of Mercy'},
-      },
-      {
-        'char_type_name': 'word',
-        'text_uthmani': 'ٱلرَّحِيمِ',
-        'text_uthmani_tajweed':
-            '<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>رَّح<rule class=madda_permissible>ِي</rule>مِ',
-        'translation': {'text': 'the Giver of Mercy'},
-      },
-    ],
-  },
-];
+    'words': words,
+  };
+}
+
+Map<String, dynamic> _fixtureWord(
+  String arabic,
+  int lineNumber, {
+  String? tajweed,
+}) {
+  return {
+    'char_type_name': 'word',
+    'text_uthmani': arabic,
+    'text_uthmani_tajweed': tajweed ?? arabic,
+    'line_number': lineNumber,
+    'translation': {'text': arabic},
+  };
+}
