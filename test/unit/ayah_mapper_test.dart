@@ -172,7 +172,7 @@ void main() {
       'page_number': 294,
       'text_uthmani': 'مَا لَهُم بِهِۦ مِنْ عِلْمٍ',
       'words': const [
-        {'char_type_name': 'word', 'text_uthmani': 'بِهِۦ'},
+        {'char_type_name': 'word', 'text_uthmani': 'بِهِۦ', 'line_number': 7},
         {'char_type_name': 'word', 'text_uthmani': 'مِنْ'},
       ],
     });
@@ -183,6 +183,7 @@ void main() {
       ),
       isTrue,
     );
+    expect(ayah.words.first.lineNumber, 7);
   });
 
   test('classifies madd silah kubra before hamza', () {
@@ -202,6 +203,70 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  test(
+    'aligns Madd Muttasil with the tagged occurrence in Al-Baqarah 2:170',
+    () {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '2:170',
+        'page_number': 26,
+        'text_uthmani': 'ءَابَآءَنَآ',
+        'words': const [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': 'ءَابَآءَنَآ',
+            'text_uthmani_tajweed':
+                'ءَاب<rule class=madda_obligatory_mottasel>َا</rule>ٓءَن'
+                '<rule class=madda_obligatory_monfasel>َآ</rule>',
+          },
+        ],
+      });
+
+      final word = ayah.words.single;
+      final muttasil = word.spans.singleWhere(
+        (span) => span.rule == TajweedRule.maddMuttasil,
+      );
+
+      expect(word.arabic.substring(muttasil.start, muttasil.end), 'َآ');
+      expect(muttasil.start, word.arabic.indexOf('َآ'));
+      expect(
+        muttasil.start,
+        greaterThan(word.arabic.indexOf('ءَا')),
+        reason: 'the initial Madd Badal must not be mislabeled as Muttasil',
+      );
+    },
+  );
+
+  test('corrects cross-word Madd in Al-Kahf 18:21 to Munfasil', () {
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '18:21',
+      'page_number': 296,
+      'text_uthmani': 'لِيَعْلَمُوٓا۟ أَنَّ',
+      'words': const [
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'لِيَعْلَمُوٓا۟',
+          'text_uthmani_tajweed':
+              'لِيَعۡلَم<rule class=madda_obligatory_mottasel>ُوٓ</rule>'
+              '<rule class=slnt>اۡ</rule>',
+        },
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'أَنَّ',
+          'text_uthmani_tajweed': 'أَ<rule class=ghunnah>نّ</rule>َ',
+        },
+      ],
+    });
+
+    final maddSpans = ayah.words.first.spans.where(
+      (span) =>
+          span.rule == TajweedRule.maddMuttasil ||
+          span.rule == TajweedRule.maddMunfasil,
+    );
+
+    expect(maddSpans, hasLength(1));
+    expect(maddSpans.single.rule, TajweedRule.maddMunfasil);
   });
 
   test('parses word text_uthmani_tajweed rule tags for word-level coloring', () {

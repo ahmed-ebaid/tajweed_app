@@ -321,8 +321,18 @@ class TajweedText extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     // Keep each Arabic segment contiguous so glyph shaping remains stable.
-    final normalizedText = _normalizeForCurrentAyah(text);
+    return _buildNormalizedGraphemeTextSpans(
+      _normalizeForCurrentAyah(text),
+      style,
+      onTap: onTap,
+    );
+  }
 
+  static List<InlineSpan> _buildNormalizedGraphemeTextSpans(
+    String normalizedText,
+    TextStyle style, {
+    VoidCallback? onTap,
+  }) {
     if (!_containsQuranMarker(normalizedText)) {
       if (onTap != null) {
         return [
@@ -440,7 +450,7 @@ class TajweedText extends StatelessWidget {
             : null,
       );
 
-  TextStyle _quranMarkerStyleFrom(
+  static TextStyle _quranMarkerStyleFrom(
     TextStyle style, {
     required TajweedRule? markerRule,
     required bool isSajdah,
@@ -479,6 +489,63 @@ class TajweedText extends StatelessWidget {
       ],
     );
     return GoogleFonts.notoNaskhArabic(textStyle: markerBase);
+  }
+
+  /// Builds word-level spans using the same Tajweed palette and Quran-marker
+  /// styling as the ayah renderer, while allowing another view to supply its
+  /// own typography.
+  static List<InlineSpan> buildStyledWordSpans(
+    TajweedWord word, {
+    required TextStyle baseStyle,
+    bool highlightEnabled = true,
+    Set<TajweedRule> suppressedRules = const {},
+  }) {
+    final result = <InlineSpan>[];
+    final text = _normalizeArabicText(word.arabic);
+    final graphemeMap = _GraphemeMap.fromText(text);
+    final sorted = [...word.spans]..sort((a, b) => a.start.compareTo(b.start));
+    var cursor = 0;
+
+    for (final span in sorted) {
+      final start = graphemeMap.startClusterForCodeUnit(span.start);
+      final end = graphemeMap.endClusterForCodeUnit(span.end);
+      if (end <= start || start < cursor) continue;
+
+      if (cursor < start) {
+        result.addAll(
+          _buildNormalizedGraphemeTextSpans(
+            _normalizeArabicText(graphemeMap.slice(cursor, start)),
+            baseStyle,
+          ),
+        );
+      }
+
+      final useRuleColor =
+          highlightEnabled && !suppressedRules.contains(span.rule);
+      final spanStyle = useRuleColor
+          ? baseStyle.copyWith(
+              color: span.rule.color,
+              decoration: TextDecoration.none,
+            )
+          : baseStyle;
+      result.addAll(
+        _buildNormalizedGraphemeTextSpans(
+          _normalizeArabicText(graphemeMap.slice(start, end)),
+          spanStyle,
+        ),
+      );
+      cursor = end;
+    }
+
+    if (cursor < graphemeMap.length) {
+      result.addAll(
+        _buildNormalizedGraphemeTextSpans(
+          _normalizeArabicText(graphemeMap.slice(cursor, graphemeMap.length)),
+          baseStyle,
+        ),
+      );
+    }
+    return result;
   }
 
   TextStyle _styleFor(
