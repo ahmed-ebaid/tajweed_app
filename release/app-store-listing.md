@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.0
-- **Build:** 27
+- **Build:** 28
 
 ## URLs
 
@@ -125,4 +125,4 @@ the App does not request microphone or speech-recognition permission.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Upload the final screenshot sets and select build 23.
+- Upload the final screenshot sets and select build 28.

@@ -13,6 +13,8 @@ import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import 'language_selector_screen.dart';
 
+const _appVersion = '1.1.0';
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -109,7 +111,7 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.info_outline_rounded),
             title: Text(s.text('version')),
             trailing: Text(
-              '1.0.0',
+              _appVersion,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -1188,25 +1190,25 @@ class _AboutSourcesSheet extends StatelessWidget {
   const _AboutSourcesSheet();
 
   static const List<MapEntry<String, String>> _translationSources = [
-    MapEntry('English', 'M.A.S. Abdel Haleem'),
-    MapEntry('Arabic', 'Muhammad Taqi-ud-Din al-Hilali'),
-    MapEntry('Urdu', 'Fateh Muhammad Jalandhari'),
-    MapEntry('Turkish', 'Diyanet Isleri'),
-    MapEntry('French', 'Muhammad Hamidullah'),
-    MapEntry('Indonesian', 'Indonesian Ministry of Religious Affairs'),
-    MapEntry('German', 'Adul Hye and Ahmad von Denffer'),
-    MapEntry('Spanish', 'Sheikh Isa Garcia'),
+    MapEntry('en', 'M.A.S. Abdel Haleem'),
+    MapEntry('ar', 'Muhammad Taqi-ud-Din al-Hilali'),
+    MapEntry('ur', 'Fateh Muhammad Jalandhari'),
+    MapEntry('tr', 'Diyanet Isleri'),
+    MapEntry('fr', 'Muhammad Hamidullah'),
+    MapEntry('id', 'Indonesian Ministry of Religious Affairs'),
+    MapEntry('de', 'Adul Hye and Ahmad von Denffer'),
+    MapEntry('es', 'Sheikh Isa Garcia'),
   ];
 
   static const List<MapEntry<String, String>> _defaultTafsirSources = [
-    MapEntry('English', 'Ibn Kathir (Abridged)'),
-    MapEntry('Arabic', 'Tafsir Muyassar'),
-    MapEntry('Urdu', 'Tafsir Ibn Kathir (Urdu)'),
-    MapEntry('Turkish', 'Diyanet Isleri'),
-    MapEntry('French', 'Muhammad Hamidullah'),
-    MapEntry('Indonesian', 'Quran.Foundation resource ID 33'),
-    MapEntry('German', 'Quran.Foundation resource ID 27'),
-    MapEntry('Spanish', 'Fallback to Ibn Kathir (Abridged) in English'),
+    MapEntry('en', 'Ibn Kathir (Abridged)'),
+    MapEntry('ar', 'Tafsir Muyassar'),
+    MapEntry('ur', 'Tafsir Ibn Kathir (Urdu)'),
+    MapEntry('tr', 'Diyanet Isleri'),
+    MapEntry('fr', 'Muhammad Hamidullah'),
+    MapEntry('id', 'Quran.Foundation resource ID 33'),
+    MapEntry('de', 'Quran.Foundation resource ID 27'),
+    MapEntry('es', 'Fallback to Ibn Kathir (Abridged) in English'),
   ];
 
   static const List<String> _supportedReciters = [
@@ -1286,20 +1288,15 @@ class _AboutSourcesSheet extends StatelessWidget {
               Text(s.text('owned_operated'), style: textTheme.bodyLarge),
               const SizedBox(height: 20),
               _AboutSectionTitle(title: s.text('quran_sources_title')),
-              const _AboutBullet(
-                text:
-                   'Tajweed Practice is independently owned and operated by Ebaid LLC.',
-              ),
-              const _AboutBullet(
-                text:
-                    'Quran content and metadata are provided by Quran.Foundation through the app-owned secure proxy. Quran.Foundation operates services in the Quran.com and QuranReflect ecosystem; this app does not access QuranReflect accounts or user-generated content and is not an official Quran.Foundation application.',
-              ),
+              _AboutBullet(text: s.text('quran_foundation_disclaimer')),
               _AboutBullet(text: s.text('quran_b1')),
               _AboutBullet(text: s.text('quran_b2')),
               _AboutBullet(text: s.text('quran_b3')),
               ..._translationSources.map(
-                (entry) =>
-                    _AboutSourceLine(label: entry.key, value: entry.value),
+                (entry) => _AboutSourceLine(
+                  label: LocaleProvider.languageNames[entry.key] ?? entry.key,
+                  value: entry.value,
+                ),
               ),
               _AboutBullet(text: s.text('quran_b4')),
               const SizedBox(height: 20),
@@ -1307,8 +1304,10 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutBullet(text: s.text('tafseer_b1')),
               _AboutBullet(text: s.text('tafseer_b2')),
               ..._defaultTafsirSources.map(
-                (entry) =>
-                    _AboutSourceLine(label: entry.key, value: entry.value),
+                (entry) => _AboutSourceLine(
+                  label: LocaleProvider.languageNames[entry.key] ?? entry.key,
+                  value: entry.value,
+                ),
               ),
               _AboutBullet(text: s.text('tafseer_b3')),
               const SizedBox(height: 12),
@@ -1329,7 +1328,7 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutBullet(text: s.text('other_b3')),
               const SizedBox(height: 12),
               Text(
-                'Version 1.0.0',
+                '${s.text('version')} $_appVersion',
                 style: textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -1615,6 +1614,8 @@ class _SettingsStrings {
       'quran_sources_ownership': 'Quran sources and ownership',
       'owned_operated': 'This app is owned and operated by Ebaid LLC.',
       'quran_sources_title': 'Quran sources',
+      'quran_foundation_disclaimer':
+          'Quran content and metadata are provided by Quran.Foundation through the app-owned secure proxy. Quran.Foundation operates services in the Quran.com and QuranReflect ecosystem; this app does not access QuranReflect accounts or user-generated content and is not an official Quran.Foundation application.',
       'quran_b1':
           'Quran text, surah and ayah structure, word-by-word data, and tajweed markup are fetched from the Quran.Foundation Content API.',
       'quran_b2':
@@ -1722,6 +1723,8 @@ class _SettingsStrings {
       'quran_sources_ownership': 'مصادر القرآن والملكية',
       'owned_operated': 'هذا التطبيق مملوك ومدار بواسطة شركة Ebaid LLC.',
       'quran_sources_title': 'مصادر القرآن',
+      'quran_foundation_disclaimer':
+          'يتم توفير محتوى القرآن وبياناته الوصفية بواسطة Quran.Foundation عبر خادم آمن يملكه التطبيق. تدير Quran.Foundation خدمات ضمن منظومة Quran.com وQuranReflect، ولا يصل هذا التطبيق إلى حسابات QuranReflect أو محتوى المستخدمين، كما أنه ليس تطبيقًا رسميًا تابعًا لـ Quran.Foundation.',
       'quran_b1':
           'يتم جلب نص القرآن وبنية السور والآيات وبيانات الكلمات وعلامات التجويد من واجهة Quran.Foundation Content API.',
       'quran_b2':
