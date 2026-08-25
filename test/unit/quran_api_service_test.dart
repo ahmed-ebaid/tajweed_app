@@ -80,11 +80,13 @@ void main() {
 
       expect(verses.single['verse_key'], '18:1');
       expect(adapter.requests.single.queryParameters, {
+        'mushaf': 1,
         'language': 'ar',
         'words': 'true',
         'fields':
             'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
-        'word_fields': 'text_uthmani,char_type_name',
+        'word_fields':
+            'text_uthmani,text_uthmani_tajweed,tajweed,char_type_name,line_number,page_number',
         'per_page': 50,
       });
     });

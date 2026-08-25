@@ -385,4 +385,22 @@ void main() {
       isTrue,
     );
   });
+
+  test('shared word spans use the ayah-view Tajweed palette', () {
+    const baseStyle = TextStyle(color: Colors.black, fontSize: 24);
+    const word = TajweedWord(
+      arabic: 'نَّ',
+      spans: [TajweedSpan(start: 0, end: 2, rule: TajweedRule.ghunnah)],
+    );
+
+    final spans = TajweedText.buildStyledWordSpans(
+      word,
+      baseStyle: baseStyle,
+    ).whereType<TextSpan>();
+
+    expect(
+      spans.any((span) => span.style?.color == TajweedRule.ghunnah.color),
+      isTrue,
+    );
+  });
 }
