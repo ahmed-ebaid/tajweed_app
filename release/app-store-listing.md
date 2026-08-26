@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.0
-- **Build:** 31
+- **Build:** 32
 
 ## URLs
 
@@ -133,4 +133,4 @@ markers follow the QCF V2 printed-line metadata.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Keep the approved screenshot sets and select build 31.
+- Keep the approved screenshot sets and select build 32.

@@ -3414,7 +3414,7 @@ class _MushafTextPage extends StatelessWidget {
                             section,
                             style: textStyle,
                             horizontalInset: horizontalInset,
-                            expandToWidth: true,
+                            expandToWidth: isLandscape,
                             textScale: textScale,
                           ),
                         ],
