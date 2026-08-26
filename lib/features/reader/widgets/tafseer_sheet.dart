@@ -181,9 +181,20 @@ class _TafseerSheetState extends State<TafseerSheet> {
   }
 
   Future<void> _fetchSources() async {
+    final selectedFallback = _selectedTafsirName.isEmpty
+        ? <TafseerSourceOption>[]
+        : [
+            TafseerSourceOption(
+              id: _selectedTafsirId,
+              name: _selectedTafsirName,
+              displayName: _selectedTafsirName,
+              authorName: '',
+            ),
+          ];
     if (mounted) {
       setState(() {
-        _sourcesLoading = true;
+        _sources = selectedFallback;
+        _sourcesLoading = selectedFallback.isEmpty;
         _sourcesError = null;
       });
     }
@@ -223,7 +234,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _sourcesError = e.toString();
+        _sourcesError = selectedFallback.isEmpty ? e.toString() : null;
         _sourcesLoading = false;
       });
     }

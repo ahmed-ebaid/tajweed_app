@@ -54,6 +54,22 @@ void main() {
       expect(contentAdapter.requests.single.uri.path, '/v2/content/chapters');
     });
 
+    test('requests Mushaf 2 layout metadata for cached surahs', () async {
+      final adapter = _RecordingAdapter();
+      final contentClient = Dio(
+        BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
+      )..httpClientAdapter = adapter;
+      final service = QuranApiService(contentClient: contentClient);
+      adapter.responseBodies['/verses/by_chapter/100'] = {'verses': <Object>[]};
+
+      await service.fetchVerses(surahNumber: 100, langCode: 'ar', page: 1);
+
+      final request = adapter.requests.single;
+      expect(request.queryParameters['mushaf'], 2);
+      expect(request.queryParameters['word_fields'], contains('line_number'));
+      expect(request.queryParameters['word_fields'], contains('page_number'));
+    });
+
     test('requests Uthmani text and metadata for Mushaf pages', () async {
       final adapter = _RecordingAdapter();
       final contentClient = Dio(
@@ -79,8 +95,16 @@ void main() {
       );
 
       expect(verses.single['verse_key'], '18:1');
+      expect(
+        adapter.requests.single.uri.host,
+        'tajweed-quran-proxy-production.ebaidllc.workers.dev',
+      );
+      expect(
+        adapter.requests.single.uri.path,
+        '/v2/content/verses/by_page/293',
+      );
       expect(adapter.requests.single.queryParameters, {
-        'mushaf': 1,
+        'mushaf': 2,
         'language': 'ar',
         'words': 'true',
         'fields':
@@ -89,6 +113,30 @@ void main() {
             'text_uthmani,text_uthmani_tajweed,tajweed,char_type_name,line_number,page_number',
         'per_page': 50,
       });
+    });
+
+    test('fetches a complete surah Tafseer in one request', () async {
+      final adapter = _RecordingAdapter();
+      final contentClient = Dio(
+        BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
+      )..httpClientAdapter = adapter;
+      final service = QuranApiService(contentClient: contentClient);
+      adapter.responseBodies['/tafsirs/169/by_chapter/2'] = {
+        'tafsirs': [
+          {'verse_key': '2:1', 'text': 'First'},
+          {'verse_key': '2:2', 'text': 'Second'},
+        ],
+      };
+
+      final tafsir = await service.fetchTafsirForSurah(
+        tafsirId: 169,
+        surahNumber: 2,
+      );
+
+      expect(tafsir, {'2:1': 'First', '2:2': 'Second'});
+      final request = adapter.requests.single;
+      expect(request.uri.path, '/v2/content/tafsirs/169/by_chapter/2');
+      expect(request.queryParameters['per_page'], 300);
     });
 
     test(
@@ -212,6 +260,10 @@ void main() {
   group('QuranApiService.translationIdFor', () {
     test('uses available Abdel Haleem English translation', () {
       expect(QuranApiService.translationIdFor('en'), '85');
+    });
+
+    test('uses Abdel Haleem beneath Quran text in the Arabic interface', () {
+      expect(QuranApiService.translationIdFor('ar'), '85');
     });
 
     test('uses a Spanish translation rather than an English fallback', () {

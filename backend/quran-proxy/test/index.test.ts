@@ -117,6 +117,47 @@ describe("Quran Foundation proxy", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("allows simulator test auth only outside production", async () => {
+    const fetcher = vi.fn<Fetcher>()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(Response.json({chapters: []}));
+    const headers = new Headers({
+      "x-simulator-test-token": "simulator-test-token-with-32-chars",
+    });
+
+    const response = await handleRequest(
+      new Request("https://proxy.example/v2/content/chapters", {headers}),
+      {
+        ...env,
+        SIMULATOR_TEST_TOKEN: "simulator-test-token-with-32-chars",
+      },
+      fetcher,
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects simulator test auth in production", async () => {
+    const fetcher = vi.fn<Fetcher>();
+    const headers = new Headers({
+      "x-simulator-test-token": "simulator-test-token-with-32-chars",
+    });
+
+    const response = await handleRequest(
+      new Request("https://proxy.example/v2/content/chapters", {headers}),
+      {
+        ...env,
+        QF_ENV: "production",
+        SIMULATOR_TEST_TOKEN: "simulator-test-token-with-32-chars",
+      },
+      fetcher,
+    );
+
+    expect(response.status).toBe(401);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("rejects search, encoded paths, and oversized query values", async () => {
     const search = await handleRequest(
       contentRequest("https://proxy.example/v2/content/search?q=mercy"),
@@ -163,6 +204,54 @@ describe("Quran Foundation proxy", () => {
     expect(sync.status).toBe(200);
     expect(snapshot.status).toBe(200);
     expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
+  it("forwards Mushaf page requests with line metadata", async () => {
+    const fetcher = vi.fn<Fetcher>()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(Response.json({verses: []}));
+
+    const response = await handleRequest(
+      contentRequest(
+        "https://proxy.example/v2/content/verses/by_page/604" +
+          "?mushaf=2&language=ar&words=true" +
+          "&fields=text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number" +
+          "&word_fields=text_uthmani,text_uthmani_tajweed,tajweed,char_type_name,line_number,page_number" +
+          "&per_page=50",
+      ),
+      env,
+      fetcher,
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[1][0].toString()).toContain(
+      "/content/api/v4/verses/by_page/604?mushaf=2",
+    );
+    expect(fetcher.mock.calls[1][0].toString()).toContain(
+      "word_fields=text_uthmani,text_uthmani_tajweed,tajweed,char_type_name,line_number,page_number",
+    );
+  });
+
+  it("forwards whole-surah Tafseer requests", async () => {
+    const fetcher = vi.fn<Fetcher>()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(Response.json({tafsirs: []}));
+
+    const response = await handleRequest(
+      contentRequest(
+        "https://proxy.example/v2/content/tafsirs/169/by_chapter/2" +
+          "?per_page=300",
+      ),
+      env,
+      fetcher,
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[1][0].toString()).toContain(
+      "/content/api/v4/tafsirs/169/by_chapter/2?per_page=300",
+    );
   });
 
   it("rejects unsupported snapshot resource groups", async () => {

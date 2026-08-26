@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../data/mushaf_page_starts.dart';
 import 'quran_api_service.dart';
 
 class QuranOfflineSyncStatus {
@@ -93,7 +95,7 @@ class QuranOfflineSyncService {
   static const String _settingsBoxKey = 'settings';
   static const String _cacheBoxKey = 'verse_cache';
 
-  static const int _syncSchemaVersion = 6;
+  static const int _syncSchemaVersion = 9;
   static const String _syncVersionKey = 'quran_sync_version';
   static const String _syncInProgressKey = 'quran_sync_in_progress';
   static const String _syncCompletedAtKey = 'quran_sync_completed_at';
@@ -190,7 +192,8 @@ class QuranOfflineSyncService {
       final verses = await getCachedSurah(surah);
       if (verses == null) continue;
       for (final verse in verses) {
-        if (verse['page_number'] == safePage) {
+        final verseKey = verse['verse_key'] as String?;
+        if (verseKey != null && verseBelongsToMushafPage(verseKey, safePage)) {
           matches.add(verse);
         }
       }
@@ -216,6 +219,86 @@ class QuranOfflineSyncService {
     required Map<String, String> tafsirMap,
   }) async {
     await _cacheBox.put(_tafsirCacheKey(tafsirId, surahNumber), tafsirMap);
+  }
+
+  Future<Map<String, String>> syncTafsirSurah({
+    required int tafsirId,
+    required int surahNumber,
+    CancelToken? cancelToken,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final verseKeys = await getVerseKeysForSurah(surahNumber);
+    if (verseKeys.isEmpty) {
+      throw StateError('No verses were found for surah $surahNumber.');
+    }
+
+    final tafsirMap = await getCachedTafsirMap(
+      tafsirId: tafsirId,
+      surahNumber: surahNumber,
+    );
+    tafsirMap.addAll(
+      await _api.fetchTafsirForSurah(
+        tafsirId: tafsirId,
+        surahNumber: surahNumber,
+        cancelToken: cancelToken,
+      ),
+    );
+    await saveTafsirMap(
+      tafsirId: tafsirId,
+      surahNumber: surahNumber,
+      tafsirMap: tafsirMap,
+    );
+
+    var done = verseKeys.where((key) {
+      final text = tafsirMap[key];
+      return text != null && text.trim().isNotEmpty;
+    }).length;
+    onProgress?.call(done, verseKeys.length);
+
+    for (final verseKey in verseKeys) {
+      final existing = tafsirMap[verseKey];
+      if (existing != null && existing.trim().isNotEmpty) continue;
+      final text = await _api.fetchTafsirForAyah(
+        tafsirId: tafsirId,
+        verseKey: verseKey,
+        cancelToken: cancelToken,
+      );
+      if (text.trim().isEmpty) {
+        throw StateError('No Tafseer was returned for ayah $verseKey.');
+      }
+      tafsirMap[verseKey] = text;
+      done++;
+      onProgress?.call(done, verseKeys.length);
+      await saveTafsirMap(
+        tafsirId: tafsirId,
+        surahNumber: surahNumber,
+        tafsirMap: tafsirMap,
+      );
+    }
+    return tafsirMap;
+  }
+
+  Future<List<String>> getVerseKeysForSurah(int surahNumber) async {
+    var verses = await getCachedSurah(surahNumber);
+    if (verses == null || verses.isEmpty) {
+      final fetchedVerses = <Map<String, dynamic>>[];
+      var page = 1;
+      while (true) {
+        final pageVerses = await _api.fetchVerses(
+          surahNumber: surahNumber,
+          langCode: 'ar',
+          page: page,
+        );
+        fetchedVerses.addAll(pageVerses);
+        if (pageVerses.length < 50) break;
+        page++;
+      }
+      verses = fetchedVerses;
+    }
+    return verses
+        .map((verse) => verse['verse_key']?.toString() ?? '')
+        .where((key) => key.isNotEmpty)
+        .toList(growable: false);
   }
 
   Future<void> ensureBackgroundSync({
@@ -245,19 +328,6 @@ class QuranOfflineSyncService {
     }
 
     await _migrateCachedTextIfNeeded();
-
-    // Migration-only schema updates can make the cache fully ready without
-    // requiring a network re-download. Re-check before syncing.
-    final afterMigration = await getStatus();
-    if (afterMigration.completed) {
-      final lastCompletedAt = afterMigration.lastCompletedAt;
-      if (lastCompletedAt == null ||
-          !_now().isBefore(lastCompletedAt.add(_validationInterval))) {
-        await syncAll(onProgress: onProgress, refreshCached: true);
-      }
-      return;
-    }
-
     await syncAll(onProgress: onProgress);
   }
 
@@ -465,24 +535,10 @@ class QuranOfflineSyncService {
     return count;
   }
 
-  int _countAnyCachedSurahs() {
-    int count = 0;
-    for (int surah = 1; surah <= totalSurahs; surah++) {
-      final raw = _cacheBox.get(_surahCacheKey(surah));
-      if ((raw is List && raw.isNotEmpty) ||
-          (_loadLegacySurahRaw(surah)?.isNotEmpty ?? false)) {
-        count++;
-      }
-    }
-    return count;
-  }
-
   Future<void> _migrateCachedTextIfNeeded() async {
     final currentVersion =
         (_settingsBox.get(_syncVersionKey, defaultValue: 0) as int?) ?? 0;
     if (currentVersion >= _syncSchemaVersion) return;
-
-    bool touchedAny = false;
 
     for (int surah = 1; surah <= totalSurahs; surah++) {
       final candidateKeys = <String>{
@@ -550,13 +606,8 @@ class QuranOfflineSyncService {
 
         if (changed) {
           await _cacheBox.put(key, migrated);
-          touchedAny = true;
         }
       }
-    }
-
-    if (_countAnyCachedSurahs() > 0 || touchedAny) {
-      await _settingsBox.put(_syncVersionKey, _syncSchemaVersion);
     }
   }
 
