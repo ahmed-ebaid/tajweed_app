@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:tajweed_practice/core/data/mushaf_page_starts.dart';
 import 'package:tajweed_practice/core/services/quran_api_service.dart';
 import 'package:tajweed_practice/core/services/quran_offline_sync_service.dart';
 
@@ -9,8 +11,17 @@ class _FakeQuranApiService extends QuranApiService {
   int versesCalls = 0;
   int tajweedCalls = 0;
   final Set<int> failAtSurahs;
+  final Map<String, String> tafsirByAyah;
+  final Map<int, Map<String, String>> tafsirBySurah;
+  final String? cancelAtTafsirVerse;
+  final List<String> tafsirAyahCalls = [];
 
-  _FakeQuranApiService({this.failAtSurahs = const {}});
+  _FakeQuranApiService({
+    this.failAtSurahs = const {},
+    this.tafsirByAyah = const {},
+    this.tafsirBySurah = const {},
+    this.cancelAtTafsirVerse,
+  });
 
   @override
   Future<List<Map<String, dynamic>>> fetchVerses({
@@ -31,7 +42,12 @@ class _FakeQuranApiService extends QuranApiService {
         'page_number': surahNumber,
         'text_uthmani': 'رَبِّ',
         'words': [
-          {'char_type_name': 'word', 'text_uthmani': 'رَبِّ'},
+          {
+            'char_type_name': 'word',
+            'page_number': surahNumber,
+            'line_number': 1,
+            'text_uthmani': 'رَبِّ',
+          },
         ],
       },
     ];
@@ -43,6 +59,32 @@ class _FakeQuranApiService extends QuranApiService {
   }) async {
     tajweedCalls++;
     return {'$chapterNumber:1': '<tajweed class="ghunnah">رَبِّ</tajweed>'};
+  }
+
+  @override
+  Future<Map<String, String>> fetchTafsirForSurah({
+    required int tafsirId,
+    required int surahNumber,
+    CancelToken? cancelToken,
+  }) async {
+    return Map<String, String>.from(tafsirBySurah[surahNumber] ?? const {});
+  }
+
+  @override
+  Future<String> fetchTafsirForAyah({
+    required int tafsirId,
+    required String verseKey,
+    CancelToken? cancelToken,
+  }) async {
+    tafsirAyahCalls.add(verseKey);
+    if (verseKey == cancelAtTafsirVerse) {
+      cancelToken?.cancel('test cancellation');
+      throw DioException(
+        requestOptions: RequestOptions(path: verseKey),
+        type: DioExceptionType.cancel,
+      );
+    }
+    return tafsirByAyah[verseKey] ?? '';
   }
 }
 
@@ -63,6 +105,12 @@ void main() {
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
+  });
+
+  test('canonical Mushaf map covers all 604 pages', () {
+    expect(mushafPageStartVerseKeys, hasLength(604));
+    expect(mushafPageStartVerseKeys[599], '100:10');
+    expect(mushafPageStartVerseKeys.last, '112:1');
   });
 
   test('syncAll caches every surah and reports completed status', () async {
@@ -93,23 +141,26 @@ void main() {
     expect(fakeApi.tajweedCalls, QuranOfflineSyncService.totalSurahs);
   });
 
-  test('returns every cached verse assigned to a Mushaf page', () async {
-    await Hive.box('verse_cache').put('quran_ar_surah_1', [
-      {'verse_key': '1:7', 'page_number': 2, 'text_uthmani': 'نَصٌّ'},
-    ]);
-    await Hive.box('verse_cache').put('quran_ar_surah_2', [
-      {'verse_key': '2:1', 'page_number': 2, 'text_uthmani': 'نَصٌّ'},
-      {'verse_key': '2:2', 'page_number': 3, 'text_uthmani': 'نَصٌّ'},
-    ]);
+  test(
+    'uses canonical page boundaries instead of unreliable metadata',
+    () async {
+      await Hive.box('verse_cache').put('quran_ar_surah_100', [
+        {'verse_key': '100:9', 'page_number': 600, 'text_uthmani': 'نَصٌّ'},
+        {'verse_key': '100:10', 'page_number': 600, 'text_uthmani': 'نَصٌّ'},
+      ]);
+      await Hive.box('verse_cache').put('quran_ar_surah_101', [
+        {'verse_key': '101:1', 'page_number': 600, 'text_uthmani': 'نَصٌّ'},
+      ]);
 
-    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
-    final verses = await service.getCachedVersesForPage(2);
+      final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+      final verses = await service.getCachedVersesForPage(600);
 
-    expect(
-      verses.map((verse) => verse['verse_key']),
-      orderedEquals(['1:7', '2:1']),
-    );
-  });
+      expect(
+        verses.map((verse) => verse['verse_key']),
+        orderedEquals(['100:10', '101:1']),
+      );
+    },
+  );
 
   test('ensureBackgroundSync does nothing when already completed', () async {
     final firstApi = _FakeQuranApiService();
@@ -335,12 +386,54 @@ void main() {
     },
   );
 
-  test('ensureBackgroundSync migrates old cached text normalization', () async {
-    final service = QuranOfflineSyncService(api: _FakeQuranApiService());
+  test('schema 8 cache refreshes every surah for Mushaf metadata', () async {
+    final now = DateTime.utc(2026, 8, 1);
+    final api = _FakeQuranApiService();
+    final service = QuranOfflineSyncService(api: api, now: () => now);
     final settings = Hive.box('settings');
     final cache = Hive.box('verse_cache');
 
-    await settings.put('quran_sync_version', 1);
+    await settings.put('quran_sync_version', 8);
+    await settings.put('quran_sync_completed_at', now.millisecondsSinceEpoch);
+    for (int surah = 1; surah <= QuranOfflineSyncService.totalSurahs; surah++) {
+      await cache.put('quran_ar_surah_$surah', [
+        {
+          'verse_key': '$surah:1',
+          'page_number': surah,
+          'text_uthmani': 'رَبِّ',
+          'words': [
+            {'char_type_name': 'word', 'text_uthmani': 'رَبِّ'},
+          ],
+        },
+      ]);
+      await cache.put('quran_tajweed_surah_$surah', {
+        '$surah:1': '<tajweed class="ghunnah">رَبِّ</tajweed>',
+      });
+    }
+
+    final legacyStatus = await service.getStatus();
+    expect(legacyStatus.syncedSurahs, QuranOfflineSyncService.totalSurahs);
+    expect(legacyStatus.completed, isFalse);
+
+    await service.ensureBackgroundSync();
+
+    expect(api.versesCalls, QuranOfflineSyncService.totalSurahs);
+    expect(api.tajweedCalls, QuranOfflineSyncService.totalSurahs);
+    final refreshed = await service.getCachedSurah(7);
+    final words = refreshed!.first['words'] as List<dynamic>;
+    final firstWord = Map<String, dynamic>.from(words.first as Map);
+    expect(firstWord['page_number'], 7);
+    expect(firstWord['line_number'], 1);
+    expect((await service.getStatus()).completed, isTrue);
+  });
+
+  test('ensureBackgroundSync migrates old cached text normalization', () async {
+    final api = _FakeQuranApiService();
+    final service = QuranOfflineSyncService(api: api);
+    final settings = Hive.box('settings');
+    final cache = Hive.box('verse_cache');
+
+    await settings.put('quran_sync_version', 8);
     await cache.put('quran_ar_surah_7', [
       {
         'verse_key': '7:122',
@@ -357,6 +450,7 @@ void main() {
 
     await service.ensureBackgroundSync();
 
+    expect(api.versesCalls, QuranOfflineSyncService.totalSurahs);
     final migrated = await service.getCachedSurah(7);
     expect(migrated, isNotNull);
     final text = migrated!.first['text_uthmani'] as String;
@@ -450,5 +544,65 @@ void main() {
     expect(anchor, isNotNull);
     expect(anchor!['verse_key'], '18:5');
     expect(anchor['juz_number'], 15);
+  });
+
+  test('fills every missing Al-Jinn Tafseer ayah individually', () async {
+    final missingKeys = {'72:2', '72:15', '72:17', '72:23', '72:27', '72:28'};
+    final completeKeys = List.generate(28, (index) => '72:${index + 1}');
+    await Hive.box('verse_cache').put(
+      'quran_ar_surah_72',
+      completeKeys.map((key) => {'verse_key': key}).toList(),
+    );
+    final bulk = {
+      for (final key in completeKeys)
+        if (!missingKeys.contains(key)) key: 'bulk $key',
+    };
+    final singles = {for (final key in missingKeys) key: 'single $key'};
+    final api = _FakeQuranApiService(
+      tafsirBySurah: {72: bulk},
+      tafsirByAyah: singles,
+    );
+    final service = QuranOfflineSyncService(api: api);
+
+    final result = await service.syncTafsirSurah(tafsirId: 16, surahNumber: 72);
+
+    expect(result.keys.toSet(), completeKeys.toSet());
+    expect(api.tafsirAyahCalls.toSet(), missingKeys);
+    final cached = await service.getCachedTafsirMap(
+      tafsirId: 16,
+      surahNumber: 72,
+    );
+    expect(cached.keys.toSet(), completeKeys.toSet());
+  });
+
+  test('cancellation preserves recovered Tafseer ayahs', () async {
+    await Hive.box('verse_cache').put('quran_ar_surah_72', [
+      {'verse_key': '72:1'},
+      {'verse_key': '72:2'},
+      {'verse_key': '72:3'},
+    ]);
+    final api = _FakeQuranApiService(
+      tafsirBySurah: {
+        72: {'72:1': 'bulk 72:1'},
+      },
+      tafsirByAyah: const {'72:2': 'single 72:2'},
+      cancelAtTafsirVerse: '72:3',
+    );
+    final service = QuranOfflineSyncService(api: api);
+
+    await expectLater(
+      service.syncTafsirSurah(
+        tafsirId: 16,
+        surahNumber: 72,
+        cancelToken: CancelToken(),
+      ),
+      throwsA(isA<DioException>()),
+    );
+
+    final cached = await service.getCachedTafsirMap(
+      tafsirId: 16,
+      surahNumber: 72,
+    );
+    expect(cached, {'72:1': 'bulk 72:1', '72:2': 'single 72:2'});
   });
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,6 +15,20 @@ import '../../core/services/quran_content_sync_service.dart';
 import 'language_selector_screen.dart';
 
 const _appVersion = '1.1.0';
+
+String _localizedSettingsNumber(BuildContext context, int value) {
+  final languageCode = Localizations.localeOf(context).languageCode;
+  if (languageCode != 'ar' && languageCode != 'ur') {
+    return value.toString();
+  }
+  const western = '0123456789';
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+  return value
+      .toString()
+      .split('')
+      .map((digit) => arabicIndic[western.indexOf(digit)])
+      .join();
+}
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -234,9 +249,33 @@ class _RecitationDownloadTile extends StatefulWidget {
 class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
   final QuranApiService _api = QuranApiService();
   final QuranContentSyncService _contentSync = QuranContentSyncService();
+  final QuranOfflineSyncService _offlineSync = QuranOfflineSyncService();
   final AudioCacheService _audioCache = AudioCacheService();
   bool _busy = false;
   bool _cancelBulkRecitation = false;
+  CancelToken? _recitationCancelToken;
+  int _progressSurah = 0;
+  int _progressSurahsDone = 0;
+  int _progressSurahsTotal = 0;
+  int _progressAyahsDone = 0;
+  int _progressAyahsTotal = 0;
+
+  void _showRecitationProgress({
+    required int surah,
+    required int surahsDone,
+    required int surahsTotal,
+    required int ayahsDone,
+    required int ayahsTotal,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _progressSurah = surah;
+      _progressSurahsDone = surahsDone;
+      _progressSurahsTotal = surahsTotal;
+      _progressAyahsDone = ayahsDone;
+      _progressAyahsTotal = ayahsTotal;
+    });
+  }
 
   Future<int?> _askSurahNumber() async {
     final s = _SettingsStrings.of(context);
@@ -298,21 +337,35 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
     required int surahNumber,
     required int reciterId,
     bool showDialogProgress = true,
+    CancelToken? cancelToken,
+    void Function(int done, int total)? onProgress,
   }) async {
     final s = _SettingsStrings.of(context);
-    var audioMap = _contentSync.getCachedRecitationMap(
+    final audioMap = _contentSync.getCachedRecitationMap(
       reciterId: reciterId,
       surahNumber: surahNumber,
     );
-    if (audioMap.isEmpty) {
-      audioMap = await _api.fetchAudioFiles(
+    audioMap.addAll(
+      await _api.fetchAudioFiles(
         reciterId: reciterId,
         surahNumber: surahNumber,
-      );
-      await _contentSync.cacheRecitationMap(
-        reciterId: reciterId,
-        surahNumber: surahNumber,
-        audioUrls: audioMap,
+        cancelToken: cancelToken,
+      ),
+    );
+    await _contentSync.cacheRecitationMap(
+      reciterId: reciterId,
+      surahNumber: surahNumber,
+      audioUrls: audioMap,
+    );
+    final expectedVerseKeys = await _offlineSync.getVerseKeysForSurah(
+      surahNumber,
+    );
+    final missingVerseKeys = expectedVerseKeys
+        .where((key) => !audioMap.containsKey(key))
+        .toList(growable: false);
+    if (missingVerseKeys.isNotEmpty) {
+      throw StateError(
+        'Missing audio URLs for ${missingVerseKeys.join(', ')}.',
       );
     }
     if (audioMap.isEmpty) return false;
@@ -338,8 +391,14 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
                     children: [
                       Text(
                         s.text('surah_reciter_status', {
-                          'surah': '$surahNumber',
-                          'reciter': '$reciterId',
+                          'surah': _localizedSettingsNumber(
+                            context,
+                            surahNumber,
+                          ),
+                          'reciter': _localizedSettingsNumber(
+                            context,
+                            reciterId,
+                          ),
                         }),
                         style: const TextStyle(
                           fontSize: 12,
@@ -351,14 +410,22 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
                       const SizedBox(height: 8),
                       Text(
                         s.text('downloaded_of_ayahs', {
-                          'done': '$done',
-                          'total': '$total',
+                          'done': _localizedSettingsNumber(context, done),
+                          'total': _localizedSettingsNumber(context, total),
                         }),
                       ),
                     ],
                   );
                 },
               ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    cancelToken?.cancel('Recitation download stopped.');
+                  },
+                  child: Text(s.text('stop')),
+                ),
+              ],
             ),
           ),
         );
@@ -370,13 +437,20 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
         audioUrls: audioMap,
         onProgress: (done, total) {
           progress.value = {'done': done, 'total': total};
+          onProgress?.call(done, total);
         },
+        cancelToken: cancelToken,
       );
 
       if (showDialogProgress && mounted) {
         Navigator.of(context, rootNavigator: true).pop();
       }
       return true;
+    } catch (_) {
+      if (showDialogProgress && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      rethrow;
     } finally {
       progress.dispose();
     }
@@ -386,15 +460,27 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
     if (_busy) return;
     final s = _SettingsStrings.of(context);
     final surahNumber = await _askSurahNumber();
-    if (surahNumber == null) return;
+    if (surahNumber == null || !mounted) return;
 
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     setState(() => _busy = true);
+    final cancelToken = CancelToken();
+    _recitationCancelToken = cancelToken;
     try {
       final ok = await _downloadRecitationSurah(
         surahNumber: surahNumber,
         reciterId: reciterId,
         showDialogProgress: true,
+        cancelToken: cancelToken,
+        onProgress: (done, total) {
+          _showRecitationProgress(
+            surah: surahNumber,
+            surahsDone: 0,
+            surahsTotal: 1,
+            ayahsDone: done,
+            ayahsTotal: total,
+          );
+        },
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -402,9 +488,22 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
           content: Text(
             ok
                 ? s.text('recitation_surah_downloaded', {
-                    'surah': '$surahNumber',
+                    'surah': _localizedSettingsNumber(context, surahNumber),
                   })
-                : s.text('no_audio_urls_found', {'surah': '$surahNumber'}),
+                : s.text('no_audio_urls_found', {
+                    'surah': _localizedSettingsNumber(context, surahNumber),
+                  }),
+          ),
+        ),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            CancelToken.isCancel(e)
+                ? s.text('recitation_download_stopped')
+                : s.text('recitation_download_failed', {'error': '$e'}),
           ),
         ),
       );
@@ -416,6 +515,7 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
         ),
       );
     } finally {
+      _recitationCancelToken = null;
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -450,6 +550,8 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
       'surahDone': 0,
       'surahTotal': 114,
       'currentSurah': 1,
+      'ayahDone': 0,
+      'ayahTotal': 0,
     });
 
     setState(() => _busy = true);
@@ -466,6 +568,8 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
                 final done = value['surahDone'] ?? 0;
                 final total = value['surahTotal'] ?? 114;
                 final currentSurah = value['currentSurah'] ?? 1;
+                final ayahDone = value['ayahDone'] ?? 0;
+                final ayahTotal = value['ayahTotal'] ?? 0;
                 final ratio = (done / total).clamp(0.0, 1.0);
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -473,8 +577,11 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
                   children: [
                     Text(
                       s.text('reciter_surah_compact', {
-                        'reciter': '$reciterId',
-                        'surah': '$currentSurah',
+                        'reciter': _localizedSettingsNumber(context, reciterId),
+                        'surah': _localizedSettingsNumber(
+                          context,
+                          currentSurah,
+                        ),
                       }),
                     ),
                     const SizedBox(height: 12),
@@ -482,10 +589,19 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
                     const SizedBox(height: 8),
                     Text(
                       s.text('completed_of_surahs', {
-                        'done': '$done',
-                        'total': '$total',
+                        'done': _localizedSettingsNumber(context, done),
+                        'total': _localizedSettingsNumber(context, total),
                       }),
                     ),
+                    if (ayahTotal > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        s.text('downloaded_of_ayahs', {
+                          'done': _localizedSettingsNumber(context, ayahDone),
+                          'total': _localizedSettingsNumber(context, ayahTotal),
+                        }),
+                      ),
+                    ],
                   ],
                 );
               },
@@ -494,6 +610,9 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
               TextButton(
                 onPressed: () {
                   _cancelBulkRecitation = true;
+                  _recitationCancelToken?.cancel(
+                    'Bulk recitation download stopped.',
+                  );
                 },
                 child: Text(s.text('stop')),
               ),
@@ -511,15 +630,47 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
           'surahDone': surahDone,
           'surahTotal': 114,
           'currentSurah': surah,
+          'ayahDone': 0,
+          'ayahTotal': 0,
         };
+        _showRecitationProgress(
+          surah: surah,
+          surahsDone: surahDone,
+          surahsTotal: 114,
+          ayahsDone: 0,
+          ayahsTotal: 0,
+        );
         try {
-          await _downloadRecitationSurah(
+          final cancelToken = CancelToken();
+          _recitationCancelToken = cancelToken;
+          final ok = await _downloadRecitationSurah(
             surahNumber: surah,
             reciterId: reciterId,
             showDialogProgress: false,
+            cancelToken: cancelToken,
+            onProgress: (done, total) {
+              progress.value = {
+                'surahDone': surahDone,
+                'surahTotal': 114,
+                'currentSurah': surah,
+                'ayahDone': done,
+                'ayahTotal': total,
+              };
+              _showRecitationProgress(
+                surah: surah,
+                surahsDone: surahDone,
+                surahsTotal: 114,
+                ayahsDone: done,
+                ayahsTotal: total,
+              );
+            },
           );
-        } catch (_) {
-          // Continue downloading remaining surahs.
+          if (!ok) {
+            throw StateError('No audio URLs found for surah $surah.');
+          }
+        } on DioException catch (e) {
+          if (CancelToken.isCancel(e) && _cancelBulkRecitation) break;
+          rethrow;
         }
         surahDone++;
         if (_cancelBulkRecitation) break;
@@ -549,6 +700,7 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
         );
       }
     } finally {
+      _recitationCancelToken = null;
       progress.dispose();
       if (mounted) setState(() => _busy = false);
     }
@@ -558,10 +710,30 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
   Widget build(BuildContext context) {
     final s = _SettingsStrings.of(context);
     final reciterId = context.watch<RecitationProvider>().selectedReciterId;
+    final languageCode = context.watch<LocaleProvider>().locale.languageCode;
+    final reciterName = SettingsScreen._reciterLabel(
+      reciterId,
+      languageCode,
+    );
+    final progressText = _busy && _progressSurah > 0
+        ? [
+            s.text('current_reciter', {'name': reciterName}),
+            s.text('surah_progress_compact', {
+              'surah': _localizedSettingsNumber(context, _progressSurah),
+              'done': _localizedSettingsNumber(context, _progressSurahsDone),
+              'total': _localizedSettingsNumber(context, _progressSurahsTotal),
+            }),
+            if (_progressAyahsTotal > 0)
+              s.text('downloaded_of_ayahs', {
+                'done': _localizedSettingsNumber(context, _progressAyahsDone),
+                'total': _localizedSettingsNumber(context, _progressAyahsTotal),
+              }),
+          ].join(' • ')
+        : s.text('current_reciter', {'name': reciterName});
     return ListTile(
       leading: const Icon(Icons.download_for_offline_outlined),
       title: Text(s.text('offline_recitation_downloads')),
-      subtitle: Text(s.text('reciter_id', {'id': '$reciterId'})),
+      subtitle: Text(progressText),
       trailing: _busy
           ? const SizedBox(
               width: 18,
@@ -599,40 +771,32 @@ class _TafseerDownloadTile extends StatefulWidget {
 }
 
 class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
-  final QuranApiService _api = QuranApiService();
   final QuranOfflineSyncService _offlineSync = QuranOfflineSyncService();
   bool _busy = false;
   bool _cancelBulkTafseer = false;
+  CancelToken? _tafsirCancelToken;
+  bool _bulkDownloading = false;
+  int? _progressSurah;
+  int _progressSurahsDone = 0;
+  int _progressSurahsTotal = 0;
+  int _progressAyahsDone = 0;
+  int _progressAyahsTotal = 0;
 
-  Future<List<String>> _fetchSurahVerseKeys({
-    required int surahNumber,
-    required String langCode,
-  }) async {
-    final keys = <String>[];
-    var page = 1;
-    while (true) {
-      final verses = await _api.fetchVerses(
-        surahNumber: surahNumber,
-        langCode: langCode,
-        page: page,
-      );
-      if (verses.isEmpty) break;
-
-      for (final v in verses) {
-        final key = v['verse_key'] as String?;
-        if (key != null && key.isNotEmpty) keys.add(key);
-      }
-      if (verses.length < 50) break;
-      page++;
-    }
-
-    final unique = keys.toSet().toList(growable: false)
-      ..sort((a, b) {
-        final aa = int.tryParse(a.split(':').last) ?? 0;
-        final bb = int.tryParse(b.split(':').last) ?? 0;
-        return aa.compareTo(bb);
-      });
-    return unique;
+  void _showTafseerProgress({
+    required int surah,
+    required int surahsDone,
+    required int surahsTotal,
+    required int ayahsDone,
+    required int ayahsTotal,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _progressSurah = surah;
+      _progressSurahsDone = surahsDone;
+      _progressSurahsTotal = surahsTotal;
+      _progressAyahsDone = ayahsDone;
+      _progressAyahsTotal = ayahsTotal;
+    });
   }
 
   Future<int?> _askSurahNumber() async {
@@ -697,11 +861,22 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
     final surahNumber = await _askSurahNumber();
     if (surahNumber == null) return;
 
-    final tafsirId = context.read<TafseerProvider>().selectedTafsirId;
-    final langCode = context.read<LocaleProvider>().locale.languageCode;
+    final tafseerProvider = context.read<TafseerProvider>();
+    final tafsirId = tafseerProvider.selectedTafsirId;
+    final tafsirName = tafseerProvider.selectedTafsirName;
     final progress = ValueNotifier<Map<String, int>>({'done': 0, 'total': 1});
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _bulkDownloading = false;
+    });
+    _showTafseerProgress(
+      surah: surahNumber,
+      surahsDone: 0,
+      surahsTotal: 1,
+      ayahsDone: 0,
+      ayahsTotal: 0,
+    );
 
     if (mounted) {
       unawaited(
@@ -722,8 +897,8 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
                   children: [
                     Text(
                       s.text('surah_tafseer_status', {
-                        'surah': '$surahNumber',
-                        'id': '$tafsirId',
+                        'surah': _localizedSettingsNumber(context, surahNumber),
+                        'source': tafsirName,
                       }),
                       style: const TextStyle(
                         fontSize: 12,
@@ -735,8 +910,8 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
                     const SizedBox(height: 8),
                     Text(
                       s.text('downloaded_of_ayahs', {
-                        'done': '$done',
-                        'total': '$total',
+                        'done': _localizedSettingsNumber(context, done),
+                        'total': _localizedSettingsNumber(context, total),
                       }),
                     ),
                   ],
@@ -749,46 +924,36 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
     }
 
     try {
-      final verseKeys = await _fetchSurahVerseKeys(
+      final cancelToken = CancelToken();
+      _tafsirCancelToken = cancelToken;
+      final fetched = await _offlineSync.syncTafsirSurah(
+        tafsirId: tafsirId,
         surahNumber: surahNumber,
-        langCode: langCode,
+        cancelToken: cancelToken,
+        onProgress: (done, total) {
+          progress.value = {'done': done, 'total': total};
+          _showTafseerProgress(
+            surah: surahNumber,
+            surahsDone: 0,
+            surahsTotal: 1,
+            ayahsDone: done,
+            ayahsTotal: total,
+          );
+        },
       );
 
-      if (verseKeys.isEmpty) {
+      if (fetched.isEmpty) {
         throw Exception(s.text('no_verses_returned'));
       }
 
-      final cached = await _offlineSync.getCachedTafsirMap(
-        tafsirId: tafsirId,
-        surahNumber: surahNumber,
-      );
-      final map = Map<String, String>.from(cached);
-
-      final total = verseKeys.length;
-      var done = 0;
-      progress.value = {'done': done, 'total': total};
-
-      for (final verseKey in verseKeys) {
-        final existing = map[verseKey];
-        if (existing != null && existing.trim().isNotEmpty) {
-          done++;
-          progress.value = {'done': done, 'total': total};
-          continue;
-        }
-
-        final text = await _api.fetchTafsirForAyah(
-          tafsirId: tafsirId,
-          verseKey: verseKey,
-        );
-        map[verseKey] = text;
-        done++;
-        progress.value = {'done': done, 'total': total};
-      }
-
-      await _offlineSync.saveTafsirMap(
-        tafsirId: tafsirId,
-        surahNumber: surahNumber,
-        tafsirMap: map,
+      final total = fetched.length;
+      progress.value = {'done': total, 'total': total};
+      _showTafseerProgress(
+        surah: surahNumber,
+        surahsDone: 0,
+        surahsTotal: 1,
+        ayahsDone: total,
+        ayahsTotal: total,
       );
 
       if (mounted) {
@@ -796,7 +961,9 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              s.text('tafseer_surah_downloaded', {'surah': '$surahNumber'}),
+              s.text('tafseer_surah_downloaded', {
+                'surah': _localizedSettingsNumber(context, surahNumber),
+              }),
             ),
             duration: const Duration(seconds: 2),
           ),
@@ -815,7 +982,10 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
     } finally {
       progress.dispose();
       if (mounted) {
-        setState(() => _busy = false);
+        setState(() {
+          _busy = false;
+          _progressSurah = null;
+        });
       }
     }
   }
@@ -842,10 +1012,10 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
           ),
         ) ??
         false;
-    if (!confirmed) return;
-
-    final tafsirId = context.read<TafseerProvider>().selectedTafsirId;
-    final langCode = context.read<LocaleProvider>().locale.languageCode;
+    if (!confirmed || !mounted) return;
+    final tafseerProvider = context.read<TafseerProvider>();
+    final tafsirId = tafseerProvider.selectedTafsirId;
+    final tafsirName = tafseerProvider.selectedTafsirName;
     _cancelBulkTafseer = false;
     final progress = ValueNotifier<Map<String, int>>({
       'surahDone': 0,
@@ -853,7 +1023,17 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
       'currentSurah': 1,
     });
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _bulkDownloading = true;
+    });
+    _showTafseerProgress(
+      surah: 1,
+      surahsDone: 0,
+      surahsTotal: 114,
+      ayahsDone: 0,
+      ayahsTotal: 0,
+    );
     if (mounted) {
       unawaited(
         showDialog<void>(
@@ -867,6 +1047,8 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
                 final done = value['surahDone'] ?? 0;
                 final total = value['surahTotal'] ?? 114;
                 final currentSurah = value['currentSurah'] ?? 1;
+                final ayahDone = value['ayahDone'] ?? 0;
+                final ayahTotal = value['ayahTotal'] ?? 0;
                 final ratio = (done / total).clamp(0.0, 1.0);
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -874,8 +1056,11 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
                   children: [
                     Text(
                       s.text('tafseer_id_surah_compact', {
-                        'id': '$tafsirId',
-                        'surah': '$currentSurah',
+                        'source': tafsirName,
+                        'surah': _localizedSettingsNumber(
+                          context,
+                          currentSurah,
+                        ),
                       }),
                     ),
                     const SizedBox(height: 12),
@@ -883,10 +1068,19 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
                     const SizedBox(height: 8),
                     Text(
                       s.text('completed_of_surahs', {
-                        'done': '$done',
-                        'total': '$total',
+                        'done': _localizedSettingsNumber(context, done),
+                        'total': _localizedSettingsNumber(context, total),
                       }),
                     ),
+                    if (ayahTotal > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        s.text('downloaded_of_ayahs', {
+                          'done': _localizedSettingsNumber(context, ayahDone),
+                          'total': _localizedSettingsNumber(context, ayahTotal),
+                        }),
+                      ),
+                    ],
                   ],
                 );
               },
@@ -895,6 +1089,7 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
               TextButton(
                 onPressed: () {
                   _cancelBulkTafseer = true;
+                  _tafsirCancelToken?.cancel('Tafseer download stopped');
                 },
                 child: Text(s.text('stop')),
               ),
@@ -912,36 +1107,60 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
           'surahDone': surahDone,
           'surahTotal': 114,
           'currentSurah': surah,
+          'ayahDone': 0,
+          'ayahTotal': 0,
         };
+        _showTafseerProgress(
+          surah: surah,
+          surahsDone: surahDone,
+          surahsTotal: 114,
+          ayahsDone: 0,
+          ayahsTotal: 0,
+        );
 
         try {
-          final verseKeys = await _fetchSurahVerseKeys(
-            surahNumber: surah,
-            langCode: langCode,
-          );
-          final cached = await _offlineSync.getCachedTafsirMap(
+          final cancelToken = CancelToken();
+          _tafsirCancelToken = cancelToken;
+          final fetched = await _offlineSync.syncTafsirSurah(
             tafsirId: tafsirId,
             surahNumber: surah,
+            cancelToken: cancelToken,
+            onProgress: (done, total) {
+              progress.value = {
+                'surahDone': surahDone,
+                'surahTotal': 114,
+                'currentSurah': surah,
+                'ayahDone': done,
+                'ayahTotal': total,
+              };
+              _showTafseerProgress(
+                surah: surah,
+                surahsDone: surahDone,
+                surahsTotal: 114,
+                ayahsDone: done,
+                ayahsTotal: total,
+              );
+            },
           );
-          final map = Map<String, String>.from(cached);
-
-          for (final verseKey in verseKeys) {
-            final existing = map[verseKey];
-            if (existing != null && existing.trim().isNotEmpty) continue;
-            final text = await _api.fetchTafsirForAyah(
-              tafsirId: tafsirId,
-              verseKey: verseKey,
-            );
-            map[verseKey] = text;
-          }
-
-          await _offlineSync.saveTafsirMap(
-            tafsirId: tafsirId,
-            surahNumber: surah,
-            tafsirMap: map,
+          if (_cancelBulkTafseer) break;
+          final ayahTotal = fetched.length;
+          progress.value = {
+            'surahDone': surahDone,
+            'surahTotal': 114,
+            'currentSurah': surah,
+            'ayahDone': ayahTotal,
+            'ayahTotal': ayahTotal,
+          };
+          _showTafseerProgress(
+            surah: surah,
+            surahsDone: surahDone,
+            surahsTotal: 114,
+            ayahsDone: ayahTotal,
+            ayahsTotal: ayahTotal,
           );
         } catch (_) {
-          // Continue with remaining surahs.
+          if (_cancelBulkTafseer) break;
+          rethrow;
         }
         surahDone++;
         if (_cancelBulkTafseer) break;
@@ -971,19 +1190,49 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
         );
       }
     } finally {
+      _tafsirCancelToken = null;
       progress.dispose();
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _bulkDownloading = false;
+          _progressSurah = null;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final s = _SettingsStrings.of(context);
-    final tafsirId = context.watch<TafseerProvider>().selectedTafsirId;
+    final tafseerProvider = context.watch<TafseerProvider>();
+    final tafsirName = tafseerProvider.selectedTafsirName;
+    final progressSurah = _progressSurah;
+    final subtitle = _busy && progressSurah != null
+        ? [
+            s.text('tafseer_id_surah_compact', {
+              'source': tafsirName,
+              'surah': _localizedSettingsNumber(context, progressSurah),
+            }),
+            if (_bulkDownloading)
+              s.text('completed_of_surahs', {
+                'done': _localizedSettingsNumber(context, _progressSurahsDone),
+                'total': _localizedSettingsNumber(
+                  context,
+                  _progressSurahsTotal,
+                ),
+              }),
+            if (_progressAyahsTotal > 0)
+              s.text('downloaded_of_ayahs', {
+                'done': _localizedSettingsNumber(context, _progressAyahsDone),
+                'total': _localizedSettingsNumber(context, _progressAyahsTotal),
+              }),
+          ].join(' • ')
+        : s.text('current_tafseer', {'source': tafsirName});
     return ListTile(
       leading: const Icon(Icons.download_for_offline_outlined),
       title: Text(s.text('download_tafseer_offline')),
-      subtitle: Text(s.text('current_source_id', {'id': '$tafsirId'})),
+      subtitle: Text(subtitle),
       trailing: _busy
           ? const SizedBox(
               width: 18,
@@ -1026,7 +1275,9 @@ class _QuranDataTileState extends State<_QuranDataTile> {
 
   QuranOfflineSyncStatus? _status;
   bool _busy = false;
+  bool _pollingStatus = false;
   String? _error;
+  Timer? _statusPollTimer;
 
   @override
   void initState() {
@@ -1034,16 +1285,59 @@ class _QuranDataTileState extends State<_QuranDataTile> {
     _refreshStatus();
   }
 
+  @override
+  void dispose() {
+    _statusPollTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _refreshStatus() async {
     setState(() => _error = null);
+    await _pollStatus();
+  }
+
+  Future<void> _pollStatus() async {
+    if (_pollingStatus) return;
+    _pollingStatus = true;
     try {
       final status = await _syncService.getStatus();
       if (!mounted) return;
       setState(() => _status = status);
+      if (status.inProgress) {
+        _startStatusPolling();
+      } else {
+        _statusPollTimer?.cancel();
+        _statusPollTimer = null;
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
+    } finally {
+      _pollingStatus = false;
     }
+  }
+
+  void _startStatusPolling() {
+    _statusPollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 500),
+      (_) => unawaited(_pollStatus()),
+    );
+  }
+
+  void _showProgress(int done, int total) {
+    if (!mounted) return;
+    final previous = _status;
+    setState(() {
+      _status = QuranOfflineSyncStatus(
+        inProgress: true,
+        completed: false,
+        syncedSurahs: done,
+        totalSurahs: total,
+        lastCompletedAt: previous?.lastCompletedAt,
+        lastError: null,
+      );
+    });
+    _startStatusPolling();
   }
 
   Future<void> _sync({required bool force}) async {
@@ -1051,11 +1345,12 @@ class _QuranDataTileState extends State<_QuranDataTile> {
       _busy = true;
       _error = null;
     });
+    _showProgress(force ? 0 : (_status?.syncedSurahs ?? 0), 114);
     try {
       if (force) {
-        await _syncService.forceResync();
+        await _syncService.forceResync(onProgress: _showProgress);
       } else {
-        await _syncService.ensureBackgroundSync();
+        await _syncService.ensureBackgroundSync(onProgress: _showProgress);
       }
       await _refreshStatus();
     } catch (e) {
@@ -1092,9 +1387,7 @@ class _QuranDataTileState extends State<_QuranDataTile> {
     final status = _status;
 
     String subtitle;
-    if (_busy) {
-      subtitle = s.text('working');
-    } else if (_error != null) {
+    if (_error != null) {
       subtitle = s.text('error_syncing_quran_data');
     } else if (status == null) {
       subtitle = s.text('checking_status');
@@ -1102,19 +1395,21 @@ class _QuranDataTileState extends State<_QuranDataTile> {
       final syncedAt =
           status.lastCompletedAt?.toLocal().toString() ?? 'unknown';
       subtitle = s.text('ready_status', {
-        'synced': '${status.syncedSurahs}',
-        'total': '${status.totalSurahs}',
+        'synced': _localizedSettingsNumber(context, status.syncedSurahs),
+        'total': _localizedSettingsNumber(context, status.totalSurahs),
         'time': syncedAt,
       });
     } else if (status.inProgress) {
       subtitle = s.text('syncing_surahs_status', {
-        'synced': '${status.syncedSurahs}',
-        'total': '${status.totalSurahs}',
+        'synced': _localizedSettingsNumber(context, status.syncedSurahs),
+        'total': _localizedSettingsNumber(context, status.totalSurahs),
       });
+    } else if (_busy) {
+      subtitle = s.text('working');
     } else {
       subtitle = s.text('not_fully_synced_status', {
-        'synced': '${status.syncedSurahs}',
-        'total': '${status.totalSurahs}',
+        'synced': _localizedSettingsNumber(context, status.syncedSurahs),
+        'total': _localizedSettingsNumber(context, status.totalSurahs),
       });
     }
 
@@ -1574,23 +1869,24 @@ class _SettingsStrings {
       'bulk_recitation_download_failed':
           'Bulk recitation download failed: {error}',
       'offline_recitation_downloads': 'Offline recitation downloads',
-      'reciter_id': 'Reciter ID: {id}',
+      'current_reciter': 'Current reciter: {name}',
+      'surah_progress_compact': 'Surah {surah} · {done}/{total} completed',
       'download_one_surah': 'Download one surah',
       'download_all_surahs': 'Download all surahs',
       'download_tafseer': 'Download Tafseer',
       'downloading_tafseer': 'Downloading tafseer',
-      'surah_tafseer_status': 'Surah {surah} · Tafseer ID {id}',
+      'surah_tafseer_status': 'Surah {surah} · {source}',
       'no_verses_returned': 'No verses returned for this surah.',
       'tafseer_surah_downloaded': 'Tafseer for surah {surah} downloaded.',
       'tafseer_download_failed': 'Tafseer download failed: {error}',
       'download_all_surahs_tafseer': 'Download all surahs tafseer',
       'downloading_all_tafseer': 'Downloading all tafseer',
-      'tafseer_id_surah_compact': 'Tafseer ID {id} • Surah {surah}',
+      'tafseer_id_surah_compact': '{source} • Surah {surah}',
       'tafseer_download_stopped': 'Tafseer download stopped.',
       'all_surahs_tafseer_completed': 'All surahs tafseer download completed.',
       'bulk_tafseer_download_failed': 'Bulk tafseer download failed: {error}',
       'download_tafseer_offline': 'Download tafseer for offline',
-      'current_source_id': 'Current source ID: {id}',
+      'current_tafseer': 'Current Tafseer: {source}',
       'copy': 'Copy',
       'close': 'Close',
       'working': 'Working...',
@@ -1683,23 +1979,24 @@ class _SettingsStrings {
       'bulk_recitation_download_failed':
           'فشل تنزيل التلاوات دفعة واحدة: {error}',
       'offline_recitation_downloads': 'تنزيلات التلاوة دون اتصال',
-      'reciter_id': 'معرف القارئ: {id}',
+      'current_reciter': 'القارئ الحالي: {name}',
+      'surah_progress_compact': 'السورة {surah} · اكتمل {done}/{total}',
       'download_one_surah': 'تنزيل سورة واحدة',
       'download_all_surahs': 'تنزيل جميع السور',
       'download_tafseer': 'تنزيل التفسير',
       'downloading_tafseer': 'جارٍ تنزيل التفسير',
-      'surah_tafseer_status': 'سورة {surah} · معرف التفسير {id}',
+      'surah_tafseer_status': 'السورة {surah} · {source}',
       'no_verses_returned': 'لم يتم إرجاع آيات لهذه السورة.',
       'tafseer_surah_downloaded': 'تم تنزيل تفسير السورة {surah}.',
       'tafseer_download_failed': 'فشل تنزيل التفسير: {error}',
       'download_all_surahs_tafseer': 'تنزيل تفسير جميع السور',
       'downloading_all_tafseer': 'جارٍ تنزيل جميع التفاسير',
-      'tafseer_id_surah_compact': 'معرف التفسير {id} • السورة {surah}',
+      'tafseer_id_surah_compact': '{source} • السورة {surah}',
       'tafseer_download_stopped': 'تم إيقاف تنزيل التفسير.',
       'all_surahs_tafseer_completed': 'اكتمل تنزيل تفسير جميع السور.',
       'bulk_tafseer_download_failed': 'فشل تنزيل التفسير دفعة واحدة: {error}',
       'download_tafseer_offline': 'تنزيل التفسير للاستخدام دون اتصال',
-      'current_source_id': 'معرف المصدر الحالي: {id}',
+      'current_tafseer': 'التفسير الحالي: {source}',
       'copy': 'نسخ',
       'close': 'إغلاق',
       'working': 'جارٍ العمل...',
@@ -1793,24 +2090,25 @@ class _SettingsStrings {
       'bulk_recitation_download_failed':
           'اجتماعی تلاوت ڈاؤن لوڈ ناکام: {error}',
       'offline_recitation_downloads': 'آف لائن تلاوت ڈاؤن لوڈز',
-      'reciter_id': 'قاری آئی ڈی: {id}',
+      'current_reciter': 'موجودہ قاری: {name}',
+      'surah_progress_compact': 'سورہ {surah} · {done}/{total} مکمل',
       'download_one_surah': 'ایک سورہ ڈاؤن لوڈ کریں',
       'download_all_surahs': 'تمام سورتیں ڈاؤن لوڈ کریں',
       'download_tafseer': 'تفسیر ڈاؤن لوڈ کریں',
       'downloading_tafseer': 'تفسیر ڈاؤن لوڈ ہو رہی ہے',
-      'surah_tafseer_status': 'سورہ {surah} · تفسیر آئی ڈی {id}',
+      'surah_tafseer_status': 'سورہ {surah} · {source}',
       'no_verses_returned': 'اس سورہ کے لیے کوئی آیات واپس نہیں آئیں۔',
       'tafseer_surah_downloaded': 'سورہ {surah} کی تفسیر ڈاؤن لوڈ ہو گئی۔',
       'tafseer_download_failed': 'تفسیر ڈاؤن لوڈ ناکام: {error}',
       'download_all_surahs_tafseer': 'تمام سورتوں کی تفسیر ڈاؤن لوڈ کریں',
       'downloading_all_tafseer': 'تمام تفاسیر ڈاؤن لوڈ ہو رہی ہیں',
-      'tafseer_id_surah_compact': 'تفسیر آئی ڈی {id} • سورہ {surah}',
+      'tafseer_id_surah_compact': '{source} • سورہ {surah}',
       'tafseer_download_stopped': 'تفسیر کا ڈاؤن لوڈ روک دیا گیا۔',
       'all_surahs_tafseer_completed':
           'تمام سورتوں کی تفسیر کا ڈاؤن لوڈ مکمل ہو گیا۔',
       'bulk_tafseer_download_failed': 'اجتماعی تفسیر ڈاؤن لوڈ ناکام: {error}',
       'download_tafseer_offline': 'آف لائن کے لیے تفسیر ڈاؤن لوڈ کریں',
-      'current_source_id': 'موجودہ ماخذ آئی ڈی: {id}',
+      'current_tafseer': 'موجودہ تفسیر: {source}',
       'copy': 'کاپی',
       'close': 'بند کریں',
       'working': 'کام جاری ہے...',
@@ -1902,23 +2200,24 @@ class _SettingsStrings {
       'bulk_recitation_download_failed':
           'Toplu tilavet indirme başarısız: {error}',
       'offline_recitation_downloads': 'Çevrimdışı tilavet indirmeleri',
-      'reciter_id': 'Kari kimliği: {id}',
+      'current_reciter': 'Geçerli kâri: {name}',
+      'surah_progress_compact': 'Sure {surah} · {done}/{total} tamamlandı',
       'download_one_surah': 'Bir sure indir',
       'download_all_surahs': 'Tüm sureleri indir',
       'download_tafseer': 'Tefsir İndir',
       'downloading_tafseer': 'Tefsir indiriliyor',
-      'surah_tafseer_status': 'Sure {surah} · Tefsir kimliği {id}',
+      'surah_tafseer_status': 'Sure {surah} · {source}',
       'no_verses_returned': 'Bu sure için ayet döndürülmedi.',
       'tafseer_surah_downloaded': '{surah}. sure için tefsir indirildi.',
       'tafseer_download_failed': 'Tefsir indirme başarısız: {error}',
       'download_all_surahs_tafseer': 'Tüm surelerin tefsirini indir',
       'downloading_all_tafseer': 'Tüm tefsirler indiriliyor',
-      'tafseer_id_surah_compact': 'Tefsir kimliği {id} • Sure {surah}',
+      'tafseer_id_surah_compact': '{source} • Sure {surah}',
       'tafseer_download_stopped': 'Tefsir indirme durduruldu.',
       'all_surahs_tafseer_completed': 'Tüm surelerin tefsiri indirildi.',
       'bulk_tafseer_download_failed': 'Toplu tefsir indirme başarısız: {error}',
       'download_tafseer_offline': 'Çevrimdışı kullanım için tefsir indir',
-      'current_source_id': 'Geçerli kaynak kimliği: {id}',
+      'current_tafseer': 'Geçerli tefsir: {source}',
       'copy': 'Kopyala',
       'close': 'Kapat',
       'working': 'Çalışıyor...',
@@ -2017,19 +2316,20 @@ class _SettingsStrings {
           'Échec du téléchargement groupé de récitations : {error}',
       'offline_recitation_downloads':
           'Téléchargements de récitations hors ligne',
-      'reciter_id': 'ID du récitateur : {id}',
+      'current_reciter': 'Récitateur actuel : {name}',
+      'surah_progress_compact': 'Sourate {surah} · {done}/{total} terminées',
       'download_one_surah': 'Télécharger une sourate',
       'download_all_surahs': 'Télécharger toutes les sourates',
       'download_tafseer': 'Télécharger le tafsir',
       'downloading_tafseer': 'Téléchargement du tafsir',
-      'surah_tafseer_status': 'Sourate {surah} · ID du tafsir {id}',
+      'surah_tafseer_status': 'Sourate {surah} · {source}',
       'no_verses_returned': 'Aucun verset renvoyé pour cette sourate.',
       'tafseer_surah_downloaded': 'Tafsir de la sourate {surah} téléchargé.',
       'tafseer_download_failed': 'Échec du téléchargement du tafsir : {error}',
       'download_all_surahs_tafseer':
           'Télécharger le tafsir de toutes les sourates',
       'downloading_all_tafseer': 'Téléchargement de tous les tafsirs',
-      'tafseer_id_surah_compact': 'ID du tafsir {id} • Sourate {surah}',
+      'tafseer_id_surah_compact': '{source} • Sourate {surah}',
       'tafseer_download_stopped': 'Le téléchargement du tafsir a été arrêté.',
       'all_surahs_tafseer_completed':
           'Le téléchargement du tafsir de toutes les sourates est terminé.',
@@ -2037,7 +2337,7 @@ class _SettingsStrings {
           'Échec du téléchargement groupé du tafsir : {error}',
       'download_tafseer_offline':
           'Télécharger le tafsir pour le mode hors ligne',
-      'current_source_id': 'ID de la source actuelle : {id}',
+      'current_tafseer': 'Tafsir actuel : {source}',
       'copy': 'Copier',
       'close': 'Fermer',
       'working': 'En cours...',
@@ -2138,24 +2438,25 @@ class _SettingsStrings {
       'bulk_recitation_download_failed':
           'Gagal mengunduh tilawah massal: {error}',
       'offline_recitation_downloads': 'Unduhan tilawah offline',
-      'reciter_id': 'ID qari: {id}',
+      'current_reciter': 'Qari saat ini: {name}',
+      'surah_progress_compact': 'Surah {surah} · {done}/{total} selesai',
       'download_one_surah': 'Unduh satu surah',
       'download_all_surahs': 'Unduh semua surah',
       'download_tafseer': 'Unduh tafsir',
       'downloading_tafseer': 'Mengunduh tafsir',
-      'surah_tafseer_status': 'Surah {surah} · ID tafsir {id}',
+      'surah_tafseer_status': 'Surah {surah} · {source}',
       'no_verses_returned': 'Tidak ada ayat yang dikembalikan untuk surah ini.',
       'tafseer_surah_downloaded':
           'Tafsir untuk surah {surah} berhasil diunduh.',
       'tafseer_download_failed': 'Gagal mengunduh tafsir: {error}',
       'download_all_surahs_tafseer': 'Unduh tafsir semua surah',
       'downloading_all_tafseer': 'Mengunduh semua tafsir',
-      'tafseer_id_surah_compact': 'ID tafsir {id} • Surah {surah}',
+      'tafseer_id_surah_compact': '{source} • Surah {surah}',
       'tafseer_download_stopped': 'Pengunduhan tafsir dihentikan.',
       'all_surahs_tafseer_completed': 'Pengunduhan tafsir semua surah selesai.',
       'bulk_tafseer_download_failed': 'Gagal mengunduh tafsir massal: {error}',
       'download_tafseer_offline': 'Unduh tafsir untuk offline',
-      'current_source_id': 'ID sumber saat ini: {id}',
+      'current_tafseer': 'Tafsir saat ini: {source}',
       'copy': 'Salin',
       'close': 'Tutup',
       'working': 'Sedang bekerja...',
@@ -2253,26 +2554,27 @@ class _SettingsStrings {
       'bulk_recitation_download_failed':
           'Massen-Download der Rezitation fehlgeschlagen: {error}',
       'offline_recitation_downloads': 'Offline-Rezitationsdownloads',
-      'reciter_id': 'Rezitator-ID: {id}',
+      'current_reciter': 'Aktueller Rezitator: {name}',
+      'surah_progress_compact': 'Sura {surah} · {done}/{total} abgeschlossen',
       'download_one_surah': 'Eine Sura herunterladen',
       'download_all_surahs': 'Alle Suren herunterladen',
       'download_tafseer': 'Tafsir herunterladen',
       'downloading_tafseer': 'Tafsir wird heruntergeladen',
-      'surah_tafseer_status': 'Sura {surah} · Tafsir-ID {id}',
+      'surah_tafseer_status': 'Sura {surah} · {source}',
       'no_verses_returned': 'Für diese Sura wurden keine Verse zurückgegeben.',
       'tafseer_surah_downloaded': 'Tafsir für Sura {surah} heruntergeladen.',
       'tafseer_download_failed':
           'Herunterladen des Tafsir fehlgeschlagen: {error}',
       'download_all_surahs_tafseer': 'Tafsir aller Suren herunterladen',
       'downloading_all_tafseer': 'Alle Tafsir werden heruntergeladen',
-      'tafseer_id_surah_compact': 'Tafsir-ID {id} • Sura {surah}',
+      'tafseer_id_surah_compact': '{source} • Sura {surah}',
       'tafseer_download_stopped': 'Tafsir-Download wurde gestoppt.',
       'all_surahs_tafseer_completed':
           'Der Download des Tafsir aller Suren ist abgeschlossen.',
       'bulk_tafseer_download_failed':
           'Massen-Download des Tafsir fehlgeschlagen: {error}',
       'download_tafseer_offline': 'Tafsir für Offline-Nutzung herunterladen',
-      'current_source_id': 'Aktuelle Quellen-ID: {id}',
+      'current_tafseer': 'Aktueller Tafsir: {source}',
       'copy': 'Kopieren',
       'close': 'Schließen',
       'working': 'Wird ausgeführt...',
@@ -2373,25 +2675,26 @@ class _SettingsStrings {
       'bulk_recitation_download_failed':
           'Error en la descarga masiva de recitaciones: {error}',
       'offline_recitation_downloads': 'Descargas de recitación sin conexión',
-      'reciter_id': 'ID del recitador: {id}',
+      'current_reciter': 'Recitador actual: {name}',
+      'surah_progress_compact': 'Sura {surah} · {done}/{total} completadas',
       'download_one_surah': 'Descargar una sura',
       'download_all_surahs': 'Descargar todas las suras',
       'download_tafseer': 'Descargar tafsir',
       'downloading_tafseer': 'Descargando tafsir',
-      'surah_tafseer_status': 'Sura {surah} · ID de tafsir {id}',
+      'surah_tafseer_status': 'Sura {surah} · {source}',
       'no_verses_returned': 'No se devolvieron versículos para esta sura.',
       'tafseer_surah_downloaded': 'Se descargó el tafsir de la sura {surah}.',
       'tafseer_download_failed': 'Error al descargar el tafsir: {error}',
       'download_all_surahs_tafseer': 'Descargar el tafsir de todas las suras',
       'downloading_all_tafseer': 'Descargando todos los tafsir',
-      'tafseer_id_surah_compact': 'ID de tafsir {id} • Sura {surah}',
+      'tafseer_id_surah_compact': '{source} • Sura {surah}',
       'tafseer_download_stopped': 'Se detuvo la descarga del tafsir.',
       'all_surahs_tafseer_completed':
           'Se completó la descarga del tafsir de todas las suras.',
       'bulk_tafseer_download_failed':
           'Error en la descarga masiva del tafsir: {error}',
       'download_tafseer_offline': 'Descargar tafsir para uso sin conexión',
-      'current_source_id': 'ID de la fuente actual: {id}',
+      'current_tafseer': 'Tafsir actual: {source}',
       'copy': 'Copiar',
       'close': 'Cerrar',
       'working': 'Trabajando...',

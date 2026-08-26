@@ -230,8 +230,8 @@ class AyahMapper {
 
     final endToken = words[endIndex];
     final endText =
-        (endToken['text'] as String? ??
-                endToken['text_uthmani'] as String? ??
+        (endToken['text_uthmani'] as String? ??
+                endToken['text'] as String? ??
                 '')
             .trim();
     final endTajweed = (endToken['text_uthmani_tajweed'] as String? ?? '')

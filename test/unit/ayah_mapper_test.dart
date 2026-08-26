@@ -466,6 +466,56 @@ void main() {
     expect(ayah.words.map((w) => w.arabic).toList(), ['أ', 'ب']);
   });
 
+  test(
+    'does not shift clean production words when end text is a QCF glyph',
+    () {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '112:1',
+        'page_number': 604,
+        'text_uthmani': 'قُلْ هُوَ ٱللَّهُ أَحَدٌ',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text': 'ﱁ',
+            'text_uthmani': 'قُلْ',
+            'text_uthmani_tajweed': 'قُلۡ',
+          },
+          {
+            'char_type_name': 'word',
+            'text': 'ﱂ',
+            'text_uthmani': 'هُوَ',
+            'text_uthmani_tajweed': 'هُوَ',
+          },
+          {
+            'char_type_name': 'word',
+            'text': 'ﱃ',
+            'text_uthmani': 'ٱللَّهُ',
+            'text_uthmani_tajweed': 'ٱللَّهُ',
+          },
+          {
+            'char_type_name': 'word',
+            'text': 'ﱄ',
+            'text_uthmani': 'أَحَدٌ',
+            'text_uthmani_tajweed': 'أَحَدٌ',
+          },
+          {
+            'char_type_name': 'end',
+            'text': 'ﱅ',
+            'text_uthmani': '١',
+            'text_uthmani_tajweed': '١',
+          },
+        ],
+      });
+
+      expect(ayah.words.map((word) => word.arabic).toList(), [
+        'قُلۡ',
+        'هُوَ',
+        'ٱللَّهُ',
+        'أَحَدٌ',
+      ]);
+    },
+  );
+
   test('realigns word tajweed from end token in shifted Case 2', () {
     final ayah = AyahMapper.fromApi({
       'verse_key': '8:6',
