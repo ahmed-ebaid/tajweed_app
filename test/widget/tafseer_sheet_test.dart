@@ -10,19 +10,25 @@ class _FakeQuranApiService extends QuranApiService {
     required this.sources,
     required this.textByTafsirId,
     this.failingTafsirIds = const {},
+    this.failSources = false,
   });
 
   final List<Map<String, dynamic>> sources;
   final Map<int, String> textByTafsirId;
   final Set<int> failingTafsirIds;
+  final bool failSources;
 
   @override
-  Future<List<Map<String, dynamic>>> fetchAvailableTafsirs() async => sources;
+  Future<List<Map<String, dynamic>>> fetchAvailableTafsirs() async {
+    if (failSources) throw Exception('Offline');
+    return sources;
+  }
 
   @override
   Future<String> fetchTafsirForAyah({
     required int tafsirId,
     required String verseKey,
+    dynamic cancelToken,
   }) async {
     if (failingTafsirIds.contains(tafsirId)) {
       throw Exception('Tafseer unavailable');
@@ -33,6 +39,16 @@ class _FakeQuranApiService extends QuranApiService {
 
 class _FakeOfflineSyncService extends QuranOfflineSyncService {
   final Map<String, Map<String, String>> _cache = {};
+
+  _FakeOfflineSyncService({
+    int? tafsirId,
+    int? surahNumber,
+    Map<String, String>? tafsirMap,
+  }) {
+    if (tafsirId != null && surahNumber != null && tafsirMap != null) {
+      _cache[_key(tafsirId, surahNumber)] = Map<String, String>.from(tafsirMap);
+    }
+  }
 
   String _key(int tafsirId, int surahNumber) => '$tafsirId:$surahNumber';
 
@@ -171,11 +187,41 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('cached Tafseer and selected source remain available offline', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _testApp(
+        api: _FakeQuranApiService(
+          sources: const [],
+          textByTafsirId: const {},
+          failSources: true,
+          failingTafsirIds: const {169},
+        ),
+        offlineSync: _FakeOfflineSyncService(
+          tafsirId: 169,
+          surahNumber: 1,
+          tafsirMap: const {'1:1': 'Cached offline commentary'},
+        ),
+        onSelected: (_, __) async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cached offline commentary'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('tafseer-source-dropdown-169')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('sources could not'), findsNothing);
+  });
 }
 
 Widget _testApp({
   required _FakeQuranApiService api,
   required Future<void> Function(int, String) onSelected,
+  _FakeOfflineSyncService? offlineSync,
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -186,7 +232,7 @@ Widget _testApp({
           tafsirId: 169,
           tafsirName: 'Ibn Kathir',
           api: api,
-          offlineSync: _FakeOfflineSyncService(),
+          offlineSync: offlineSync ?? _FakeOfflineSyncService(),
           onTafsirSelected: onSelected,
         ),
       ),

@@ -101,6 +101,7 @@ class QuranContentSnapshot {
 
 /// Accesses Quran Foundation content through the app-owned backend proxy.
 class QuranApiService {
+  static const int _madaniMushafId = 2;
   static const _configuredContentApiBaseUrl = String.fromEnvironment(
     'QURAN_CONTENT_API_BASE_URL',
   );
@@ -171,6 +172,20 @@ class QuranApiService {
           },
         ),
       );
+      _contentDio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (QuranAttestationService.appAttestBypassEnabled) {
+              options.headers.remove('authorization');
+              final proxyTestToken = QuranAttestationService.proxyTestToken;
+              if (proxyTestToken != null) {
+                options.headers['x-simulator-test-token'] = proxyTestToken;
+              }
+            }
+            handler.next(options);
+          },
+        ),
+      );
     }
   }
 
@@ -199,12 +214,13 @@ class QuranApiService {
     final response = await _contentDio.get(
       '/verses/by_chapter/$surahNumber',
       queryParameters: {
+        'mushaf': _madaniMushafId,
         'language': langCode,
         'words': true,
         'fields':
             'page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
         'word_fields':
-            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration,audio_url',
+            'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,transliteration,audio_url,line_number,page_number',
         'translations': translationIdFor(langCode),
         'audio': reciterId,
         'page': page ?? 1,
@@ -223,7 +239,7 @@ class QuranApiService {
     final response = await _contentDio.get(
       '/verses/by_page/$safePage',
       queryParameters: {
-        'mushaf': 1,
+        'mushaf': _madaniMushafId,
         'language': langCode,
         'words': 'true',
         'fields':
@@ -246,6 +262,7 @@ class QuranApiService {
     final response = await _contentDio.get(
       '/verses/by_key/$surahNumber:$ayahNumber',
       queryParameters: {
+        'mushaf': _madaniMushafId,
         'language': langCode,
         'words': true,
         'fields':
@@ -264,6 +281,7 @@ class QuranApiService {
   Future<Map<String, String>> fetchAudioFiles({
     required int reciterId,
     required int surahNumber,
+    CancelToken? cancelToken,
   }) async {
     final map = <String, String>{};
     int page = 1;
@@ -272,6 +290,7 @@ class QuranApiService {
       final response = await _contentDio.get(
         '/recitations/$reciterId/by_chapter/$surahNumber',
         queryParameters: {'page': page, 'per_page': 50},
+        cancelToken: cancelToken,
       );
       final files = response.data['audio_files'] as List<dynamic>? ?? [];
       for (final f in files) {
@@ -362,15 +381,41 @@ class QuranApiService {
   Future<String> fetchTafsirForAyah({
     required int tafsirId,
     required String verseKey,
+    CancelToken? cancelToken,
   }) async {
     final response = await _contentDio.get(
       '/tafsirs/$tafsirId/by_ayah/$verseKey',
+      cancelToken: cancelToken,
     );
     final tafsirRaw = response.data['tafsir'];
     final tafsir = tafsirRaw is Map
         ? Map<String, dynamic>.from(tafsirRaw)
         : <String, dynamic>{};
     return tafsir['text'] as String? ?? '';
+  }
+
+  /// Fetches a complete surah's tafseer in one request.
+  Future<Map<String, String>> fetchTafsirForSurah({
+    required int tafsirId,
+    required int surahNumber,
+    CancelToken? cancelToken,
+  }) async {
+    final response = await _contentDio.get(
+      '/tafsirs/$tafsirId/by_chapter/$surahNumber',
+      queryParameters: const {'per_page': 300},
+      cancelToken: cancelToken,
+    );
+    final raw = response.data['tafsirs'] as List<dynamic>? ?? const [];
+    final tafsirMap = <String, String>{};
+    for (final item in raw.whereType<Map>()) {
+      final tafsir = Map<String, dynamic>.from(item);
+      final verseKey = tafsir['verse_key'] as String?;
+      final text = tafsir['text'] as String?;
+      if (verseKey != null && verseKey.isNotEmpty && text != null) {
+        tafsirMap[verseKey] = text;
+      }
+    }
+    return tafsirMap;
   }
 
   /// Fetches the list of available tafsirs from the resources API.
@@ -491,7 +536,9 @@ class QuranApiService {
   static String translationIdFor(String langCode) {
     switch (langCode) {
       case 'ar':
-        return '16'; // Muhammad Taqī-ud-Dīn al-Hilālī (Arabic tafsir)
+        // The Arabic interface still shows an English translation beneath the
+        // Arabic Quran text. Resource 16 no longer returns verse translations.
+        return '85'; // M.A.S. Abdel Haleem (English)
       case 'ur':
         return '97'; // Fateh Muhammad Jalandhari
       case 'tr':

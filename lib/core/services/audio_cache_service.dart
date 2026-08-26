@@ -67,18 +67,21 @@ class AudioCacheService {
     required int surahNumber,
     required Map<String, String> audioUrls,
     required void Function(int done, int total) onProgress,
+    CancelToken? cancelToken,
   }) async {
     final dir = await getApplicationDocumentsDirectory();
-    final surahDir =
-        Directory('${dir.path}/audio_cache/r$reciterId/s$surahNumber');
+    final surahDir = Directory(
+      '${dir.path}/audio_cache/r$reciterId/s$surahNumber',
+    );
     if (!surahDir.existsSync()) {
       surahDir.createSync(recursive: true);
     }
 
-    final entries = audioUrls.entries
-        .where((e) => e.key.startsWith('$surahNumber:'))
-        .toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final entries =
+        audioUrls.entries
+            .where((e) => e.key.startsWith('$surahNumber:'))
+            .toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
 
     final total = entries.length;
     var done = 0;
@@ -94,11 +97,24 @@ class AudioCacheService {
       final filePath = '${surahDir.path}/$ayah.mp3';
       final file = File(filePath);
 
-      if (!file.existsSync()) {
+      if (!file.existsSync() || file.lengthSync() == 0) {
+        if (file.existsSync()) await file.delete();
         final raw = e.value;
-        final url =
-            raw.startsWith('http') ? raw : 'https://verses.quran.com/$raw';
-        await _dio.download(url, filePath);
+        final url = raw.startsWith('http')
+            ? raw
+            : 'https://verses.quran.com/$raw';
+        final partial = File('$filePath.part');
+        if (partial.existsSync()) await partial.delete();
+        try {
+          await _dio.download(url, partial.path, cancelToken: cancelToken);
+          if (!partial.existsSync() || partial.lengthSync() == 0) {
+            throw StateError('Downloaded audio is empty for ${e.key}.');
+          }
+          await partial.rename(filePath);
+        } catch (_) {
+          if (partial.existsSync()) await partial.delete();
+          rethrow;
+        }
       }
 
       await box.put(_ayahKey(reciterId, surahNumber, ayah), filePath);
@@ -117,5 +133,5 @@ class AudioCacheService {
       'r${reciterId}_s${surahNumber}_a$ayahNumber';
 
   String _surahMetaKey(int reciterId, int surahNumber) =>
-      'meta_r${reciterId}_s${surahNumber}';
+      'meta_r${reciterId}_s$surahNumber';
 }

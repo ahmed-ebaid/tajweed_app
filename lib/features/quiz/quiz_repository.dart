@@ -3,11 +3,7 @@ import 'dart:math';
 import '../../core/models/tajweed_models.dart';
 import '../rules/rules_repository.dart';
 
-enum QuizLevel {
-  beginner,
-  intermediate,
-  advanced,
-}
+enum QuizLevel { beginner, intermediate, advanced }
 
 class QuizLevelDefinition {
   final QuizLevel level;
@@ -63,6 +59,8 @@ class QuizRepository {
         TajweedRule.maddMuttasil,
         TajweedRule.maddMunfasil,
         TajweedRule.maddLazim,
+        TajweedRule.maddSilahSughra,
+        TajweedRule.maddSilahKubra,
         TajweedRule.idghamShafawi,
         TajweedRule.idghamMutajanisayn,
         TajweedRule.ikhfaShafawi,
@@ -84,7 +82,9 @@ class QuizRepository {
   static List<QuizQuestion> randomizedUnique({QuizLevel? level}) {
     final filtered = level == null
         ? all
-        : all.where((question) => questionLevel(question.rule) == level).toList();
+        : all
+              .where((question) => questionLevel(question.rule) == level)
+              .toList();
     final shuffled = [...filtered]..shuffle(Random());
     final unique = <QuizQuestion>[];
     final seen = <String>{};
@@ -162,14 +162,14 @@ class QuizRepository {
   }
 
   static Map<String, String> _nameMap(TajweedRuleDefinition def) => {
-        'en': def.names['en'] ?? '',
-        'ar': def.names['ar'] ?? '',
-        'ur': def.names['ur'] ?? '',
-        'tr': def.names['tr'] ?? '',
-        'fr': def.names['fr'] ?? '',
-        'id': def.names['id'] ?? '',
-        'de': def.names['de'] ?? '',
-      };
+    'en': def.names['en'] ?? '',
+    'ar': def.names['ar'] ?? '',
+    'ur': def.names['ur'] ?? '',
+    'tr': def.names['tr'] ?? '',
+    'fr': def.names['fr'] ?? '',
+    'id': def.names['id'] ?? '',
+    'de': def.names['de'] ?? '',
+  };
 
   static Map<String, String> _questionTemplate(int variant) {
     switch (variant % 5) {

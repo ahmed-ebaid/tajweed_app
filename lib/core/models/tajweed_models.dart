@@ -44,7 +44,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.maddLazim:
         return const Color(0xFF5A189A);
       case TajweedRule.maddSilahSughra:
-        return const Color(0xFF008C95);
+        return const Color(0xFF007A82);
       case TajweedRule.maddSilahKubra:
         return const Color(0xFFA23B72);
       case TajweedRule.idghamWithGhunnah:
@@ -74,7 +74,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.laamShamsiyah:
         return const Color(0xFF7A6E00);
       case TajweedRule.silent:
-        return const Color(0xFF767676);
+        return const Color(0xFF606060);
     }
   }
 
@@ -225,6 +225,7 @@ class Ayah {
   final String arabic;
   final Map<String, String> translations; // langCode → translation
   final List<TajweedWord> words;
+  final int? endLineNumber;
   final String? audioUrl;
   final List<TajweedSegment> tajweedSegments;
 
@@ -239,6 +240,7 @@ class Ayah {
     required this.arabic,
     required this.translations,
     required this.words,
+    this.endLineNumber,
     this.audioUrl,
     this.tajweedSegments = const [],
   });

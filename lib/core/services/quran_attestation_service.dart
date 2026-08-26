@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:app_attest/app_attest.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class QuranAttestationException implements Exception {
@@ -73,7 +74,25 @@ class HiveAttestationKeyStore implements AttestationKeyStore {
 }
 
 class QuranAttestationService {
+  static const _allowBypassInDebug = bool.fromEnvironment(
+    'QURAN_BYPASS_APP_ATTEST_IN_DEBUG',
+    defaultValue: false,
+  );
+  static const _proxyTestToken = String.fromEnvironment(
+    'QURAN_PROXY_TEST_TOKEN',
+  );
+
   static final Map<String, QuranAttestationService> _instances = {};
+
+  static bool get appAttestBypassEnabled =>
+      !kReleaseMode && _allowBypassInDebug;
+
+  static String? get proxyTestToken {
+    if (kReleaseMode || !_allowBypassInDebug || _proxyTestToken.isEmpty) {
+      return null;
+    }
+    return _proxyTestToken;
+  }
 
   static QuranAttestationService forContentApi(String contentApiBaseUrl) {
     final origin = Uri.parse(contentApiBaseUrl).origin;
@@ -139,6 +158,10 @@ class QuranAttestationService {
   }
 
   Future<String> _obtainAccessToken() async {
+    if (_shouldBypassAttestation()) {
+      return '';
+    }
+
     if (!isIOS() || !await appAttest.isSupported()) {
       throw const QuranAttestationException(
         'This device does not support Apple App Attest.',
@@ -159,6 +182,11 @@ class QuranAttestationService {
       invalidateAccessToken();
       return _exchangeAssertionForToken(await _registerNewKey());
     }
+  }
+
+  bool _shouldBypassAttestation() {
+    if (kReleaseMode) return false;
+    return _allowBypassInDebug;
   }
 
   Future<String> _registerNewKey() async {

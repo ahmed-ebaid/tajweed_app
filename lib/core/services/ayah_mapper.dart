@@ -86,20 +86,15 @@ class AyahMapper {
       }
     }
 
-    // Some Quran.com verse payloads omit verse-level `translations` but still
-    // provide per-word translation text. Build an English fallback to avoid
-    // rendering an empty translation line in ayah mode.
-    final fallbackLang = requestedLangCode ?? 'en';
-    if (translations[fallbackLang] == null ||
-        translations[fallbackLang]!.trim().isEmpty) {
-      final wordFallback = _buildWordTranslationFallback(json);
-      if (wordFallback.isNotEmpty) {
-        translations[fallbackLang] = wordFallback;
-      }
-    }
-
     // Words with tajweed spans
     final rawWords = json['words'] as List<dynamic>? ?? [];
+    final endLineNumber = rawWords
+        .whereType<Map>()
+        .map((word) => Map<String, dynamic>.from(word))
+        .where((word) => word['char_type_name'] == 'end')
+        .map((word) => word['line_number'])
+        .whereType<int>()
+        .firstOrNull;
     final adjustedWords = _applyEndTokenShiftFix(rawWords);
     final hasSajdahInNonEndWord = adjustedWords
         .whereType<Map>()
@@ -184,6 +179,7 @@ class AyahMapper {
       arabic: arabic,
       translations: translations,
       words: wordsWithMaddSilah,
+      endLineNumber: endLineNumber,
       audioUrl: audioUrl,
       tajweedSegments: tajweedSegments,
     );
@@ -234,8 +230,8 @@ class AyahMapper {
 
     final endToken = words[endIndex];
     final endText =
-        (endToken['text'] as String? ??
-                endToken['text_uthmani'] as String? ??
+        (endToken['text_uthmani'] as String? ??
+                endToken['text'] as String? ??
                 '')
             .trim();
     final endTajweed = (endToken['text_uthmani_tajweed'] as String? ?? '')
@@ -489,27 +485,6 @@ class AyahMapper {
     return (codeUnit >= 0x0610 && codeUnit <= 0x061A) ||
         (codeUnit >= 0x064B && codeUnit <= 0x065F) ||
         (codeUnit >= 0x06D6 && codeUnit <= 0x06ED);
-  }
-
-  static String _buildWordTranslationFallback(Map<String, dynamic> json) {
-    final rawWords = json['words'] as List<dynamic>? ?? const [];
-    final chunks = <String>[];
-
-    for (final rawWord in rawWords) {
-      if (rawWord is! Map) continue;
-      final word = Map<String, dynamic>.from(rawWord);
-      if ((word['char_type_name'] as String?) == 'end') continue;
-
-      final translationRaw = word['translation'];
-      if (translationRaw is! Map) continue;
-      final translation = Map<String, dynamic>.from(translationRaw);
-      final text = _stripHtml((translation['text'] as String? ?? '').trim());
-      if (text.isNotEmpty) {
-        chunks.add(text);
-      }
-    }
-
-    return chunks.join(' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   static List<TajweedSpan> _parseRuleTagTajweed(
