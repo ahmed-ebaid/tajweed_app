@@ -214,6 +214,10 @@ void main() {
       expect(QuranApiService.translationIdFor('en'), '85');
     });
 
+    test('uses Abdel Haleem beneath Quran text in the Arabic interface', () {
+      expect(QuranApiService.translationIdFor('ar'), '85');
+    });
+
     test('uses a Spanish translation rather than an English fallback', () {
       expect(QuranApiService.translationIdFor('es'), '83');
     });

@@ -166,6 +166,51 @@ void main() {
     );
   });
 
+  test('does not present concatenated word glosses as a verse translation', () {
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '1:1',
+      'text_uthmani': 'بِسْمِ ٱللَّهِ',
+      'words': const [
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'بِسْمِ',
+          'translation': {'text': 'In (the) name'},
+        },
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'ٱللَّهِ',
+          'translation': {'text': '(of) Allah'},
+        },
+      ],
+    }, requestedLangCode: 'ar');
+
+    expect(ayah.translations, isEmpty);
+    expect(ayah.translation('ar'), isEmpty);
+  });
+
+  test(
+    'Arabic interface falls back to the requested English verse translation',
+    () {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '1:1',
+        'text_uthmani': 'بِسْمِ ٱللَّهِ',
+        'translations': const [
+          {
+            'resource_id': 85,
+            'text':
+                'In the name of God, the Lord of Mercy, the Giver of Mercy!',
+          },
+        ],
+        'words': const [],
+      }, requestedLangCode: 'ar');
+
+      expect(
+        ayah.translation('ar'),
+        'In the name of God, the Lord of Mercy, the Giver of Mercy!',
+      );
+    },
+  );
+
   test('classifies madd silah sughra in Al-Kahf 18:5', () {
     final ayah = AyahMapper.fromApi({
       'verse_key': '18:5',

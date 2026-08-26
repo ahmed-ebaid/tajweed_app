@@ -125,4 +125,4 @@ the App does not request microphone or speech-recognition permission.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Keep the approved screenshot sets and select build 29.
+- Keep the approved screenshot sets and select build 30.

@@ -93,7 +93,7 @@ class QuranOfflineSyncService {
   static const String _settingsBoxKey = 'settings';
   static const String _cacheBoxKey = 'verse_cache';
 
-  static const int _syncSchemaVersion = 6;
+  static const int _syncSchemaVersion = 7;
   static const String _syncVersionKey = 'quran_sync_version';
   static const String _syncInProgressKey = 'quran_sync_in_progress';
   static const String _syncCompletedAtKey = 'quran_sync_completed_at';

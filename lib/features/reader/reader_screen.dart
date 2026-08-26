@@ -823,7 +823,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     String langCode,
   ) {
     if (verses == null || verses.isEmpty) return false;
-    if (langCode == 'ar') return true;
+    final translationLang = langCode == 'ar' ? 'en' : langCode;
 
     for (final verse in verses) {
       final rawTranslations = verse['translations'];
@@ -833,8 +833,8 @@ class _ReaderScreenState extends State<ReaderScreen>
         final map = Map<String, dynamic>.from(translation);
         final resourceId = map['resource_id'];
         final text = (map['text'] as String? ?? '').trim();
-        final translationLang = AyahMapper.langCodeFromResourceId(resourceId);
-        if (translationLang == langCode && text.isNotEmpty) {
+        final cachedLang = AyahMapper.langCodeFromResourceId(resourceId);
+        if (cachedLang == translationLang && text.isNotEmpty) {
           return true;
         }
       }
