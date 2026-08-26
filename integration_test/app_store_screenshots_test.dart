@@ -129,7 +129,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.chrome_reader_mode_outlined));
     await _waitForUi(tester, seconds: 3);
-    expect(find.byIcon(Icons.view_list_outlined), findsOneWidget);
+    expect(find.byType(ReaderScreen), findsOneWidget);
     await binding.takeScreenshot('04-mushaf');
 
     await tester.tap(find.byIcon(Icons.quiz_outlined));

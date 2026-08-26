@@ -19,6 +19,7 @@ Never commit `.dev.vars`. Configure prelive secrets on the existing Worker with:
 npx wrangler secret put QF_CLIENT_ID --env=""
 npx wrangler secret put QF_CLIENT_SECRET --env=""
 npx wrangler secret put ATT_TOKEN_SECRET --env=""
+npx wrangler secret put SIMULATOR_TEST_TOKEN --env=""
 ```
 
 Configure the independent production Worker with the production credentials:
@@ -59,6 +60,11 @@ counter stored in a per-key Durable Object. A valid assertion returns a
 ten-minute environment-bound bearer token. Content routes fail closed without
 that token. Production accepts only production attestations; prelive also
 accepts development attestations from physical development devices.
+
+The prelive Worker can also accept `x-simulator-test-token` for simulator-only
+integration tests when `SIMULATOR_TEST_TOKEN` is configured. This bypass is
+disabled in production regardless of whether a secret is present, and release
+Flutter builds never send the header.
 
 `ATT_TOKEN_SECRET` must be an independent random value of at least 32
 characters in each environment. Rotating it immediately invalidates all

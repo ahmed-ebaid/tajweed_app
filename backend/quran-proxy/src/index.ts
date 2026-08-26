@@ -12,6 +12,7 @@ export interface Env extends AttestationEnv {
   QF_CLIENT_ID: string;
   QF_CLIENT_SECRET: string;
   QF_ENV: "prelive" | "production";
+  SIMULATOR_TEST_TOKEN?: string;
 }
 
 interface AccessToken {
@@ -46,6 +47,7 @@ const queryKeys = new Set([
   "cursor",
   "fields",
   "language",
+  "mushaf",
   "page",
   "per_page",
   "resources",
@@ -65,6 +67,7 @@ const allowedPaths = [
   /^resources\/sync$/,
   /^resources\/tafsirs$/,
   /^tafsirs\/\d+\/by_ayah\/\d+:\d+$/,
+  /^tafsirs\/\d+\/by_chapter\/\d+$/,
   /^verses\/by_chapter\/\d+$/,
   /^verses\/by_key\/\d+:\d+$/,
   /^verses\/by_page\/\d+$/,
@@ -145,6 +148,13 @@ function validateContentRequest(url: URL): string | undefined {
     }
   }
   return undefined;
+}
+
+function isSimulatorTestAuthorized(request: Request, env: Env): boolean {
+  if (env.QF_ENV === "production") return false;
+  const configured = env.SIMULATOR_TEST_TOKEN;
+  if (!configured || configured.length < 32) return false;
+  return request.headers.get("x-simulator-test-token") === configured;
 }
 
 async function fetchWithTimeout(
@@ -375,7 +385,10 @@ export async function handleRequest(
     console.error(`[${requestId}] ${configurationError}`);
     return json({error: "Service unavailable"}, 503, requestId);
   }
-  if (!await verifyAccessToken(request.headers.get("authorization"), env)) {
+  if (
+    !isSimulatorTestAuthorized(request, env) &&
+    !await verifyAccessToken(request.headers.get("authorization"), env)
+  ) {
     return json({error: "Unauthorized"}, 401, requestId);
   }
 
