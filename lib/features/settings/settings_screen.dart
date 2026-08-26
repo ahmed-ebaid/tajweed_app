@@ -1191,7 +1191,7 @@ class _AboutSourcesSheet extends StatelessWidget {
 
   static const List<MapEntry<String, String>> _translationSources = [
     MapEntry('en', 'M.A.S. Abdel Haleem'),
-    MapEntry('ar', 'Muhammad Taqi-ud-Din al-Hilali'),
+    MapEntry('ar', 'M.A.S. Abdel Haleem (English)'),
     MapEntry('ur', 'Fateh Muhammad Jalandhari'),
     MapEntry('tr', 'Diyanet Isleri'),
     MapEntry('fr', 'Muhammad Hamidullah'),

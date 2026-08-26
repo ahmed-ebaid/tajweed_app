@@ -491,7 +491,9 @@ class QuranApiService {
   static String translationIdFor(String langCode) {
     switch (langCode) {
       case 'ar':
-        return '16'; // Muhammad Taqī-ud-Dīn al-Hilālī (Arabic tafsir)
+        // The Arabic interface still shows an English translation beneath the
+        // Arabic Quran text. Resource 16 no longer returns verse translations.
+        return '85'; // M.A.S. Abdel Haleem (English)
       case 'ur':
         return '97'; // Fateh Muhammad Jalandhari
       case 'tr':
