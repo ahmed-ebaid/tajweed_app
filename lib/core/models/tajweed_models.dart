@@ -225,6 +225,7 @@ class Ayah {
   final String arabic;
   final Map<String, String> translations; // langCode → translation
   final List<TajweedWord> words;
+  final int? endLineNumber;
   final String? audioUrl;
   final List<TajweedSegment> tajweedSegments;
 
@@ -239,6 +240,7 @@ class Ayah {
     required this.arabic,
     required this.translations,
     required this.words,
+    this.endLineNumber,
     this.audioUrl,
     this.tajweedSegments = const [],
   });

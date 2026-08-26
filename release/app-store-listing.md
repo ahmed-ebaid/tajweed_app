@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.0
-- **Build:** 29
+- **Build:** 31
 
 ## URLs
 
@@ -80,6 +80,9 @@ Tajweed 1.1 brings the Ayah reader’s color-coded guidance to the Mushaf.
 - View the Tajweed palette and turn highlighting on or off
 - Pinch to enlarge Mushaf pages while preserving printed line breaks
 - Improved Madd Silah and Madd Muttasil highlighting
+- Improved Mushaf alignment and consistent sizing in portrait and landscape
+- Corrected ayah-marker placement and added numbered Hizb tap labels
+- Corrected the English verse translation and attribution
 - More reliable seven-day Quran content synchronization
 
 ## Screenshot set
@@ -118,6 +121,11 @@ Quran.Foundation Content API requests are routed through an Ebaid LLC
 Cloudflare Worker and protected by Apple App Attest. No login is required, and
 the App does not request microphone or speech-recognition permission.
 
+To review the updated Mushaf, open any Surah, switch to page view, and rotate
+the device to compare portrait and landscape alignment. Green Hizb markers in
+the page margin are tappable and announce the numbered Hizb boundary. Ayah
+markers follow the QCF V2 printed-line metadata.
+
 ## Manual App Store Connect confirmations
 
 - Production Workers Logs are disabled. Cloudflare may process ordinary
@@ -125,4 +133,4 @@ the App does not request microphone or speech-recognition permission.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Keep the approved screenshot sets and select build 30.
+- Keep the approved screenshot sets and select build 31.

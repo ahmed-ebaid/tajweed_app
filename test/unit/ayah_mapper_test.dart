@@ -100,13 +100,17 @@ void main() {
       'rub_el_hizb_number': 119,
       'sajdah_number': 4,
       'text_uthmani': 'نَصٌّ',
-      'words': const [],
+      'words': const [
+        {'char_type_name': 'word', 'text_uthmani': 'نَصٌّ', 'line_number': 10},
+        {'char_type_name': 'end', 'text_uthmani': '١', 'line_number': 11},
+      ],
     });
 
     expect(ayah.juzNumber, 15);
     expect(ayah.hizbNumber, 30);
     expect(ayah.rubElHizbNumber, 119);
     expect(ayah.sajdahNumber, 4);
+    expect(ayah.endLineNumber, 11);
   });
 
   test('applies the same normalization when mapping a verse list', () {
