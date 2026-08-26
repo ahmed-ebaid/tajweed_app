@@ -3,13 +3,17 @@
 ## App information
 
 - **App Store name:** Tajweed Practice
+- **Arabic App Store name:** تجويد
 - **Device display name:** Tajweed
 - **Subtitle:** Read, Listen & Learn Tajweed
+- **Arabic subtitle:** اقرأ واستمع وتعلّم التجويد
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.0
-- **Build:** 28
+- **Build:** 29
+- **Primary language:** Arabic
+- **English localization:** Retained
 
 ## URLs
 
@@ -23,9 +27,18 @@
 Read the Quran with color-coded Tajweed guidance, listen to trusted reciters,
 explore translations and Tafseer, and build a consistent learning practice.
 
+### Arabic
+
+اقرأ القرآن مع إرشادات التجويد الملوّنة، واستمع إلى قرّاء موثوقين، واستكشف
+الترجمات والتفاسير، وابنِ عادة تعليمية مستمرة.
+
 ## Keywords
 
 quran,tajweed,recitation,tafseer,ayah,mushaf,arabic,islamic,memorization,muslim
+
+### Arabic
+
+قرآن,تجويد,تلاوة,تفسير,آية,مصحف,عربي,إسلامي,حفظ
 
 ## Description
 
@@ -72,6 +85,43 @@ updates are provided through Quran.Foundation APIs and services associated with
 the Quran.com ecosystem. Tajweed Practice is independently operated by Ebaid LLC
 and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
+### Arabic
+
+طوّر قراءتك للقرآن بثقة أكبر مع أحكام التجويد.
+
+يجمع تطبيق تجويد بين قارئ واضح آية بآية ومصحف نصي من 604 صفحات، مع إرشادات
+تجويد ملوّنة. اضغط على النص الملوّن للتعرّف على الحكم، واستمع إلى التلاوات،
+وارجع إلى مكتبة الأحكام متى احتجت إلى المراجعة.
+
+القراءة والفهم
+
+- اقرأ القرآن آية بآية أو في عرض المصحف
+- اطّلع على الترجمات والتفاسير المتاحة
+- احفظ الآيات وارجع إلى موضع قراءتك
+
+تعلّم التجويد
+
+- شاهد أحكام التجويد ملوّنة داخل النص القرآني
+- افتح شرح الحكم وأمثلته من القرآن
+- استمع إلى أمثلة النطق بصوت الحصري المعلّم
+- تدرّب من خلال الدروس والاختبارات
+
+الاستماع والممارسة
+
+- اختر من بين عدة قرّاء
+- نزّل التلاوات والتفاسير المحددة للاستخدام دون اتصال
+- تابع تقدّمك اليومي واستمرارية التعلّم
+
+المشاركة
+
+شارك آية أو تفسيرًا أو حكم تجويد عبر تطبيقاتك المفضلة. يتضمن المحتوى المشارك
+اسم تطبيق تجويد ورابطه في App Store.
+
+الخصوصية
+
+لا يتطلب التطبيق إنشاء حساب، ولا يستخدم الإعلانات أو التحليلات أو التتبع بين
+التطبيقات. تبقى الإشارات المرجعية والتقدّم والتفضيلات على جهازك.
+
 ## What's New
 
 Tajweed 1.1 brings the Ayah reader’s color-coded guidance to the Mushaf.
@@ -81,6 +131,16 @@ Tajweed 1.1 brings the Ayah reader’s color-coded guidance to the Mushaf.
 - Pinch to enlarge Mushaf pages while preserving printed line breaks
 - Improved Madd Silah and Madd Muttasil highlighting
 - More reliable seven-day Quran content synchronization
+
+### Arabic
+
+يضيف إصدار تجويد 1.1 إرشادات التجويد الملوّنة من عرض الآيات إلى المصحف.
+
+- ألوان التجويد في مصحف المدينة بتخطيط QCF V2
+- دليل لألوان التجويد مع إمكانية إظهار التلوين أو إخفائه
+- تكبير صفحات المصحف مع الحفاظ على تقسيم الأسطر المطبوعة
+- تحسين تمييز مد الصلة والمد المتصل
+- مزامنة أكثر موثوقية لمحتوى القرآن كل سبعة أيام
 
 ## Screenshot set
 
@@ -125,4 +185,6 @@ the App does not request microphone or speech-recognition permission.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Upload the final screenshot sets and select build 28.
+- Keep the approved screenshot sets and select build 29.
+- Change the App Store primary language to Arabic while retaining English as a
+  complete localization.

@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 class LocaleProvider extends ChangeNotifier {
   static const _boxKey = 'settings';
   static const _localeKey = 'locale';
+  static const _defaultLocaleCode = 'ar';
 
   // Supported locales: English, Arabic, Urdu, Turkish, French, Indonesian, German, Spanish
   static const List<Locale> supportedLocales = [
@@ -43,7 +44,8 @@ class LocaleProvider extends ChangeNotifier {
 
   Locale _loadSaved() {
     final box = Hive.box(_boxKey);
-    final saved = box.get(_localeKey, defaultValue: 'en') as String;
+    final saved =
+        box.get(_localeKey, defaultValue: _defaultLocaleCode) as String;
     return Locale(saved);
   }
 
