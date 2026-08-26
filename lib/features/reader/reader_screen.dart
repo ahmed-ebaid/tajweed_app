@@ -3360,13 +3360,13 @@ class _MushafTextPage extends StatelessWidget {
             ),
           );
         }
-        const fontSize = 26.0;
+        final fontSize = isLandscape ? 36.0 : 18.0;
         final textStyle = TextStyle(
           fontFamily: 'AmiriQuran',
           fontSize: fontSize,
           height: isLandscape ? 1.55 : 1.65,
           color: const Color(0xFF050807),
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         );
         final sections = <List<Ayah>>[];
         for (final ayah in ayahs) {
@@ -3383,12 +3383,6 @@ class _MushafTextPage extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final horizontalInset = isLandscape ? 20.0 : 14.0;
-              final pageFitScale = _pageFitScale(
-                ayahs,
-                style: textStyle,
-                availableWidth: constraints.maxWidth - (horizontalInset * 2),
-                textScaler: MediaQuery.textScalerOf(context),
-              );
               return Directionality(
                 textDirection: TextDirection.rtl,
                 child: Scrollbar(
@@ -3420,9 +3414,8 @@ class _MushafTextPage extends StatelessWidget {
                             section,
                             style: textStyle,
                             horizontalInset: horizontalInset,
-                            expandToWidth: false,
+                            expandToWidth: true,
                             textScale: textScale,
-                            pageFitScale: pageFitScale,
                           ),
                         ],
                       ],
@@ -3443,7 +3436,6 @@ class _MushafTextPage extends StatelessWidget {
     required double horizontalInset,
     required bool expandToWidth,
     required double textScale,
-    required double pageFitScale,
   }) {
     final hasPrintedLineLayout = ayahs
         .expand((ayah) => ayah.words)
@@ -3456,7 +3448,6 @@ class _MushafTextPage extends StatelessWidget {
         horizontalInset: horizontalInset,
         expandToWidth: expandToWidth,
         textScale: textScale,
-        pageFitScale: pageFitScale,
       );
     }
 
@@ -3507,7 +3498,8 @@ class _MushafTextPage extends StatelessWidget {
           text.write(' ');
         }
       }
-      final ayahMarker = ' \u06DD${_arabicIndicDigits(ayah.ayahNumber)} ';
+      final ayahMarker =
+          '\u00A0\u2060\u06DD${_arabicIndicDigits(ayah.ayahNumber)}\u2060 ';
       spans.add(
         TextSpan(
           text: ayahMarker,
@@ -3532,8 +3524,10 @@ class _MushafTextPage extends StatelessWidget {
     required double horizontalInset,
     required bool expandToWidth,
     required double textScale,
-    required double pageFitScale,
   }) {
+    final scaledStyle = style.copyWith(
+      fontSize: (style.fontSize ?? 18) * textScale,
+    );
     final lines = <int, _MushafPrintedLineContent>{};
     for (var ayahIndex = 0; ayahIndex < ayahs.length; ayahIndex++) {
       final ayah = ayahs[ayahIndex];
@@ -3554,13 +3548,6 @@ class _MushafTextPage extends StatelessWidget {
           lineNumber,
           () => _MushafPrintedLineContent(lineNumber),
         );
-        line.wordGroups.add(
-          TajweedText.buildStyledWordSpans(
-            word,
-            baseStyle: style,
-            highlightEnabled: highlightEnabled,
-          ),
-        );
         if (startsRubElHizb && wordIndex == 0) {
           line.marker = _MushafBoundaryPlacement(
             textOffset: 0,
@@ -3569,22 +3556,44 @@ class _MushafTextPage extends StatelessWidget {
             semanticLabel: 'Hizb boundary',
           );
         }
-      }
-
-      final lastLineNumber = ayah.words.isEmpty
-          ? null
-          : ayah.words.last.lineNumber;
-      if (lastLineNumber != null) {
-        final line = lines[lastLineNumber]!;
-        line.wordGroups.last.add(
-          TextSpan(
-            text: ' \u06DD${_arabicIndicDigits(ayah.ayahNumber)}',
-            style: style.copyWith(
-              color: const Color(0xFF8B6B2A),
-              fontWeight: FontWeight.w700,
-            ),
+        line.wordGroups.add(
+          TajweedText.buildStyledWordSpans(
+            word,
+            baseStyle: scaledStyle,
+            highlightEnabled: highlightEnabled,
           ),
         );
+      }
+
+      final lastWordLineNumber = ayah.words.isEmpty
+          ? null
+          : ayah.words.last.lineNumber;
+      final markerLineNumber = ayah.endLineNumber ?? lastWordLineNumber;
+      if (markerLineNumber != null) {
+        final markerStyle = scaledStyle.copyWith(
+          color: const Color(0xFF8B6B2A),
+          fontWeight: FontWeight.w700,
+        );
+        final line = lines.putIfAbsent(
+          markerLineNumber,
+          () => _MushafPrintedLineContent(markerLineNumber),
+        );
+        if (markerLineNumber == lastWordLineNumber &&
+            line.wordGroups.isNotEmpty) {
+          line.wordGroups.last.add(
+            TextSpan(
+              text: ' \u06DD${_arabicIndicDigits(ayah.ayahNumber)}',
+              style: markerStyle,
+            ),
+          );
+        } else {
+          line.wordGroups.add([
+            TextSpan(
+              text: '\u06DD${_arabicIndicDigits(ayah.ayahNumber)}',
+              style: markerStyle,
+            ),
+          ]);
+        }
       }
     }
 
@@ -3592,67 +3601,28 @@ class _MushafTextPage extends StatelessWidget {
       ..sort((a, b) => a.lineNumber.compareTo(b.lineNumber));
     final lineSpans = [
       for (final line in orderedLines)
-        TextSpan(style: style, children: line.spansWithSpaces(style)),
+        TextSpan(
+          style: scaledStyle,
+          children: line.spansWithSpaces(scaledStyle),
+        ),
     ];
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var index = 0; index < orderedLines.length; index++)
-            _MushafPrintedLine(
-              textSpan: lineSpans[index],
-              wordGroups: orderedLines[index].wordGroups
-                  .map((group) => TextSpan(style: style, children: group))
-                  .toList(growable: false),
-              marker: orderedLines[index].marker,
-              lineHeight: (style.fontSize ?? 26) * (style.height ?? 1.5),
-              expandToWidth: expandToWidth,
-              fitScale: pageFitScale * textScale,
-            ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < orderedLines.length; index++)
+          _MushafPrintedLine(
+            textSpan: lineSpans[index],
+            wordGroups: orderedLines[index].wordGroups
+                .map((group) => TextSpan(style: scaledStyle, children: group))
+                .toList(growable: false),
+            marker: orderedLines[index].marker,
+            horizontalInset: horizontalInset,
+            lineHeight:
+                (scaledStyle.fontSize ?? 26) * (scaledStyle.height ?? 1.5),
+            expandToWidth: expandToWidth,
+          ),
+      ],
     );
-  }
-
-  double _pageFitScale(
-    List<Ayah> ayahs, {
-    required TextStyle style,
-    required double availableWidth,
-    required TextScaler textScaler,
-  }) {
-    final lines = <int, StringBuffer>{};
-    for (final ayah in ayahs) {
-      for (final word in ayah.words) {
-        final lineNumber = word.lineNumber;
-        if (lineNumber == null || word.arabic.isEmpty) continue;
-        final line = lines.putIfAbsent(lineNumber, StringBuffer.new);
-        if (line.length > 0) line.write(' ');
-        line.write(word.arabic);
-      }
-      if (ayah.words.isNotEmpty) {
-        final lineNumber = ayah.words.last.lineNumber;
-        if (lineNumber != null) {
-          lines[lineNumber]?.write(
-            ' \u06DD${_arabicIndicDigits(ayah.ayahNumber)}',
-          );
-        }
-      }
-    }
-
-    var widestLine = 0.0;
-    for (final line in lines.values) {
-      final painter = TextPainter(
-        text: TextSpan(text: line.toString(), style: style),
-        textDirection: TextDirection.rtl,
-        textScaler: textScaler,
-        maxLines: 1,
-      )..layout();
-      widestLine = math.max(widestLine, painter.width);
-      painter.dispose();
-    }
-    if (widestLine == 0 || widestLine <= availableWidth) return 1;
-    return availableWidth / widestLine;
   }
 
   static String _arabicIndicDigits(int value) {
@@ -3677,9 +3647,9 @@ class _MushafTextPage extends StatelessWidget {
     final quarter = ((rubNumber - 1) % 4) + 1;
     return switch (quarter) {
       1 => 'الْحِزْبُ $hizb',
-      2 => 'رُبْعُ الْحِزْبِ',
-      3 => 'نِصْفُ الْحِزْبِ',
-      _ => 'ثَلَاثَةُ أَرْبَاعِ الْحِزْبِ',
+      2 => 'رُبْعُ الْحِزْبِ $hizb',
+      3 => 'نِصْفُ الْحِزْبِ $hizb',
+      _ => 'ثَلَاثَةُ أَرْبَاعِ الْحِزْبِ $hizb',
     };
   }
 }
@@ -3812,30 +3782,30 @@ class _MushafPrintedLine extends StatelessWidget {
   final TextSpan textSpan;
   final List<TextSpan> wordGroups;
   final _MushafBoundaryPlacement? marker;
+  final double horizontalInset;
   final double lineHeight;
   final bool expandToWidth;
-  final double fitScale;
 
   const _MushafPrintedLine({
     required this.textSpan,
     required this.wordGroups,
     required this.marker,
+    required this.horizontalInset,
     required this.lineHeight,
     required this.expandToWidth,
-    required this.fitScale,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: (lineHeight * fitScale) + 8,
+      height: lineHeight + 8,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
           Positioned.fill(
-            left: marker == null ? 0 : 18,
-            right: marker == null ? 0 : 18,
+            left: horizontalInset,
+            right: horizontalInset,
             top: 4,
             bottom: 4,
             child: expandToWidth
@@ -3844,33 +3814,22 @@ class _MushafPrintedLine extends StatelessWidget {
                     child: Row(
                       textDirection: TextDirection.rtl,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        for (final group in wordGroups)
-                          Transform.scale(
-                            scale: fitScale,
-                            child: Text.rich(
-                              group,
-                              maxLines: 1,
-                              softWrap: false,
-                              textDirection: TextDirection.rtl,
-                            ),
-                          ),
-                      ],
+                      children: wordGroups
+                          .map(_wordText)
+                          .toList(growable: false),
                     ),
                   )
                 : OverflowBox(
                     maxWidth: double.infinity,
                     maxHeight: double.infinity,
                     alignment: Alignment.center,
-                    child: Transform.scale(
-                      scale: fitScale,
-                      child: Text.rich(
-                        textSpan,
-                        maxLines: 1,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                        textDirection: TextDirection.rtl,
-                      ),
+                    child: Text.rich(
+                      textSpan,
+                      maxLines: 1,
+                      softWrap: false,
+                      textAlign: TextAlign.center,
+                      textDirection: TextDirection.rtl,
+                      textScaler: TextScaler.noScaling,
                     ),
                   ),
           ),
@@ -3881,6 +3840,16 @@ class _MushafPrintedLine extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _wordText(TextSpan group) {
+    return Text.rich(
+      group,
+      maxLines: 1,
+      softWrap: false,
+      textDirection: TextDirection.rtl,
+      textScaler: TextScaler.noScaling,
     );
   }
 }
@@ -3901,12 +3870,11 @@ class _MushafFlowText extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final textWidth = constraints.maxWidth - (horizontalInset * 2);
-        final textScaler = MediaQuery.textScalerOf(context);
         final textPainter = TextPainter(
           text: textSpan,
           textAlign: TextAlign.justify,
           textDirection: TextDirection.rtl,
-          textScaler: textScaler,
+          textScaler: TextScaler.noScaling,
         )..layout(maxWidth: textWidth);
         final textHeight =
             textPainter.height.ceilToDouble() +
@@ -3942,6 +3910,7 @@ class _MushafFlowText extends StatelessWidget {
                   textSpan,
                   textAlign: TextAlign.justify,
                   textDirection: TextDirection.rtl,
+                  textScaler: TextScaler.noScaling,
                 ),
               ),
               for (final placement in markerOffsets)
@@ -3992,7 +3961,7 @@ class _MushafBorderMarker extends StatelessWidget {
           ),
           child: Text(
             marker.symbol,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'UthmanicHafs',
               fontSize: 11,
               height: 1,

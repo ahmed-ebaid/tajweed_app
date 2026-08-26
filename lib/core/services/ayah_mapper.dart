@@ -88,6 +88,13 @@ class AyahMapper {
 
     // Words with tajweed spans
     final rawWords = json['words'] as List<dynamic>? ?? [];
+    final endLineNumber = rawWords
+        .whereType<Map>()
+        .map((word) => Map<String, dynamic>.from(word))
+        .where((word) => word['char_type_name'] == 'end')
+        .map((word) => word['line_number'])
+        .whereType<int>()
+        .firstOrNull;
     final adjustedWords = _applyEndTokenShiftFix(rawWords);
     final hasSajdahInNonEndWord = adjustedWords
         .whereType<Map>()
@@ -172,6 +179,7 @@ class AyahMapper {
       arabic: arabic,
       translations: translations,
       words: wordsWithMaddSilah,
+      endLineNumber: endLineNumber,
       audioUrl: audioUrl,
       tajweedSegments: tajweedSegments,
     );
