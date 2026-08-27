@@ -161,20 +161,9 @@ void main() {
     expect(find.byType(SettingsScreen), findsOneWidget);
     await binding.takeScreenshot('08-settings');
 
-    await tester.tap(
-      find.text(
-        _screenshotLanguageCode == 'ar' ? 'حول هذا التطبيق' : 'About this app',
-      ),
-    );
+    await tester.tap(find.byIcon(Icons.copyright_outlined));
     await _finishTransition(tester);
-    expect(
-      find.textContaining(
-        _screenshotLanguageCode == 'ar'
-            ? 'يتم توفير محتوى القرآن'
-            : 'Quran content and metadata are provided',
-      ),
-      findsOneWidget,
-    );
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
     navigator.pop();
     await _finishTransition(tester);
 
@@ -243,7 +232,9 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
       },
     },
   ]);
-  await Hive.box('verse_cache').put('quran_ar_surah_1', _alFatihahFixture);
+  await Hive.box(
+    'verse_cache',
+  ).put('quran_ar_surah_1', _localizedAlFatihahFixture(languageCode));
   await Hive.box(
     'verse_cache',
   ).put('quran_tajweed_surah_1', <String, String>{});
@@ -256,6 +247,86 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
               'from Him.',
   });
 }
+
+List<Map<String, dynamic>> _localizedAlFatihahFixture(String languageCode) {
+  final resourceId = int.parse(QuranApiService.translationIdFor(languageCode));
+  final translations = _alFatihahTranslations[languageCode];
+  return _alFatihahFixture
+      .asMap()
+      .entries
+      .map((entry) {
+        final verse = entry.value;
+        final localizedVerse = Map<String, dynamic>.from(verse);
+        final fixtureTranslations = verse['translations']! as List<dynamic>;
+        final translation = Map<String, dynamic>.from(
+          fixtureTranslations.first! as Map<dynamic, dynamic>,
+        );
+        translation['resource_id'] = resourceId;
+        if (translations != null) {
+          translation['text'] = translations[entry.key];
+        }
+        localizedVerse['translations'] = [translation];
+        return localizedVerse;
+      })
+      .toList(growable: false);
+}
+
+const _alFatihahTranslations = <String, List<String>>{
+  'ur': [
+    'اللہ کے نام سے جو رحمان و رحیم ہے',
+    'تعریف اللہ ہی کے لیے ہے جو تمام کائنات کا رب ہے',
+    'رحمان اور رحیم ہے',
+    'روز جزا کا مالک ہے',
+    'ہم تیری ہی عبادت کرتے ہیں اور تجھی سے مدد مانگتے ہیں',
+    'ہمیں سیدھا راستہ دکھا',
+    'ان لوگوں کا راستہ جن پر تو نے انعام فرمایا، جو معتوب نہیں ہوئے، جو بھٹکے ہوئے نہیں ہیں',
+  ],
+  'tr': [
+    "Rahmân ve Rahîm olan Allah'ın ismiyle.",
+    'Hamd o âlemlerin Rabbi,',
+    'O Rahmân ve Rahim,',
+    "O, din gününün maliki Allah'ın.",
+    'Ancak sana ederiz kulluğu ve ancak senden dileriz yardımı.',
+    'Hidayet eyle bizi doğru yola,',
+    'O kendilerine nimet verdiğin kimselerin yoluna; gazaba uğramışların ve sapmışların yoluna değil.',
+  ],
+  'fr': [
+    'Au nom d’Allah, le Tout Miséricordieux, le Très Miséricordieux.',
+    'Louange à Allah, Seigneur de l’Univers.',
+    'Le Tout Miséricordieux, le Très Miséricordieux,',
+    'Maître du Jour de la Rétribution.',
+    'C’est Toi Seul que nous adorons, et c’est Toi Seul dont nous implorons secours.',
+    'Guide-nous dans le droit chemin,',
+    'Le chemin de ceux que Tu as comblés de faveurs, non pas de ceux qui ont encouru Ta colère, ni des égarés.',
+  ],
+  'id': [
+    'Dengan nama Allah Yang Maha Pengasih, Maha Penyayang.',
+    'Segala puji bagi Allah, Tuhan seluruh alam,',
+    'Yang Maha Pengasih, Maha Penyayang,',
+    'Pemilik hari pembalasan.',
+    'Hanya kepada Engkaulah kami menyembah dan hanya kepada Engkaulah kami mohon pertolongan.',
+    'Tunjukilah kami jalan yang lurus,',
+    'Jalan orang-orang yang telah Engkau beri nikmat; bukan jalan mereka yang dimurkai dan bukan pula mereka yang sesat.',
+  ],
+  'de': [
+    'Im Namen Allahs, des Allerbarmers, des Barmherzigen.',
+    'Alles Lob gehört Allah, dem Herrn der Welten,',
+    'dem Allerbarmer, dem Barmherzigen,',
+    'dem Herrscher am Tag des Gerichts.',
+    'Dir allein dienen wir, und zu Dir allein flehen wir um Hilfe.',
+    'Leite uns den geraden Weg,',
+    'den Weg derjenigen, denen Du Gunst erwiesen hast, nicht derjenigen, die Deinen Zorn erregt haben, und nicht der Irregehenden!',
+  ],
+  'es': [
+    'En el nombre de Dios, el Compasivo, el Misericordioso.',
+    'Todas las alabanzas son para Dios, Señor de todo cuanto existe,',
+    'el Compasivo, el Misericordioso.',
+    'Soberano absoluto del Día del Juicio Final,',
+    'solo a Ti te adoramos y solo de Ti imploramos ayuda.',
+    '¡Guíanos por el camino recto!',
+    'El camino de los que has colmado con Tus favores, no el de los que han caído en Tu ira, ni el de los que se extraviaron.',
+  ],
+};
 
 final _alFatihahFixture = <Map<String, dynamic>>[
   _fixtureAyah(
