@@ -4276,15 +4276,20 @@ class _MushafPrintedLine extends StatelessWidget {
   }
 
   Widget _line(TextAlign align) {
-    return Text.rich(
-      textSpan,
-      softWrap: false,
-      overflow: TextOverflow.visible,
-      textAlign: align,
-      textDirection: TextDirection.rtl,
-      textScaler: TextScaler.noScaling,
-      textHeightBehavior: const TextHeightBehavior(
-        leadingDistribution: TextLeadingDistribution.even,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.center,
+      child: Text.rich(
+        textSpan,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.visible,
+        textAlign: align,
+        textDirection: TextDirection.rtl,
+        textScaler: TextScaler.noScaling,
+        textHeightBehavior: const TextHeightBehavior(
+          leadingDistribution: TextLeadingDistribution.even,
+        ),
       ),
     );
   }
