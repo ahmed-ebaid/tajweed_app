@@ -3566,9 +3566,9 @@ class _MushafTextPage extends StatelessWidget {
           label: 'Quran page $pageNumber',
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final horizontalInset = 20.0;
+              final horizontalInset = 16.0;
               final heightFactor = isLandscape ? 1.8 : 2.0;
-              final fontSize = isLandscape ? 36.0 : 18.0;
+              final fontSize = isLandscape ? 38.0 : 19.0;
               final glyphPadding = isLandscape ? 24.0 : 20.0;
               final scrollTopPadding = isLandscape ? 10.0 : 16.0;
               final scrollBottomPadding = isLandscape ? 20.0 : 28.0;
@@ -3774,20 +3774,19 @@ class _MushafTextPage extends StatelessWidget {
     if (useUniformLineSizing && availableLineWidth > 0) {
       var widestLine = 0.0;
       for (final line in collectedLines) {
-        var wordWidth = 0.0;
-        for (final group in line.wordGroups) {
-          final painter = TextPainter(
-            text: TextSpan(style: scaledStyle, children: group),
-            maxLines: 1,
-            textDirection: TextDirection.rtl,
-            textScaler: TextScaler.noScaling,
-          )..layout();
-          wordWidth += painter.width;
-          painter.dispose();
-        }
-        widestLine = math.max(widestLine, wordWidth);
+        final painter = TextPainter(
+          text: TextSpan(
+            style: scaledStyle,
+            children: line.spansWithSpaces(scaledStyle),
+          ),
+          maxLines: 1,
+          textDirection: TextDirection.rtl,
+          textScaler: TextScaler.noScaling,
+        )..layout();
+        widestLine = math.max(widestLine, painter.width);
+        painter.dispose();
       }
-      final safeLineWidth = math.max(0.0, availableLineWidth - 0.5);
+      final safeLineWidth = math.max(0.0, availableLineWidth - 4);
       if (widestLine > safeLineWidth) {
         scaledStyle = scaledStyle.copyWith(
           fontSize: (scaledStyle.fontSize ?? 18) * (safeLineWidth / widestLine),
@@ -3876,12 +3875,6 @@ class _MushafTextPage extends StatelessWidget {
                     style: scaledStyle,
                     children: content.spansWithSpaces(scaledStyle),
                   ),
-                  wordGroups: content.wordGroups
-                      .map(
-                        (group) =>
-                            TextSpan(style: scaledStyle, children: group),
-                      )
-                      .toList(growable: false),
                   marker: content.marker,
                   horizontalInset: horizontalInset,
                   lineHeight: slotHeight - glyphPadding,
@@ -3922,9 +3915,6 @@ class _MushafTextPage extends StatelessWidget {
         for (var index = 0; index < orderedLines.length; index++)
           _MushafPrintedLine(
             textSpan: lineSpans[index],
-            wordGroups: orderedLines[index].wordGroups
-                .map((group) => TextSpan(style: scaledStyle, children: group))
-                .toList(growable: false),
             marker: orderedLines[index].marker,
             horizontalInset: horizontalInset,
             lineHeight:
@@ -4249,7 +4239,6 @@ class _MushafPrintedLineContent {
 
 class _MushafPrintedLine extends StatelessWidget {
   final TextSpan textSpan;
-  final List<TextSpan> wordGroups;
   final _MushafBoundaryPlacement? marker;
   final double horizontalInset;
   final double lineHeight;
@@ -4257,7 +4246,6 @@ class _MushafPrintedLine extends StatelessWidget {
 
   const _MushafPrintedLine({
     required this.textSpan,
-    required this.wordGroups,
     required this.marker,
     required this.horizontalInset,
     required this.lineHeight,
@@ -4275,34 +4263,7 @@ class _MushafPrintedLine extends StatelessWidget {
           Positioned.fill(
             left: horizontalInset,
             right: horizontalInset,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Narrower than the page: distribute the slack between words
-                // exactly like the printed Mushaf justifies its lines.
-                if (wordGroups.length > 1) {
-                  return Row(
-                    textDirection: TextDirection.rtl,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      for (final group in wordGroups)
-                        Text.rich(
-                          group,
-                          softWrap: false,
-                          overflow: TextOverflow.visible,
-                          textDirection: TextDirection.rtl,
-                          textScaler: TextScaler.noScaling,
-                          textHeightBehavior: const TextHeightBehavior(
-                            leadingDistribution: TextLeadingDistribution.even,
-                          ),
-                        ),
-                    ],
-                  );
-                }
-
-                return _line(TextAlign.center);
-              },
-            ),
+            child: _line(TextAlign.center),
           ),
           if (marker != null)
             Positioned(
@@ -4347,7 +4308,7 @@ class _MushafFlowText extends StatelessWidget {
         final textWidth = constraints.maxWidth - (horizontalInset * 2);
         final textPainter = TextPainter(
           text: textSpan,
-          textAlign: TextAlign.justify,
+          textAlign: TextAlign.center,
           textDirection: TextDirection.rtl,
           textScaler: TextScaler.noScaling,
         )..layout(maxWidth: textWidth);
@@ -4383,7 +4344,7 @@ class _MushafFlowText extends StatelessWidget {
                 right: horizontalInset,
                 child: Text.rich(
                   textSpan,
-                  textAlign: TextAlign.justify,
+                  textAlign: TextAlign.center,
                   textDirection: TextDirection.rtl,
                   textScaler: TextScaler.noScaling,
                 ),
