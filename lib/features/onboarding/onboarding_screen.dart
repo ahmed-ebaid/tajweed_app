@@ -243,9 +243,10 @@ class _GuidePage extends StatelessWidget {
                   label: l10n.get('onboarding_mockup_semantics_${index + 1}'),
                   image: true,
                   child: ExcludeSemantics(
-                    child: _ReaderMockup(
+                    child: _ScreenshotGuidePage(
+                      assetPath: _onboardingScreenshotAssets[index],
                       page: index,
-                      height: compact ? 245 : 330,
+                      height: compact ? 320 : 420,
                       calloutLabel: l10n.get(
                         'onboarding_mockup_callout_${index + 1}',
                       ),
@@ -281,12 +282,28 @@ class _GuidePage extends StatelessWidget {
   }
 }
 
-class _ReaderMockup extends StatelessWidget {
+/// Real in-app screenshots shown per onboarding page, in page order.
+/// Captured from the actual reader/mushaf/tafseer UI (not hand-drawn mockups)
+/// so the guide always matches current app behavior.
+const _onboardingScreenshotAssets = <String>[
+  'assets/onboarding/01-tajweed-rules.png',
+  'assets/onboarding/02-tafseer.png',
+  'assets/onboarding/03-listen-ayah.png',
+  'assets/onboarding/04-bookmark-ayah.png',
+  'assets/onboarding/05-hizb-boundary.png',
+  'assets/onboarding/06-mushaf-bookmark.png',
+];
+
+/// Displays a real captured app screenshot inside a phone-like frame, with
+/// the same interaction callout bubble previously drawn over the mockups.
+class _ScreenshotGuidePage extends StatelessWidget {
+  final String assetPath;
   final int page;
   final double height;
   final String calloutLabel;
 
-  const _ReaderMockup({
+  const _ScreenshotGuidePage({
+    required this.assetPath,
     required this.page,
     required this.height,
     required this.calloutLabel,
@@ -298,7 +315,7 @@ class _ReaderMockup extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: height,
-      constraints: const BoxConstraints(maxWidth: 560),
+      constraints: const BoxConstraints(maxWidth: 420),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(24),
@@ -313,106 +330,14 @@ class _ReaderMockup extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          Column(
-            children: [
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                color: colors.primaryContainer.withValues(alpha: 0.55),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.menu_rounded,
-                      size: 18,
-                      color: colors.onPrimaryContainer,
-                    ),
-                    const Spacer(),
-                    Text(
-                      'سورة الملك',
-                      style: TextStyle(
-                        fontFamily: 'AmiriQuran',
-                        color: colors.onPrimaryContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.lightbulb_outline_rounded,
-                      size: 20,
-                      color: colors.onPrimaryContainer,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _MockAyah(highlightTajweed: page == 0),
-                      const SizedBox(height: 15),
-                      const _MockAyah(),
-                      const SizedBox(height: 15),
-                      const _MockAyah(short: true),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          Image.asset(
+            assetPath,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
           ),
           _InteractionOverlay(page: page, label: calloutLabel),
-        ],
-      ),
-    );
-  }
-}
-
-class _MockAyah extends StatelessWidget {
-  final bool highlightTajweed;
-  final bool short;
-
-  const _MockAyah({this.highlightTajweed = false, this.short = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final base = Theme.of(context).colorScheme.onSurface;
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        textDirection: TextDirection.rtl,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            short
-                ? 'تَبَارَكَ الَّذِي'
-                : 'الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ',
-            style: TextStyle(
-              fontFamily: 'AmiriQuran',
-              fontSize: 20,
-              height: 1.7,
-              color: base,
-            ),
-          ),
-          if (highlightTajweed)
-            Text(
-              ' لِيَبْلُوَكُمْ',
-              style: TextStyle(
-                fontFamily: 'AmiriQuran',
-                fontSize: 20,
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          const SizedBox(width: 6),
-          Text(
-            '۝٢',
-            style: TextStyle(
-              fontFamily: 'AmiriQuran',
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-          ),
         ],
       ),
     );

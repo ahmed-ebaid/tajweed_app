@@ -716,11 +716,21 @@ class _ReaderScreenState extends State<ReaderScreen>
     if (mounted && cachedSurahs != null) {
       setState(() => _allSurahs = cachedSurahs);
     }
-    try {
-      final surahs = await _api.fetchSurahList(langCode: langCode);
-      if (mounted) setState(() => _allSurahs = surahs);
-      await _saveCachedSurahList(langCode, surahs);
-    } catch (_) {}
+    // Don't block the initial surah load on a network refresh of the surah
+    // list metadata — it's only used for the surah picker and title lookups,
+    // and refreshing it can wait until after content is on screen. Bound it
+    // with a timeout so a stuck request can't block future requests queued
+    // behind it on the same Dio client indefinitely.
+    unawaited(
+      _api
+          .fetchSurahList(langCode: langCode)
+          .timeout(const Duration(seconds: 15))
+          .then((surahs) async {
+            if (mounted) setState(() => _allSurahs = surahs);
+            await _saveCachedSurahList(langCode, surahs);
+          })
+          .catchError((_) {}),
+    );
     _loadSurah();
   }
 
@@ -861,10 +871,9 @@ class _ReaderScreenState extends State<ReaderScreen>
       );
       try {
         if (audioMap.isEmpty && !isOffline) {
-          audioMap = await _api.fetchAudioFiles(
-            reciterId: reciterId,
-            surahNumber: _selectedSurah,
-          );
+          audioMap = await _api
+              .fetchAudioFiles(reciterId: reciterId, surahNumber: _selectedSurah)
+              .timeout(const Duration(seconds: 15));
           await _contentSync.cacheRecitationMap(
             reciterId: reciterId,
             surahNumber: _selectedSurah,
@@ -1004,7 +1013,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     List<Map<String, dynamic>> juzs = const [];
     if (!useCacheOnly) {
       try {
-        juzs = await _api.fetchJuzList();
+        juzs = await _api.fetchJuzList().timeout(const Duration(seconds: 15));
         await Hive.box('settings').put(_juzListCacheKey, juzs);
       } catch (_) {
         // Fall through to the cached Juz list.
@@ -2810,10 +2819,9 @@ class _ReaderScreenState extends State<ReaderScreen>
       );
       if (!await _isDeviceOffline()) {
         try {
-          final refreshed = await _api.fetchVersesByPage(
-            pageNumber: safePage,
-            langCode: 'ar',
-          );
+          final refreshed = await _api
+              .fetchVersesByPage(pageNumber: safePage, langCode: 'ar')
+              .timeout(const Duration(seconds: 15));
           final pageVerses = _dedupeMushafPageVerses(refreshed);
           if (pageVerses.isNotEmpty) {
             raw = pageVerses;
