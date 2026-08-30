@@ -58,7 +58,14 @@ flutter:
   assets:
     - assets/tajweed/            # Local tajweed rule JSON database
     - assets/fonts/OFL-Amiri.txt
-    - assets/onboarding/         # Real in-app screenshots used by the onboarding guide
+    - assets/onboarding/en/
+    - assets/onboarding/ar/
+    - assets/onboarding/ur/
+    - assets/onboarding/tr/
+    - assets/onboarding/fr/
+    - assets/onboarding/id/
+    - assets/onboarding/de/
+    - assets/onboarding/es/
 
   fonts:
     - family: AmiriQuran

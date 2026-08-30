@@ -228,6 +228,10 @@ class _GuidePage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final title = l10n.get('onboarding_${index + 1}_title');
     final caption = l10n.get('onboarding_${index + 1}_caption');
+    final screenshotLocale =
+        _onboardingScreenshotLocales.contains(l10n.locale.languageCode)
+        ? l10n.locale.languageCode
+        : 'en';
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -244,7 +248,9 @@ class _GuidePage extends StatelessWidget {
                   image: true,
                   child: ExcludeSemantics(
                     child: _ScreenshotGuidePage(
-                      assetPath: _onboardingScreenshotAssets[index],
+                      assetPath:
+                          'assets/onboarding/$screenshotLocale/'
+                          '${_onboardingScreenshotFiles[index]}',
                       page: index,
                       height: compact ? 320 : 420,
                       calloutLabel: l10n.get(
@@ -285,13 +291,24 @@ class _GuidePage extends StatelessWidget {
 /// Real in-app screenshots shown per onboarding page, in page order.
 /// Captured from the actual reader/mushaf/tafseer UI (not hand-drawn mockups)
 /// so the guide always matches current app behavior.
-const _onboardingScreenshotAssets = <String>[
-  'assets/onboarding/01-tajweed-rules.png',
-  'assets/onboarding/02-tafseer.png',
-  'assets/onboarding/03-listen-ayah.png',
-  'assets/onboarding/04-bookmark-ayah.png',
-  'assets/onboarding/05-hizb-boundary.png',
-  'assets/onboarding/06-mushaf-bookmark.png',
+const _onboardingScreenshotLocales = <String>{
+  'en',
+  'ar',
+  'ur',
+  'tr',
+  'fr',
+  'id',
+  'de',
+  'es',
+};
+
+const _onboardingScreenshotFiles = <String>[
+  '01-tajweed-rules.png',
+  '02-tafseer.png',
+  '03-listen-ayah.png',
+  '04-bookmark-ayah.png',
+  '05-hizb-boundary.png',
+  '06-mushaf-bookmark.png',
 ];
 
 /// Displays a real captured app screenshot inside a phone-like frame, with

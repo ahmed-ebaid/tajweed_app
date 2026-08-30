@@ -872,7 +872,10 @@ class _ReaderScreenState extends State<ReaderScreen>
       try {
         if (audioMap.isEmpty && !isOffline) {
           audioMap = await _api
-              .fetchAudioFiles(reciterId: reciterId, surahNumber: _selectedSurah)
+              .fetchAudioFiles(
+                reciterId: reciterId,
+                surahNumber: _selectedSurah,
+              )
               .timeout(const Duration(seconds: 15));
           await _contentSync.cacheRecitationMap(
             reciterId: reciterId,
@@ -3179,6 +3182,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                     key: ValueKey(pageNumber),
                     pageNumber: pageNumber,
                     pageFuture: _loadMushafTextPage(pageNumber),
+                    languageCode: langCode,
                     isLandscape: isLandscape,
                     textScale: 1,
                     highlightEnabled: _tajweedEnabled,
@@ -3421,6 +3425,7 @@ class MushafPageContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firstAyah = ayahs.first;
+    final languageCode = Localizations.localeOf(context).languageCode;
     return _MushafPageFrame(
       isLandscape: isLandscape,
       juzLabel: firstAyah.juzNumber == null
@@ -3433,6 +3438,7 @@ class MushafPageContent extends StatelessWidget {
       childBuilder: (scrollEnabled) => _MushafTextPage(
         pageNumber: pageNumber,
         pageFuture: Future<List<Ayah>>.value(ayahs),
+        languageCode: languageCode,
         isLandscape: isLandscape,
         textScale: textScale,
         highlightEnabled: highlightEnabled,
@@ -3447,6 +3453,7 @@ class MushafPageContent extends StatelessWidget {
 class _MushafTextPage extends StatelessWidget {
   final int pageNumber;
   final Future<List<Ayah>> pageFuture;
+  final String languageCode;
   final bool isLandscape;
   final double textScale;
   final bool highlightEnabled;
@@ -3458,6 +3465,7 @@ class _MushafTextPage extends StatelessWidget {
     super.key,
     required this.pageNumber,
     required this.pageFuture,
+    required this.languageCode,
     required this.isLandscape,
     required this.textScale,
     required this.highlightEnabled,
@@ -3720,8 +3728,8 @@ class _MushafTextPage extends StatelessWidget {
           _MushafBoundaryPlacement(
             textOffset: text.length,
             symbol: '\u06DE',
-            label: _rubElHizbLabel(ayah),
-            semanticLabel: 'Hizb boundary',
+            label: _rubElHizbLabel(ayah, languageCode),
+            semanticLabel: _hizbBoundarySemanticLabel(languageCode),
           ),
         );
       }
@@ -3961,8 +3969,8 @@ class _MushafTextPage extends StatelessWidget {
           line.marker = _MushafBoundaryPlacement(
             textOffset: 0,
             symbol: '\u06DE',
-            label: _rubElHizbLabel(ayah),
-            semanticLabel: 'Hizb boundary',
+            label: _rubElHizbLabel(ayah, languageCode),
+            semanticLabel: _hizbBoundarySemanticLabel(languageCode),
           );
         }
         line.wordGroups.add(
@@ -4021,21 +4029,92 @@ class _MushafTextPage extends StatelessWidget {
         .join();
   }
 
-  static String _rubElHizbLabel(Ayah ayah) {
+  static String _rubElHizbLabel(Ayah ayah, String languageCode) {
     final rubNumber = ayah.rubElHizbNumber;
     final hizbNumber =
         ayah.hizbNumber ?? (rubNumber == null ? null : (rubNumber + 3) ~/ 4);
-    if (hizbNumber == null) return 'رُبْع حِزْب';
+    if (hizbNumber == null) {
+      return _localizedHizbLabel(languageCode, quarter: 2);
+    }
 
-    final hizb = _arabicIndicDigits(hizbNumber);
-    if (rubNumber == null) return 'الْحِزْبُ $hizb';
+    final hizb = languageCode == 'ar' || languageCode == 'ur'
+        ? _arabicIndicDigits(hizbNumber)
+        : hizbNumber.toString();
+    if (rubNumber == null) {
+      return _localizedHizbLabel(languageCode, hizb: hizb, quarter: 1);
+    }
 
     final quarter = ((rubNumber - 1) % 4) + 1;
-    return switch (quarter) {
-      1 => 'الْحِزْبُ $hizb',
-      2 => 'رُبْعُ الْحِزْبِ $hizb',
-      3 => 'نِصْفُ الْحِزْبِ $hizb',
-      _ => 'ثَلَاثَةُ أَرْبَاعِ الْحِزْبِ $hizb',
+    return _localizedHizbLabel(languageCode, hizb: hizb, quarter: quarter);
+  }
+
+  static String _localizedHizbLabel(
+    String languageCode, {
+    String hizb = '',
+    required int quarter,
+  }) {
+    return switch (languageCode) {
+      'ar' => switch (quarter) {
+        1 => 'الْحِزْبُ $hizb',
+        2 => 'رُبْعُ الْحِزْبِ $hizb',
+        3 => 'نِصْفُ الْحِزْبِ $hizb',
+        _ => 'ثَلَاثَةُ أَرْبَاعِ الْحِزْبِ $hizb',
+      },
+      'ur' => switch (quarter) {
+        1 => 'حزب $hizb',
+        2 => 'حزب $hizb کا چوتھائی',
+        3 => 'حزب $hizb کا نصف',
+        _ => 'حزب $hizb کے تین چوتھائی',
+      },
+      'tr' => switch (quarter) {
+        1 => 'Hizb $hizb',
+        2 => 'Hizb $hizb’in çeyreği',
+        3 => 'Hizb $hizb’in yarısı',
+        _ => 'Hizb $hizb’in dörtte üçü',
+      },
+      'fr' => switch (quarter) {
+        1 => 'Hizb $hizb',
+        2 => 'Quart du Hizb $hizb',
+        3 => 'Moitié du Hizb $hizb',
+        _ => 'Trois quarts du Hizb $hizb',
+      },
+      'id' => switch (quarter) {
+        1 => 'Hizb $hizb',
+        2 => 'Seperempat Hizb $hizb',
+        3 => 'Setengah Hizb $hizb',
+        _ => 'Tiga perempat Hizb $hizb',
+      },
+      'de' => switch (quarter) {
+        1 => 'Hizb $hizb',
+        2 => 'Viertel des Hizb $hizb',
+        3 => 'Hälfte des Hizb $hizb',
+        _ => 'Dreiviertel des Hizb $hizb',
+      },
+      'es' => switch (quarter) {
+        1 => 'Hizb $hizb',
+        2 => 'Cuarto del Hizb $hizb',
+        3 => 'Mitad del Hizb $hizb',
+        _ => 'Tres cuartos del Hizb $hizb',
+      },
+      _ => switch (quarter) {
+        1 => 'Hizb $hizb',
+        2 => 'Quarter Hizb $hizb',
+        3 => 'Half Hizb $hizb',
+        _ => 'Three-quarter Hizb $hizb',
+      },
+    };
+  }
+
+  static String _hizbBoundarySemanticLabel(String languageCode) {
+    return switch (languageCode) {
+      'ar' => 'حد الحزب',
+      'ur' => 'حزب کی حد',
+      'tr' => 'Hizb sınırı',
+      'fr' => 'Limite de Hizb',
+      'id' => 'Batas Hizb',
+      'de' => 'Hizb-Grenze',
+      'es' => 'Límite de Hizb',
+      _ => 'Hizb boundary',
     };
   }
 }
@@ -4395,6 +4474,7 @@ class _MushafBorderMarker extends StatelessWidget {
       triggerMode: TooltipTriggerMode.tap,
       showDuration: const Duration(seconds: 3),
       child: Semantics(
+        key: const ValueKey('mushaf-hizb-boundary'),
         label: '${marker.semanticLabel}: ${marker.label}',
         child: Container(
           width: 14,

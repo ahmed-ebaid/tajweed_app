@@ -166,6 +166,29 @@ void main() {
     );
   });
 
+  testWidgets('uses screenshots captured for the active locale', (
+    tester,
+  ) async {
+    final service = OnboardingService(settingsBox: settingsBox);
+
+    for (final locale in AppLocalizations.supportedLocales) {
+      await tester.pumpWidget(
+        app(
+          locale: locale,
+          home: OnboardingScreen(service: service),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final image = tester.widget<Image>(find.byType(Image));
+      final asset = image.image as AssetImage;
+      expect(
+        asset.assetName,
+        'assets/onboarding/${locale.languageCode}/01-tajweed-rules.png',
+      );
+    }
+  });
+
   testWidgets('guide fits phone and tablet layouts', (tester) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
