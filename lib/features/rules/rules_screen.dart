@@ -653,11 +653,9 @@ class _RuleCard extends StatelessWidget {
                             child: Text(
                               ex,
                               style: TextStyle(
-                                fontFamily: definition.rule == TajweedRule.waqf
-                                    ? 'AmiriQuran'
-                                    : 'UthmanicHafs',
+                                fontFamily: 'UthmanicHafs',
                                 fontSize: definition.rule == TajweedRule.waqf
-                                    ? 34
+                                    ? 30
                                     : 20,
                                 fontWeight: definition.rule == TajweedRule.waqf
                                     ? FontWeight.w700
