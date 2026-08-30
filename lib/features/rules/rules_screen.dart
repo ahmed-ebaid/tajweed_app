@@ -640,9 +640,11 @@ class _RuleCard extends StatelessWidget {
                     children: definition.exampleArabic
                         .map(
                           (ex) => Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 6,
+                              vertical: definition.rule == TajweedRule.waqf
+                                  ? 10
+                                  : 6,
                             ),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.surface,
@@ -651,8 +653,15 @@ class _RuleCard extends StatelessWidget {
                             child: Text(
                               ex,
                               style: TextStyle(
-                                fontFamily: 'UthmanicHafs',
-                                fontSize: 20,
+                                fontFamily: definition.rule == TajweedRule.waqf
+                                    ? 'AmiriQuran'
+                                    : 'UthmanicHafs',
+                                fontSize: definition.rule == TajweedRule.waqf
+                                    ? 34
+                                    : 20,
+                                fontWeight: definition.rule == TajweedRule.waqf
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
                                 color: definition.rule.color,
                               ),
                               textDirection: TextDirection.rtl,

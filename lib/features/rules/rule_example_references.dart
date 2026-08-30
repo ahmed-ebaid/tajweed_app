@@ -37,20 +37,25 @@ class RuleExampleReferences {
   // one entry per illustrative case (each verse checked directly against the
   // Quran.com Uthmani text before inclusion), mapped to the article's section
   // order (seven full letters / degrees / conditional cases, and light
-  // letters / Ra / Lam+Alif respectively):
+  // letters / Ra / Lam+Alif respectively). Shortest available verse chosen
+  // for each case so examples stay easy to read/hear:
   // tafkhim:
-  //   1:7  — غَيْرِ ٱلْمَغْضُوبِ ... ٱلضَّآلِّينَ — the full letters غ and ض.
-  //   1:1  — ٱلرَّحْمَـٰنِ — Ra full with fathah before it (strong degree).
-  //   86:6 — خُلِقَ — the full letter خ carrying dammah (lighter degree).
+  //   1:7  — غَيْرِ ٱلْمَغْضُوبِ ... ٱلضَّآلِّينَ — the full letters غ and ض
+  //          (shortest verse containing both).
+  //   55:1 — ٱلرَّحْمَـٰنُ — Ra full with fathah before it (strongest degree),
+  //          the shortest possible verse for this case.
+  //   86:6 — خُلِقَ مِن مَّآءٍ دَافِقٍ — the full letter خ carrying dammah
+  //          (lighter degree).
   // tarqiq:
   //   1:5  — إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ — ordinary light letters,
   //          none of the seven full letters present.
-  //   3:37 — ...رِزْقًا... — Ra light because it carries kasrah.
+  //   51:22 — وَفِى ٱلسَّمَآءِ رِزْقُكُمْ وَمَا تُوعَدُونَ — Ra light because
+  //          it carries dammah, shortest verse found for this case.
   //   1:1  — بِسْمِ ٱللَّهِ — the lam of Allah light because it follows the
   //          kasrah ending بِسْمِ (Lam and Alif conditional case).
   static const Map<String, List<String>> articleExampleCodes = {
-    'tafkhim': ['001007', '001001', '086006'],
-    'tarqiq': ['001005', '003037', '001001'],
+    'tafkhim': ['001007', '055001', '086006'],
+    'tarqiq': ['001005', '051022', '001001'],
   };
 
   static List<AyahReference> referencesForArticle(String articleId) {
