@@ -137,6 +137,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
         TajweedWord(
           arabic: word.arabic,
           audioUrl: word.audioUrl,
+          lineNumber: word.lineNumber,
           spans: [TajweedSpan(start: 0, end: word.arabic.length, rule: rule)],
         ),
       );
@@ -153,6 +154,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
       arabic: ayah.arabic,
       translations: ayah.translations,
       words: patchedWords,
+      endLineNumber: ayah.endLineNumber,
       audioUrl: ayah.audioUrl,
       tajweedSegments: ayah.tajweedSegments,
     );
@@ -177,6 +179,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
           arabic: '${word.arabic} $marker',
           spans: word.spans,
           audioUrl: word.audioUrl,
+          lineNumber: word.lineNumber,
         ),
       );
     }
@@ -192,6 +195,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
       arabic: ayah.arabic,
       translations: ayah.translations,
       words: patchedWords,
+      endLineNumber: ayah.endLineNumber,
       audioUrl: ayah.audioUrl,
       tajweedSegments: ayah.tajweedSegments,
     );
@@ -998,6 +1002,20 @@ class _PronunciationSection extends StatelessWidget {
     if (langCode == 'de') {
       return _tipsForGerman(rule);
     }
+    if (langCode == 'es') {
+      if (rule == TajweedRule.hamzatWasl) {
+        return [
+          'Pronuncia hamzat wasl solamente al comenzar',
+          'Omítela al unir la palabra con la palabra anterior',
+        ];
+      }
+      if (rule == TajweedRule.hamzatQat) {
+        return [
+          'Pronuncia hamzat al-qat tanto al comenzar como al enlazar',
+          'Al inicio de una palabra se escribe encima o debajo del alif',
+        ];
+      }
+    }
 
     switch (rule) {
       case TajweedRule.ghunnah:
@@ -1112,6 +1130,12 @@ class _PronunciationSection extends StatelessWidget {
           'A connecting hamza that is only pronounced at the start of speech',
           'When continuing from a previous word, it is dropped',
           'Found at the start of "Al-" and certain verb forms',
+        ];
+      case TajweedRule.hamzatQat:
+        return [
+          'Pronounce the hamza whether starting or continuing from the previous word',
+          'At the start of a word, it appears above or below the alif',
+          'Do not drop its clear glottal sound when joining words',
         ];
       case TajweedRule.laamShamsiyah:
         return [
@@ -1236,6 +1260,12 @@ class _PronunciationSection extends StatelessWidget {
           'وتسقط في حال الوصل بما قبلها',
           'توجد في أل التعريف وبعض صيغ الأفعال',
         ];
+      case TajweedRule.hamzatQat:
+        return [
+          'انطق همزة القطع في الابتداء والوصل',
+          'تُرسم في أول الكلمة فوق الألف أو تحتها',
+          'لا تُسقط صوتها عند وصلها بالكلمة السابقة',
+        ];
       case TajweedRule.laamShamsiyah:
         return [
           'لام "ال" لا تُنطق مع الحروف الشمسية',
@@ -1337,6 +1367,11 @@ class _PronunciationSection extends StatelessWidget {
           'ہمزۂ وصل ابتدا میں پڑھا جاتا ہے',
           'وصل کی حالت میں ساقط ہو جاتا ہے',
         ];
+      case TajweedRule.hamzatQat:
+        return [
+          'ہمزۂ قطع ابتدا اور وصل دونوں میں پڑھیں',
+          'لفظ کے شروع میں یہ الف کے اوپر یا نیچے لکھا جاتا ہے',
+        ];
       case TajweedRule.laamShamsiyah:
         return [
           'ال کی لام حرف شمسی سے پہلے نہیں پڑھی جاتی',
@@ -1431,6 +1466,11 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.hamzatWasl:
         return ['Hemze-i vasl sadece başlangıçta okunur', 'Vasl halinde düşer'];
+      case TajweedRule.hamzatQat:
+        return [
+          'Hemze-i kat başlangıçta ve bağlantıda okunur',
+          'Kelime başında elifin üstünde veya altında yazılır',
+        ];
       case TajweedRule.laamShamsiyah:
         return [
           'El takısındaki lam okunmaz',
@@ -1543,6 +1583,11 @@ class _PronunciationSection extends StatelessWidget {
           'Hamzat wasl se prononce au début seulement',
           'Elle tombe en liaison',
         ];
+      case TajweedRule.hamzatQat:
+        return [
+          'Prononcez hamzat al-qat au début comme en liaison',
+          'En début de mot, elle s’écrit au-dessus ou au-dessous de l’alif',
+        ];
       case TajweedRule.laamShamsiyah:
         return [
           'Le lam de al n est pas prononcé',
@@ -1645,6 +1690,11 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Hamzat wasl dibaca saat memulai',
           'Saat washal, hamzah tidak dibaca',
+        ];
+      case TajweedRule.hamzatQat:
+        return [
+          'Baca hamzat qat saat memulai maupun menyambung',
+          'Di awal kata, tandanya berada di atas atau di bawah alif',
         ];
       case TajweedRule.laamShamsiyah:
         return [
@@ -1757,6 +1807,11 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Hamzat Wasl wird nur am Satzanfang gesprochen',
           'In der Verbindung fällt sie weg',
+        ];
+      case TajweedRule.hamzatQat:
+        return [
+          'Sprich Hamzat al-Qat am Anfang und in der Verbindung',
+          'Am Wortanfang steht es über oder unter dem Alif',
         ];
       case TajweedRule.laamShamsiyah:
         return [

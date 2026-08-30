@@ -566,6 +566,7 @@ class RulesRepository {
         'fr': 'Hamzat Wasl',
         'id': 'Hamzat Wasl',
         'de': 'Hamzat Wasl',
+        'es': 'Hamzat Wasl',
       },
       descriptions: {
         'en':
@@ -578,9 +579,44 @@ class RulesRepository {
         'id': 'Hamzah sambung: dibaca saat memulai, gugur saat washal.',
         'de':
             'Verbindungs-Hamza: am Anfang gesprochen, beim Verbinden ausgelassen.',
+        'es':
+            'Hamza de enlace que se pronuncia al comenzar y se omite al unir la palabra con la anterior.',
       },
-      exampleArabic: ['ٱهْدِنَا', 'ٱسْمُ'],
+      exampleArabic: ['ٱهْدِنَا', 'ٱلْحَمْدُ', 'ٱسْتَغْفِرُوا'],
       triggerLetters: [],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.hamzatQat,
+      names: {
+        'en': 'Hamzat al-Qat',
+        'ar': 'هَمْزَةُ الْقَطْعِ',
+        'ur': 'ہمزۂ قطع',
+        'tr': 'Hemze-i Kat',
+        'fr': 'Hamzat al-Qat',
+        'id': 'Hamzat Qat',
+        'de': 'Hamzat al-Qat',
+        'es': 'Hamzat al-Qat',
+      },
+      descriptions: {
+        'en':
+            'A fixed hamza that is always pronounced, whether beginning with the word or connecting it to the word before it.',
+        'ar':
+            'همزة ثابتة تُنطق في الابتداء والوصل، وتُرسم في أول الكلمة فوق الألف أو تحتها.',
+        'ur':
+            'یہ مستقل ہمزہ ابتدا اور وصل دونوں حالتوں میں پڑھا جاتا ہے، اور لفظ کے شروع میں الف کے اوپر یا نیچے لکھا جاتا ہے۔',
+        'tr':
+            'Kelimeye başlarken de önceki kelimeye bağlarken de her zaman okunan sabit hemzedir.',
+        'fr':
+            'Hamza fixe toujours prononcée, au début du mot comme en liaison avec le mot précédent.',
+        'id':
+            'Hamzah tetap yang selalu dibaca, baik saat memulai kata maupun menyambungkannya dengan kata sebelumnya.',
+        'de':
+            'Ein festes Hamza, das sowohl am Wortanfang als auch bei der Verbindung mit dem vorherigen Wort gesprochen wird.',
+        'es':
+            'Hamza fija que siempre se pronuncia, tanto al comenzar la palabra como al unirla con la palabra anterior.',
+      },
+      exampleArabic: ['أَنْعَمْتَ', 'إِيَّاكَ', 'أُنزِلَ'],
+      triggerLetters: ['أ', 'إ'],
     ),
     TajweedRuleDefinition(
       rule: TajweedRule.laamShamsiyah,
