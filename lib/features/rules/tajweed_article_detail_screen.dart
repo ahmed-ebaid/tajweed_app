@@ -32,6 +32,7 @@ class _TajweedArticleDetailScreenState
   bool _playing = false;
   bool _loadingAudio = false;
   String? _audioUrl;
+  String? _arabicText;
 
   static const int _articleReciterId = 12; // Husary Al-Muallim
 
@@ -43,27 +44,16 @@ class _TajweedArticleDetailScreenState
         if (mounted) setState(() => _playing = false);
       }
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadExampleAyah());
   }
 
   ({int surah, int ayah})? get _reference =>
       RuleExampleReferences.referenceForArticle(widget.article.id);
 
-  Future<void> _toggleExample() async {
-    if (_playing) {
-      _audio.stop();
-      setState(() => _playing = false);
-      return;
-    }
-
-    final existingUrl = QuranApiService.normalizeAudioUrl(_audioUrl);
-    if (existingUrl != null) {
-      _audio.playUrl(existingUrl);
-      setState(() => _playing = true);
-      return;
-    }
-
+  Future<void> _loadExampleAyah() async {
     final ref = _reference;
     if (ref == null) return;
+    if (_arabicText != null) return;
 
     setState(() => _loadingAudio = true);
     try {
@@ -78,20 +68,33 @@ class _TajweedArticleDetailScreenState
       final normalizedUrl = QuranApiService.normalizeAudioUrl(
         mapped.audioUrl,
       );
-      if (normalizedUrl == null) {
-        if (mounted) setState(() => _loadingAudio = false);
-        return;
-      }
       if (!mounted) return;
       setState(() {
         _audioUrl = normalizedUrl;
+        _arabicText = mapped.plainArabicText();
         _loadingAudio = false;
       });
-      _audio.playUrl(normalizedUrl);
-      if (mounted) setState(() => _playing = true);
     } catch (_) {
       if (mounted) setState(() => _loadingAudio = false);
     }
+  }
+
+  Future<void> _toggleExample() async {
+    if (_playing) {
+      _audio.stop();
+      setState(() => _playing = false);
+      return;
+    }
+
+    var url = QuranApiService.normalizeAudioUrl(_audioUrl);
+    if (url == null) {
+      await _loadExampleAyah();
+      url = QuranApiService.normalizeAudioUrl(_audioUrl);
+    }
+    if (url == null) return;
+
+    _audio.playUrl(url);
+    if (mounted) setState(() => _playing = true);
   }
 
   @override
@@ -170,6 +173,27 @@ class _TajweedArticleDetailScreenState
             ),
             if (hasExample) ...[
               const SizedBox(height: 6),
+              if (_arabicText != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: accent.withValues(alpha: 0.25)),
+                  ),
+                  child: Text(
+                    _arabicText!,
+                    textAlign: TextAlign.right,
+                    textDirection: TextDirection.rtl,
+                    style: const TextStyle(
+                      fontFamily: 'AmiriQuran',
+                      fontSize: 24,
+                      height: 1.8,
+                    ),
+                  ),
+                ),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(

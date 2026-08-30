@@ -42,6 +42,35 @@ class RuleExampleReferences {
     'tarqiq': '112001',
   };
 
+  // Per-symbol audio references for the Waqf table, matching the excerpts
+  // already curated in WaqfSymbols.examples (index -> surah/ayah), all from
+  // Surah Al-Baqarah:
+  // 0 م   (lazim)      -> 2:26
+  // 1 لا  (la taqif)   -> 2:25
+  // 2 ج   (ja'iz)      -> 2:19
+  // 3 قلى (waqf awla)  -> 2:13
+  // 4 صلى (wasl awla)  -> 2:5
+  // 5 ∴   (mu'anaqah)  -> 2:2
+  // 6 س   (sakta)      -> 2:245
+  static const Map<int, String> waqfSymbolAudioCodes = {
+    0: '002026',
+    1: '002025',
+    2: '002019',
+    3: '002013',
+    4: '002005',
+    5: '002002',
+    6: '002245',
+  };
+
+  static AyahReference? referenceForWaqfSymbol(int index) {
+    final code = waqfSymbolAudioCodes[index];
+    if (code == null || code.length != 6) return null;
+    final surah = int.tryParse(code.substring(0, 3));
+    final ayah = int.tryParse(code.substring(3, 6));
+    if (surah == null || ayah == null) return null;
+    return (surah: surah, ayah: ayah);
+  }
+
   static AyahReference? referenceForArticle(String articleId) {
     final code = articleAudioCodes[articleId];
     if (code == null || code.length != 6) return null;

@@ -439,44 +439,44 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
                   title: l10n.get('how_to_pronounce'),
                 ),
                 const SizedBox(height: 24),
-              ],
 
-              // ── Hear pronunciation button ───────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    final url = QuranApiService.normalizeAudioUrl(
-                      _exampleAyah?.audioUrl,
-                    );
-                    if (url == null) return;
-                    if (_playing) {
-                      _audio.stop();
-                      setState(() => _playing = false);
-                    } else {
-                      _audio.playUrl(url);
-                      setState(() => _playing = true);
-                    }
-                  },
-                  icon: Icon(
-                    _playing ? Icons.stop_rounded : Icons.volume_up_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _playing ? l10n.get('stop') : l10n.hearPronunciation,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                // ── Hear pronunciation button ─────────────────────────────
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      final url = QuranApiService.normalizeAudioUrl(
+                        _exampleAyah?.audioUrl,
+                      );
+                      if (url == null) return;
+                      if (_playing) {
+                        _audio.stop();
+                        setState(() => _playing = false);
+                      } else {
+                        _audio.playUrl(url);
+                        setState(() => _playing = true);
+                      }
+                    },
+                    icon: Icon(
+                      _playing ? Icons.stop_rounded : Icons.volume_up_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _playing ? l10n.get('stop') : l10n.hearPronunciation,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: rule.color,
+                      side: BorderSide(color: rule.color, width: 0.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: rule.color,
-                    side: BorderSide(color: rule.color, width: 0.5),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
 
               _PlaybackAyahPreview(
                 ayah: _exampleAyah,
@@ -730,13 +730,88 @@ class _LetterBadge extends StatelessWidget {
   }
 }
 
-class _WaqfSymbolsTable extends StatelessWidget {
+class _WaqfSymbolsTable extends StatefulWidget {
   final String langCode;
 
   const _WaqfSymbolsTable({required this.langCode});
 
   @override
+  State<_WaqfSymbolsTable> createState() => _WaqfSymbolsTableState();
+}
+
+class _WaqfSymbolsTableState extends State<_WaqfSymbolsTable> {
+  final AudioService _audio = AudioService();
+  final QuranApiService _api = QuranApiService();
+  final Map<int, String> _urlCache = {};
+  int? _playingIndex;
+  int? _loadingIndex;
+
+  static const int _waqfReciterId = 12; // Husary Al-Muallim
+
+  @override
+  void initState() {
+    super.initState();
+    _audio.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        if (mounted) setState(() => _playingIndex = null);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _audio.stop();
+    super.dispose();
+  }
+
+  Future<void> _toggle(int index) async {
+    if (_playingIndex == index) {
+      _audio.stop();
+      setState(() => _playingIndex = null);
+      return;
+    }
+
+    final cached = _urlCache[index];
+    if (cached != null) {
+      _audio.stop();
+      _audio.playUrl(cached);
+      setState(() => _playingIndex = index);
+      return;
+    }
+
+    final ref = RuleExampleReferences.referenceForWaqfSymbol(index);
+    if (ref == null) return;
+
+    setState(() => _loadingIndex = index);
+    try {
+      final verse = await _api.fetchVerse(
+        surahNumber: ref.surah,
+        ayahNumber: ref.ayah,
+        langCode: widget.langCode,
+        reciterId: _waqfReciterId,
+      );
+      final mapped = AyahMapper.fromApi(verse);
+      final url = QuranApiService.normalizeAudioUrl(mapped.audioUrl);
+      if (!mounted) return;
+      if (url == null) {
+        setState(() => _loadingIndex = null);
+        return;
+      }
+      _urlCache[index] = url;
+      _audio.stop();
+      _audio.playUrl(url);
+      setState(() {
+        _loadingIndex = null;
+        _playingIndex = index;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingIndex = null);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final langCode = widget.langCode;
     final strings = waqf.WaqfRuleStrings(langCode);
     final isRtl = langCode == 'ar' || langCode == 'ur';
     return Column(
@@ -827,6 +902,24 @@ class _WaqfSymbolsTable extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _loadingIndex == index
+                        ? null
+                        : () => _toggle(index),
+                    icon: _loadingIndex == index
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            _playingIndex == index
+                                ? Icons.stop_circle_rounded
+                                : Icons.volume_up_rounded,
+                            color: TajweedRule.waqf.color,
+                          ),
                   ),
                 ],
               ),
