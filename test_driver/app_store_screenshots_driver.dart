@@ -16,7 +16,9 @@ Future<void> main() async {
           List<int> bytes, [
           Map<String, Object?>? arguments,
         ]) async {
-          await File('${output.path}/$name.png').writeAsBytes(bytes);
+          final file = File('${output.path}/$name.png');
+          await file.parent.create(recursive: true);
+          await file.writeAsBytes(bytes);
           return true;
         },
   );
