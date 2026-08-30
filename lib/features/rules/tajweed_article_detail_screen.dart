@@ -128,6 +128,9 @@ class _TajweedArticleDetailScreenState
         .where((paragraph) => paragraph.trim().isNotEmpty)
         .toList();
     final sectionTitles = article.sections(languageCode);
+    final exampleCaptions = RuleExampleReferences.captionsForArticle(
+      article.id,
+    );
     final accent = article.category == TajweedArticleCategory.fundamentals
         ? const Color(0xFF176B5B)
         : const Color(0xFF6A4C93);
@@ -206,6 +209,16 @@ class _TajweedArticleDetailScreenState
                                 ),
                           ),
                         ),
+                      if (index < exampleCaptions.length &&
+                          exampleCaptions[index].isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            exampleCaptions[index],
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(height: 1.4),
+                          ),
+                        ),
                       if (_examples[index].arabicText != null)
                         Container(
                           width: double.infinity,
@@ -218,15 +231,17 @@ class _TajweedArticleDetailScreenState
                               color: accent.withValues(alpha: 0.25),
                             ),
                           ),
-                          child: Text(
-                            _examples[index].arabicText!,
+                          child: Text.rich(
+                            _highlightedSpan(
+                              _examples[index].arabicText!,
+                              RuleExampleReferences.highlightWordsForExample(
+                                article.id,
+                                index,
+                              ),
+                              accent,
+                            ),
                             textAlign: TextAlign.right,
                             textDirection: TextDirection.rtl,
-                            style: const TextStyle(
-                              fontFamily: 'AmiriQuran',
-                              fontSize: 24,
-                              height: 1.8,
-                            ),
                           ),
                         ),
                       SizedBox(
@@ -273,6 +288,59 @@ class _TajweedArticleDetailScreenState
         ),
       ),
     );
+  }
+
+  TextSpan _highlightedSpan(
+    String arabicText,
+    List<String> highlights,
+    Color accent,
+  ) {
+    const baseStyle = TextStyle(
+      fontFamily: 'AmiriQuran',
+      fontSize: 24,
+      height: 1.8,
+    );
+    if (highlights.isEmpty) {
+      return TextSpan(text: arabicText, style: baseStyle);
+    }
+
+    final spans = <TextSpan>[];
+    var remaining = arabicText;
+    while (remaining.isNotEmpty) {
+      var earliestIndex = -1;
+      var matchedWord = '';
+      for (final word in highlights) {
+        if (word.isEmpty) continue;
+        final idx = remaining.indexOf(word);
+        if (idx != -1 && (earliestIndex == -1 || idx < earliestIndex)) {
+          earliestIndex = idx;
+          matchedWord = word;
+        }
+      }
+      if (earliestIndex == -1) {
+        spans.add(TextSpan(text: remaining, style: baseStyle));
+        break;
+      }
+      if (earliestIndex > 0) {
+        spans.add(
+          TextSpan(
+            text: remaining.substring(0, earliestIndex),
+            style: baseStyle,
+          ),
+        );
+      }
+      spans.add(
+        TextSpan(
+          text: matchedWord,
+          style: baseStyle.copyWith(
+            fontWeight: FontWeight.w700,
+            color: accent,
+          ),
+        ),
+      );
+      remaining = remaining.substring(earliestIndex + matchedWord.length);
+    }
+    return TextSpan(children: spans, style: baseStyle);
   }
 }
 

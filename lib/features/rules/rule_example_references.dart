@@ -58,6 +58,50 @@ class RuleExampleReferences {
     'tarqiq': ['001005', '051022', '001001'],
   };
 
+  // Short, verse-specific explanations shown under each example, one per
+  // entry in articleExampleCodes, so the reader knows exactly what to
+  // listen/look for in that particular verse rather than only the generic
+  // section title.
+  static const Map<String, List<String>> articleExampleCaptions = {
+    'tafkhim': [
+      'غ and ض are always full, no matter their vowel.',
+      'الرَّحْمَـٰنُ: Ra is at its strongest — full letter with fathah before it.',
+      'خُلِقَ: full letter خ carries dammah — a lighter, less forceful degree.',
+    ],
+    'tarqiq': [
+      'No full letters here — every letter stays light and thin.',
+      'رِزْقُكُمْ: Ra is light here because it carries dammah after a light letter.',
+      'بِسْمِ ٱللَّهِ: the lam of Allah stays light after the kasrah in بِسْمِ.',
+    ],
+  };
+
+  static List<String> captionsForArticle(String articleId) =>
+      articleExampleCaptions[articleId] ?? const [];
+
+  // The exact substring(s) within each example's Arabic verse text that
+  // demonstrate the rule, so the UI can bold/highlight them. Must match the
+  // plain (diacritic-included) Uthmani text returned by the API for that
+  // verse. Each example maps to a list of substrings to highlight (may be
+  // empty if there's nothing specific to call out).
+  static const Map<String, List<List<String>>> articleHighlightWords = {
+    'tafkhim': [
+      ['غَيْرِ', 'ٱلْمَغْضُوبِ', 'ٱلضَّآلِّينَ'],
+      ['ٱلرَّحْمَـٰنُ'],
+      ['خُلِقَ'],
+    ],
+    'tarqiq': [
+      [],
+      ['رِزْقُكُمْ'],
+      ['ٱللَّهِ'],
+    ],
+  };
+
+  static List<String> highlightWordsForExample(String articleId, int index) {
+    final list = articleHighlightWords[articleId];
+    if (list == null || index >= list.length) return const [];
+    return list[index];
+  }
+
   static List<AyahReference> referencesForArticle(String articleId) {
     final codes = articleExampleCodes[articleId];
     if (codes == null || codes.isEmpty) return const [];
