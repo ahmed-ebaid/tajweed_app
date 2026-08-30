@@ -194,6 +194,18 @@ class _TajweedArticleDetailScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (index < sectionTitles.length)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            sectionTitles[index],
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: accent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
                       if (_examples[index].arabicText != null)
                         Container(
                           width: double.infinity,

@@ -890,14 +890,15 @@ class _WaqfSymbolsTableState extends State<_WaqfSymbolsTable> {
                                 fontWeight: FontWeight.w500,
                               ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
                           waqf.WaqfSymbols.examples[index].arabicText,
                           textDirection: TextDirection.rtl,
                           style: const TextStyle(
                             fontFamily: 'AmiriQuran',
-                            fontSize: 18,
-                            height: 1.65,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            height: 1.8,
                             color: Color(0xFF245B4B),
                           ),
                         ),
