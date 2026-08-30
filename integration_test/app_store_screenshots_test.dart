@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -28,11 +29,30 @@ const _screenshotLanguageCode = String.fromEnvironment(
   'SCREENSHOT_LOCALE',
   defaultValue: 'en',
 );
+const _onboardingAssetsOnly = bool.fromEnvironment('ONBOARDING_ASSETS_ONLY');
+const _releaseListingAssetsOnly = bool.fromEnvironment(
+  'RELEASE_LISTING_ASSETS_ONLY',
+);
+const _releaseScreenshotLocales = [
+  'en',
+  'ar',
+  'ur',
+  'tr',
+  'fr',
+  'id',
+  'de',
+  'es',
+];
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('capture App Store screens', (tester) async {
+    if (_releaseListingAssetsOnly) {
+      await _captureLocalizedReleasePages(tester, binding);
+      return;
+    }
+
     await _initializeFixtureStorage(_screenshotLanguageCode);
     final localeProvider = LocaleProvider();
 
@@ -64,8 +84,8 @@ void main() {
 
     await binding.takeScreenshot('01-home');
 
-    await tester.tap(find.byIcon(Icons.menu_book_outlined));
-    await _waitForUi(tester, seconds: 4);
+    await tester.tap(find.byIcon(Icons.menu_book_rounded));
+    await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
     await binding.takeScreenshot('02-ayah-reader');
 
     final readerContext = tester.element(find.byType(ReaderScreen));
@@ -73,7 +93,7 @@ void main() {
       context: readerContext,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (_) => const WordDetailSheet(
+      builder: (_) => WordDetailSheet(
         rule: TajweedRule.maddTabeei,
         word: 'ٱلرَّحْمَـٰنِ',
         ayah: Ayah(
@@ -82,9 +102,9 @@ void main() {
           pageNumber: 1,
           arabic: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
           translations: {
-            _screenshotLanguageCode: _screenshotLanguageCode == 'ar'
-                ? 'بسم الله الرحمن الرحيم'
-                : 'In the name of God, the Lord of Mercy, the Giver of Mercy!',
+            _screenshotLanguageCode: _firstAyahTranslation(
+              _screenshotLanguageCode,
+            ),
           },
           words: [
             TajweedWord(arabic: 'بِسْمِ', spans: []),
@@ -112,9 +132,7 @@ void main() {
       builder: (_) => TafseerSheet(
         verseKey: '1:1',
         tafsirId: 169,
-        tafsirName: _screenshotLanguageCode == 'ar'
-            ? 'تفسير ابن كثير'
-            : 'Ibn Kathir (Abridged)',
+        tafsirName: _localizedTafsirName(_screenshotLanguageCode),
         surahName: 'الفاتحة',
         languageCode: _screenshotLanguageCode,
         api: _ScreenshotQuranApiService(),
@@ -128,9 +146,21 @@ void main() {
     expect(find.byType(TafseerSheet), findsNothing);
 
     await tester.tap(find.byIcon(Icons.chrome_reader_mode_outlined));
-    await _waitForUi(tester, seconds: 3);
+    await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
     expect(find.byType(ReaderScreen), findsOneWidget);
     await binding.takeScreenshot('04-mushaf');
+
+    if (_onboardingAssetsOnly) {
+      final mushafPageView = tester.widget<PageView>(find.byType(PageView));
+      mushafPageView.controller!.jumpToPage(4);
+      await _waitForUi(tester, seconds: 5);
+      final hizbMarker = find.byKey(const ValueKey('mushaf-hizb-boundary'));
+      expect(hizbMarker, findsOneWidget);
+      await tester.tap(hizbMarker);
+      await _finishTransition(tester);
+      await binding.takeScreenshot('05-hizb-boundary');
+      return;
+    }
 
     await tester.tap(find.byIcon(Icons.quiz_outlined));
     await _waitForUi(tester);
@@ -176,6 +206,50 @@ void main() {
   });
 }
 
+Future<void> _captureLocalizedReleasePages(
+  WidgetTester tester,
+  IntegrationTestWidgetsFlutterBinding binding,
+) async {
+  for (final languageCode in _releaseScreenshotLocales) {
+    await _initializeFixtureStorage(languageCode);
+    final localeProvider = LocaleProvider();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: localeProvider),
+          ChangeNotifierProvider(create: (_) => StreakProvider()),
+          ChangeNotifierProvider(create: (_) => BookmarkProvider()),
+          ChangeNotifierProvider(create: (_) => DailyLessonProvider()),
+          ChangeNotifierProvider(create: (_) => QuizProgressProvider()),
+          ChangeNotifierProvider(create: (_) => ReaderNavigationProvider()),
+          ChangeNotifierProvider(create: (_) => RecitationProvider()),
+          ChangeNotifierProvider(
+            create: (_) => TafseerProvider(langCode: languageCode),
+          ),
+        ],
+        child: const TajweedApp(),
+      ),
+    );
+    await _waitForUi(tester);
+
+    await tester.tap(find.byIcon(Icons.library_books_outlined));
+    await _waitForUi(tester);
+    expect(find.byType(RulesScreen), findsOneWidget);
+    await binding.takeScreenshot('$languageCode/06-rules-library');
+
+    Navigator.of(
+      tester.element(find.byType(RulesScreen)),
+    ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+    await _finishTransition(tester);
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    await binding.takeScreenshot('$languageCode/08-settings');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  }
+}
+
 Future<void> _waitForUi(WidgetTester tester, {int seconds = 2}) async {
   await tester.pump();
   for (var i = 0; i < seconds * 10; i++) {
@@ -195,13 +269,9 @@ class _ScreenshotQuranApiService extends QuranApiService {
     return [
       {
         'id': 169,
-        'name': _screenshotLanguageCode == 'ar'
-            ? 'تفسير ابن كثير'
-            : 'Ibn Kathir (Abridged)',
-        'author_name': _screenshotLanguageCode == 'ar'
-            ? 'الحافظ ابن كثير'
-            : 'Hafiz Ibn Kathir',
-        'language_name': _screenshotLanguageCode == 'ar' ? 'arabic' : 'english',
+        'name': _localizedTafsirName(_screenshotLanguageCode),
+        'author_name': _localizedTafsirAuthor(_screenshotLanguageCode),
+        'language_name': _localizedLanguageName(_screenshotLanguageCode),
       },
     ];
   }
@@ -221,6 +291,13 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
   }
 
   await Hive.box('settings').put('locale', languageCode);
+  await Hive.box('settings').put('onboarding_dismissed', true);
+  await Hive.box('settings').put('reader_juz_list', [
+    {
+      'juz_number': 1,
+      'verse_mapping': {'1': '1-7', '2': '1-141'},
+    },
+  ]);
   await Hive.box('settings').put('reader_surah_list_$languageCode', [
     {
       'id': 1,
@@ -231,6 +308,13 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
         'name': languageCode == 'ar' ? 'الفاتحة' : 'The Opener',
       },
     },
+    {
+      'id': 2,
+      'name_simple': 'Al-Baqarah',
+      'name_arabic': 'البقرة',
+      'verses_count': 286,
+      'translated_name': {'name': _localizedAlBaqarahName(languageCode)},
+    },
   ]);
   await Hive.box(
     'verse_cache',
@@ -238,15 +322,129 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
   await Hive.box(
     'verse_cache',
   ).put('quran_tajweed_surah_1', <String, String>{});
-  await Hive.box('verse_cache').put('tafsir_169_surah_1', {
-    '1:1': languageCode == 'ar'
-        ? 'يفتتح العبد قراءة القرآن بذكر الله، مستعينًا برحمته، ومقرًّا بأن '
-              'كل نعمة منه سبحانه.'
-        : 'In the opening of the Quran, the servant begins by remembering God, '
-              'seeking His mercy, and recognizing that every blessing comes '
-              'from Him.',
-  });
+  if (_onboardingAssetsOnly) {
+    await _seedPageFiveFixture();
+  }
+  await Hive.box(
+    'verse_cache',
+  ).put('tafsir_169_surah_1', {'1:1': _localizedTafsirContent(languageCode)});
 }
+
+String _localizedAlBaqarahName(String languageCode) {
+  return switch (languageCode) {
+    'ar' => 'البقرة',
+    'ur' => 'البقرۃ',
+    'tr' => 'Bakara',
+    'fr' => 'Al-Baqara',
+    'id' => 'Al-Baqarah',
+    'de' => 'Al-Baqara',
+    'es' => 'Al-Báqara',
+    _ => 'Al-Baqarah',
+  };
+}
+
+Future<void> _seedPageFiveFixture() async {
+  final response = await Dio().get<Map<String, dynamic>>(
+    'https://api.quran.com/api/v4/verses/by_page/5',
+    queryParameters: {
+      'mushaf': 2,
+      'language': 'ar',
+      'words': 'true',
+      'fields':
+          'text_uthmani,page_number,verse_key,juz_number,hizb_number,'
+          'rub_el_hizb_number,sajdah_number',
+      'word_fields':
+          'text_uthmani,text_uthmani_tajweed,tajweed,char_type_name,'
+          'line_number,page_number',
+      'per_page': 50,
+    },
+  );
+  final verses = List<Map<String, dynamic>>.from(
+    response.data?['verses'] as List<dynamic>? ?? const [],
+  );
+  if (verses.isEmpty) {
+    throw StateError('Quran page 5 fixture returned no verses');
+  }
+  await Hive.box('verse_cache').put('quran_ar_surah_2', verses);
+}
+
+String _firstAyahTranslation(String languageCode) {
+  if (languageCode == 'ar') return 'بسم الله الرحمن الرحيم';
+  return _alFatihahTranslations[languageCode]?.first ??
+      'In the name of God, the Lord of Mercy, the Giver of Mercy!';
+}
+
+String _localizedTafsirName(String languageCode) =>
+    _tafsirNames[languageCode] ?? _tafsirNames['en']!;
+
+String _localizedTafsirAuthor(String languageCode) =>
+    _tafsirAuthors[languageCode] ?? _tafsirAuthors['en']!;
+
+String _localizedLanguageName(String languageCode) =>
+    _languageNames[languageCode] ?? _languageNames['en']!;
+
+String _localizedTafsirContent(String languageCode) =>
+    _tafsirContents[languageCode] ?? _tafsirContents['en']!;
+
+const _tafsirNames = <String, String>{
+  'en': 'Ibn Kathir (Abridged)',
+  'ar': 'تفسير ابن كثير (مختصر)',
+  'ur': 'تفسیر ابن کثیر (مختصر)',
+  'tr': 'İbn Kesir Tefsiri (Özet)',
+  'fr': 'Tafsir Ibn Kathir (abrégé)',
+  'id': 'Tafsir Ibnu Katsir (Ringkas)',
+  'de': 'Tafsir Ibn Kathir (gekürzt)',
+  'es': 'Tafsir de Ibn Kathir (abreviado)',
+};
+
+const _tafsirAuthors = <String, String>{
+  'en': 'Hafiz Ibn Kathir',
+  'ar': 'الحافظ ابن كثير',
+  'ur': 'حافظ ابن کثیر',
+  'tr': 'Hafız İbn Kesir',
+  'fr': 'Hafiz Ibn Kathir',
+  'id': 'Hafiz Ibnu Katsir',
+  'de': 'Hafiz Ibn Kathir',
+  'es': 'Hafiz Ibn Kathir',
+};
+
+const _languageNames = <String, String>{
+  'en': 'English',
+  'ar': 'العربية',
+  'ur': 'اردو',
+  'tr': 'Türkçe',
+  'fr': 'Français',
+  'id': 'Bahasa Indonesia',
+  'de': 'Deutsch',
+  'es': 'Español',
+};
+
+const _tafsirContents = <String, String>{
+  'en':
+      'In the opening of the Quran, the servant begins by remembering God, '
+      'seeking His mercy, and recognizing that every blessing comes from Him.',
+  'ar':
+      'يفتتح العبد قراءة القرآن بذكر الله، مستعينًا برحمته، ومقرًّا بأن كل '
+      'نعمة منه سبحانه.',
+  'ur':
+      'قرآن کے آغاز میں بندہ اللہ کو یاد کرتا ہے، اس کی رحمت سے مدد چاہتا ہے، '
+      'اور اقرار کرتا ہے کہ ہر نعمت اسی کی طرف سے ہے۔',
+  'tr':
+      'Kur’an’ın başlangıcında kul, Allah’ı anarak, O’nun rahmetine sığınarak '
+      've her nimetin O’ndan geldiğini kabul ederek okumaya başlar.',
+  'fr':
+      'Au début du Coran, le serviteur commence par se rappeler Dieu, implorer '
+      'Sa miséricorde et reconnaître que tout bienfait vient de Lui.',
+  'id':
+      'Pada awal Al-Qur’an, seorang hamba memulai dengan mengingat Allah, '
+      'memohon rahmat-Nya, dan mengakui bahwa setiap nikmat berasal dari-Nya.',
+  'de':
+      'Zu Beginn des Korans erinnert sich der Diener an Gott, bittet um Seine '
+      'Barmherzigkeit und erkennt an, dass jede Gabe von Ihm kommt.',
+  'es':
+      'Al comienzo del Corán, el siervo empieza recordando a Dios, buscando Su '
+      'misericordia y reconociendo que toda bendición procede de Él.',
+};
 
 List<Map<String, dynamic>> _localizedAlFatihahFixture(String languageCode) {
   final resourceId = int.parse(QuranApiService.translationIdFor(languageCode));
