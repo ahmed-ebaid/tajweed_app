@@ -64,8 +64,8 @@ void main() {
 
     await binding.takeScreenshot('01-home');
 
-    await tester.tap(find.byIcon(Icons.menu_book_outlined));
-    await _waitForUi(tester, seconds: 4);
+    await tester.tap(find.byIcon(Icons.menu_book_rounded));
+    await _waitForUi(tester, seconds: 35);
     await binding.takeScreenshot('02-ayah-reader');
 
     final readerContext = tester.element(find.byType(ReaderScreen));
@@ -128,7 +128,7 @@ void main() {
     expect(find.byType(TafseerSheet), findsNothing);
 
     await tester.tap(find.byIcon(Icons.chrome_reader_mode_outlined));
-    await _waitForUi(tester, seconds: 3);
+    await _waitForUi(tester, seconds: 35);
     expect(find.byType(ReaderScreen), findsOneWidget);
     await binding.takeScreenshot('04-mushaf');
 
@@ -221,6 +221,13 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
   }
 
   await Hive.box('settings').put('locale', languageCode);
+  await Hive.box('settings').put('onboarding_dismissed', true);
+  await Hive.box('settings').put('reader_juz_list', [
+    {
+      'juz_number': 1,
+      'verse_mapping': {'1': '1-7', '2': '1-141'},
+    },
+  ]);
   await Hive.box('settings').put('reader_surah_list_$languageCode', [
     {
       'id': 1,

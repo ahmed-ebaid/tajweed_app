@@ -212,17 +212,12 @@ class _GuidePage extends StatelessWidget {
                   label: l10n.get('onboarding_mockup_semantics_${index + 1}'),
                   image: true,
                   child: ExcludeSemantics(
-                    child: index == 4 || index == 5
-                        ? _MushafMockup(
-                            page: index,
-                            height: compact ? 245 : 330,
-                            calloutLabel: l10n.get('onboarding_mockup_callout_${index + 1}'),
-                          )
-                        : _ReaderMockup(
-                            page: index,
-                            height: compact ? 245 : 330,
-                            calloutLabel: l10n.get('onboarding_mockup_callout_${index + 1}'),
-                          ),
+                    child: _ScreenshotGuidePage(
+                      assetPath: _onboardingScreenshotAssets[index],
+                      page: index,
+                      height: compact ? 320 : 420,
+                      calloutLabel: l10n.get('onboarding_mockup_callout_${index + 1}'),
+                    ),
                   ),
                 ),
                 SizedBox(height: compact ? 16 : 24),
@@ -252,12 +247,32 @@ class _GuidePage extends StatelessWidget {
   }
 }
 
-class _ReaderMockup extends StatelessWidget {
+/// Real in-app screenshots shown per onboarding page, in page order.
+/// Captured from the actual reader/mushaf/tafseer UI (not hand-drawn mockups)
+/// so the guide always matches current app behavior.
+const _onboardingScreenshotAssets = <String>[
+  'assets/onboarding/01-tajweed-rules.png',
+  'assets/onboarding/02-tafseer.png',
+  'assets/onboarding/03-listen-ayah.png',
+  'assets/onboarding/04-bookmark-ayah.png',
+  'assets/onboarding/05-hizb-boundary.png',
+  'assets/onboarding/06-mushaf-bookmark.png',
+];
+
+/// Displays a real captured app screenshot inside a phone-like frame, with
+/// the same interaction callout bubble previously drawn over the mockups.
+class _ScreenshotGuidePage extends StatelessWidget {
+  final String assetPath;
   final int page;
   final double height;
   final String calloutLabel;
 
-  const _ReaderMockup({required this.page, required this.height, required this.calloutLabel});
+  const _ScreenshotGuidePage({
+    required this.assetPath,
+    required this.page,
+    required this.height,
+    required this.calloutLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +280,7 @@ class _ReaderMockup extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: height,
-      constraints: const BoxConstraints(maxWidth: 560),
+      constraints: const BoxConstraints(maxWidth: 420),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(24),
@@ -276,212 +291,10 @@ class _ReaderMockup extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          Column(
-            children: [
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                color: colors.primaryContainer.withValues(alpha: 0.55),
-                child: Row(
-                  children: [
-                    Icon(Icons.menu_rounded, size: 18, color: colors.onPrimaryContainer),
-                    const Spacer(),
-                    Text(
-                      'سورة الملك',
-                      style: TextStyle(
-                        fontFamily: 'AmiriQuran',
-                        color: colors.onPrimaryContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(Icons.lightbulb_outline_rounded, size: 20, color: colors.onPrimaryContainer),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _MockAyah(highlightTajweed: page == 0),
-                      const SizedBox(height: 15),
-                      const _MockAyah(),
-                      const SizedBox(height: 15),
-                      const _MockAyah(short: true),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          Image.asset(assetPath, fit: BoxFit.cover, alignment: Alignment.topCenter),
           _InteractionOverlay(page: page, label: calloutLabel),
-        ],
-      ),
-    );
-  }
-}
-
-/// Mockup resembling the Mushaf page view (used for the Hizb-boundary and
-/// page-bookmark guide pages), so users can tell these features live in the
-/// printed-page reader, not the ayah-by-ayah view.
-class _MushafMockup extends StatelessWidget {
-  final int page;
-  final double height;
-  final String calloutLabel;
-
-  const _MushafMockup({required this.page, required this.height, required this.calloutLabel});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    const accent = Color(0xFF0B5C45);
-    const fill = Color(0xFFDDECE6);
-    return Container(
-      width: double.infinity,
-      height: height,
-      constraints: const BoxConstraints(maxWidth: 560),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.outlineVariant),
-        boxShadow: [
-          BoxShadow(color: colors.shadow.withValues(alpha: 0.08), blurRadius: 24, offset: const Offset(0, 10)),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Column(
-            children: [
-              Container(
-                height: 38,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                color: fill,
-                child: Row(
-                  children: [
-                    const Text('١٨', style: TextStyle(fontFamily: 'AmiriQuran', color: accent, fontSize: 13)),
-                    const Spacer(),
-                    Text(
-                      'سورة الملك',
-                      style: TextStyle(fontFamily: 'AmiriQuran', color: accent, fontWeight: FontWeight.w700),
-                    ),
-                    const Spacer(),
-                    const Text('جزء ٢٩', style: TextStyle(fontFamily: 'AmiriQuran', color: accent, fontSize: 13)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: const [
-                          _MushafPrintedLineMock(text: 'تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ'),
-                          _MushafPrintedLineMock(text: 'عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ۝١ الَّذِي'),
-                          _MushafPrintedLineMock(text: 'خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ'),
-                          _MushafPrintedLineMock(text: 'أَيُّكُمْ أَحْسَنُ عَمَلًا ۝٢'),
-                        ],
-                      ),
-                      if (page == 4)
-                        Positioned(
-                          left: 0,
-                          top: 60,
-                          child: Tooltip(
-                            message: 'حزب ١٤ ربع ٣',
-                            child: Container(
-                              width: 14,
-                              height: 22,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: fill,
-                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(7)),
-                                border: Border.all(color: accent, width: 0.8),
-                              ),
-                              child: const Text(
-                                '\u06DE',
-                                style: TextStyle(
-                                  fontFamily: 'AmiriQuran',
-                                  fontSize: 11,
-                                  height: 1,
-                                  color: accent,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          _InteractionOverlay(page: page, label: calloutLabel),
-        ],
-      ),
-    );
-  }
-}
-
-class _MushafPrintedLineMock extends StatelessWidget {
-  final String text;
-
-  const _MushafPrintedLineMock({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final base = Theme.of(context).colorScheme.onSurface;
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(
-        text,
-        textDirection: TextDirection.rtl,
-        style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 19, height: 1.9, color: base),
-      ),
-    );
-  }
-}
-
-class _MockAyah extends StatelessWidget {
-  final bool highlightTajweed;
-  final bool short;
-
-  const _MockAyah({this.highlightTajweed = false, this.short = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final base = Theme.of(context).colorScheme.onSurface;
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        textDirection: TextDirection.rtl,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            short ? 'تَبَارَكَ الَّذِي' : 'الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ',
-            style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 20, height: 1.7, color: base),
-          ),
-          if (highlightTajweed)
-            Text(
-              ' لِيَبْلُوَكُمْ',
-              style: TextStyle(
-                fontFamily: 'AmiriQuran',
-                fontSize: 20,
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          const SizedBox(width: 6),
-          Text(
-            '۝٢',
-            style: TextStyle(fontFamily: 'AmiriQuran', color: Theme.of(context).colorScheme.secondary),
-          ),
         ],
       ),
     );
