@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'onboarding_localizations.dart';
+
 /// Translation strings for all 7 supported languages.
 /// In production, replace with ARB files generated via `flutter gen-l10n`.
 class AppLocalizations {
@@ -795,7 +797,9 @@ class AppLocalizations {
   String get(String key) {
     final lang = locale.languageCode;
     return _translations[lang]?[key] ??
+        onboardingTranslation(lang, key) ??
         _translations['en']?[key] ??
+        onboardingTranslation('en', key) ??
         key;
   }
 
