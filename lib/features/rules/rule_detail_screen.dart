@@ -478,12 +478,13 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
                 const SizedBox(height: 16),
               ],
 
-              _PlaybackAyahPreview(
-                ayah: _exampleAyah,
-                loading: _loadingAyah,
-                selectedRule: rule,
-                isPlaying: _playing,
-              ),
+              if (rule != TajweedRule.waqf)
+                _PlaybackAyahPreview(
+                  ayah: _exampleAyah,
+                  loading: _loadingAyah,
+                  selectedRule: rule,
+                  isPlaying: _playing,
+                ),
             ],
           ),
         ),

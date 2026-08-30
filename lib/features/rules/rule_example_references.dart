@@ -35,18 +35,22 @@ class RuleExampleReferences {
 
   // Multiple verified per-example audio references for standalone articles,
   // one entry per illustrative case (each verse checked directly against the
-  // Quran.com Uthmani text before inclusion):
+  // Quran.com Uthmani text before inclusion), mapped to the article's section
+  // order (seven full letters / degrees / conditional cases, and light
+  // letters / Ra / Lam+Alif respectively):
   // tafkhim:
   //   1:7  — غَيْرِ ٱلْمَغْضُوبِ ... ٱلضَّآلِّينَ — the full letters غ and ض.
-  //   1:1  — ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ / ٱللَّهِ — Ra and the lam of Allah both
-  //          full (fathah before each).
+  //   1:1  — ٱلرَّحْمَـٰنِ — Ra full with fathah before it (strong degree).
+  //   86:6 — خُلِقَ — the full letter خ carrying dammah (lighter degree).
   // tarqiq:
   //   1:5  — إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ — ordinary light letters,
   //          none of the seven full letters present.
   //   3:37 — ...رِزْقًا... — Ra light because it carries kasrah.
+  //   1:1  — بِسْمِ ٱللَّهِ — the lam of Allah light because it follows the
+  //          kasrah ending بِسْمِ (Lam and Alif conditional case).
   static const Map<String, List<String>> articleExampleCodes = {
-    'tafkhim': ['001007', '001001'],
-    'tarqiq': ['001005', '003037'],
+    'tafkhim': ['001007', '001001', '086006'],
+    'tarqiq': ['001005', '003037', '001001'],
   };
 
   static List<AyahReference> referencesForArticle(String articleId) {
