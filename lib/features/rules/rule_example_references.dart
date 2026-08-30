@@ -59,24 +59,105 @@ class RuleExampleReferences {
   };
 
   // Short, verse-specific explanations shown under each example, one per
-  // entry in articleExampleCodes, so the reader knows exactly what to
-  // listen/look for in that particular verse rather than only the generic
-  // section title.
-  static const Map<String, List<String>> articleExampleCaptions = {
-    'tafkhim': [
-      'غ and ض are always full, no matter their vowel.',
-      'الرَّحْمَـٰنُ: Ra is at its strongest — full letter with fathah before it.',
-      'خُلِقَ: full letter خ carries dammah — a lighter, less forceful degree.',
-    ],
-    'tarqiq': [
-      'No full letters here — every letter stays light and thin.',
-      'رِزْقُكُمْ: Ra is light here because it carries dammah after a light letter.',
-      'بِسْمِ ٱللَّهِ: the lam of Allah stays light after the kasrah in بِسْمِ.',
-    ],
-  };
+  // entry in articleExampleCodes, localized for every supported language, so
+  // the reader knows exactly what to listen/look for in that particular
+  // verse rather than only the generic section title.
+  static const Map<String, Map<String, List<String>>> articleExampleCaptions =
+      {
+        'tafkhim': {
+          'en': [
+            'غ and ض are always full, no matter their vowel.',
+            'الرَّحْمَـٰنُ: Ra is at its strongest — full letter with fathah before it.',
+            'خُلِقَ: full letter خ carries dammah — a lighter, less forceful degree.',
+          ],
+          'ar': [
+            'غ و ض مفخمتان دائماً مهما كانت حركتهما.',
+            'الرَّحْمَـٰنُ: الراء في أعلى مراتب التفخيم، حرف مفخم قبله فتحة.',
+            'خُلِقَ: حرف الخاء المفخم مضموم، وهي مرتبة أخف.',
+          ],
+          'ur': [
+            'غ اور ض ہمیشہ بھاری ہوتے ہیں، چاہے حرکت کچھ بھی ہو۔',
+            'الرَّحْمَـٰنُ: راء اپنے بلند ترین درجے پر ہے، فتحہ کے بعد بھاری حرف۔',
+            'خُلِقَ: بھاری حرف خ پر ضمہ ہے، یہ ہلکا درجہ ہے۔',
+          ],
+          'tr': [
+            'غ ve ض harekesi ne olursa olsun her zaman kalındır.',
+            'الرَّحْمَـٰنُ: Ra en güçlü derecesinde, öncesinde fetha olan kalın harf.',
+            'خُلِقَ: kalın خ harfi damme taşır, bu daha hafif bir derecedir.',
+          ],
+          'fr': [
+            'غ et ض sont toujours emphatiques, quelle que soit leur voyelle.',
+            'الرَّحْمَـٰنُ : le ra est à son degré le plus fort, lettre emphatique précédée d\'une fatha.',
+            'خُلِقَ : la lettre emphatique خ porte une damma, un degré plus léger.',
+          ],
+          'id': [
+            'غ dan ض selalu tebal, apa pun harakatnya.',
+            'الرَّحْمَـٰنُ: Ra pada tingkat paling kuat, huruf tebal didahului fathah.',
+            'خُلِقَ: huruf tebal خ berharakat dammah, tingkat yang lebih ringan.',
+          ],
+          'de': [
+            'غ und ض werden immer voll ausgesprochen, unabhängig vom Vokal.',
+            'الرَّحْمَـٰنُ: Ra ist auf seiner stärksten Stufe, voller Buchstabe mit vorausgehendem Fatha.',
+            'خُلِقَ: der volle Buchstabe خ trägt Damma, eine leichtere Stufe.',
+          ],
+          'es': [
+            'غ y ض siempre son gruesas, sea cual sea su vocal.',
+            'الرَّحْمَـٰنُ: la ra está en su grado más fuerte, letra gruesa precedida de fatha.',
+            'خُلِقَ: la letra gruesa خ lleva damma, un grado más ligero.',
+          ],
+        },
+        'tarqiq': {
+          'en': [
+            'No full letters here — every letter stays light and thin.',
+            'رِزْقُكُمْ: Ra is light here because it carries dammah after a light letter.',
+            'بِسْمِ ٱللَّهِ: the lam of Allah stays light after the kasrah in بِسْمِ.',
+          ],
+          'ar': [
+            'لا حروف تفخيم هنا، كل الحروف رقيقة خفيفة.',
+            'رِزْقُكُمْ: الراء رقيقة لأنها مضمومة بعد حرف رقيق.',
+            'بِسْمِ ٱللَّهِ: لام لفظ الجلالة رقيقة بعد كسرة بِسْمِ.',
+          ],
+          'ur': [
+            'یہاں کوئی بھاری حرف نہیں، ہر حرف ہلکا اور رقیق ہے۔',
+            'رِزْقُكُمْ: راء ہلکے حرف کے بعد ضمہ کی وجہ سے رقیق ہے۔',
+            'بِسْمِ ٱللَّهِ: لفظ اللہ کا لام بِسْمِ کی کسرہ کے بعد ہلکا رہتا ہے۔',
+          ],
+          'tr': [
+            'Burada kalın harf yok, her harf ince ve hafiftir.',
+            'رِزْقُكُمْ: Ra, ince bir harften sonra damme taşıdığı için incedir.',
+            'بِسْمِ ٱللَّهِ: Allah lafzındaki lam, بِسْمِ\'deki kesradan sonra ince kalır.',
+          ],
+          'fr': [
+            'Aucune lettre emphatique ici, chaque lettre reste légère et fine.',
+            'رِزْقُكُمْ : le ra est léger car il porte une damma après une lettre légère.',
+            'بِسْمِ ٱللَّهِ : le lam d\'Allah reste léger après la kasra de بِسْمِ.',
+          ],
+          'id': [
+            'Tidak ada huruf tebal di sini, setiap huruf tetap tipis dan ringan.',
+            'رِزْقُكُمْ: Ra ringan karena berharakat dammah setelah huruf ringan.',
+            'بِسْمِ ٱللَّهِ: lam pada lafaz Allah tetap ringan setelah kasrah pada بِسْمِ.',
+          ],
+          'de': [
+            'Keine vollen Buchstaben hier, jeder Buchstabe bleibt leicht und dünn.',
+            'رِزْقُكُمْ: Ra ist leicht, weil es nach einem leichten Buchstaben Damma trägt.',
+            'بِسْمِ ٱللَّهِ: das Lam von Allah bleibt nach dem Kasra in بِسْمِ leicht.',
+          ],
+          'es': [
+            'Aquí no hay letras gruesas, cada letra permanece ligera y fina.',
+            'رِزْقُكُمْ: la ra es ligera porque lleva damma tras una letra ligera.',
+            'بِسْمِ ٱللَّهِ: el lam de Allah permanece ligero tras la kasra de بِسْمِ.',
+          ],
+        },
+      };
 
-  static List<String> captionsForArticle(String articleId) =>
-      articleExampleCaptions[articleId] ?? const [];
+  static List<String> captionsForArticle(
+    String articleId, {
+    String languageCode = 'en',
+  }) {
+    final byLanguage = articleExampleCaptions[articleId];
+    if (byLanguage == null) return const [];
+    return byLanguage[languageCode] ?? byLanguage['en'] ?? const [];
+  }
 
   // The exact substring(s) within each example's Arabic verse text that
   // demonstrate the rule, so the UI can bold/highlight them. Must match the
