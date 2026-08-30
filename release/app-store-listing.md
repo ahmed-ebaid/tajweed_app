@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.0
-- **Build:** 58
+- **Build:** 59
 
 ## URLs
 
@@ -76,6 +76,7 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 Tajweed 1.1 brings the Ayah reader’s color-coded guidance to the Mushaf.
 
+- Follow a new six-step onboarding guide, localized in all eight app languages
 - Read with Tajweed colors in the QCF V2 Madina Mushaf layout
 - View the Tajweed palette and turn highlighting on or off
 - Pinch to enlarge Mushaf pages while preserving printed line breaks
@@ -133,4 +134,4 @@ markers follow the QCF V2 printed-line metadata.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Keep the approved screenshot sets and select build 55.
+- Keep the approved screenshot sets and select build 59.

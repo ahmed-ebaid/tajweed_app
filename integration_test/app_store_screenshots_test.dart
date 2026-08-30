@@ -30,11 +30,29 @@ const _screenshotLanguageCode = String.fromEnvironment(
   defaultValue: 'en',
 );
 const _onboardingAssetsOnly = bool.fromEnvironment('ONBOARDING_ASSETS_ONLY');
+const _releaseListingAssetsOnly = bool.fromEnvironment(
+  'RELEASE_LISTING_ASSETS_ONLY',
+);
+const _releaseScreenshotLocales = [
+  'en',
+  'ar',
+  'ur',
+  'tr',
+  'fr',
+  'id',
+  'de',
+  'es',
+];
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('capture App Store screens', (tester) async {
+    if (_releaseListingAssetsOnly) {
+      await _captureLocalizedReleasePages(tester, binding);
+      return;
+    }
+
     await _initializeFixtureStorage(_screenshotLanguageCode);
     final localeProvider = LocaleProvider();
 
@@ -186,6 +204,50 @@ void main() {
     expect(find.byType(LanguageSelectorScreen), findsOneWidget);
     await binding.takeScreenshot('10-languages');
   });
+}
+
+Future<void> _captureLocalizedReleasePages(
+  WidgetTester tester,
+  IntegrationTestWidgetsFlutterBinding binding,
+) async {
+  for (final languageCode in _releaseScreenshotLocales) {
+    await _initializeFixtureStorage(languageCode);
+    final localeProvider = LocaleProvider();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: localeProvider),
+          ChangeNotifierProvider(create: (_) => StreakProvider()),
+          ChangeNotifierProvider(create: (_) => BookmarkProvider()),
+          ChangeNotifierProvider(create: (_) => DailyLessonProvider()),
+          ChangeNotifierProvider(create: (_) => QuizProgressProvider()),
+          ChangeNotifierProvider(create: (_) => ReaderNavigationProvider()),
+          ChangeNotifierProvider(create: (_) => RecitationProvider()),
+          ChangeNotifierProvider(
+            create: (_) => TafseerProvider(langCode: languageCode),
+          ),
+        ],
+        child: const TajweedApp(),
+      ),
+    );
+    await _waitForUi(tester);
+
+    await tester.tap(find.byIcon(Icons.library_books_outlined));
+    await _waitForUi(tester);
+    expect(find.byType(RulesScreen), findsOneWidget);
+    await binding.takeScreenshot('$languageCode/06-rules-library');
+
+    Navigator.of(
+      tester.element(find.byType(RulesScreen)),
+    ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+    await _finishTransition(tester);
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    await binding.takeScreenshot('$languageCode/08-settings');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  }
 }
 
 Future<void> _waitForUi(WidgetTester tester, {int seconds = 2}) async {
