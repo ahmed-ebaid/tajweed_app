@@ -12,6 +12,8 @@ import '../../core/services/audio_cache_service.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
+import '../../core/services/onboarding_service.dart';
+import '../onboarding/onboarding_screen.dart';
 import 'language_selector_screen.dart';
 
 const _appVersion = '1.1.0';
@@ -66,6 +68,17 @@ class SettingsScreen extends StatelessWidget {
             ),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const LanguageSelectorScreen()),
+            ),
+          ),
+          const Divider(height: 0.5, indent: 16),
+          ListTile(
+            leading: const Icon(Icons.auto_stories_outlined),
+            title: Text(l10n.get('how_to_use_app')),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => OnboardingScreen(service: OnboardingService()),
+              ),
             ),
           ),
           const Divider(height: 0.5, indent: 16),
