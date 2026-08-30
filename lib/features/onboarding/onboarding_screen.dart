@@ -352,9 +352,12 @@ class _ScreenshotGuidePage extends StatelessWidget {
           Image.asset(
             assetPath,
             fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
+            alignment: page == 4 ? Alignment.center : Alignment.topCenter,
           ),
-          _InteractionOverlay(page: page, label: calloutLabel),
+          if (page == 4)
+            _HizbMarkerOverlay(label: calloutLabel)
+          else
+            _InteractionOverlay(page: page, label: calloutLabel),
         ],
       ),
     );
@@ -395,12 +398,6 @@ class _InteractionOverlay extends StatelessWidget {
         Icons.bookmark_add_rounded,
         label,
         const Size(125, 52),
-      ),
-      4 => (
-        const Alignment(-0.88, -0.02),
-        Icons.adjust_rounded,
-        label,
-        const Size(165, 52),
       ),
       _ => (
         const Alignment(0.0, 0.82),
@@ -445,6 +442,102 @@ class _InteractionOverlay extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _HizbMarkerOverlay extends StatelessWidget {
+  final String label;
+
+  const _HizbMarkerOverlay({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final markerCenterY = constraints.maxHeight * 0.53;
+          return Stack(
+            children: [
+              Positioned(
+                key: const Key('onboarding_hizb_marker_highlight'),
+                left: 0,
+                top: markerCenterY - 19,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.primary.withValues(alpha: 0.12),
+                    border: Border.all(color: colors.primary, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.primary.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 34,
+                top: markerCenterY - 14,
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  key: const Key('onboarding_hizb_marker_pointer'),
+                  color: colors.primary,
+                  size: 30,
+                ),
+              ),
+              Positioned(
+                left: 62,
+                top: markerCenterY - 28,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 190),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: colors.primary, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.shadow.withValues(alpha: 0.16),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.touch_app_rounded,
+                        color: colors.primary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 7),
+                      Flexible(
+                        child: Text(
+                          label,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colors.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

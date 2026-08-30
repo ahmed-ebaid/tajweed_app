@@ -189,6 +189,29 @@ void main() {
     }
   });
 
+  testWidgets('Hizb guide highlights the marker that opens the tooltip', (
+    tester,
+  ) async {
+    final service = OnboardingService(settingsBox: settingsBox);
+    await tester.pumpWidget(app(home: OnboardingScreen(service: service)));
+    await tester.pumpAndSettle();
+
+    for (var page = 0; page < 4; page++) {
+      await tester.tap(find.byKey(const Key('onboarding_next')));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('Tap this marker'), findsOneWidget);
+    expect(
+      find.byKey(const Key('onboarding_hizb_marker_highlight')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('onboarding_hizb_marker_pointer')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('guide fits phone and tablet layouts', (tester) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

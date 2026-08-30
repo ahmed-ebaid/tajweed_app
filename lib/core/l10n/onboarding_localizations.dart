@@ -65,7 +65,7 @@ const _translations = <String, List<String>>{
     'Tafseer source',
     'Double-tap',
     'Bookmarked',
-    'Hizb boundary',
+    'Tap this marker',
     'Page saved',
   ],
   'ar': [
@@ -99,7 +99,7 @@ const _translations = <String, List<String>>{
     'مصدر التفسير',
     'اضغط مرتين',
     'تم الحفظ',
-    'حد الحزب',
+    'اضغط على هذه العلامة',
     'حُفظت الصفحة',
   ],
   'ur': [
@@ -133,7 +133,7 @@ const _translations = <String, List<String>>{
     'تفسیر کا ماخذ',
     'دو بار ٹیپ',
     'محفوظ شدہ',
-    'حزب کی حد',
+    'اس علامت پر ٹیپ کریں',
     'صفحہ محفوظ',
   ],
   'tr': [
@@ -167,7 +167,7 @@ const _translations = <String, List<String>>{
     'Tefsir kaynağı',
     'Çift dokun',
     'Kaydedildi',
-    'Hizb sınırı',
+    'Bu işarete dokunun',
     'Sayfa kaydedildi',
   ],
   'fr': [
@@ -201,7 +201,7 @@ const _translations = <String, List<String>>{
     'Source du Tafseer',
     'Double toucher',
     'Ajoutée',
-    'Limite de Hizb',
+    'Touchez ce repère',
     'Page enregistrée',
   ],
   'id': [
@@ -235,7 +235,7 @@ const _translations = <String, List<String>>{
     'Sumber Tafsir',
     'Ketuk dua kali',
     'Ditandai',
-    'Batas Hizb',
+    'Ketuk penanda ini',
     'Halaman disimpan',
   ],
   'de': [
@@ -269,7 +269,7 @@ const _translations = <String, List<String>>{
     'Tafseer-Quelle',
     'Doppeltippen',
     'Gespeichert',
-    'Hizb-Grenze',
+    'Tippe auf diese Markierung',
     'Seite gespeichert',
   ],
   'es': [
@@ -303,7 +303,7 @@ const _translations = <String, List<String>>{
     'Fuente de Tafseer',
     'Doble toque',
     'Guardada',
-    'Límite de Hizb',
+    'Toca este marcador',
     'Página guardada',
   ],
 };
