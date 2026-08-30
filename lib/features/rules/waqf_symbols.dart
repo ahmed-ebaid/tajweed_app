@@ -44,19 +44,19 @@ class WaqfSymbols {
       index: 4,
       displaySymbol: 'صلى',
       quranSymbol: 'ۖ',
-      arabicText: 'عَلَىٰ هُدًى مِّن رَّبِّهِمْ ۖ وَأُولَٰئِكَ',
+      arabicText: 'مِّن رَّبِّهِمْ ۖ وَأُولَٰئِكَ',
     ),
     WaqfSymbolExample(
       index: 5,
       displaySymbol: '∴',
       quranSymbol: 'ۛ',
-      arabicText: 'ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى',
+      arabicText: 'الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى',
     ),
     WaqfSymbolExample(
       index: 6,
       displaySymbol: 'س',
       quranSymbol: 'ۜ',
-      arabicText: 'وَاللَّهُ يَقْبِضُ وَيَبْصُۜطُ وَإِلَيْهِ تُرْجَعُونَ',
+      arabicText: 'يَقْبِضُ وَيَبْصُۜطُ وَإِلَيْهِ',
     ),
   ];
 
