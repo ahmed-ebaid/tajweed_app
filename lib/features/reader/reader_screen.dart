@@ -3886,8 +3886,8 @@ class _MushafTextPage extends StatelessWidget {
       ],
     );
     if (minimumPageHeight <= 0) return printedPage;
-    return SizedBox(
-      height: minimumPageHeight,
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: minimumPageHeight),
       child: Center(child: printedPage),
     );
   }

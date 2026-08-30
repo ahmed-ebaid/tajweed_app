@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/models/tajweed_models.dart';
 
 /// Displays the Arabic text of a quiz question along with the question prompt.
 class QuizCard extends StatelessWidget {
   final String arabic;
   final String question;
+  final List<QuizHighlightRange> highlightRanges;
+  final Color highlightColor;
 
   const QuizCard({
     super.key,
     required this.arabic,
     required this.question,
+    required this.highlightRanges,
+    required this.highlightColor,
   });
 
   @override
@@ -18,20 +23,21 @@ class QuizCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: Theme.of(context).dividerColor, width: 0.5),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
       ),
       child: Column(
         children: [
-          Text(
-            arabic,
-            style: GoogleFonts.amiri(
+          Text.rich(
+            TextSpan(children: _buildTextSpans()),
+            style: const TextStyle(
+              fontFamily: 'UthmanicHafs',
               fontSize: 36,
               height: 1.8,
             ),
             textDirection: TextDirection.rtl,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
@@ -42,5 +48,33 @@ class QuizCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  List<TextSpan> _buildTextSpans() {
+    final spans = <TextSpan>[];
+    var cursor = 0;
+
+    for (final range in highlightRanges) {
+      assert(range.start >= cursor && range.end <= arabic.length);
+      if (cursor < range.start) {
+        spans.add(TextSpan(text: arabic.substring(cursor, range.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: arabic.substring(range.start, range.end),
+          style: TextStyle(
+            color: highlightColor,
+            backgroundColor: highlightColor.withValues(alpha: 0.12),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+      cursor = range.end;
+    }
+
+    if (cursor < arabic.length) {
+      spans.add(TextSpan(text: arabic.substring(cursor)));
+    }
+    return spans;
   }
 }

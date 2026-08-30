@@ -9,6 +9,7 @@ import '../../core/providers/locale_provider.dart';
 import '../../core/providers/quiz_progress_provider.dart';
 import '../../core/providers/streak_provider.dart';
 import 'quiz_repository.dart';
+import 'widgets/quiz_card.dart';
 import 'widgets/quiz_results_sheet.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -27,7 +28,8 @@ class _QuizScreenState extends State<QuizScreen> {
 
   bool get _answered => _selectedIndex != null;
   bool get _isCorrect =>
-      _questions.isNotEmpty && _selectedIndex == _questions[_current].correctIndex;
+      _questions.isNotEmpty &&
+      _selectedIndex == _questions[_current].correctIndex;
 
   void _startLevel(QuizLevel level) {
     setState(() {
@@ -77,13 +79,14 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final l10n = AppLocalizations.of(context);
     final level = _activeLevel!;
-    final percentage = _questions.isEmpty ? 0 : ((_score / _questions.length) * 100).round();
+    final percentage = _questions.isEmpty
+        ? 0
+        : ((_score / _questions.length) * 100).round();
     final passed = percentage >= QuizRepository.passPercentage;
     final nextLevel = QuizRepository.nextLevelAfter(level);
-    final unlockedNext = await context.read<QuizProgressProvider>().recordLevelResult(
-          level: level,
-          percentage: percentage,
-        );
+    final unlockedNext = await context
+        .read<QuizProgressProvider>()
+        .recordLevelResult(level: level, percentage: percentage);
 
     if (!mounted) return;
 
@@ -97,16 +100,16 @@ class _QuizScreenState extends State<QuizScreen> {
         headline: passed ? l10n.get('quiz_passed') : l10n.get('quiz_failed'),
         message: passed
             ? nextLevel == null
-                ? l10n.get('quiz_all_levels_unlocked')
-                : unlockedNext
-                    ? l10n.get('quiz_next_level_unlocked')
-                    : l10n.get('quiz_pass_requirement_met')
+                  ? l10n.get('quiz_all_levels_unlocked')
+                  : unlockedNext
+                  ? l10n.get('quiz_next_level_unlocked')
+                  : l10n.get('quiz_pass_requirement_met')
             : '${QuizRepository.passPercentage}% ${l10n.get('quiz_pass_requirement')}',
         primaryLabel: passed && nextLevel != null
             ? l10n.get('continue_to_next_level')
             : passed
-                ? l10n.get('back_to_levels')
-                : l10n.get('retry_level'),
+            ? l10n.get('back_to_levels')
+            : l10n.get('retry_level'),
         onPrimary: () {
           Navigator.of(sheetContext).pop();
           if (!mounted) return;
@@ -120,7 +123,9 @@ class _QuizScreenState extends State<QuizScreen> {
           }
           _startLevel(level);
         },
-        secondaryLabel: passed ? l10n.get('retry_level') : l10n.get('back_to_levels'),
+        secondaryLabel: passed
+            ? l10n.get('retry_level')
+            : l10n.get('back_to_levels'),
         onSecondary: () {
           Navigator.of(sheetContext).pop();
           if (!mounted) return;
@@ -138,9 +143,7 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (_activeLevel == null) {
-      return _QuizLevelPicker(
-        onSelectLevel: _startLevel,
-      );
+      return _QuizLevelPicker(onSelectLevel: _startLevel);
     }
 
     final langCode = context.read<LocaleProvider>().locale.languageCode;
@@ -170,17 +173,25 @@ class _QuizScreenState extends State<QuizScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 16),
-                  _QuizCard(arabic: q.arabicText, question: q.question(langCode)),
+                  QuizCard(
+                    arabic: q.arabicText,
+                    question: q.question(langCode),
+                    highlightRanges: q.highlightRanges,
+                    highlightColor: q.rule.color,
+                  ),
                   const SizedBox(height: 12),
-                  ...List.generate(q.options.length, (i) => _OptionTile(
-                    text: q.optionText(i, langCode),
-                    index: i,
-                    selectedIndex: _selectedIndex,
-                    correctIndex: q.correctIndex,
-                    onTap: () {
-                      unawaited(_answer(i));
-                    },
-                  )),
+                  ...List.generate(
+                    q.options.length,
+                    (i) => _OptionTile(
+                      text: q.optionText(i, langCode),
+                      index: i,
+                      selectedIndex: _selectedIndex,
+                      correctIndex: q.correctIndex,
+                      onTap: () {
+                        unawaited(_answer(i));
+                      },
+                    ),
+                  ),
                   if (_answered) ...[
                     const SizedBox(height: 12),
                     _FeedbackBanner(
@@ -314,13 +325,16 @@ class _LevelCard extends StatelessWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   if (isRecommended)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE1F5EE),
                         borderRadius: BorderRadius.circular(99),
@@ -337,30 +351,31 @@ class _LevelCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Icon(
                     isUnlocked ? Icons.lock_open_rounded : Icons.lock_rounded,
                     size: 16,
-                    color: isUnlocked ? const Color(0xFF1D9E75) : const Color(0xFF888780),
+                    color: isUnlocked
+                        ? const Color(0xFF1D9E75)
+                        : const Color(0xFF888780),
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isUnlocked ? l10n.get('quiz_unlocked') : l10n.get('quiz_locked'),
+                    isUnlocked
+                        ? l10n.get('quiz_unlocked')
+                        : l10n.get('quiz_locked'),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const Spacer(),
                   Text(
                     '${l10n.get('best_score')}: $bestPercentage%',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF0F6E56),
-                          fontWeight: FontWeight.w500,
-                        ),
+                      color: const Color(0xFF0F6E56),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -383,7 +398,9 @@ class _LevelCard extends StatelessWidget {
                         : Theme.of(context).textTheme.bodyMedium?.color,
                   ),
                   child: Text(
-                    isUnlocked ? l10n.get('start_level') : l10n.get('quiz_locked'),
+                    isUnlocked
+                        ? l10n.get('start_level')
+                        : l10n.get('quiz_locked'),
                   ),
                 ),
               ),
@@ -424,14 +441,18 @@ class _ProgressHeader extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: (current + 1) / total,
                     minHeight: 6,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceVariant,
                     valueColor: const AlwaysStoppedAnimation(Color(0xFF1D9E75)),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
-              Text('${current + 1} / $total',
-                  style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                '${current + 1} / $total',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -441,57 +462,34 @@ class _ProgressHeader extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE1F5EE),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(label,
-                        style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF0F6E56))),
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF0F6E56),
+                      ),
+                    ),
                   ),
                 ),
               ),
               Text(
                 '$score / $total $scoreLabel',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF0F6E56),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: const Color(0xFF0F6E56),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuizCard extends StatelessWidget {
-  final String arabic;
-  final String question;
-  const _QuizCard({required this.arabic, required this.question});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
-      ),
-      child: Column(
-        children: [
-          Text(arabic,
-              style: const TextStyle(
-                  fontFamily: 'UthmanicHafs', fontSize: 36, height: 1.8),
-              textDirection: TextDirection.rtl),
-          const SizedBox(height: 8),
-          Text(question,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center),
         ],
       ),
     );
@@ -506,8 +504,10 @@ class _OptionTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _OptionTile({
-    required this.text, required this.index,
-    required this.selectedIndex, required this.correctIndex,
+    required this.text,
+    required this.index,
+    required this.selectedIndex,
+    required this.correctIndex,
     required this.onTap,
   });
 
@@ -544,7 +544,8 @@ class _OptionTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 24, height: 24,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceVariant,
                 shape: BoxShape.circle,
@@ -552,12 +553,19 @@ class _OptionTile extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 String.fromCharCode(65 + index), // A, B, C, D
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(child: Text(text,
-                style: TextStyle(fontSize: 14, color: textColor))),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(fontSize: 14, color: textColor),
+              ),
+            ),
           ],
         ),
       ),
@@ -572,8 +580,10 @@ class _FeedbackBanner extends StatelessWidget {
   final String wrongLabel;
 
   const _FeedbackBanner({
-    required this.correct, required this.explanation,
-    required this.correctLabel, required this.wrongLabel,
+    required this.correct,
+    required this.explanation,
+    required this.correctLabel,
+    required this.wrongLabel,
   });
 
   @override
@@ -606,16 +616,22 @@ class _FeedbackBanner extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: correct ? const Color(0xFF0F6E56) : const Color(0xFFA32D2D),
+                    color: correct
+                        ? const Color(0xFF0F6E56)
+                        : const Color(0xFFA32D2D),
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(explanation,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: correct ? const Color(0xFF0F6E56) : const Color(0xFFA32D2D),
-                      height: 1.5,
-                    )),
+                Text(
+                  explanation,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: correct
+                        ? const Color(0xFF0F6E56)
+                        : const Color(0xFFA32D2D),
+                    height: 1.5,
+                  ),
+                ),
               ],
             ),
           ),

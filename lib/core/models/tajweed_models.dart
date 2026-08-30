@@ -305,6 +305,7 @@ class TajweedRuleDefinition {
 class QuizQuestion {
   final TajweedRule rule;
   final String arabicText;
+  final List<QuizHighlightRange> highlightRanges;
   final Map<String, String> questionText; // langCode → question
   final List<Map<String, String>> options; // each: { langCode: option text }
   final int correctIndex;
@@ -313,6 +314,7 @@ class QuizQuestion {
   const QuizQuestion({
     required this.rule,
     required this.arabicText,
+    required this.highlightRanges,
     required this.questionText,
     required this.options,
     required this.correctIndex,
@@ -327,6 +329,13 @@ class QuizQuestion {
 
   String explain(String langCode) =>
       explanation[langCode] ?? explanation['en'] ?? '';
+}
+
+class QuizHighlightRange {
+  final int start;
+  final int end;
+
+  const QuizHighlightRange({required this.start, required this.end});
 }
 
 // ─── Recitation feedback model ────────────────────────────────────────────────

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
-import 'package:tajweed_practice/features/rules/rule_detail_screen.dart';
 import 'package:tajweed_practice/features/rules/rule_example_references.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
+import 'package:tajweed_practice/features/rules/waqf_symbols.dart';
 
 void main() {
   test('rules repository covers every tajweed rule exactly once', () {
@@ -66,6 +66,34 @@ void main() {
         );
       }
     }
+  });
+
+  test('every Waqf sign section has a Quran example containing its mark', () {
+    expect(WaqfSymbols.examples, hasLength(7));
+    for (final example in WaqfSymbols.examples) {
+      expect(example.displaySymbol.trim(), isNotEmpty);
+      expect(example.arabicText, contains(example.quranSymbol));
+      expect(
+        example.arabicText.length,
+        greaterThan(example.quranSymbol.length),
+      );
+    }
+  });
+
+  test('shared Waqf text lists every sign with its meaning and example', () {
+    final lines = WaqfSymbols.shareLines('en', examplesLabel: 'Example');
+
+    for (final example in WaqfSymbols.examples) {
+      expect(
+        lines,
+        contains(
+          '${example.displaySymbol} — '
+          '${WaqfRuleStrings('en').text('name_${example.index}')}',
+        ),
+      );
+      expect(lines, contains('Example: ${example.arabicText}'));
+    }
+    expect(lines, isNot(contains('How to Pronounce')));
   });
 
   test(

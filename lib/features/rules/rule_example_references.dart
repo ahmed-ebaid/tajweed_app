@@ -33,6 +33,24 @@ class RuleExampleReferences {
     TajweedRule.silent: '020028',
   };
 
+  // Audio examples for standalone articles (not tied to a single TajweedRule).
+  // Verified verses commonly used to illustrate the rule:
+  // tafkhim — 1:7 contains heavy (mufakhkham) letters غ and ض.
+  // tarqiq  — 112:1 contains the light (muraqqaq) lam of "Allah" after a kasra-adjacent context.
+  static const Map<String, String> articleAudioCodes = {
+    'tafkhim': '001007',
+    'tarqiq': '112001',
+  };
+
+  static AyahReference? referenceForArticle(String articleId) {
+    final code = articleAudioCodes[articleId];
+    if (code == null || code.length != 6) return null;
+    final surah = int.tryParse(code.substring(0, 3));
+    final ayah = int.tryParse(code.substring(3, 6));
+    if (surah == null || ayah == null) return null;
+    return (surah: surah, ayah: ayah);
+  }
+
   static const Map<TajweedRule, Set<int>> forcedHighlightWordIndices = {
     TajweedRule.izhar: {0},
     TajweedRule.shaddah: {2},
