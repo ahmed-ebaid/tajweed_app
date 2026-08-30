@@ -220,6 +220,84 @@ void main() {
   });
 
   group('QuranApiService.audioUrl', () {
+    test('requests and parses word-level audio timings', () async {
+      final adapter = _RecordingAdapter();
+      final contentClient = Dio(
+        BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
+      )..httpClientAdapter = adapter;
+      final service = QuranApiService(contentClient: contentClient);
+      adapter.responseBodies['/recitations/7/by_chapter/1'] = {
+        'audio_files': [
+          {
+            'verse_key': '1:1',
+            'url': '/7/001001.mp3',
+            'segments': [
+              [1, 0, 630],
+              [42, 2, 650, 1570],
+              [3, 1570, 1570],
+            ],
+          },
+        ],
+      };
+
+      final files = await service.fetchAudioFilesWithTimings(
+        reciterId: 7,
+        surahNumber: 1,
+      );
+
+      expect(files['1:1']?.url, 'https://verses.quran.com/7/001001.mp3');
+      final timings = files['1:1']!.wordTimings;
+      expect(timings, hasLength(2));
+      expect(
+        (timings[0].wordIndex, timings[0].startMs, timings[0].endMs),
+        (0, 0, 630),
+      );
+      expect(
+        (timings[1].wordIndex, timings[1].startMs, timings[1].endMs),
+        (1, 650, 1570),
+      );
+      expect(
+        adapter.requests.single.queryParameters['fields'],
+        'segments,duration,verse_key,url',
+      );
+    });
+
+    test('selects the timed word and keeps it highlighted through pauses', () {
+      const timings = [
+        AyahAudioWordTiming(wordIndex: 0, startMs: 100, endMs: 500),
+        AyahAudioWordTiming(wordIndex: 1, startMs: 700, endMs: 1200),
+      ];
+
+      expect(
+        AyahAudioWordTiming.activeWordIndexAt(
+          timings,
+          const Duration(milliseconds: 50),
+        ),
+        -1,
+      );
+      expect(
+        AyahAudioWordTiming.activeWordIndexAt(
+          timings,
+          const Duration(milliseconds: 300),
+        ),
+        0,
+      );
+      expect(
+        AyahAudioWordTiming.activeWordIndexAt(
+          timings,
+          const Duration(milliseconds: 600),
+        ),
+        0,
+      );
+      expect(
+        AyahAudioWordTiming.activeWordIndexAt(
+          timings,
+          const Duration(milliseconds: 800),
+        ),
+        1,
+      );
+    });
+
     test('formats URL correctly with zero-padded surah and ayah', () {
       final service = QuranApiService();
       final url = service.audioUrl(reciterId: 7, surahNumber: 1, ayahNumber: 1);

@@ -73,6 +73,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _loading = true;
   List<Map<String, dynamic>> _allSurahs = [];
   Map<String, String> _audioUrls = {};
+  Map<String, List<AyahAudioWordTiming>> _audioWordTimings = {};
 
   // Debounce timer for scroll position saving
   Timer? _scrollSaveTimer;
@@ -353,24 +354,14 @@ class _ReaderScreenState extends State<ReaderScreen>
       }
     });
 
-    // Track playback position and estimate active word index.
+    // Track playback position using the reciter's word-level timestamps.
     _positionSub = _audio.positionStream.listen((position) {
       if (!mounted || _playingAyahNumber == null) return;
-      final total = _audio.duration;
-      if (total == null || total.inMilliseconds <= 0) return;
-
-      final ayahIdx = _ayahs.indexWhere(
-        (a) => a.ayahNumber == _playingAyahNumber,
+      final verseKey = '$_selectedSurah:$_playingAyahNumber';
+      final nextWordIndex = AyahAudioWordTiming.activeWordIndexAt(
+        _audioWordTimings[verseKey] ?? const [],
+        position,
       );
-      if (ayahIdx < 0) return;
-      final wordCount = _ayahs[ayahIdx].words.length;
-      if (wordCount <= 0) return;
-
-      final ratio = (position.inMilliseconds / total.inMilliseconds).clamp(
-        0.0,
-        0.9999,
-      );
-      final nextWordIndex = (ratio * wordCount).floor().clamp(0, wordCount - 1);
 
       if (nextWordIndex != _activeWordIndex) {
         setState(() => _activeWordIndex = nextWordIndex);
@@ -817,6 +808,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       _loading = true;
       _ayahs = [];
       _audioUrls = {};
+      _audioWordTimings = {};
       _juzBoundaries = {};
       _mushafPageAnchorCache.clear();
     });
@@ -869,14 +861,21 @@ class _ReaderScreenState extends State<ReaderScreen>
         reciterId: reciterId,
         surahNumber: _selectedSurah,
       );
+      Map<String, List<AyahAudioWordTiming>> audioWordTimings = {};
       try {
-        if (audioMap.isEmpty && !isOffline) {
-          audioMap = await _api
-              .fetchAudioFiles(
+        if (!isOffline) {
+          final audioFiles = await _api
+              .fetchAudioFilesWithTimings(
                 reciterId: reciterId,
                 surahNumber: _selectedSurah,
               )
               .timeout(const Duration(seconds: 15));
+          audioMap.addAll(
+            audioFiles.map((key, file) => MapEntry(key, file.url)),
+          );
+          audioWordTimings = audioFiles.map(
+            (key, file) => MapEntry(key, file.wordTimings),
+          );
           await _contentSync.cacheRecitationMap(
             reciterId: reciterId,
             surahNumber: _selectedSurah,
@@ -908,6 +907,7 @@ class _ReaderScreenState extends State<ReaderScreen>
             requestedLangCode: langCode,
           );
           _audioUrls = audioMap;
+          _audioWordTimings = audioWordTimings;
           _activeWordIndex = -1;
           _currentMushafPageIndex = 0;
           _ayahKeys.clear();
@@ -951,6 +951,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                 requestedLangCode: langCode,
               );
               _audioUrls = {};
+              _audioWordTimings = {};
               _activeWordIndex = -1;
             });
           }
@@ -963,6 +964,7 @@ class _ReaderScreenState extends State<ReaderScreen>
           _loading = false;
           _ayahs = const [];
           _audioUrls = {};
+          _audioWordTimings = {};
         });
       }
     }
@@ -1379,6 +1381,12 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   // ─── Audio Controls ───────────────────────────────────────────────────────
 
+  int _initialWordIndex(Ayah ayah) {
+    final timings =
+        _audioWordTimings['${ayah.surahNumber}:${ayah.ayahNumber}'] ?? const [];
+    return timings.isEmpty ? -1 : timings.first.wordIndex;
+  }
+
   /// Double-tap on a single ayah — play just that one.
   void _playSingleAyah(Ayah ayah) {
     if (kDebugMode) {
@@ -1403,7 +1411,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       setState(() {
         _isPlayingAll = false;
         _playingAyahNumber = ayah.ayahNumber;
-        _activeWordIndex = 0;
+        _activeWordIndex = _initialWordIndex(ayah);
       });
       if (kDebugMode) {
         print('🎵 CALLING _playAyah FOR ${ayah.ayahNumber}');
@@ -1477,7 +1485,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       setState(() {
         _isPlayingAll = true;
         _playingAyahNumber = _ayahs[startIndex].ayahNumber;
-        _activeWordIndex = 0;
+        _activeWordIndex = _initialWordIndex(_ayahs[startIndex]);
       });
       _playAllFromIndex(startIndex);
     }
@@ -1490,7 +1498,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       setState(() {
         _playingAyahNumber = ayah.ayahNumber;
-        _activeWordIndex = 0;
+        _activeWordIndex = _initialWordIndex(ayah);
       });
       context.read<BookmarkProvider>().saveLastRead(
         ayah.surahNumber,
@@ -1576,7 +1584,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (updatePlayingState) {
         setState(() {
           _playingAyahNumber = ayah.ayahNumber;
-          _activeWordIndex = 0;
+          _activeWordIndex = _initialWordIndex(ayah);
         });
       }
 
