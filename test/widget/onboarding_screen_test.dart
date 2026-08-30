@@ -16,7 +16,9 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('onboarding_widget_test_');
     Hive.init(tempDir.path);
-    settingsBox = await Hive.openBox<dynamic>(OnboardingService.settingsBoxName);
+    settingsBox = await Hive.openBox<dynamic>(
+      OnboardingService.settingsBoxName,
+    );
   });
 
   tearDown(() async {
@@ -38,7 +40,9 @@ void main() {
     );
   }
 
-  testWidgets('launcher opens only when automatic guide is eligible', (tester) async {
+  testWidgets('launcher opens only when automatic guide is eligible', (
+    tester,
+  ) async {
     final service = OnboardingService(settingsBox: settingsBox);
     await tester.pumpWidget(
       app(
@@ -67,13 +71,17 @@ void main() {
     expect(find.text('Quick guide'), findsNothing);
   });
 
-  testWidgets('paging exposes six guides and Back Next Done controls', (tester) async {
+  testWidgets('paging exposes six guides and Back Next Done controls', (
+    tester,
+  ) async {
     final service = OnboardingService(settingsBox: settingsBox);
     await tester.pumpWidget(app(home: OnboardingScreen(service: service)));
     await tester.pumpAndSettle();
 
     expect(find.text('Discover Tajweed rules'), findsOneWidget);
-    final back = tester.widget<OutlinedButton>(find.byKey(const Key('onboarding_back')));
+    final back = tester.widget<OutlinedButton>(
+      find.byKey(const Key('onboarding_back')),
+    );
     expect(back.onPressed, isNull);
 
     const titles = [
@@ -91,8 +99,12 @@ void main() {
     expect(find.text('Done'), findsOneWidget);
   });
 
-  testWidgets('manual replay reflects and can change dismissal checkbox', (tester) async {
-    await tester.runAsync(() => settingsBox.put(OnboardingService.dismissalKey, true));
+  testWidgets('manual replay reflects and can change dismissal checkbox', (
+    tester,
+  ) async {
+    await tester.runAsync(
+      () => settingsBox.put(OnboardingService.dismissalKey, true),
+    );
     final service = OnboardingService(settingsBox: settingsBox);
     await tester.pumpWidget(app(home: OnboardingScreen(service: service)));
     await tester.pumpAndSettle();
@@ -119,7 +131,39 @@ void main() {
     expect(find.text('دليل سريع'), findsOneWidget);
     expect(find.text('السابق'), findsOneWidget);
     expect(find.text('التالي'), findsOneWidget);
-    expect(Directionality.of(tester.element(find.byType(PageView))), TextDirection.rtl);
+    expect(
+      Directionality.of(tester.element(find.byType(PageView))),
+      TextDirection.rtl,
+    );
+  });
+
+  testWidgets('callout labels inherit the active locale direction', (
+    tester,
+  ) async {
+    final service = OnboardingService(settingsBox: settingsBox);
+
+    await tester.pumpWidget(app(home: OnboardingScreen(service: service)));
+    await tester.pumpAndSettle();
+    Text callout = tester.widget(find.text('Tajweed rule'));
+    expect(callout.textDirection, isNull);
+    expect(
+      Directionality.of(tester.element(find.text('Tajweed rule'))),
+      TextDirection.ltr,
+    );
+
+    await tester.pumpWidget(
+      app(
+        locale: const Locale('ar'),
+        home: OnboardingScreen(service: service),
+      ),
+    );
+    await tester.pumpAndSettle();
+    callout = tester.widget(find.text('حكم التجويد'));
+    expect(callout.textDirection, isNull);
+    expect(
+      Directionality.of(tester.element(find.text('حكم التجويد'))),
+      TextDirection.rtl,
+    );
   });
 
   testWidgets('guide fits phone and tablet layouts', (tester) async {
@@ -132,7 +176,11 @@ void main() {
       tester.view.physicalSize = size;
       await tester.pumpWidget(app(home: OnboardingScreen(service: service)));
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull, reason: 'layout overflowed at $size');
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'layout overflowed at $size',
+      );
     }
   });
 
@@ -140,7 +188,11 @@ void main() {
     for (final locale in AppLocalizations.supportedLocales) {
       final l10n = AppLocalizations(locale);
       for (final key in onboardingTranslationKeys) {
-        expect(l10n.get(key), isNot(key), reason: '$key is missing for ${locale.languageCode}');
+        expect(
+          l10n.get(key),
+          isNot(key),
+          reason: '$key is missing for ${locale.languageCode}',
+        );
         expect(
           onboardingTranslation(locale.languageCode, key),
           isNotNull,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'onboarding_localizations.dart';
 
-/// Translation strings for all 7 supported languages.
+/// Translation strings for all 8 supported languages.
 /// In production, replace with ARB files generated via `flutter gen-l10n`.
 class AppLocalizations {
   final Locale locale;

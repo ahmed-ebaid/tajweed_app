@@ -11,7 +11,9 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('onboarding_test_');
     Hive.init(tempDir.path);
-    settingsBox = await Hive.openBox<dynamic>(OnboardingService.settingsBoxName);
+    settingsBox = await Hive.openBox<dynamic>(
+      OnboardingService.settingsBoxName,
+    );
   });
 
   tearDown(() async {
@@ -33,7 +35,10 @@ void main() {
 
     await service.updateDismissal(initialValue: false, currentValue: true);
 
-    expect(OnboardingService(settingsBox: settingsBox).shouldShowAutomatically, isFalse);
+    expect(
+      OnboardingService(settingsBox: settingsBox).shouldShowAutomatically,
+      isFalse,
+    );
   });
 
   test('manual replay does not change an untouched dismissal', () async {
@@ -52,6 +57,9 @@ void main() {
     await service.updateDismissal(initialValue: true, currentValue: false);
 
     expect(settingsBox.containsKey(OnboardingService.dismissalKey), isFalse);
-    expect(OnboardingService(settingsBox: settingsBox).shouldShowAutomatically, isTrue);
+    expect(
+      OnboardingService(settingsBox: settingsBox).shouldShowAutomatically,
+      isTrue,
+    );
   });
 }

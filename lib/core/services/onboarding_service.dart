@@ -7,9 +7,11 @@ class OnboardingService {
   final Box<dynamic> _settingsBox;
   bool _presentedThisRuntime = false;
 
-  OnboardingService({Box<dynamic>? settingsBox}) : _settingsBox = settingsBox ?? Hive.box(settingsBoxName);
+  OnboardingService({Box<dynamic>? settingsBox})
+    : _settingsBox = settingsBox ?? Hive.box(settingsBoxName);
 
-  bool get isDismissed => _settingsBox.get(dismissalKey, defaultValue: false) as bool;
+  bool get isDismissed =>
+      _settingsBox.get(dismissalKey, defaultValue: false) as bool;
 
   bool get shouldShowAutomatically => !_presentedThisRuntime && !isDismissed;
 
@@ -17,7 +19,10 @@ class OnboardingService {
     _presentedThisRuntime = true;
   }
 
-  Future<void> updateDismissal({required bool initialValue, required bool currentValue}) async {
+  Future<void> updateDismissal({
+    required bool initialValue,
+    required bool currentValue,
+  }) async {
     if (initialValue == currentValue) return;
     if (currentValue) {
       await _settingsBox.put(dismissalKey, true);

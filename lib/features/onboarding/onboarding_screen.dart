@@ -7,13 +7,19 @@ class FirstRunOnboardingLauncher extends StatefulWidget {
   final Widget child;
   final OnboardingService? service;
 
-  const FirstRunOnboardingLauncher({super.key, required this.child, this.service});
+  const FirstRunOnboardingLauncher({
+    super.key,
+    required this.child,
+    this.service,
+  });
 
   @override
-  State<FirstRunOnboardingLauncher> createState() => _FirstRunOnboardingLauncherState();
+  State<FirstRunOnboardingLauncher> createState() =>
+      _FirstRunOnboardingLauncherState();
 }
 
-class _FirstRunOnboardingLauncherState extends State<FirstRunOnboardingLauncher> {
+class _FirstRunOnboardingLauncherState
+    extends State<FirstRunOnboardingLauncher> {
   late final OnboardingService _service;
 
   @override
@@ -23,9 +29,12 @@ class _FirstRunOnboardingLauncherState extends State<FirstRunOnboardingLauncher>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_service.shouldShowAutomatically) return;
       _service.markPresented();
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => OnboardingScreen(service: _service)));
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => OnboardingScreen(service: _service),
+        ),
+      );
     });
   }
 
@@ -67,7 +76,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _close() async {
     if (_closing) return;
     _closing = true;
-    await widget.service.updateDismissal(initialValue: _initialDismissal, currentValue: _dontShowAgain);
+    await widget.service.updateDismissal(
+      initialValue: _initialDismissal,
+      currentValue: _dontShowAgain,
+    );
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -76,12 +88,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _close();
       return;
     }
-    _controller.nextPage(duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+    _controller.nextPage(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _back() {
     if (_page == 0) return;
-    _controller.previousPage(duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+    _controller.previousPage(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -139,7 +157,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       height: 8,
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
-                        color: index == _page ? colorScheme.primary : colorScheme.outlineVariant,
+                        color: index == _page
+                            ? colorScheme.primary
+                            : colorScheme.outlineVariant,
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),
@@ -152,7 +172,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                 title: Text(l10n.get('onboarding_dont_show_again')),
-                onChanged: (value) => setState(() => _dontShowAgain = value ?? false),
+                onChanged: (value) =>
+                    setState(() => _dontShowAgain = value ?? false),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -172,8 +193,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         key: const Key('onboarding_next'),
                         onPressed: _next,
                         iconAlignment: IconAlignment.end,
-                        icon: Icon(_page == _pageCount - 1 ? Icons.check_rounded : Icons.arrow_forward_rounded),
-                        label: Text(l10n.get(_page == _pageCount - 1 ? 'onboarding_done' : 'onboarding_next')),
+                        icon: Icon(
+                          _page == _pageCount - 1
+                              ? Icons.check_rounded
+                              : Icons.arrow_forward_rounded,
+                        ),
+                        label: Text(
+                          l10n.get(
+                            _page == _pageCount - 1
+                                ? 'onboarding_done'
+                                : 'onboarding_next',
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -215,7 +246,9 @@ class _GuidePage extends StatelessWidget {
                     child: _ReaderMockup(
                       page: index,
                       height: compact ? 245 : 330,
-                      calloutLabel: l10n.get('onboarding_mockup_callout_${index + 1}'),
+                      calloutLabel: l10n.get(
+                        'onboarding_mockup_callout_${index + 1}',
+                      ),
                     ),
                   ),
                 ),
@@ -223,7 +256,9 @@ class _GuidePage extends StatelessWidget {
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 ConstrainedBox(
@@ -251,7 +286,11 @@ class _ReaderMockup extends StatelessWidget {
   final double height;
   final String calloutLabel;
 
-  const _ReaderMockup({required this.page, required this.height, required this.calloutLabel});
+  const _ReaderMockup({
+    required this.page,
+    required this.height,
+    required this.calloutLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +304,11 @@ class _ReaderMockup extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: colors.outlineVariant),
         boxShadow: [
-          BoxShadow(color: colors.shadow.withValues(alpha: 0.08), blurRadius: 24, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
@@ -279,7 +322,11 @@ class _ReaderMockup extends StatelessWidget {
                 color: colors.primaryContainer.withValues(alpha: 0.55),
                 child: Row(
                   children: [
-                    Icon(Icons.menu_rounded, size: 18, color: colors.onPrimaryContainer),
+                    Icon(
+                      Icons.menu_rounded,
+                      size: 18,
+                      color: colors.onPrimaryContainer,
+                    ),
                     const Spacer(),
                     Text(
                       'سورة الملك',
@@ -290,7 +337,11 @@ class _ReaderMockup extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    Icon(Icons.lightbulb_outline_rounded, size: 20, color: colors.onPrimaryContainer),
+                    Icon(
+                      Icons.lightbulb_outline_rounded,
+                      size: 20,
+                      color: colors.onPrimaryContainer,
+                    ),
                   ],
                 ),
               ),
@@ -334,8 +385,15 @@ class _MockAyah extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            short ? 'تَبَارَكَ الَّذِي' : 'الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ',
-            style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 20, height: 1.7, color: base),
+            short
+                ? 'تَبَارَكَ الَّذِي'
+                : 'الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ',
+            style: TextStyle(
+              fontFamily: 'AmiriQuran',
+              fontSize: 20,
+              height: 1.7,
+              color: base,
+            ),
           ),
           if (highlightTajweed)
             Text(
@@ -350,7 +408,10 @@ class _MockAyah extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '۝٢',
-            style: TextStyle(fontFamily: 'AmiriQuran', color: Theme.of(context).colorScheme.secondary),
+            style: TextStyle(
+              fontFamily: 'AmiriQuran',
+              color: Theme.of(context).colorScheme.secondary,
+            ),
           ),
         ],
       ),
@@ -369,12 +430,42 @@ class _InteractionOverlay extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final overlayColor = colors.primary;
     final config = switch (page) {
-      0 => (const Alignment(0.50, -0.04), Icons.touch_app_rounded, label, const Size(150, 52)),
-      1 => (const Alignment(0.88, -0.89), Icons.lightbulb_rounded, label, const Size(178, 58)),
-      2 => (const Alignment(0.18, -0.10), Icons.graphic_eq_rounded, label, const Size(110, 52)),
-      3 => (const Alignment(-0.60, 0.40), Icons.bookmark_add_rounded, label, const Size(125, 52)),
-      4 => (const Alignment(-0.88, -0.02), Icons.adjust_rounded, label, const Size(165, 52)),
-      _ => (const Alignment(0.0, 0.82), Icons.bookmark_rounded, label, const Size(145, 52)),
+      0 => (
+        const Alignment(0.50, -0.04),
+        Icons.touch_app_rounded,
+        label,
+        const Size(150, 52),
+      ),
+      1 => (
+        const Alignment(0.88, -0.89),
+        Icons.lightbulb_rounded,
+        label,
+        const Size(178, 58),
+      ),
+      2 => (
+        const Alignment(0.18, -0.10),
+        Icons.graphic_eq_rounded,
+        label,
+        const Size(110, 52),
+      ),
+      3 => (
+        const Alignment(-0.60, 0.40),
+        Icons.bookmark_add_rounded,
+        label,
+        const Size(125, 52),
+      ),
+      4 => (
+        const Alignment(-0.88, -0.02),
+        Icons.adjust_rounded,
+        label,
+        const Size(165, 52),
+      ),
+      _ => (
+        const Alignment(0.0, 0.82),
+        Icons.bookmark_rounded,
+        label,
+        const Size(145, 52),
+      ),
     };
 
     return Align(
@@ -388,7 +479,11 @@ class _InteractionOverlay extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: overlayColor, width: 2),
           boxShadow: [
-            BoxShadow(color: colors.shadow.withValues(alpha: 0.16), blurRadius: 12, offset: const Offset(0, 5)),
+            BoxShadow(
+              color: colors.shadow.withValues(alpha: 0.16),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
           ],
         ),
         child: Row(
@@ -399,9 +494,11 @@ class _InteractionOverlay extends StatelessWidget {
             Flexible(
               child: Text(
                 config.$3,
-                textDirection: TextDirection.rtl,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],

@@ -724,10 +724,7 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
     final s = _SettingsStrings.of(context);
     final reciterId = context.watch<RecitationProvider>().selectedReciterId;
     final languageCode = context.watch<LocaleProvider>().locale.languageCode;
-    final reciterName = SettingsScreen._reciterLabel(
-      reciterId,
-      languageCode,
-    );
+    final reciterName = SettingsScreen._reciterLabel(reciterId, languageCode);
     final progressText = _busy && _progressSurah > 0
         ? [
             s.text('current_reciter', {'name': reciterName}),
