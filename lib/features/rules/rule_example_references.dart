@@ -33,14 +33,36 @@ class RuleExampleReferences {
     TajweedRule.silent: '020028',
   };
 
-  // Audio examples for standalone articles (not tied to a single TajweedRule).
-  // Verified verses commonly used to illustrate the rule:
-  // tafkhim — 1:7 contains heavy (mufakhkham) letters غ and ض.
-  // tarqiq  — 112:1 contains the light (muraqqaq) lam of "Allah" after a kasra-adjacent context.
-  static const Map<String, String> articleAudioCodes = {
-    'tafkhim': '001007',
-    'tarqiq': '112001',
+  // Multiple verified per-example audio references for standalone articles,
+  // one entry per illustrative case (each verse checked directly against the
+  // Quran.com Uthmani text before inclusion):
+  // tafkhim:
+  //   1:7  — غَيْرِ ٱلْمَغْضُوبِ ... ٱلضَّآلِّينَ — the full letters غ and ض.
+  //   1:1  — ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ / ٱللَّهِ — Ra and the lam of Allah both
+  //          full (fathah before each).
+  // tarqiq:
+  //   1:5  — إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ — ordinary light letters,
+  //          none of the seven full letters present.
+  //   3:37 — ...رِزْقًا... — Ra light because it carries kasrah.
+  static const Map<String, List<String>> articleExampleCodes = {
+    'tafkhim': ['001007', '001001'],
+    'tarqiq': ['001005', '003037'],
   };
+
+  static List<AyahReference> referencesForArticle(String articleId) {
+    final codes = articleExampleCodes[articleId];
+    if (codes == null || codes.isEmpty) return const [];
+    return codes
+        .map((code) {
+          if (code.length != 6) return null;
+          final surah = int.tryParse(code.substring(0, 3));
+          final ayah = int.tryParse(code.substring(3, 6));
+          if (surah == null || ayah == null) return null;
+          return (surah: surah, ayah: ayah);
+        })
+        .whereType<AyahReference>()
+        .toList();
+  }
 
   // Per-symbol audio references for the Waqf table, matching the excerpts
   // already curated in WaqfSymbols.examples (index -> surah/ayah), all from
@@ -64,15 +86,6 @@ class RuleExampleReferences {
 
   static AyahReference? referenceForWaqfSymbol(int index) {
     final code = waqfSymbolAudioCodes[index];
-    if (code == null || code.length != 6) return null;
-    final surah = int.tryParse(code.substring(0, 3));
-    final ayah = int.tryParse(code.substring(3, 6));
-    if (surah == null || ayah == null) return null;
-    return (surah: surah, ayah: ayah);
-  }
-
-  static AyahReference? referenceForArticle(String articleId) {
-    final code = articleAudioCodes[articleId];
     if (code == null || code.length != 6) return null;
     final surah = int.tryParse(code.substring(0, 3));
     final ayah = int.tryParse(code.substring(3, 6));

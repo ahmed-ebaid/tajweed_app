@@ -25,42 +25,54 @@ class TajweedArticleDetailScreen extends StatefulWidget {
       _TajweedArticleDetailScreenState();
 }
 
+class _ArticleExample {
+  final AyahReference reference;
+  String? arabicText;
+  String? audioUrl;
+  bool loading = false;
+
+  _ArticleExample(this.reference);
+}
+
 class _TajweedArticleDetailScreenState
     extends State<TajweedArticleDetailScreen> {
   final AudioService _audio = AudioService();
   final QuranApiService _api = QuranApiService();
-  bool _playing = false;
-  bool _loadingAudio = false;
-  String? _audioUrl;
-  String? _arabicText;
+  int? _playingIndex;
+  late final List<_ArticleExample> _examples;
 
   static const int _articleReciterId = 12; // Husary Al-Muallim
 
   @override
   void initState() {
     super.initState();
+    _examples = RuleExampleReferences.referencesForArticle(widget.article.id)
+        .map(_ArticleExample.new)
+        .toList();
     _audio.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        if (mounted) setState(() => _playing = false);
+        if (mounted) setState(() => _playingIndex = null);
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadExampleAyah());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAllExamples());
   }
 
-  ({int surah, int ayah})? get _reference =>
-      RuleExampleReferences.referenceForArticle(widget.article.id);
+  Future<void> _loadAllExamples() async {
+    for (var i = 0; i < _examples.length; i++) {
+      await _loadExample(i);
+    }
+  }
 
-  Future<void> _loadExampleAyah() async {
-    final ref = _reference;
-    if (ref == null) return;
-    if (_arabicText != null) return;
+  Future<void> _loadExample(int index) async {
+    final example = _examples[index];
+    if (example.arabicText != null) return;
 
-    setState(() => _loadingAudio = true);
+    setState(() => example.loading = true);
     try {
       final langCode = context.read<LocaleProvider>().locale.languageCode;
       final verse = await _api.fetchVerse(
-        surahNumber: ref.surah,
-        ayahNumber: ref.ayah,
+        surahNumber: example.reference.surah,
+        ayahNumber: example.reference.ayah,
         langCode: langCode,
         reciterId: _articleReciterId,
       );
@@ -70,31 +82,33 @@ class _TajweedArticleDetailScreenState
       );
       if (!mounted) return;
       setState(() {
-        _audioUrl = normalizedUrl;
-        _arabicText = mapped.plainArabicText();
-        _loadingAudio = false;
+        example.audioUrl = normalizedUrl;
+        example.arabicText = mapped.plainArabicText();
+        example.loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loadingAudio = false);
+      if (mounted) setState(() => example.loading = false);
     }
   }
 
-  Future<void> _toggleExample() async {
-    if (_playing) {
+  Future<void> _toggle(int index) async {
+    if (_playingIndex == index) {
       _audio.stop();
-      setState(() => _playing = false);
+      setState(() => _playingIndex = null);
       return;
     }
 
-    var url = QuranApiService.normalizeAudioUrl(_audioUrl);
+    final example = _examples[index];
+    var url = QuranApiService.normalizeAudioUrl(example.audioUrl);
     if (url == null) {
-      await _loadExampleAyah();
-      url = QuranApiService.normalizeAudioUrl(_audioUrl);
+      await _loadExample(index);
+      url = QuranApiService.normalizeAudioUrl(example.audioUrl);
     }
     if (url == null) return;
 
+    _audio.stop();
     _audio.playUrl(url);
-    if (mounted) setState(() => _playing = true);
+    if (mounted) setState(() => _playingIndex = index);
   }
 
   @override
@@ -117,7 +131,6 @@ class _TajweedArticleDetailScreenState
     final accent = article.category == TajweedArticleCategory.fundamentals
         ? const Color(0xFF176B5B)
         : const Color(0xFF6A4C93);
-    final hasExample = _reference != null;
 
     return Scaffold(
       appBar: AppBar(title: Text(article.title(languageCode))),
@@ -171,63 +184,99 @@ class _TajweedArticleDetailScreenState
                 ),
               ),
             ),
-            if (hasExample) ...[
+            if (_examples.isNotEmpty) ...[
               const SizedBox(height: 6),
-              if (_arabicText != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: accent.withValues(alpha: 0.25)),
-                  ),
-                  child: Text(
-                    _arabicText!,
-                    textAlign: TextAlign.right,
-                    textDirection: TextDirection.rtl,
-                    style: const TextStyle(
-                      fontFamily: 'AmiriQuran',
-                      fontSize: 24,
-                      height: 1.8,
-                    ),
-                  ),
-                ),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _loadingAudio ? null : _toggleExample,
-                  icon: _loadingAudio
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          _playing
-                              ? Icons.stop_rounded
-                              : Icons.volume_up_rounded,
-                          size: 18,
+              _SectionTitle(title: l10n.get('examples'), accent: accent),
+              const SizedBox(height: 10),
+              for (var index = 0; index < _examples.length; index++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_examples[index].arabicText != null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: accent.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Text(
+                            _examples[index].arabicText!,
+                            textAlign: TextAlign.right,
+                            textDirection: TextDirection.rtl,
+                            style: const TextStyle(
+                              fontFamily: 'AmiriQuran',
+                              fontSize: 24,
+                              height: 1.8,
+                            ),
+                          ),
                         ),
-                  label: Text(
-                    _playing ? l10n.get('stop') : l10n.hearExample,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: accent,
-                    side: BorderSide(color: accent, width: 0.5),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _examples[index].loading
+                              ? null
+                              : () => _toggle(index),
+                          icon: _examples[index].loading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  _playingIndex == index
+                                      ? Icons.stop_rounded
+                                      : Icons.volume_up_rounded,
+                                  size: 18,
+                                ),
+                          label: Text(
+                            _playingIndex == index
+                                ? l10n.get('stop')
+                                : l10n.hearExample,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: accent,
+                            side: BorderSide(color: accent, width: 0.5),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final Color accent;
+
+  const _SectionTitle({required this.title, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(color: accent, fontWeight: FontWeight.w700),
     );
   }
 }
