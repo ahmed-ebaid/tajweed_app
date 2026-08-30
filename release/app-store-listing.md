@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.0
+# App Store listing — Tajweed 1.1.1
 
 ## App information
 
@@ -8,7 +8,7 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.0
+- **Version:** 1.1.1
 - **Build:** 59
 
 ## URLs
