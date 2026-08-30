@@ -50,7 +50,7 @@ class RuleExampleReferences {
   //   1:5  — إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ — ordinary light letters,
   //          none of the seven full letters present.
   //   51:22 — وَفِى ٱلسَّمَآءِ رِزْقُكُمْ وَمَا تُوعَدُونَ — Ra light because
-  //          it carries dammah, shortest verse found for this case.
+  //          it carries kasrah, shortest verse found for this case.
   //   1:1  — بِسْمِ ٱللَّهِ — the lam of Allah light because it follows the
   //          kasrah ending بِسْمِ (Lam and Alif conditional case).
   static const Map<String, List<String>> articleExampleCodes = {
@@ -109,42 +109,42 @@ class RuleExampleReferences {
         'tarqiq': {
           'en': [
             'No full letters here — every letter stays light and thin.',
-            'رِزْقُكُمْ: Ra is light here because it carries dammah after a light letter.',
+            'رِزْقُكُمْ: Ra is light here because it carries kasrah after a light letter.',
             'بِسْمِ ٱللَّهِ: the lam of Allah stays light after the kasrah in بِسْمِ.',
           ],
           'ar': [
-            'لا حروف تفخيم هنا، كل الحروف رقيقة خفيفة.',
-            'رِزْقُكُمْ: الراء رقيقة لأنها مضمومة بعد حرف رقيق.',
+            'لا يوجد حروف تفخيم هنا، كل الحروف رقيقة خفيفة.',
+            'رِزْقُكُمْ: الراء رقيقة لأنها مكسورة بعد حرف رقيق.',
             'بِسْمِ ٱللَّهِ: لام لفظ الجلالة رقيقة بعد كسرة بِسْمِ.',
           ],
           'ur': [
             'یہاں کوئی بھاری حرف نہیں، ہر حرف ہلکا اور رقیق ہے۔',
-            'رِزْقُكُمْ: راء ہلکے حرف کے بعد ضمہ کی وجہ سے رقیق ہے۔',
+            'رِزْقُكُمْ: راء ہلکے حرف کے بعد کسرہ کی وجہ سے رقیق ہے۔',
             'بِسْمِ ٱللَّهِ: لفظ اللہ کا لام بِسْمِ کی کسرہ کے بعد ہلکا رہتا ہے۔',
           ],
           'tr': [
             'Burada kalın harf yok, her harf ince ve hafiftir.',
-            'رِزْقُكُمْ: Ra, ince bir harften sonra damme taşıdığı için incedir.',
+            'رِزْقُكُمْ: Ra, ince bir harften sonra kesre taşıdığı için incedir.',
             'بِسْمِ ٱللَّهِ: Allah lafzındaki lam, بِسْمِ\'deki kesradan sonra ince kalır.',
           ],
           'fr': [
             'Aucune lettre emphatique ici, chaque lettre reste légère et fine.',
-            'رِزْقُكُمْ : le ra est léger car il porte une damma après une lettre légère.',
+            'رِزْقُكُمْ : le ra est léger car il porte une kasra après une lettre légère.',
             'بِسْمِ ٱللَّهِ : le lam d\'Allah reste léger après la kasra de بِسْمِ.',
           ],
           'id': [
             'Tidak ada huruf tebal di sini, setiap huruf tetap tipis dan ringan.',
-            'رِزْقُكُمْ: Ra ringan karena berharakat dammah setelah huruf ringan.',
+            'رِزْقُكُمْ: Ra ringan karena berharakat kasrah setelah huruf ringan.',
             'بِسْمِ ٱللَّهِ: lam pada lafaz Allah tetap ringan setelah kasrah pada بِسْمِ.',
           ],
           'de': [
             'Keine vollen Buchstaben hier, jeder Buchstabe bleibt leicht und dünn.',
-            'رِزْقُكُمْ: Ra ist leicht, weil es nach einem leichten Buchstaben Damma trägt.',
+            'رِزْقُكُمْ: Ra ist leicht, weil es nach einem leichten Buchstaben Kasra trägt.',
             'بِسْمِ ٱللَّهِ: das Lam von Allah bleibt nach dem Kasra in بِسْمِ leicht.',
           ],
           'es': [
             'Aquí no hay letras gruesas, cada letra permanece ligera y fina.',
-            'رِزْقُكُمْ: la ra es ligera porque lleva damma tras una letra ligera.',
+            'رِزْقُكُمْ: la ra es ligera porque lleva kasra tras una letra ligera.',
             'بِسْمِ ٱللَّهِ: el lam de Allah permanece ligero tras la kasra de بِسْمِ.',
           ],
         },

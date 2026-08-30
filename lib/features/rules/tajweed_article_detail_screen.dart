@@ -216,8 +216,8 @@ class _TajweedArticleDetailScreenState
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Text(
                             exampleCaptions[index],
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(height: 1.4),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(height: 1.4, fontSize: 15),
                           ),
                         ),
                       if (_examples[index].arabicText != null)
