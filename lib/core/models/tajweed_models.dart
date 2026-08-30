@@ -23,6 +23,7 @@ enum TajweedRule {
   idghamMutajanisayn,
   ikhfaShafawi,
   hamzatWasl,
+  hamzatQat,
   laamShamsiyah,
   silent,
 }
@@ -71,6 +72,8 @@ extension TajweedRuleExtension on TajweedRule {
         return const Color(0xFF37474F);
       case TajweedRule.hamzatWasl:
         return const Color(0xFF8C564B);
+      case TajweedRule.hamzatQat:
+        return const Color(0xFFAA3377);
       case TajweedRule.laamShamsiyah:
         return const Color(0xFF7A6E00);
       case TajweedRule.silent:
@@ -121,6 +124,8 @@ extension TajweedRuleExtension on TajweedRule {
         return 'rule_ikhfa_shafawi';
       case TajweedRule.hamzatWasl:
         return 'rule_hamzat_wasl';
+      case TajweedRule.hamzatQat:
+        return 'rule_hamzat_qat';
       case TajweedRule.laamShamsiyah:
         return 'rule_laam_shamsiyah';
       case TajweedRule.silent:
@@ -170,6 +175,8 @@ extension TajweedRuleExtension on TajweedRule {
         return 'إِخْفَاء شَفَوِيّ';
       case TajweedRule.hamzatWasl:
         return 'هَمْزَة وَصْل';
+      case TajweedRule.hamzatQat:
+        return 'هَمْزَة قَطْع';
       case TajweedRule.laamShamsiyah:
         return 'لَام شَمْسِيَّة';
       case TajweedRule.silent:

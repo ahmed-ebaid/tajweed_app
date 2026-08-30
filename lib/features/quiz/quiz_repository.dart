@@ -49,6 +49,7 @@ class QuizRepository {
         TajweedRule.idghamWithGhunnah,
         TajweedRule.idghamWithoutGhunnah,
         TajweedRule.hamzatWasl,
+        TajweedRule.hamzatQat,
         TajweedRule.laamShamsiyah,
       ],
     ),
@@ -319,7 +320,8 @@ class QuizRepository {
     TajweedRule.idghamShafawi: ['م مَّ'],
     TajweedRule.idghamMutajanisayn: ['د تَّ'],
     TajweedRule.ikhfaShafawi: ['م ب'],
-    TajweedRule.hamzatWasl: ['ٱ', 'ٱ'],
+    TajweedRule.hamzatWasl: ['ٱ', 'ٱ', 'ٱ'],
+    TajweedRule.hamzatQat: ['أ', 'إ', 'أ'],
     TajweedRule.laamShamsiyah: ['الشَّ', 'النَّ'],
     TajweedRule.silent: ['و', 'ٰ'],
   };
@@ -336,9 +338,10 @@ class QuizRepository {
     final fr = def.descriptions['fr'] ?? '';
     final id = def.descriptions['id'] ?? '';
     final de = def.descriptions['de'] ?? '';
+    final es = def.descriptions['es'];
 
     if (variant.isEven) {
-      return {
+      final explanations = {
         'en': '${def.names['en']}: $en',
         'ar': '${def.names['ar']}: $ar',
         'ur': '${def.names['ur']}: $ur',
@@ -347,9 +350,13 @@ class QuizRepository {
         'id': '${def.names['id']}: $id',
         'de': '${def.names['de']}: $de',
       };
+      if (es != null) {
+        explanations['es'] = '${def.names['es'] ?? def.names['en']}: $es';
+      }
+      return explanations;
     }
 
-    return {
+    final explanations = {
       'en': 'Trigger letters: $letters. $en',
       'ar': 'حروف السبب: $letters. $ar',
       'ur': 'حروفِ سبب: $letters۔ $ur',
@@ -358,5 +365,9 @@ class QuizRepository {
       'id': 'Huruf pemicu: $letters. $id',
       'de': 'Auslöser-Buchstaben: $letters. $de',
     };
+    if (es != null) {
+      explanations['es'] = 'Letras clave: $letters. $es';
+    }
+    return explanations;
   }
 }

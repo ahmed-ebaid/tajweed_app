@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
+import 'package:tajweed_practice/features/quiz/quiz_repository.dart';
 import 'package:tajweed_practice/features/rules/rule_example_references.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/waqf_symbols.dart';
@@ -33,6 +34,54 @@ void main() {
       RuleExampleReferences.forcedHighlightWordIndices[TajweedRule.shaddah],
       {2},
     );
+  });
+
+  test('hamzat al-qat uses the clear iyyaka example from Al-Fatiha 1:5', () {
+    final ref = RuleExampleReferences.referenceFor(TajweedRule.hamzatQat);
+
+    expect(ref, isNotNull);
+    expect(ref!.surah, 1);
+    expect(ref.ayah, 5);
+    expect(
+      RuleExampleReferences.forcedHighlightWordIndices[TajweedRule.hamzatQat],
+      {0, 2},
+    );
+  });
+
+  test('hamzat wasl and qat Quran examples are included in their quizzes', () {
+    for (final rule in [TajweedRule.hamzatWasl, TajweedRule.hamzatQat]) {
+      final definition = RulesRepository.findByRule(rule)!;
+      final quizExamples = QuizRepository.all
+          .where((question) => question.rule == rule)
+          .map((question) => question.arabicText)
+          .toSet();
+
+      expect(
+        quizExamples,
+        containsAll(definition.exampleArabic),
+        reason: 'Missing Quran quiz examples for ${rule.name}',
+      );
+    }
+  });
+
+  test('both hamza rules are localized in every supported language', () {
+    const languageCodes = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
+
+    for (final rule in [TajweedRule.hamzatWasl, TajweedRule.hamzatQat]) {
+      final definition = RulesRepository.findByRule(rule)!;
+      for (final languageCode in languageCodes) {
+        expect(
+          definition.names[languageCode],
+          isNotEmpty,
+          reason: 'Missing $languageCode name for ${rule.name}',
+        );
+        expect(
+          definition.descriptions[languageCode],
+          isNotEmpty,
+          reason: 'Missing $languageCode description for ${rule.name}',
+        );
+      }
+    }
   });
 
   test('waqf uses an ayah with a clear obligatory-stop marker', () {

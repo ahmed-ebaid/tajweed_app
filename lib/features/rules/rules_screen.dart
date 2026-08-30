@@ -135,6 +135,7 @@ class _RulesScreenState extends State<RulesScreen> {
       case TajweedRule.sajdah:
         return 'rules_category_stops_signs';
       case TajweedRule.hamzatWasl:
+      case TajweedRule.hamzatQat:
       case TajweedRule.laamShamsiyah:
       case TajweedRule.silent:
         return 'rules_category_orthographic';
