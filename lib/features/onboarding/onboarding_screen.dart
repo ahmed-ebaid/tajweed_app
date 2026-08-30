@@ -212,11 +212,17 @@ class _GuidePage extends StatelessWidget {
                   label: l10n.get('onboarding_mockup_semantics_${index + 1}'),
                   image: true,
                   child: ExcludeSemantics(
-                    child: _ReaderMockup(
-                      page: index,
-                      height: compact ? 245 : 330,
-                      calloutLabel: l10n.get('onboarding_mockup_callout_${index + 1}'),
-                    ),
+                    child: index == 4 || index == 5
+                        ? _MushafMockup(
+                            page: index,
+                            height: compact ? 245 : 330,
+                            calloutLabel: l10n.get('onboarding_mockup_callout_${index + 1}'),
+                          )
+                        : _ReaderMockup(
+                            page: index,
+                            height: compact ? 245 : 330,
+                            calloutLabel: l10n.get('onboarding_mockup_callout_${index + 1}'),
+                          ),
                   ),
                 ),
                 SizedBox(height: compact ? 16 : 24),
@@ -318,6 +324,130 @@ class _ReaderMockup extends StatelessWidget {
   }
 }
 
+/// Mockup resembling the Mushaf page view (used for the Hizb-boundary and
+/// page-bookmark guide pages), so users can tell these features live in the
+/// printed-page reader, not the ayah-by-ayah view.
+class _MushafMockup extends StatelessWidget {
+  final int page;
+  final double height;
+  final String calloutLabel;
+
+  const _MushafMockup({required this.page, required this.height, required this.calloutLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    const accent = Color(0xFF0B5C45);
+    const fill = Color(0xFFDDECE6);
+    return Container(
+      width: double.infinity,
+      height: height,
+      constraints: const BoxConstraints(maxWidth: 560),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.outlineVariant),
+        boxShadow: [
+          BoxShadow(color: colors.shadow.withValues(alpha: 0.08), blurRadius: 24, offset: const Offset(0, 10)),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                color: fill,
+                child: Row(
+                  children: [
+                    const Text('١٨', style: TextStyle(fontFamily: 'AmiriQuran', color: accent, fontSize: 13)),
+                    const Spacer(),
+                    Text(
+                      'سورة الملك',
+                      style: TextStyle(fontFamily: 'AmiriQuran', color: accent, fontWeight: FontWeight.w700),
+                    ),
+                    const Spacer(),
+                    const Text('جزء ٢٩', style: TextStyle(fontFamily: 'AmiriQuran', color: accent, fontSize: 13)),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: const [
+                          _MushafPrintedLineMock(text: 'تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ'),
+                          _MushafPrintedLineMock(text: 'عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ۝١ الَّذِي'),
+                          _MushafPrintedLineMock(text: 'خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ'),
+                          _MushafPrintedLineMock(text: 'أَيُّكُمْ أَحْسَنُ عَمَلًا ۝٢'),
+                        ],
+                      ),
+                      if (page == 4)
+                        Positioned(
+                          left: 0,
+                          top: 60,
+                          child: Tooltip(
+                            message: 'حزب ١٤ ربع ٣',
+                            child: Container(
+                              width: 14,
+                              height: 22,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: fill,
+                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(7)),
+                                border: Border.all(color: accent, width: 0.8),
+                              ),
+                              child: const Text(
+                                '\u06DE',
+                                style: TextStyle(
+                                  fontFamily: 'AmiriQuran',
+                                  fontSize: 11,
+                                  height: 1,
+                                  color: accent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          _InteractionOverlay(page: page, label: calloutLabel),
+        ],
+      ),
+    );
+  }
+}
+
+class _MushafPrintedLineMock extends StatelessWidget {
+  final String text;
+
+  const _MushafPrintedLineMock({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context).colorScheme.onSurface;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        text,
+        textDirection: TextDirection.rtl,
+        style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 19, height: 1.9, color: base),
+      ),
+    );
+  }
+}
+
 class _MockAyah extends StatelessWidget {
   final bool highlightTajweed;
   final bool short;
@@ -369,7 +499,7 @@ class _InteractionOverlay extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final overlayColor = colors.primary;
     final config = switch (page) {
-      0 => (const Alignment(0.50, -0.04), Icons.touch_app_rounded, label, const Size(150, 52)),
+      0 => (const Alignment(-0.25, -0.32), Icons.touch_app_rounded, label, const Size(150, 52)),
       1 => (const Alignment(0.88, -0.89), Icons.lightbulb_rounded, label, const Size(178, 58)),
       2 => (const Alignment(0.18, -0.10), Icons.graphic_eq_rounded, label, const Size(110, 52)),
       3 => (const Alignment(-0.60, 0.40), Icons.bookmark_add_rounded, label, const Size(125, 52)),
