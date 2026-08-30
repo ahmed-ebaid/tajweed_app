@@ -14,6 +14,7 @@ import 'core/providers/streak_provider.dart';
 import 'core/providers/recitation_provider.dart';
 import 'core/providers/tafseer_provider.dart';
 import 'core/theme/app_theme.dart';
+import 'features/onboarding/onboarding_screen.dart';
 import 'root_scaffold.dart';
 
 void main() {
@@ -146,7 +147,7 @@ class TajweedApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
 
-      home: const RootScaffold(),
+      home: const FirstRunOnboardingLauncher(child: RootScaffold()),
     );
   }
 }
