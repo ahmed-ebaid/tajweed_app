@@ -219,6 +219,38 @@ class TajweedSegment {
   const TajweedSegment({required this.text, this.rule});
 }
 
+class AyahAudioWordTiming {
+  final int wordIndex;
+  final int startMs;
+  final int endMs;
+
+  const AyahAudioWordTiming({
+    required this.wordIndex,
+    required this.startMs,
+    required this.endMs,
+  });
+
+  static int activeWordIndexAt(
+    List<AyahAudioWordTiming> timings,
+    Duration position,
+  ) {
+    var activeWordIndex = -1;
+    for (final timing in timings) {
+      if (position.inMilliseconds < timing.startMs) break;
+      activeWordIndex = timing.wordIndex;
+      if (position.inMilliseconds <= timing.endMs) break;
+    }
+    return activeWordIndex;
+  }
+}
+
+class AyahAudioFile {
+  final String url;
+  final List<AyahAudioWordTiming> wordTimings;
+
+  const AyahAudioFile({required this.url, required this.wordTimings});
+}
+
 // ─── Ayah model ───────────────────────────────────────────────────────────────
 
 class Ayah {

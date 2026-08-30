@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.1
-- **Build:** 59
+- **Build:** 60
 
 ## URLs
 
@@ -74,17 +74,15 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Tajweed 1.1 brings the Ayah reader’s color-coded guidance to the Mushaf.
+Tajweed 1.1.1 expands the rules library and makes every rule easier to learn.
 
-- Follow a new six-step onboarding guide, localized in all eight app languages
-- Read with Tajweed colors in the QCF V2 Madina Mushaf layout
-- View the Tajweed palette and turn highlighting on or off
-- Pinch to enlarge Mushaf pages while preserving printed line breaks
-- Improved Madd Silah and Madd Muttasil highlighting
-- Improved Mushaf alignment and consistent sizing in portrait and landscape
-- Corrected ayah-marker placement and added numbered Hizb tap labels
-- Corrected the English verse translation and attribution
-- More reliable seven-day Quran content synchronization
+- New Tafkheem (Tafkhim), Tarqeeq (Tarqiq), and Waqf & Ibtida learning pages
+- Localized explanations, highlighted Quran examples, and focused audio
+- New Hamzat al-Qat rule with quiz examples
+- New six-step onboarding guide in all eight app languages
+- Audio highlighting now follows the reciter's actual word timing
+- Improved rule details, quizzes, captions, and audio controls
+- Fixed Waqf symbol layout, Tarqeeq wording, and Arabic text
 
 ## Screenshot set
 
@@ -134,4 +132,4 @@ markers follow the QCF V2 printed-line metadata.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Keep the approved screenshot sets and select build 59.
+- Keep the approved screenshot sets and select build 60.

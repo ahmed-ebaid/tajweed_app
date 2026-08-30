@@ -213,8 +213,8 @@ CI enforcement:
 
 ## App Store release
 
-The public version is read from `pubspec.yaml`; the value `1.1.1+59` produces
-App Store version **1.1.1** and internal build **59**.
+The public version is read from `pubspec.yaml`; the value `1.1.1+60` produces
+App Store version **1.1.1** and internal build **60**.
 
 Before submission:
 

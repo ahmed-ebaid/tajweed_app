@@ -276,20 +276,23 @@ class QuranApiService {
     return response.data['verse'];
   }
 
-  /// Fetches per-ayah audio file URLs for a surah from the recitations API.
-  /// Returns a map of verseKey (e.g. '1:1') → full audio URL.
-  Future<Map<String, String>> fetchAudioFiles({
+  /// Fetches per-ayah audio files and word timings for a surah.
+  Future<Map<String, AyahAudioFile>> fetchAudioFilesWithTimings({
     required int reciterId,
     required int surahNumber,
     CancelToken? cancelToken,
   }) async {
-    final map = <String, String>{};
+    final map = <String, AyahAudioFile>{};
     int page = 1;
 
     while (true) {
       final response = await _contentDio.get(
         '/recitations/$reciterId/by_chapter/$surahNumber',
-        queryParameters: {'page': page, 'per_page': 50},
+        queryParameters: {
+          'page': page,
+          'per_page': 50,
+          'fields': 'segments,duration,verse_key,url',
+        },
         cancelToken: cancelToken,
       );
       final files = response.data['audio_files'] as List<dynamic>? ?? [];
@@ -297,11 +300,18 @@ class QuranApiService {
         final key = f['verse_key'] as String? ?? '';
         final url = normalizeAudioUrl(f['url'] as String?);
         if (key.isNotEmpty && url != null) {
-          map[key] = url.startsWith('http')
+          final resolvedUrl = url.startsWith('http')
               ? url
               : url.startsWith('//')
               ? 'https:$url'
               : '$_audioBaseUrl/$url';
+          final rawSegments = f['segments'] as List<dynamic>? ?? const [];
+          final timings = rawSegments
+              .whereType<List>()
+              .map(_parseAudioWordTiming)
+              .whereType<AyahAudioWordTiming>()
+              .toList(growable: false);
+          map[key] = AyahAudioFile(url: resolvedUrl, wordTimings: timings);
         }
       }
 
@@ -310,6 +320,41 @@ class QuranApiService {
     }
 
     return map;
+  }
+
+  /// Fetches per-ayah audio file URLs for a surah from the recitations API.
+  Future<Map<String, String>> fetchAudioFiles({
+    required int reciterId,
+    required int surahNumber,
+    CancelToken? cancelToken,
+  }) async {
+    final files = await fetchAudioFilesWithTimings(
+      reciterId: reciterId,
+      surahNumber: surahNumber,
+      cancelToken: cancelToken,
+    );
+    return files.map((key, file) => MapEntry(key, file.url));
+  }
+
+  static AyahAudioWordTiming? _parseAudioWordTiming(List<dynamic> segment) {
+    final hasLeadingSegmentId = segment.length >= 4;
+    if ((!hasLeadingSegmentId && segment.length < 3)) return null;
+
+    final rawPosition = segment[hasLeadingSegmentId ? 1 : 0];
+    final rawStart = segment[hasLeadingSegmentId ? 2 : 1];
+    final rawEnd = segment[hasLeadingSegmentId ? 3 : 2];
+    if (rawPosition is! num || rawStart is! num || rawEnd is! num) return null;
+
+    final wordIndex = rawPosition.toInt() - 1;
+    final startMs = rawStart.toInt();
+    final endMs = rawEnd.toInt();
+    if (wordIndex < 0 || startMs < 0 || endMs <= startMs) return null;
+
+    return AyahAudioWordTiming(
+      wordIndex: wordIndex,
+      startMs: startMs,
+      endMs: endMs,
+    );
   }
 
   // ─── Audio ────────────────────────────────────────────────────────────────
