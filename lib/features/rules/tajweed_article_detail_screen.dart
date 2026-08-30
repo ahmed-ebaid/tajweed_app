@@ -130,6 +130,7 @@ class _TajweedArticleDetailScreenState
     final sectionTitles = article.sections(languageCode);
     final exampleCaptions = RuleExampleReferences.captionsForArticle(
       article.id,
+      languageCode: languageCode,
     );
     final accent = article.category == TajweedArticleCategory.fundamentals
         ? const Color(0xFF176B5B)
