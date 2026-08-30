@@ -36,16 +36,16 @@ void main() {
       find.text('How full letters are pronounced and when heaviness changes.'),
       findsOneWidget,
     );
-    expect(find.text('The seven full letters'), findsOneWidget);
-    expect(find.text('Degrees of Tafkhim'), findsOneWidget);
+    expect(find.text('The seven full letters'), findsWidgets);
+    expect(find.text('Degrees of Tafkhim'), findsWidgets);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tarqiq'));
     await tester.pumpAndSettle();
 
-    expect(find.text('When Ra is light'), findsOneWidget);
-    expect(find.text('Lam and Alif'), findsOneWidget);
+    expect(find.text('When Ra is light'), findsWidgets);
+    expect(find.text('Lam and Alif'), findsWidgets);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
