@@ -53,7 +53,8 @@ class AppLocalizations {
       'search_rules': 'Search rules...',
       'search_surah_or_juz': 'Search surah/name/number or juz2...',
       'bookmarks': 'Bookmarks',
-      'bookmarks_empty_hint': 'No bookmarks yet.\nLong-press an ayah or tap a Mushaf page to bookmark.',
+      'bookmarks_empty_hint':
+          'No bookmarks yet.\nLong-press an ayah or tap a Mushaf page to bookmark.',
       'page_bookmarks': 'Page bookmarks',
       'ayah_bookmarks': 'Ayah bookmarks',
       'bookmark_added': 'Bookmark added',
@@ -83,7 +84,13 @@ class AppLocalizations {
       'rules_category_merging': 'Merging & Concealment',
       'rules_category_stops_signs': 'Stops & Signs',
       'rules_category_orthographic': 'Orthographic Rules',
+      'rules_category_fundamentals': 'Core Recitation Rules',
+      'rules_category_miscellaneous': 'More Tajweed Topics',
+      'rules_tab_tajweed': 'Tajweed Rules',
+      'rules_tab_more': 'More Topics',
+      'search_tajweed_topics': 'Search topics...',
       'hear_pronunciation': 'Hear pronunciation',
+      'hear_example': 'Hear example',
       'share_rule': 'Share rule',
       'app_coming_soon': 'Coming soon on the App Store and Google Play',
       'settings': 'Settings',
@@ -103,11 +110,14 @@ class AppLocalizations {
       'quiz_levels': 'Quiz levels',
       'choose_level': 'Choose a level to practice and unlock the next one.',
       'quiz_level_beginner': 'Level 1: Beginner',
-      'quiz_level_beginner_subtitle': 'Foundational rules and easy recognition patterns.',
+      'quiz_level_beginner_subtitle':
+          'Foundational rules and easy recognition patterns.',
       'quiz_level_intermediate': 'Level 2: Intermediate',
-      'quiz_level_intermediate_subtitle': 'Common applied rules with closer distinctions.',
+      'quiz_level_intermediate_subtitle':
+          'Common applied rules with closer distinctions.',
       'quiz_level_advanced': 'Level 3: Advanced',
-      'quiz_level_advanced_subtitle': 'Long madd and specialized advanced rules.',
+      'quiz_level_advanced_subtitle':
+          'Long madd and specialized advanced rules.',
       'quiz_locked': 'Locked',
       'quiz_unlocked': 'Unlocked',
       'best_score': 'Best score',
@@ -119,8 +129,10 @@ class AppLocalizations {
       'quiz_passed': 'Level passed',
       'quiz_failed': 'Level not passed',
       'quiz_next_level_unlocked': 'You unlocked the next level.',
-      'quiz_all_levels_unlocked': 'You cleared the final level. All levels are now unlocked.',
-      'quiz_pass_requirement_met': 'Pass requirement met. You can replay this level or continue.',
+      'quiz_all_levels_unlocked':
+          'You cleared the final level. All levels are now unlocked.',
+      'quiz_pass_requirement_met':
+          'Pass requirement met. You can replay this level or continue.',
       'quiz_recommended': 'Recommended',
       'quiz_finish_level': 'Finish level',
     },
@@ -154,7 +166,8 @@ class AppLocalizations {
       'search_rules': 'ابحث عن قاعدة...',
       'search_surah_or_juz': 'ابحث بالسورة/الاسم/الرقم أو الجزء٢...',
       'bookmarks': 'العلامات المرجعية',
-      'bookmarks_empty_hint': 'لا توجد علامات مرجعية بعد.\nاضغط مطولاً على آية أو اضغط صفحة المصحف لإضافة علامة.',
+      'bookmarks_empty_hint':
+          'لا توجد علامات مرجعية بعد.\nاضغط مطولاً على آية أو اضغط صفحة المصحف لإضافة علامة.',
       'page_bookmarks': 'علامات الصفحات',
       'ayah_bookmarks': 'علامات الآيات',
       'bookmark_added': 'تمت إضافة علامة مرجعية',
@@ -184,7 +197,13 @@ class AppLocalizations {
       'rules_category_merging': 'الإدغام والإخفاء',
       'rules_category_stops_signs': 'علامات الوقف والسجدة',
       'rules_category_orthographic': 'أحكام الرسم',
+      'rules_category_fundamentals': 'أصول التلاوة',
+      'rules_category_miscellaneous': 'متفرقات في أحكام التجويد',
+      'rules_tab_tajweed': 'أحكام التجويد',
+      'rules_tab_more': 'موضوعات إضافية',
+      'search_tajweed_topics': 'ابحث في الموضوعات...',
       'hear_pronunciation': 'استمع إلى النطق',
+      'hear_example': 'استمع إلى المثال',
       'share_rule': 'مشاركة الحكم',
       'app_coming_soon': 'قريباً على App Store و Google Play',
       'settings': 'الإعدادات',
@@ -208,7 +227,8 @@ class AppLocalizations {
       'quiz_level_intermediate': 'المستوى 2: متوسط',
       'quiz_level_intermediate_subtitle': 'أحكام شائعة بتفريقات أدق.',
       'quiz_level_advanced': 'المستوى 3: متقدم',
-      'quiz_level_advanced_subtitle': 'أحكام المد الطويل والقواعد المتقدمة المتخصصة.',
+      'quiz_level_advanced_subtitle':
+          'أحكام المد الطويل والقواعد المتقدمة المتخصصة.',
       'quiz_locked': 'مغلق',
       'quiz_unlocked': 'مفتوح',
       'best_score': 'أفضل نتيجة',
@@ -220,8 +240,10 @@ class AppLocalizations {
       'quiz_passed': 'تم اجتياز المستوى',
       'quiz_failed': 'لم يتم اجتياز المستوى',
       'quiz_next_level_unlocked': 'تم فتح المستوى التالي.',
-      'quiz_all_levels_unlocked': 'لقد أنهيت المستوى الأخير. جميع المستويات مفتوحة الآن.',
-      'quiz_pass_requirement_met': 'تم تحقيق شرط النجاح. يمكنك إعادة المستوى أو المتابعة.',
+      'quiz_all_levels_unlocked':
+          'لقد أنهيت المستوى الأخير. جميع المستويات مفتوحة الآن.',
+      'quiz_pass_requirement_met':
+          'تم تحقيق شرط النجاح. يمكنك إعادة المستوى أو المتابعة.',
       'quiz_recommended': 'موصى به',
       'quiz_finish_level': 'إنهاء المستوى',
     },
@@ -255,7 +277,8 @@ class AppLocalizations {
       'search_rules': 'قواعد تلاش کریں...',
       'search_surah_or_juz': 'سورہ/نام/نمبر یا پارہ۲ تلاش کریں...',
       'bookmarks': 'بک مارکس',
-      'bookmarks_empty_hint': 'ابھی کوئی بک مارک نہیں۔\nآیت پر لانگ پریس کریں یا مصحف صفحہ پر ٹیپ کریں۔',
+      'bookmarks_empty_hint':
+          'ابھی کوئی بک مارک نہیں۔\nآیت پر لانگ پریس کریں یا مصحف صفحہ پر ٹیپ کریں۔',
       'page_bookmarks': 'صفحہ بک مارکس',
       'ayah_bookmarks': 'آیت بک مارکس',
       'bookmark_added': 'بک مارک شامل ہوگیا',
@@ -285,7 +308,13 @@ class AppLocalizations {
       'rules_category_merging': 'ادغام اور اخفاء',
       'rules_category_stops_signs': 'وقف اور سجدہ کی علامات',
       'rules_category_orthographic': 'رسمِ عثمانی کے احکام',
+      'rules_category_fundamentals': 'تلاوت کے بنیادی احکام',
+      'rules_category_miscellaneous': 'تجوید کے متفرق موضوعات',
+      'rules_tab_tajweed': 'تجوید کے قواعد',
+      'rules_tab_more': 'مزید موضوعات',
+      'search_tajweed_topics': 'موضوعات تلاش کریں...',
       'hear_pronunciation': 'تلفظ سنیں',
+      'hear_example': 'مثال سنیں',
       'share_rule': 'قاعدہ شیئر کریں',
       'app_coming_soon': 'جلد ہی App Store اور Google Play پر',
       'settings': 'ترتیبات',
@@ -307,7 +336,8 @@ class AppLocalizations {
       'quiz_level_beginner': 'سطح 1: ابتدائی',
       'quiz_level_beginner_subtitle': 'بنیادی قواعد اور آسان شناختی مثالیں۔',
       'quiz_level_intermediate': 'سطح 2: متوسط',
-      'quiz_level_intermediate_subtitle': 'عام اطلاقی قواعد جن میں باریک فرق ہوں۔',
+      'quiz_level_intermediate_subtitle':
+          'عام اطلاقی قواعد جن میں باریک فرق ہوں۔',
       'quiz_level_advanced': 'سطح 3: اعلیٰ',
       'quiz_level_advanced_subtitle': 'طویل مد اور مخصوص اعلیٰ درجے کے قواعد۔',
       'quiz_locked': 'مقفل',
@@ -321,8 +351,10 @@ class AppLocalizations {
       'quiz_passed': 'سطح پاس ہوگئی',
       'quiz_failed': 'سطح پاس نہ ہو سکی',
       'quiz_next_level_unlocked': 'اگلی سطح کھل گئی ہے۔',
-      'quiz_all_levels_unlocked': 'آپ نے آخری سطح مکمل کر لی۔ اب تمام سطحیں کھل چکی ہیں۔',
-      'quiz_pass_requirement_met': 'پاس ہونے کی شرط پوری ہوگئی۔ آپ دوبارہ بھی کھیل سکتے ہیں یا آگے بڑھ سکتے ہیں۔',
+      'quiz_all_levels_unlocked':
+          'آپ نے آخری سطح مکمل کر لی۔ اب تمام سطحیں کھل چکی ہیں۔',
+      'quiz_pass_requirement_met':
+          'پاس ہونے کی شرط پوری ہوگئی۔ آپ دوبارہ بھی کھیل سکتے ہیں یا آگے بڑھ سکتے ہیں۔',
       'quiz_recommended': 'تجویز کردہ',
       'quiz_finish_level': 'سطح مکمل کریں',
     },
@@ -356,7 +388,8 @@ class AppLocalizations {
       'search_rules': 'Kural ara...',
       'search_surah_or_juz': 'Sure/ad/sayı veya cüz2 ara...',
       'bookmarks': 'Yer imleri',
-      'bookmarks_empty_hint': 'Henüz yer imi yok.\nBir ayete uzun basın veya Mushaf sayfasına dokunun.',
+      'bookmarks_empty_hint':
+          'Henüz yer imi yok.\nBir ayete uzun basın veya Mushaf sayfasına dokunun.',
       'page_bookmarks': 'Sayfa yer imleri',
       'ayah_bookmarks': 'Ayet yer imleri',
       'bookmark_added': 'Yer imi eklendi',
@@ -386,7 +419,13 @@ class AppLocalizations {
       'rules_category_merging': 'İdğam ve İhfa',
       'rules_category_stops_signs': 'Vakf ve Secde İşaretleri',
       'rules_category_orthographic': 'Yazım Kuralları',
+      'rules_category_fundamentals': 'Temel Tilavet Kuralları',
+      'rules_category_miscellaneous': 'Diğer Tecvit Konuları',
+      'rules_tab_tajweed': 'Tecvit Kuralları',
+      'rules_tab_more': 'Diğer Konular',
+      'search_tajweed_topics': 'Konularda ara...',
       'hear_pronunciation': 'Telaffuzu dinle',
+      'hear_example': 'Örneği dinle',
       'share_rule': 'Kuralı paylaş',
       'app_coming_soon': 'App Store ve Google Play\'de yakında',
       'settings': 'Ayarlar',
@@ -404,11 +443,14 @@ class AppLocalizations {
       'todays_lesson_title': 'Mülk Suresinde Ğunne',
       'days': 'gün',
       'quiz_levels': 'Quiz seviyeleri',
-      'choose_level': 'Pratik yapmak ve bir sonrakini açmak için bir seviye seçin.',
+      'choose_level':
+          'Pratik yapmak ve bir sonrakini açmak için bir seviye seçin.',
       'quiz_level_beginner': 'Seviye 1: Başlangıç',
-      'quiz_level_beginner_subtitle': 'Temel kurallar ve kolay tanınan örnekler.',
+      'quiz_level_beginner_subtitle':
+          'Temel kurallar ve kolay tanınan örnekler.',
       'quiz_level_intermediate': 'Seviye 2: Orta',
-      'quiz_level_intermediate_subtitle': 'Daha yakın ayrımları olan yaygın uygulamalı kurallar.',
+      'quiz_level_intermediate_subtitle':
+          'Daha yakın ayrımları olan yaygın uygulamalı kurallar.',
       'quiz_level_advanced': 'Seviye 3: İleri',
       'quiz_level_advanced_subtitle': 'Uzun med ve ileri düzey özel kurallar.',
       'quiz_locked': 'Kilitli',
@@ -422,8 +464,10 @@ class AppLocalizations {
       'quiz_passed': 'Seviye geçildi',
       'quiz_failed': 'Seviye geçilemedi',
       'quiz_next_level_unlocked': 'Bir sonraki seviye açıldı.',
-      'quiz_all_levels_unlocked': 'Son seviyeyi tamamladınız. Tüm seviyeler artık açık.',
-      'quiz_pass_requirement_met': 'Geçme şartı sağlandı. Bu seviyeyi tekrar oynayabilir veya devam edebilirsiniz.',
+      'quiz_all_levels_unlocked':
+          'Son seviyeyi tamamladınız. Tüm seviyeler artık açık.',
+      'quiz_pass_requirement_met':
+          'Geçme şartı sağlandı. Bu seviyeyi tekrar oynayabilir veya devam edebilirsiniz.',
       'quiz_recommended': 'Önerilen',
       'quiz_finish_level': 'Seviyeyi bitir',
     },
@@ -457,7 +501,8 @@ class AppLocalizations {
       'search_rules': 'Rechercher une règle...',
       'search_surah_or_juz': 'Rechercher sourate/nom/numéro ou juz2...',
       'bookmarks': 'Signets',
-      'bookmarks_empty_hint': 'Aucun signet pour le moment.\nAppuyez longuement sur un verset ou touchez une page du Mushaf.',
+      'bookmarks_empty_hint':
+          'Aucun signet pour le moment.\nAppuyez longuement sur un verset ou touchez une page du Mushaf.',
       'page_bookmarks': 'Signets de page',
       'ayah_bookmarks': 'Signets de verset',
       'bookmark_added': 'Signet ajouté',
@@ -473,7 +518,8 @@ class AppLocalizations {
       'tab_quiz': 'Quiz',
       'tab_rules': 'Règles',
       'full_details': 'Détails complets',
-      'full_details_in_rules_library': 'Détails complets dans la bibliothèque des règles',
+      'full_details_in_rules_library':
+          'Détails complets dans la bibliothèque des règles',
       'examples': 'Exemples',
       'quran_text': 'Texte du Coran',
       'recitation_audio': 'Audio de récitation',
@@ -487,7 +533,13 @@ class AppLocalizations {
       'rules_category_merging': 'Fusion et Dissimulation',
       'rules_category_stops_signs': 'Signes de Pause et Sajdah',
       'rules_category_orthographic': 'Règles Orthographiques',
+      'rules_category_fundamentals': 'Principes de Récitation',
+      'rules_category_miscellaneous': 'Autres Sujets de Tajwid',
+      'rules_tab_tajweed': 'Règles de Tajwid',
+      'rules_tab_more': 'Autres Sujets',
+      'search_tajweed_topics': 'Rechercher un sujet...',
       'hear_pronunciation': 'Écouter la prononciation',
+      'hear_example': 'Écouter l’exemple',
       'share_rule': 'Partager la règle',
       'app_coming_soon': 'Bientôt sur l\'App Store et Google Play',
       'settings': 'Paramètres',
@@ -505,13 +557,17 @@ class AppLocalizations {
       'todays_lesson_title': 'Ghounna dans la sourate Al-Mulk',
       'days': 'jours',
       'quiz_levels': 'Niveaux du quiz',
-      'choose_level': 'Choisissez un niveau pour vous entraîner et débloquer le suivant.',
+      'choose_level':
+          'Choisissez un niveau pour vous entraîner et débloquer le suivant.',
       'quiz_level_beginner': 'Niveau 1 : Débutant',
-      'quiz_level_beginner_subtitle': 'Règles fondamentales et motifs faciles à reconnaître.',
+      'quiz_level_beginner_subtitle':
+          'Règles fondamentales et motifs faciles à reconnaître.',
       'quiz_level_intermediate': 'Niveau 2 : Intermédiaire',
-      'quiz_level_intermediate_subtitle': 'Règles fréquentes avec des distinctions plus fines.',
+      'quiz_level_intermediate_subtitle':
+          'Règles fréquentes avec des distinctions plus fines.',
       'quiz_level_advanced': 'Niveau 3 : Avancé',
-      'quiz_level_advanced_subtitle': 'Madd long et règles avancées spécialisées.',
+      'quiz_level_advanced_subtitle':
+          'Madd long et règles avancées spécialisées.',
       'quiz_locked': 'Verrouillé',
       'quiz_unlocked': 'Déverrouillé',
       'best_score': 'Meilleur score',
@@ -523,8 +579,10 @@ class AppLocalizations {
       'quiz_passed': 'Niveau réussi',
       'quiz_failed': 'Niveau non réussi',
       'quiz_next_level_unlocked': 'Vous avez débloqué le niveau suivant.',
-      'quiz_all_levels_unlocked': 'Vous avez terminé le dernier niveau. Tous les niveaux sont désormais débloqués.',
-      'quiz_pass_requirement_met': 'Le seuil est atteint. Vous pouvez rejouer ce niveau ou continuer.',
+      'quiz_all_levels_unlocked':
+          'Vous avez terminé le dernier niveau. Tous les niveaux sont désormais débloqués.',
+      'quiz_pass_requirement_met':
+          'Le seuil est atteint. Vous pouvez rejouer ce niveau ou continuer.',
       'quiz_recommended': 'Recommandé',
       'quiz_finish_level': 'Terminer le niveau',
     },
@@ -558,7 +616,8 @@ class AppLocalizations {
       'search_rules': 'Cari aturan...',
       'search_surah_or_juz': 'Cari surah/nama/nomor atau juz2...',
       'bookmarks': 'Bookmark',
-      'bookmarks_empty_hint': 'Belum ada bookmark.\nTekan lama ayat atau ketuk halaman Mushaf untuk menandai.',
+      'bookmarks_empty_hint':
+          'Belum ada bookmark.\nTekan lama ayat atau ketuk halaman Mushaf untuk menandai.',
       'page_bookmarks': 'Bookmark halaman',
       'ayah_bookmarks': 'Bookmark ayat',
       'bookmark_added': 'Bookmark ditambahkan',
@@ -588,7 +647,13 @@ class AppLocalizations {
       'rules_category_merging': 'Idgham dan Ikhfa',
       'rules_category_stops_signs': 'Tanda Waqaf dan Sajdah',
       'rules_category_orthographic': 'Aturan Rasm',
+      'rules_category_fundamentals': 'Dasar-Dasar Tilawah',
+      'rules_category_miscellaneous': 'Topik Tajwid Lainnya',
+      'rules_tab_tajweed': 'Aturan Tajwid',
+      'rules_tab_more': 'Topik Lainnya',
+      'search_tajweed_topics': 'Cari topik...',
       'hear_pronunciation': 'Dengarkan pengucapan',
+      'hear_example': 'Dengarkan contoh',
       'share_rule': 'Bagikan aturan',
       'app_coming_soon': 'Segera hadir di App Store dan Google Play',
       'settings': 'Pengaturan',
@@ -606,13 +671,17 @@ class AppLocalizations {
       'todays_lesson_title': 'Ghunnah di Surah Al-Mulk',
       'days': 'hari',
       'quiz_levels': 'Level kuis',
-      'choose_level': 'Pilih level untuk berlatih dan membuka level berikutnya.',
+      'choose_level':
+          'Pilih level untuk berlatih dan membuka level berikutnya.',
       'quiz_level_beginner': 'Level 1: Pemula',
-      'quiz_level_beginner_subtitle': 'Aturan dasar dan pola yang mudah dikenali.',
+      'quiz_level_beginner_subtitle':
+          'Aturan dasar dan pola yang mudah dikenali.',
       'quiz_level_intermediate': 'Level 2: Menengah',
-      'quiz_level_intermediate_subtitle': 'Aturan umum dengan perbedaan yang lebih halus.',
+      'quiz_level_intermediate_subtitle':
+          'Aturan umum dengan perbedaan yang lebih halus.',
       'quiz_level_advanced': 'Level 3: Lanjutan',
-      'quiz_level_advanced_subtitle': 'Mad panjang dan aturan lanjutan yang lebih khusus.',
+      'quiz_level_advanced_subtitle':
+          'Mad panjang dan aturan lanjutan yang lebih khusus.',
       'quiz_locked': 'Terkunci',
       'quiz_unlocked': 'Terbuka',
       'best_score': 'Skor terbaik',
@@ -624,8 +693,10 @@ class AppLocalizations {
       'quiz_passed': 'Level lulus',
       'quiz_failed': 'Level belum lulus',
       'quiz_next_level_unlocked': 'Anda membuka level berikutnya.',
-      'quiz_all_levels_unlocked': 'Anda menyelesaikan level terakhir. Semua level kini terbuka.',
-      'quiz_pass_requirement_met': 'Syarat kelulusan terpenuhi. Anda dapat mengulang level ini atau melanjutkan.',
+      'quiz_all_levels_unlocked':
+          'Anda menyelesaikan level terakhir. Semua level kini terbuka.',
+      'quiz_pass_requirement_met':
+          'Syarat kelulusan terpenuhi. Anda dapat mengulang level ini atau melanjutkan.',
       'quiz_recommended': 'Direkomendasikan',
       'quiz_finish_level': 'Selesaikan level',
     },
@@ -659,7 +730,8 @@ class AppLocalizations {
       'search_rules': 'Regeln suchen...',
       'search_surah_or_juz': 'Suche Sure/Name/Nummer oder Dschuz2...',
       'bookmarks': 'Lesezeichen',
-      'bookmarks_empty_hint': 'Noch keine Lesezeichen.\nHalte einen Vers gedrückt oder tippe auf eine Mushaf-Seite.',
+      'bookmarks_empty_hint':
+          'Noch keine Lesezeichen.\nHalte einen Vers gedrückt oder tippe auf eine Mushaf-Seite.',
       'page_bookmarks': 'Seiten-Lesezeichen',
       'ayah_bookmarks': 'Vers-Lesezeichen',
       'bookmark_added': 'Lesezeichen hinzugefügt',
@@ -675,7 +747,8 @@ class AppLocalizations {
       'tab_quiz': 'Quiz',
       'tab_rules': 'Regeln',
       'full_details': 'Vollständige Details',
-      'full_details_in_rules_library': 'Vollständige Details in der Regelbibliothek',
+      'full_details_in_rules_library':
+          'Vollständige Details in der Regelbibliothek',
       'examples': 'Beispiele',
       'quran_text': 'Korantext',
       'recitation_audio': 'Rezitationsaudio',
@@ -689,7 +762,13 @@ class AppLocalizations {
       'rules_category_merging': 'Assimilation und Verbergen',
       'rules_category_stops_signs': 'Stopp- und Sajdah-Zeichen',
       'rules_category_orthographic': 'Orthographische Regeln',
+      'rules_category_fundamentals': 'Grundlagen der Rezitation',
+      'rules_category_miscellaneous': 'Weitere Tajweed-Themen',
+      'rules_tab_tajweed': 'Tajweed-Regeln',
+      'rules_tab_more': 'Weitere Themen',
+      'search_tajweed_topics': 'Themen durchsuchen...',
       'hear_pronunciation': 'Aussprache anhören',
+      'hear_example': 'Beispiel anhören',
       'share_rule': 'Regel teilen',
       'app_coming_soon': 'Demnächst im App Store und bei Google Play',
       'settings': 'Einstellungen',
@@ -709,11 +788,14 @@ class AppLocalizations {
       'quiz_levels': 'Quizstufen',
       'choose_level': 'Wähle eine Stufe zum Üben und schalte die nächste frei.',
       'quiz_level_beginner': 'Stufe 1: Anfänger',
-      'quiz_level_beginner_subtitle': 'Grundlegende Regeln und leicht erkennbare Muster.',
+      'quiz_level_beginner_subtitle':
+          'Grundlegende Regeln und leicht erkennbare Muster.',
       'quiz_level_intermediate': 'Stufe 2: Mittelstufe',
-      'quiz_level_intermediate_subtitle': 'Häufige angewandte Regeln mit feineren Unterschieden.',
+      'quiz_level_intermediate_subtitle':
+          'Häufige angewandte Regeln mit feineren Unterschieden.',
       'quiz_level_advanced': 'Stufe 3: Fortgeschritten',
-      'quiz_level_advanced_subtitle': 'Langes Madd und spezialisierte fortgeschrittene Regeln.',
+      'quiz_level_advanced_subtitle':
+          'Langes Madd und spezialisierte fortgeschrittene Regeln.',
       'quiz_locked': 'Gesperrt',
       'quiz_unlocked': 'Freigeschaltet',
       'best_score': 'Beste Punktzahl',
@@ -725,8 +807,10 @@ class AppLocalizations {
       'quiz_passed': 'Stufe bestanden',
       'quiz_failed': 'Stufe nicht bestanden',
       'quiz_next_level_unlocked': 'Die nächste Stufe wurde freigeschaltet.',
-      'quiz_all_levels_unlocked': 'Du hast die letzte Stufe abgeschlossen. Alle Stufen sind jetzt freigeschaltet.',
-      'quiz_pass_requirement_met': 'Die Bestehensgrenze wurde erreicht. Du kannst diese Stufe wiederholen oder fortfahren.',
+      'quiz_all_levels_unlocked':
+          'Du hast die letzte Stufe abgeschlossen. Alle Stufen sind jetzt freigeschaltet.',
+      'quiz_pass_requirement_met':
+          'Die Bestehensgrenze wurde erreicht. Du kannst diese Stufe wiederholen oder fortfahren.',
       'quiz_recommended': 'Empfohlen',
       'quiz_finish_level': 'Stufe abschließen',
     },
@@ -747,7 +831,8 @@ class AppLocalizations {
       'search_rules': 'Buscar reglas...',
       'search_surah_or_juz': 'Buscar sura/nombre/número o yuz2...',
       'bookmarks': 'Marcadores',
-      'bookmarks_empty_hint': 'Aún no hay marcadores.\nMantén pulsada una aleya o toca una página del Mushaf.',
+      'bookmarks_empty_hint':
+          'Aún no hay marcadores.\nMantén pulsada una aleya o toca una página del Mushaf.',
       'page_bookmarks': 'Marcadores de página',
       'ayah_bookmarks': 'Marcadores de aleya',
       'bookmark_added': 'Marcador añadido',
@@ -774,13 +859,23 @@ class AppLocalizations {
       'trigger_letters': 'Letras desencadenantes',
       'how_to_pronounce': 'Cómo pronunciar',
       'hear_pronunciation': 'Escuchar pronunciación',
+      'hear_example': 'Escuchar ejemplo',
       'stop': 'Detener',
+      'rules_category_madd': 'Reglas de Madd',
+      'rules_category_noon_meem': 'Reglas de Nun/Mim',
+      'rules_category_merging': 'Asimilación y ocultación',
+      'rules_category_stops_signs': 'Signos de pausa y Sajdah',
+      'rules_category_orthographic': 'Reglas ortográficas',
+      'rules_category_fundamentals': 'Fundamentos de la recitación',
+      'rules_category_miscellaneous': 'Otros temas de Tajweed',
+      'rules_tab_tajweed': 'Reglas de Tajweed',
+      'rules_tab_more': 'Más temas',
+      'search_tajweed_topics': 'Buscar temas...',
       'share_rule': 'Compartir regla',
       'recitation_audio': 'Audio de recitación',
       'listen_here': 'escuchar aquí',
       'ayah_link': 'Enlace de la aleya',
-      'app_coming_soon':
-          'Próximamente en App Store y Google Play',
+      'app_coming_soon': 'Próximamente en App Store y Google Play',
       'settings': 'Ajustes',
       'language': 'Idioma',
       'select_language': 'Seleccionar idioma',
@@ -794,9 +889,7 @@ class AppLocalizations {
 
   String get(String key) {
     final lang = locale.languageCode;
-    return _translations[lang]?[key] ??
-        _translations['en']?[key] ??
-        key;
+    return _translations[lang]?[key] ?? _translations['en']?[key] ?? key;
   }
 
   // Convenience getters
@@ -819,6 +912,7 @@ class AppLocalizations {
   String get language => get('language');
   String get selectLanguage => get('select_language');
   String get hearPronunciation => get('hear_pronunciation');
+  String get hearExample => get('hear_example');
 }
 
 class _AppLocalizationsDelegate
@@ -826,9 +920,9 @@ class _AppLocalizationsDelegate
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) =>
-      AppLocalizations.supportedLocales
-          .any((l) => l.languageCode == locale.languageCode);
+  bool isSupported(Locale locale) => AppLocalizations.supportedLocales.any(
+    (l) => l.languageCode == locale.languageCode,
+  );
 
   @override
   Future<AppLocalizations> load(Locale locale) async =>

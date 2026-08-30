@@ -6,9 +6,16 @@ import '../../core/models/tajweed_models.dart';
 import '../../core/providers/locale_provider.dart';
 import 'rule_detail_screen.dart';
 import 'rules_repository.dart';
+import 'tajweed_article.dart';
+import 'tajweed_article_detail_screen.dart';
+import 'tajweed_articles_repository.dart';
+
+enum _RulesLibraryTab { rules, more }
 
 class RulesScreen extends StatefulWidget {
-  const RulesScreen({super.key});
+  final String? languageCodeOverride;
+
+  const RulesScreen({super.key, this.languageCodeOverride});
 
   @override
   State<RulesScreen> createState() => _RulesScreenState();
@@ -19,16 +26,49 @@ class _RulesScreenState extends State<RulesScreen> {
   String _search = '';
   TajweedRule? _filter;
   int? _expandedIndex;
+  _RulesLibraryTab _selectedTab = _RulesLibraryTab.rules;
+
+  String get _languageCode =>
+      widget.languageCodeOverride ??
+      context.read<LocaleProvider>().locale.languageCode;
 
   List<TajweedRuleDefinition> get _filtered {
+    if (_selectedTab != _RulesLibraryTab.rules) return const [];
     return RulesRepository.all.where((d) {
       if (_filter != null && d.rule != _filter) return false;
       if (_search.isEmpty) return true;
-      final langCode = context.read<LocaleProvider>().locale.languageCode;
-      final name = d.name(langCode).toLowerCase();
-      final desc = d.description(langCode).toLowerCase();
+      final name = d.name(_languageCode).toLowerCase();
+      final desc = d.description(_languageCode).toLowerCase();
       return name.contains(_search) || desc.contains(_search);
     }).toList();
+  }
+
+  List<TajweedArticle> get _filteredArticles {
+    if (_filter != null) return const [];
+    final category = _selectedTab == _RulesLibraryTab.rules
+        ? TajweedArticleCategory.fundamentals
+        : TajweedArticleCategory.miscellaneous;
+    return TajweedArticlesRepository.search(
+      _search,
+      _languageCode,
+    ).where((article) => article.category == category).toList();
+  }
+
+  List<_ArticleGroup> _groupedArticles(
+    List<TajweedArticle> articles,
+    String langCode,
+  ) {
+    return TajweedArticleCategory.values
+        .map((category) {
+          final matches =
+              articles.where((article) => article.category == category).toList()
+                ..sort(
+                  (a, b) => a.title(langCode).compareTo(b.title(langCode)),
+                );
+          return _ArticleGroup(category: category, articles: matches);
+        })
+        .where((group) => group.articles.isNotEmpty)
+        .toList();
   }
 
   List<_RuleGroup> _grouped(
@@ -109,6 +149,17 @@ class _RulesScreenState extends State<RulesScreen> {
     });
   }
 
+  void _selectTab(_RulesLibraryTab tab) {
+    if (_selectedTab == tab) return;
+    _searchController.clear();
+    setState(() {
+      _selectedTab = tab;
+      _search = '';
+      _filter = null;
+      _expandedIndex = null;
+    });
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -118,9 +169,49 @@ class _RulesScreenState extends State<RulesScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final langCode = context.read<LocaleProvider>().locale.languageCode;
+    final langCode = _languageCode;
     final rules = _filtered;
     final groups = _grouped(rules, langCode);
+    final articleGroups = _groupedArticles(_filteredArticles, langCode);
+    final sections = <Widget>[
+      ...articleGroups.map(
+        (group) => _ArticleGroupSection(
+          group: group,
+          languageCode: langCode,
+          l10n: l10n,
+          onOpen: (article) => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TajweedArticleDetailScreen(
+                article: article,
+                languageCode: langCode,
+              ),
+            ),
+          ),
+        ),
+      ),
+      ...groups.indexed.map((entry) {
+        final index = entry.$1;
+        final group = entry.$2;
+        return _RuleGroupSection(
+          group: group,
+          langCode: langCode,
+          l10n: l10n,
+          expandedIndex: _expandedIndex,
+          onToggle: (flatIndex) => setState(
+            () =>
+                _expandedIndex = _expandedIndex == flatIndex ? null : flatIndex,
+          ),
+          onOpenDetail: (definition) => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RuleDetailScreen(definition: definition),
+            ),
+          ),
+          baseFlatIndex: groups
+              .take(index)
+              .fold<int>(0, (sum, item) => sum + item.rules.length),
+        );
+      }),
+    ];
 
     return PopScope(
       canPop: _search.isEmpty,
@@ -133,10 +224,21 @@ class _RulesScreenState extends State<RulesScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _LibraryTabSelector(
+                selected: _selectedTab,
+                rulesLabel: l10n.get('rules_tab_tajweed'),
+                moreLabel: l10n.get('rules_tab_more'),
+                onSelect: _selectTab,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: l10n.searchRules,
+                  hintText: _selectedTab == _RulesLibraryTab.rules
+                      ? l10n.searchRules
+                      : l10n.get('search_tajweed_topics'),
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _search.isEmpty
                       ? null
@@ -152,18 +254,22 @@ class _RulesScreenState extends State<RulesScreen> {
                 }),
               ),
             ),
-            const SizedBox(height: 10),
-            _CategoryPills(
-              selected: _filter,
-              langCode: langCode,
-              onSelect: (r) => setState(() {
-                _filter = r;
-                _expandedIndex = null;
-              }),
-            ),
+            if (_selectedTab == _RulesLibraryTab.rules) ...[
+              const SizedBox(height: 10),
+              _CategoryPills(
+                selected: _filter,
+                langCode: langCode,
+                allLabel: l10n.allRules,
+                onSelect: (r) => setState(() {
+                  _filter = r;
+                  _expandedIndex = null;
+                }),
+              ),
+            ] else
+              const SizedBox(height: 10),
             const Divider(height: 0.5),
             Expanded(
-              child: rules.isEmpty
+              child: sections.isEmpty
                   ? Center(
                       child: Text(
                         l10n.get('all_rules'),
@@ -172,32 +278,10 @@ class _RulesScreenState extends State<RulesScreen> {
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: groups.length,
-                      separatorBuilder: (_, __) =>
+                      itemCount: sections.length,
+                      separatorBuilder: (_, _) =>
                           const Divider(height: 0.5, indent: 16),
-                      itemBuilder: (context, i) {
-                        final group = groups[i];
-                        return _RuleGroupSection(
-                          group: group,
-                          langCode: langCode,
-                          l10n: l10n,
-                          expandedIndex: _expandedIndex,
-                          onToggle: (flatIndex) => setState(
-                            () => _expandedIndex =
-                                _expandedIndex == flatIndex ? null : flatIndex,
-                          ),
-                          onOpenDetail: (definition) =>
-                              Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  RuleDetailScreen(definition: definition),
-                            ),
-                          ),
-                          baseFlatIndex: groups
-                              .take(i)
-                              .fold<int>(0, (sum, g) => sum + g.rules.length),
-                        );
-                      },
+                      itemBuilder: (_, index) => sections[index],
                     ),
             ),
           ],
@@ -207,14 +291,100 @@ class _RulesScreenState extends State<RulesScreen> {
   }
 }
 
+class _LibraryTabSelector extends StatelessWidget {
+  final _RulesLibraryTab selected;
+  final String rulesLabel;
+  final String moreLabel;
+  final ValueChanged<_RulesLibraryTab> onSelect;
+
+  const _LibraryTabSelector({
+    required this.selected,
+    required this.rulesLabel,
+    required this.moreLabel,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _LibraryTabButton(
+              label: rulesLabel,
+              selected: selected == _RulesLibraryTab.rules,
+              onTap: () => onSelect(_RulesLibraryTab.rules),
+            ),
+          ),
+          Expanded(
+            child: _LibraryTabButton(
+              label: moreLabel,
+              selected: selected == _RulesLibraryTab.more,
+              onTap: () => onSelect(_RulesLibraryTab.more),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LibraryTabButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LibraryTabButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected ? colorScheme.surface : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CategoryPills extends StatelessWidget {
   final TajweedRule? selected;
   final String langCode;
+  final String allLabel;
   final void Function(TajweedRule?) onSelect;
 
   const _CategoryPills({
     required this.selected,
     required this.langCode,
+    required this.allLabel,
     required this.onSelect,
   });
 
@@ -226,7 +396,7 @@ class _CategoryPills extends StatelessWidget {
       child: Row(
         children: [
           _Pill(
-            label: 'All',
+            label: allLabel,
             selected: selected == null,
             color: const Color(0xFF1D9E75),
             onTap: () => onSelect(null),
@@ -241,6 +411,104 @@ class _CategoryPills extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ArticleGroup {
+  final TajweedArticleCategory category;
+  final List<TajweedArticle> articles;
+
+  const _ArticleGroup({required this.category, required this.articles});
+}
+
+class _ArticleGroupSection extends StatelessWidget {
+  final _ArticleGroup group;
+  final String languageCode;
+  final AppLocalizations l10n;
+  final ValueChanged<TajweedArticle> onOpen;
+
+  const _ArticleGroupSection({
+    required this.group,
+    required this.languageCode,
+    required this.l10n,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryKey = group.category == TajweedArticleCategory.fundamentals
+        ? 'rules_category_fundamentals'
+        : 'rules_category_miscellaneous';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          child: Text(
+            l10n.get(categoryKey),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+        ...group.articles.map(
+          (article) => _ArticleCard(
+            article: article,
+            languageCode: languageCode,
+            onOpen: () => onOpen(article),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ArticleCard extends StatelessWidget {
+  final TajweedArticle article;
+  final String languageCode;
+  final VoidCallback onOpen;
+
+  const _ArticleCard({
+    required this.article,
+    required this.languageCode,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = article.category == TajweedArticleCategory.fundamentals
+        ? const Color(0xFF176B5B)
+        : const Color(0xFF6A4C93);
+
+    return ListTile(
+      onTap: onOpen,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: 0.12),
+        foregroundColor: color,
+        child: Icon(
+          article.category == TajweedArticleCategory.fundamentals
+              ? Icons.menu_book_rounded
+              : Icons.auto_stories_rounded,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        article.title(languageCode),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          article.summary(languageCode),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded),
     );
   }
 }
@@ -349,8 +617,9 @@ class _RuleCard extends StatelessWidget {
         ),
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 200),
-          crossFadeState:
-              expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+          crossFadeState: expanded
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
           firstChild: Container(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -454,9 +723,9 @@ class _RuleGroupSection extends StatelessWidget {
           child: Text(
             l10n.get(group.title),
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ),
         ...List.generate(group.rules.length, (idx) {

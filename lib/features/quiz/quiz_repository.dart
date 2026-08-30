@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../../core/models/tajweed_models.dart';
 import '../rules/rules_repository.dart';
+import '../rules/waqf_symbols.dart';
 
 enum QuizLevel { beginner, intermediate, advanced }
 
@@ -114,6 +115,10 @@ class QuizRepository {
     final questions = <QuizQuestion>[];
 
     for (int ri = 0; ri < rules.length; ri++) {
+      if (rules[ri].rule == TajweedRule.waqf) {
+        questions.addAll(_buildWaqfQuestions());
+        continue;
+      }
       for (int variant = 0; variant < 5; variant++) {
         questions.add(_buildQuestionForRule(rules, ri, variant));
       }
@@ -150,16 +155,107 @@ class QuizRepository {
     final arabic = target.exampleArabic.isEmpty
         ? target.triggerLetters.join('')
         : target.exampleArabic[variant % target.exampleArabic.length];
+    final highlight = _highlightRange(
+      target.rule,
+      arabic,
+      variant % target.exampleArabic.length,
+    );
 
     return QuizQuestion(
       rule: target.rule,
       arabicText: arabic,
+      highlightRanges: [
+        QuizHighlightRange(start: highlight.start, end: highlight.end),
+      ],
       questionText: _questionTemplate(variant),
       options: options,
       correctIndex: correctIndex,
       explanation: _explanationTemplate(target, variant),
     );
   }
+
+  static List<QuizQuestion> _buildWaqfQuestions() {
+    return [
+      for (final example in WaqfSymbols.examples) _buildWaqfQuestion(example),
+    ];
+  }
+
+  static QuizQuestion _buildWaqfQuestion(WaqfSymbolExample example) {
+    final correctIndex = example.index % 4;
+    final wrongIndexes = [
+      (example.index + 1) % WaqfSymbols.examples.length,
+      (example.index + 3) % WaqfSymbols.examples.length,
+      (example.index + 5) % WaqfSymbols.examples.length,
+    ];
+    final options = <Map<String, String>>[];
+    var wrongCursor = 0;
+
+    for (var index = 0; index < 4; index++) {
+      options.add(
+        _waqfStringMap(
+          'name_${index == correctIndex ? example.index : wrongIndexes[wrongCursor++]}',
+        ),
+      );
+    }
+
+    return QuizQuestion(
+      rule: TajweedRule.waqf,
+      arabicText: example.arabicText,
+      highlightRanges: _rangesForSymbol(
+        example.arabicText,
+        example.quranSymbol,
+      ),
+      questionText: _waqfQuestionTemplate,
+      options: options,
+      correctIndex: correctIndex,
+      explanation: {
+        for (final langCode in _supportedLanguageCodes)
+          langCode:
+              '${WaqfRuleStrings(langCode).text('name_${example.index}')}: '
+              '${WaqfRuleStrings(langCode).text('description_${example.index}')}',
+      },
+    );
+  }
+
+  static List<QuizHighlightRange> _rangesForSymbol(String text, String symbol) {
+    final ranges = <QuizHighlightRange>[];
+    var start = text.indexOf(symbol);
+    while (start >= 0) {
+      ranges.add(QuizHighlightRange(start: start, end: start + symbol.length));
+      start = text.indexOf(symbol, start + symbol.length);
+    }
+    if (ranges.isEmpty) {
+      throw StateError('Waqf symbol "$symbol" was not found in "$text"');
+    }
+    return ranges;
+  }
+
+  static Map<String, String> _waqfStringMap(String key) => {
+    for (final langCode in _supportedLanguageCodes)
+      langCode: WaqfRuleStrings(langCode).text(key),
+  };
+
+  static const _supportedLanguageCodes = [
+    'en',
+    'ar',
+    'ur',
+    'tr',
+    'fr',
+    'id',
+    'de',
+    'es',
+  ];
+
+  static const _waqfQuestionTemplate = {
+    'en': 'What does the highlighted Waqf sign indicate?',
+    'ar': 'ماذا تدل علامة الوقف الملوّنة؟',
+    'ur': 'نمایاں وقف کی علامت کیا بتاتی ہے؟',
+    'tr': 'Vurgulanan vakıf işareti neyi belirtir?',
+    'fr': 'Que signifie le signe de waqf surligné ?',
+    'id': 'Apa arti tanda waqaf yang disorot?',
+    'de': 'Was bedeutet das hervorgehobene Waqf-Zeichen?',
+    'es': '¿Qué indica el signo de waqf resaltado?',
+  };
 
   static Map<String, String> _nameMap(TajweedRuleDefinition def) => {
     'en': def.names['en'] ?? '',
@@ -169,62 +265,64 @@ class QuizRepository {
     'fr': def.names['fr'] ?? '',
     'id': def.names['id'] ?? '',
     'de': def.names['de'] ?? '',
+    'es': def.names['es'] ?? def.names['en'] ?? '',
   };
 
-  static Map<String, String> _questionTemplate(int variant) {
-    switch (variant % 5) {
-      case 0:
-        return {
-          'en': 'Which tajweed rule is shown in this phrase?',
-          'ar': 'ما قاعدة التجويد الظاهرة في هذا المثال؟',
-          'ur': 'اس مثال میں کون سا تجویدی قاعدہ ہے؟',
-          'tr': 'Bu ifadede hangi tecvid kuralı var?',
-          'fr': 'Quelle règle de tajweed apparaît dans cette expression?',
-          'id': 'Kaidah tajwid apa yang muncul pada contoh ini?',
-          'de': 'Welche Tajweed-Regel erscheint in diesem Beispiel?',
-        };
-      case 1:
-        return {
-          'en': 'Identify the correct rule for this recitation pattern.',
-          'ar': 'حدّد الحكم الصحيح لهذا النمط من التلاوة.',
-          'ur': 'اس تلاوتی نمونے کے لیے درست حکم منتخب کریں۔',
-          'tr': 'Bu okuma örüntüsü için doğru kuralı seçin.',
-          'fr': 'Identifiez la règle correcte pour ce motif de récitation.',
-          'id': 'Tentukan kaidah yang benar untuk pola bacaan ini.',
-          'de': 'Bestimme die richtige Regel für dieses Rezitationsmuster.',
-        };
-      case 2:
-        return {
-          'en': 'What is the ruling applied in this ayah segment?',
-          'ar': 'ما الحكم المطبق في هذا المقطع من الآية؟',
-          'ur': 'آیت کے اس حصے میں کون سا حکم لاگو ہوتا ہے؟',
-          'tr': 'Bu ayet bölümünde hangi kural uygulanır?',
-          'fr': 'Quelle règle est appliquée dans ce segment du verset?',
-          'id': 'Hukum apa yang diterapkan pada potongan ayat ini?',
-          'de': 'Welche Regel wird in diesem Aya-Abschnitt angewandt?',
-        };
-      case 3:
-        return {
-          'en': 'Choose the tajweed rule that best matches this text.',
-          'ar': 'اختر قاعدة التجويد الأنسب لهذا النص.',
-          'ur': 'اس متن کے مطابق درست تجویدی قاعدہ منتخب کریں۔',
-          'tr': 'Bu metne en uygun tecvid kuralını seçin.',
-          'fr': 'Choisissez la règle de tajweed qui correspond à ce texte.',
-          'id': 'Pilih kaidah tajwid yang paling sesuai untuk teks ini.',
-          'de': 'Wähle die Tajweed-Regel, die am besten zu diesem Text passt.',
-        };
-      default:
-        return {
-          'en': 'Which rule should be observed while reading this?',
-          'ar': 'أي حكم يجب مراعاته عند قراءة هذا المثال؟',
-          'ur': 'اسے پڑھتے وقت کون سا حکم ملحوظ رکھا جائے؟',
-          'tr': 'Bunu okurken hangi kurala dikkat edilmelidir?',
-          'fr': 'Quelle règle faut-il observer en lisant ceci ?',
-          'id': 'Aturan apa yang harus diperhatikan saat membacanya?',
-          'de': 'Welche Regel sollte beim Lesen hiervon beachtet werden?',
-        };
+  static Map<String, String> _questionTemplate(int _) => const {
+    'en': 'Which tajweed rule applies to the highlighted part?',
+    'ar': 'ما حكم التجويد في الجزء الملوّن؟',
+    'ur': 'نمایاں کیے گئے حصے پر کون سا تجویدی حکم لاگو ہوتا ہے؟',
+    'tr': 'Renkle vurgulanan bölümde hangi tecvid kuralı uygulanır?',
+    'fr': 'Quelle règle de tajwid s’applique à la partie surlignée ?',
+    'id': 'Hukum tajwid apa yang berlaku pada bagian berwarna?',
+    'de': 'Welche Tajweed-Regel gilt für die farblich markierte Stelle?',
+    'es': '¿Qué regla de Tajweed se aplica a la parte resaltada?',
+  };
+
+  static ({int start, int end}) _highlightRange(
+    TajweedRule rule,
+    String arabic,
+    int exampleIndex,
+  ) {
+    final fragments = _highlightFragments[rule];
+    if (fragments == null || fragments.isEmpty) {
+      throw StateError('No quiz highlight fragments defined for ${rule.name}');
     }
+
+    final fragment = fragments[exampleIndex % fragments.length];
+    final start = arabic.indexOf(fragment);
+    if (start < 0) {
+      throw StateError(
+        'Quiz highlight "$fragment" was not found in "$arabic" for ${rule.name}',
+      );
+    }
+    return (start: start, end: start + fragment.length);
   }
+
+  static const Map<TajweedRule, List<String>> _highlightFragments = {
+    TajweedRule.ghunnah: ['نَّ', 'مَّ', 'نَّ'],
+    TajweedRule.qalqalah: ['دْ', 'بْ', 'دَ'],
+    TajweedRule.maddTabeei: ['ا', 'و', 'ي'],
+    TajweedRule.maddMuttasil: ['اء', 'اء', 'اء'],
+    TajweedRule.maddMunfasil: ['ي ', 'وا ', 'ا '],
+    TajweedRule.maddSilahSughra: ['هِۦ', 'هُۥ'],
+    TajweedRule.maddSilahKubra: ['هِۦٓ', 'هُۥٓ'],
+    TajweedRule.idghamWithGhunnah: ['ن يَّ', 'ن نِّ'],
+    TajweedRule.idghamWithoutGhunnah: ['ن رَّ', 'ًى لِّ'],
+    TajweedRule.ikhfa: ['ن ك', 'نك', 'نت'],
+    TajweedRule.iqlab: ['نْ ب', 'ٌ ب'],
+    TajweedRule.izhar: ['نْ آ', 'ٌ ح'],
+    TajweedRule.shaddah: ['يَّ', 'رَّ', 'مَّ'],
+    TajweedRule.waqf: ['ۘ', 'ۙ', 'ۚ', 'ۗ', 'ۖ', 'ۛ', 'ۜ'],
+    TajweedRule.sajdah: ['۩'],
+    TajweedRule.maddLazim: ['الِّ', 'ٓالم'],
+    TajweedRule.idghamShafawi: ['م مَّ'],
+    TajweedRule.idghamMutajanisayn: ['د تَّ'],
+    TajweedRule.ikhfaShafawi: ['م ب'],
+    TajweedRule.hamzatWasl: ['ٱ', 'ٱ'],
+    TajweedRule.laamShamsiyah: ['الشَّ', 'النَّ'],
+    TajweedRule.silent: ['و', 'ٰ'],
+  };
 
   static Map<String, String> _explanationTemplate(
     TajweedRuleDefinition def,
