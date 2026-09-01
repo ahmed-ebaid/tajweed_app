@@ -83,6 +83,7 @@ Tajweed 1.1.1 expands the rules library and makes every rule easier to learn.
 - Audio highlighting now follows the reciter's actual word timing
 - Improved rule details, quizzes, captions, and audio controls
 - Fixed Waqf symbol layout, Tarqeeq wording, and Arabic text
+- Fixed stray characters that appeared inside Tafseer passages
 
 ## Screenshot set
 
@@ -132,4 +133,4 @@ markers follow the QCF V2 printed-line metadata.
   retain request-level logs or transmit bookmarks, progress, or preferences.
 - Complete age-rating and content-rights questionnaires.
 - Confirm pricing, availability, review contact, and review phone number.
-- Keep the approved screenshot sets and select build 60.
+- Keep the approved screenshot sets and select build 61.
