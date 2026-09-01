@@ -1631,6 +1631,19 @@ class _AboutSourcesSheet extends StatelessWidget {
               _AboutBullet(text: s.text('other_b1')),
               _AboutBullet(text: s.text('other_b2')),
               _AboutBullet(text: s.text('other_b3')),
+              const SizedBox(height: 4),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: () => showLicensePage(
+                    context: context,
+                    applicationName: 'Tajweed Practice',
+                    applicationVersion: _appVersion,
+                  ),
+                  icon: const Icon(Icons.article_outlined, size: 18),
+                  label: Text(s.text('view_licenses')),
+                ),
+              ),
               const SizedBox(height: 12),
               Text(
                 '${s.text('version')} $_appVersion',
@@ -1950,6 +1963,7 @@ class _SettingsStrings {
           'Mushaf pages are rendered from Quran.Foundation Uthmani text and page metadata; the app does not redistribute page images.',
       'other_b3':
           'Mushaf text uses the Amiri Quran font by the Amiri Project, licensed under the SIL Open Font License 1.1.',
+      'view_licenses': 'View licenses',
       'no_items_available': 'No items available',
     },
     'ar': {
@@ -2060,6 +2074,7 @@ class _SettingsStrings {
           'تُعرض صفحات المصحف من نص عثماني وبيانات الصفحات من Quran.Foundation، ولا يعيد التطبيق توزيع صور صفحات المصحف.',
       'other_b3':
           'يستخدم نص المصحف خط Amiri Quran من مشروع Amiri، المرخص بموجب رخصة SIL Open Font License 1.1.',
+      'view_licenses': 'عرض التراخيص',
       'no_items_available': 'لا توجد عناصر متاحة',
     },
     'ur': {
@@ -2171,6 +2186,7 @@ class _SettingsStrings {
           'مصحف کے صفحات Quran.Foundation کے عثمانی متن اور صفحہ معلومات سے دکھائے جاتے ہیں؛ ایپ صفحات کی تصاویر تقسیم نہیں کرتی۔',
       'other_b3':
           'مصحف کے متن کے لیے Amiri Project کا Amiri Quran فونٹ استعمال ہوتا ہے، جو SIL Open Font License 1.1 کے تحت ہے۔',
+      'view_licenses': 'لائسنس دیکھیں',
       'no_items_available': 'کوئی آئٹم دستیاب نہیں',
     },
     'tr': {
@@ -2280,6 +2296,7 @@ class _SettingsStrings {
           'Mushaf sayfaları Quran.Foundation Uthmani metni ve sayfa verilerinden oluşturulur; uygulama sayfa görsellerini dağıtmaz.',
       'other_b3':
           'Mushaf metni, SIL Open Font License 1.1 ile lisanslanan Amiri Project Amiri Quran yazı tipini kullanır.',
+      'view_licenses': 'Lisansları görüntüle',
       'no_items_available': 'Kullanılabilir öğe yok',
     },
     'fr': {
@@ -2407,6 +2424,7 @@ class _SettingsStrings {
           'Les pages du mushaf sont rendues à partir du texte uthmani et des métadonnées de page de Quran.Foundation ; l’application ne redistribue pas d’images de pages.',
       'other_b3':
           'Le texte du mushaf utilise la police Amiri Quran du projet Amiri, sous licence SIL Open Font License 1.1.',
+      'view_licenses': 'Afficher les licences',
       'no_items_available': 'Aucun élément disponible',
     },
     'id': {
@@ -2521,6 +2539,7 @@ class _SettingsStrings {
           'Halaman mushaf dirender dari teks Uthmani dan metadata halaman Quran.Foundation; aplikasi tidak mendistribusikan ulang gambar halaman.',
       'other_b3':
           'Teks mushaf menggunakan font Amiri Quran dari Amiri Project, berlisensi SIL Open Font License 1.1.',
+      'view_licenses': 'Lihat lisensi',
       'no_items_available': 'Tidak ada item tersedia',
     },
     'de': {
@@ -2642,6 +2661,7 @@ class _SettingsStrings {
           'Mushaf-Seiten werden aus Uthmani-Text und Seitenmetadaten von Quran.Foundation gerendert; die App verteilt keine Seitenbilder.',
       'other_b3':
           'Der Mushaf-Text verwendet die Schrift Amiri Quran des Amiri Project unter der SIL Open Font License 1.1.',
+      'view_licenses': 'Lizenzen anzeigen',
       'no_items_available': 'Keine Elemente verfügbar',
     },
     'es': {
@@ -2760,6 +2780,7 @@ class _SettingsStrings {
           'Las páginas del mushaf se renderizan con texto uthmani y metadatos de Quran.Foundation; la aplicación no redistribuye imágenes de páginas.',
       'other_b3':
           'El texto del mushaf utiliza la fuente Amiri Quran del proyecto Amiri, bajo la SIL Open Font License 1.1.',
+      'view_licenses': 'Ver licencias',
       'no_items_available': 'No hay elementos disponibles',
     },
   };
