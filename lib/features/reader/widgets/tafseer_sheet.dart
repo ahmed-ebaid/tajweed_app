@@ -7,6 +7,7 @@ import '../../../core/providers/tafseer_provider.dart';
 import '../../../core/services/quran_api_service.dart';
 import '../../../core/services/quran_offline_sync_service.dart';
 import '../../../shared/utils/arabic_utils.dart';
+import '../tafseer_text_sanitizer.dart';
 
 class TafseerSourceOption {
   final int id;
@@ -534,17 +535,9 @@ class _TafseerSheetState extends State<TafseerSheet> {
     return verseKey;
   }
 
-  /// Strip HTML tags from tafseer text for plain display.
-  static String _stripHtml(String html) {
-    return html
-        .replaceAll(RegExp(r'<[^>]*>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .trim();
-  }
+  /// Strip HTML tags and print-edition artifacts from tafseer text.
+  static String _stripHtml(String html) =>
+      TafseerTextSanitizer.stripHtml(html);
 }
 
 class _TafseerSheetStrings {
