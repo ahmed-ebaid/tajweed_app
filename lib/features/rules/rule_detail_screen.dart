@@ -14,6 +14,7 @@ import 'rule_example_references.dart';
 import 'waqf_symbols.dart' as waqf;
 import 'package:just_audio/just_audio.dart';
 import 'package:share_plus/share_plus.dart';
+import 'widgets/rule_example_text.dart';
 
 /// Full-screen detail view for a single tajweed rule.
 /// Shows the Arabic name, description, example words with color coding,
@@ -409,8 +410,12 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: def.exampleArabic.map((ex) {
-                    return _ExampleChip(text: ex, color: rule.color);
+                  children: def.exampleArabic.asMap().entries.map((entry) {
+                    return _ExampleChip(
+                      rule: rule,
+                      text: entry.value,
+                      exampleIndex: entry.key,
+                    );
                   }).toList(),
                 ),
                 const SizedBox(height: 24),
@@ -674,13 +679,19 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _ExampleChip extends StatelessWidget {
+  final TajweedRule rule;
   final String text;
-  final Color color;
+  final int exampleIndex;
 
-  const _ExampleChip({required this.text, required this.color});
+  const _ExampleChip({
+    required this.rule,
+    required this.text,
+    required this.exampleIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final color = rule.color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -688,16 +699,13 @@ class _ExampleChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontFamily: 'AmiriQuran',
-          fontSize: 28,
-          fontWeight: FontWeight.w600,
-          color: color,
-          height: 1.5,
-        ),
-        textDirection: TextDirection.rtl,
+      child: RuleExampleText(
+        rule: rule,
+        text: text,
+        exampleIndex: exampleIndex,
+        fontFamily: 'AmiriQuran',
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
@@ -1032,9 +1040,9 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddTabeei:
         return [
-          'Extend the vowel for exactly 2 counts',
-          'Keep the sound natural — don\'t force it',
-          'Alif, Waw, and Ya are the madd letters',
+          'Alif after a fatha, waw after a damma, ya after a kasra',
+          'Exactly 2 counts — no more, no less',
+          'No hamzah and no sukoon may follow it, otherwise it becomes another madd',
         ];
       case TajweedRule.maddMuttasil:
         return [
@@ -1103,14 +1111,17 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddAridLissukun:
         return [
-          'Extend 2, 4, or 6 counts — all three lengths are permitted',
-          'Happens when the letter after the madd takes a temporary sukoon because you stop there',
-          'If you carry on without stopping it is just a 2-count natural madd',
+          'The madd letter must be alif after a fatha, waw after a damma, or ya after a kasra',
+          'The sukoon is temporary — it exists only because you stop on the next letter',
+          'Stopping: 2, 4, or 6 counts — pick one length and stay consistent',
+          'Continuing without stopping leaves only the natural 2-count madd',
+          'If the waw or ya is sakin after a fatha instead, it is Madd Lin, not Arid Lissukun',
         ];
       case TajweedRule.maddLin:
         return [
-          'The lin letter is و or ي with sukoon preceded by a fatha (خَوْف, بَيْت)',
-          'Extend 2, 4, or 6 counts when you stop on the letter after it',
+          'The lin letter is a waw or ya with sukoon preceded by a fatha (خَوْف, بَيْت)',
+          'The vowel before it does not match it, so it is a lin letter, not a madd letter',
+          'Extend 2, 4, or 6 counts only when you stop on the letter after it',
           'No elongation at all when you continue without stopping',
         ];
       case TajweedRule.maddLazimKalimiMuthaqqal:
@@ -1197,9 +1208,9 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddTabeei:
         return [
-          'مدّ الصوت الطبيعي بمقدار ٢ حركة فقط',
-          'اجعل المد طبيعيًا دون تكلف',
-          'حروف المد: الألف والواو والياء',
+          'ألف قبلها فتحة، واو قبلها ضمة، ياء قبلها كسرة',
+          'مقداره حركتان لا أكثر ولا أقل',
+          'لا يأتي بعده همز ولا سكون، وإلا صار مدًا آخر',
         ];
       case TajweedRule.maddMuttasil:
         return [
@@ -1262,15 +1273,18 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddAridLissukun:
         return [
-          'يمد ٢ أو ٤ أو ٦ حركات، والثلاثة جائزة',
-          'يكون عند حرف المد إذا جاء بعده حرف يسكن للوقف',
-          'وإذا وصلت ولم تقف صار مدًا طبيعيًا بحركتين',
+          'حرف المد: ألف ساكنة قبلها فتحة، أو واو ساكنة قبلها ضمة، أو ياء ساكنة قبلها كسرة',
+          'السكون عارض سببه الوقف على الحرف الذي بعده',
+          'يمد عند الوقف ٢ أو ٤ أو ٦ حركات، والأفضل الالتزام بمقدار واحد',
+          'فإن وصلت زال السكون وبقي المد الطبيعي بحركتين',
+          'وإن كانت الواو أو الياء ساكنة وقبلها فتحة فهو مد لين لا مد عارض',
         ];
       case TajweedRule.maddLin:
         return [
-          'حرف اللين: الواو أو الياء الساكنة المفتوح ما قبلها، نحو: خَوْف وبَيْت',
-          'يمد ٢ أو ٤ أو ٦ حركات عند الوقف على ما بعده',
-          'ولا يمد إذا وصلت القراءة',
+          'حرف اللين: واو أو ياء ساكنة قبلها فتحة (خَوْف، بَيْت)',
+          'سمي لينًا لأن حركة ما قبله لا تجانسه، بخلاف حرف المد',
+          'يمد ٢ أو ٤ أو ٦ حركات عند الوقف على الحرف الذي بعده',
+          'ولا مد فيه عند الوصل',
         ];
       case TajweedRule.maddLazimKalimiMuthaqqal:
         return [
@@ -1354,8 +1368,9 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddTabeei:
         return [
-          'مدِ طبیعی کو صرف دو حرکات تک کھینچیں',
-          'مد کو قدرتی رکھیں، تکلف نہ کریں',
+          'الف سے پہلے فتحہ، واو سے پہلے ضمہ، یاء سے پہلے کسرہ',
+          'مقدار بالکل دو حرکات',
+          'اس کے بعد نہ ہمزہ ہو نہ سکون، ورنہ دوسرا مد بن جائے گا',
         ];
       case TajweedRule.maddMuttasil:
         return [
@@ -1407,13 +1422,18 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddAridLissukun:
         return [
-          'اسے 2، 4 یا 6 حرکات تک کھینچا جا سکتا ہے',
-          'جب حرفِ مد کے بعد والا حرف وقف کی وجہ سے ساکن ہو جائے',
+          'حرف مد: الف سے پہلے فتحہ، واو سے پہلے ضمہ، یاء سے پہلے کسرہ',
+          'سکون عارضی ہے، صرف وقف کی وجہ سے',
+          'وقف پر ۲، ۴ یا ۶ حرکات — ایک ہی مقدار پر قائم رہیں',
+          'وصل کی صورت میں صرف دو حرکات کا مد طبعی',
+          'اگر واو یا یاء ساکن ہو اور پہلے فتحہ ہو تو یہ مد لین ہے',
         ];
       case TajweedRule.maddLin:
         return [
-          'حرفِ لین: ساکن واو یا یاء جس سے پہلے زبر ہو، جیسے خَوْف اور بَیْت',
-          'وقف کی صورت میں 2، 4 یا 6 حرکات تک کھینچیں',
+          'حرف لین: واو یا یاء ساکن جس سے پہلے فتحہ ہو (خَوْف، بَيْت)',
+          'پچھلی حرکت اس کے موافق نہیں، اس لیے یہ حرف مد نہیں بلکہ حرف لین ہے',
+          'اس کے بعد والے حرف پر وقف کرتے وقت ۲، ۴ یا ۶ حرکات',
+          'وصل کی صورت میں بالکل مد نہیں',
         ];
       case TajweedRule.maddLazimKalimiMuthaqqal:
         return [
@@ -1491,8 +1511,9 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddTabeei:
         return [
-          'Doğal meddi tam 2 hareke uzatın',
-          'Uzatmayı zorlamadan doğal okuyun',
+          'Fethadan sonra elif, ötreden sonra vav, esreden sonra ya',
+          'Tam 2 hareke — ne fazla ne eksik',
+          'Ardından hemze veya sükûn gelmemeli, yoksa başka bir med olur',
         ];
       case TajweedRule.maddMuttasil:
         return [
@@ -1541,13 +1562,18 @@ class _PronunciationSection extends StatelessWidget {
         return ['۩ secde ayetini gösterir', 'Tilavette bu yerde secde yapılır'];
       case TajweedRule.maddAridLissukun:
         return [
-          '2, 4 veya 6 hareke uzatılabilir; üçü de caizdir',
-          'Med harfinden sonraki harf durma sebebiyle sakin olduğunda oluşur',
+          'Med harfi: fethadan sonra elif, ötreden sonra vav, esreden sonra ya',
+          'Sükûn geçicidir, yalnızca sonraki harfte durmaktan doğar',
+          'Vakıfta 2, 4 veya 6 hareke — aynı ölçüyü koruyun',
+          'Geçerseniz yalnızca 2 harekelik tabii med kalır',
+          'Vav veya ya fethadan sonra sakin ise bu med lîn olur',
         ];
       case TajweedRule.maddLin:
         return [
-          'Lin harfi: öncesi fethalı sakin vav veya ya (خَوْف, بَيْت)',
-          'Durduğunuzda 2, 4 veya 6 hareke uzatın',
+          'Lîn harfi: fethadan sonra gelen sakin vav veya ya (خَوْف, بَيْت)',
+          'Önceki hareke ona uymadığı için med harfi değil lîn harfidir',
+          'Yalnızca sonraki harfte durulursa 2, 4 veya 6 hareke uzatılır',
+          'Geçildiğinde hiç uzatılmaz',
         ];
       case TajweedRule.maddLazimKalimiMuthaqqal:
         return [
@@ -1622,8 +1648,9 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddTabeei:
         return [
-          'Allongez la voyelle naturelle de 2 temps',
-          'Gardez une prolongation naturelle sans forcer',
+          'Alif après une fatha, waw après une damma, ya après une kasra',
+          'Exactement 2 temps — ni plus ni moins',
+          'Ni hamza ni soukoun ne doit suivre, sinon il devient un autre madd',
         ];
       case TajweedRule.maddMuttasil:
         return [
@@ -1684,13 +1711,18 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddAridLissukun:
         return [
-          'Allongez de 2, 4 ou 6 temps — les trois sont permis',
-          'Se produit quand la lettre suivante devient sakinah parce que vous vous arrêtez',
+          'Lettre de madd: alif après fatha, waw après damma, ya après kasra',
+          'Le soukoun est temporaire: il n\'existe que parce qu\'on s\'arrête sur la lettre suivante',
+          'À l\'arrêt: 2, 4 ou 6 temps — gardez la même longueur',
+          'En liaison, il ne reste qu\'un madd naturel de 2 temps',
+          'Si le waw ou le ya est quiescent après une fatha, c\'est le madd lin',
         ];
       case TajweedRule.maddLin:
         return [
-          'Lettre de lin : waw ou ya sakinah précédée d une fatha (خَوْف, بَيْت)',
-          'Allongez de 2, 4 ou 6 temps si vous vous arrêtez',
+          'La lettre de lin est un waw ou un ya quiescent précédé d\'une fatha (خَوْف, بَيْت)',
+          'La voyelle précédente ne lui correspond pas: c\'est une lettre de lin, non de madd',
+          'Prolongez 2, 4 ou 6 temps seulement si vous vous arrêtez sur la lettre suivante',
+          'Aucune prolongation si vous continuez',
         ];
       case TajweedRule.maddLazimKalimiMuthaqqal:
         return [
@@ -1768,8 +1800,9 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddTabeei:
         return [
-          'Panjangkan mad asli tepat 2 harakat',
-          'Bacalah alami tanpa memaksa',
+          'Alif setelah fathah, wau setelah dhammah, ya setelah kasrah',
+          'Tepat 2 harakat — tidak lebih dan tidak kurang',
+          'Tidak boleh diikuti hamzah atau sukun, jika tidak ia menjadi mad yang lain',
         ];
       case TajweedRule.maddMuttasil:
         return [
@@ -1821,13 +1854,18 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddAridLissukun:
         return [
-          'Panjangkan 2, 4, atau 6 harakat — ketiganya dibolehkan',
-          'Terjadi bila huruf setelah huruf mad menjadi sukun karena waqaf',
+          'Huruf mad: alif setelah fathah, wau setelah dhammah, ya setelah kasrah',
+          'Sukunnya sementara, hanya karena waqaf pada huruf berikutnya',
+          'Saat waqaf: 2, 4, atau 6 harakat — konsisten pada satu ukuran',
+          'Bila washal hanya tersisa mad thabi\'i 2 harakat',
+          'Jika wau atau ya sukun didahului fathah, itu mad lin, bukan mad \'arid',
         ];
       case TajweedRule.maddLin:
         return [
-          'Huruf lin: wau atau ya sukun yang didahului fathah (خَوْف, بَيْت)',
-          'Panjangkan 2, 4, atau 6 harakat ketika waqaf',
+          'Huruf lin: wau atau ya bersukun yang didahului fathah (خَوْف, بَيْت)',
+          'Harakat sebelumnya tidak sejenis dengannya, sehingga ia huruf lin, bukan huruf mad',
+          'Panjangkan 2, 4, atau 6 harakat hanya bila berhenti pada huruf sesudahnya',
+          'Tidak ada pemanjangan sama sekali bila diteruskan',
         ];
       case TajweedRule.maddLazimKalimiMuthaqqal:
         return [
@@ -1905,8 +1943,9 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddTabeei:
         return [
-          'Verlängere natürlich genau 2 Zählzeiten',
-          'Lies natürlich ohne zu übertreiben',
+          'Alif nach Fatha, Waw nach Damma, Ya nach Kasra',
+          'Genau 2 Zählzeiten — nicht mehr und nicht weniger',
+          'Es darf kein Hamza und kein Sukun folgen, sonst wird es ein anderes Madd',
         ];
       case TajweedRule.maddMuttasil:
         return [
@@ -1967,13 +2006,18 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.maddAridLissukun:
         return [
-          'Verlängere 2, 4 oder 6 Zählzeiten — alle drei sind erlaubt',
-          'Entsteht, wenn der folgende Buchstabe durch das Anhalten Sukun erhält',
+          'Madd-Buchstabe: Alif nach Fatha, Waw nach Damma, Ya nach Kasra',
+          'Das Sukun ist vorübergehend und entsteht nur durch das Anhalten',
+          'Beim Anhalten 2, 4 oder 6 Zählzeiten — eine Länge beibehalten',
+          'Beim Weiterlesen bleibt nur das natürliche Madd von 2 Zählzeiten',
+          'Ist Waw oder Ya nach einem Fatha sakin, handelt es sich um Madd Lin',
         ];
       case TajweedRule.maddLin:
         return [
-          'Lin-Buchstabe: Waw oder Ya mit Sukun nach einer Fatha (خَوْف, بَيْت)',
-          'Verlängere 2, 4 oder 6 Zählzeiten, wenn du anhältst',
+          'Der Lin-Buchstabe ist ein Waw oder Ya mit Sukun nach einem Fatha (خَوْف, بَيْت)',
+          'Der vorangehende Vokal passt nicht zu ihm: ein Lin-, kein Madd-Buchstabe',
+          'Nur beim Anhalten auf dem folgenden Buchstaben 2, 4 oder 6 Zählzeiten dehnen',
+          'Beim Weiterlesen keine Dehnung',
         ];
       case TajweedRule.maddLazimKalimiMuthaqqal:
         return [
