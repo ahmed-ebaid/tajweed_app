@@ -287,19 +287,19 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'Concealment of noon sakinah or tanween before 15 letters. The noon is neither fully pronounced nor fully merged — held between the two with ghunnah for 2 counts.',
+            'Concealment of noon sakinah or tanween before the fifteen letters ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. The noon is neither clearly pronounced nor fully merged: the tongue does not touch its usual place, and a ghunnah is held for 2 counts while the mouth prepares for the next letter.',
         'ar':
-            'إخفاء النون الساكنة أو التنوين عند 15 حرفاً مع بقاء الغنة، بحيث لا تكون النون مظهرة ولا مدغمة.',
+            'إخفاء النون الساكنة أو التنوين إذا جاء بعدهما أحد الحروف الخمسة عشر: ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. فلا تُظهر النون ولا تُدغم، بل يُنطق بها بين الإظهار والإدغام مع غنة مقدارها حركتان، ويتهيأ اللسان لمخرج الحرف التالي.',
         'ur':
-            'نون ساکن یا تنوین کو 15 حروف کے قریب اخفاء کرنا۔ غنہ کے ساتھ نہ پوری طرح ظاہر نہ پوری طرح ادغام۔',
+            'نون ساکن یا تنوین کے بعد پندرہ حروف ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك میں سے کوئی آئے تو نون کو مخفی پڑھا جاتا ہے؛ نہ پوری ظاہر نہ پوری مدغم، دو حرکات کی غنہ کے ساتھ۔',
         'tr':
-            '15 harf önünde sükûnlu nun veya tenvinin gizlenerek günneli okunması.',
+            'Sakin nun veya tenvinden sonra şu on beş harften biri gelirse nun gizlenir: ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Ne tam açık ne tam idgam edilir; dil normal mahrecine değmez ve 2 hareke boyunca ğunne tutulur.',
         'fr':
-            'Dissimulation du noon sakinah ou tanween devant 15 lettres avec nasalisation maintenue.',
+            'Dissimulation du noun sakinah ou du tanwin devant les quinze lettres ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Le noun n\'est ni clairement prononcé ni complètement assimilé: la langue ne touche pas son point habituel et une ghounna est tenue 2 temps.',
         'id':
-            'Menyembunyikan nun sukun atau tanwin di hadapan 15 huruf dengan tetap mempertahankan dengung.',
+            'Menyamarkan nun sukun atau tanwin ketika bertemu salah satu dari lima belas huruf: ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Nun tidak dibaca jelas dan tidak pula diidghamkan, disertai ghunnah 2 harakat sementara mulut bersiap ke huruf berikutnya.',
         'de':
-            'Verbergen von Noon Sakinah oder Tanween vor 15 Buchstaben. Das Noon wird weder vollständig ausgesprochen noch vollständig verschmolzen.',
+            'Verbergen des Nun sakinah oder Tanwin vor den fünfzehn Buchstaben ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Das Nun wird weder klar ausgesprochen noch vollständig assimiliert: die Zunge berührt ihren üblichen Punkt nicht, und eine Ghunna wird 2 Zählzeiten gehalten.',
       },
       exampleArabic: ['مِن كُلِّ', 'عَنكَبُوتٌ', 'أَنتُمْ'],
       triggerLetters: [
@@ -646,14 +646,20 @@ class RulesRepository {
         'de': 'Idgham Shafawi',
       },
       descriptions: {
-        'en': 'Meem sakinah merges into the following meem with ghunnah.',
-        'ar': 'إدغام الميم الساكنة في ميم بعدها مع غنة.',
-        'ur': 'میم ساکن کو اگلی میم میں غنہ کے ساتھ ادغام کیا جاتا ہے۔',
+        'en':
+            'Meem sakinah followed by another meem: the two merge into a single doubled meem, pronounced with the lips lightly closed and a ghunnah held for 2 counts.',
+        'ar':
+            'إذا جاء بعد الميم الساكنة ميمٌ أخرى أُدغمت الأولى في الثانية فصارتا ميمًا واحدة مشددة، تُنطق بإطباق الشفتين مع غنة مقدارها حركتان.',
+        'ur':
+            'میم ساکن کے بعد دوسری میم آئے تو دونوں مل کر ایک مشدد میم بن جاتی ہیں، جو ہونٹوں کو ملا کر دو حرکات کی غنہ کے ساتھ پڑھی جاتی ہے۔',
         'tr':
-            'Sakin mim, kendisinden sonraki mime günneli şekilde idğam edilir.',
-        'fr': 'Le meem sakinah fusionne dans le meem suivant avec ghounna.',
-        'id': 'Mim sukun dilebur ke mim berikutnya dengan dengung.',
-        'de': 'Meem Sakinah verschmilzt mit folgendem Meem mit Ghunna.',
+            'Sakin mimden sonra başka bir mim gelirse ikisi birleşip tek bir şedde\'li mim olur; dudaklar hafifçe kapatılarak 2 harekelik ğunne ile okunur.',
+        'fr':
+            'Un meem sakinah suivi d\'un autre meem: les deux fusionnent en un seul meem redoublé, prononcé lèvres légèrement fermées avec une ghounna de 2 temps.',
+        'id':
+            'Mim sukun bertemu mim berikutnya: keduanya melebur menjadi satu mim bertasydid, dibaca dengan bibir terkatup ringan dan ghunnah 2 harakat.',
+        'de':
+            'Auf ein Meem sakinah folgt ein weiteres Meem: beide verschmelzen zu einem einzigen verdoppelten Meem, mit leicht geschlossenen Lippen und einer Ghunna von 2 Zählzeiten.',
       },
       exampleArabic: ['لَكُم مَّا'],
       triggerLetters: ['م'],
@@ -671,15 +677,19 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'Assimilation between two letters with the same articulation point but different attributes.',
-        'ar': 'إدغام حرفين من مخرج واحد مع اختلاف في بعض الصفات.',
-        'ur': 'دو متجانس حروف میں ادغام جو ایک ہی مخرج سے ادا ہوں۔',
-        'tr': 'Mahreci aynı, sıfatları farklı iki harfin idğam edilmesi.',
+            'Two letters share the same articulation point but differ in attributes, so the first, which is sakin, merges completely into the second. The common pairs are ت into د, د into ت, ت into ط, ط into ت, ث into ذ, ذ into ظ, and ب into م.',
+        'ar':
+            'أن يلتقي حرفان اتحدا مخرجًا واختلفا صفةً، فيُدغم الأول الساكن في الثاني المتحرك إدغامًا كاملًا. وأشهر أمثلته: التاء في الدال، والدال في التاء، والتاء في الطاء، والطاء في التاء، والثاء في الذال، والذال في الظاء، والباء في الميم.',
+        'ur':
+            'دو حروف کا مخرج ایک ہو مگر صفات مختلف ہوں تو پہلا ساکن حرف دوسرے میں پوری طرح مدغم ہو جاتا ہے۔ مشہور جوڑے: ت میں د، د میں ت، ت میں ط، ط میں ت، ث میں ذ، ذ میں ظ، ب میں م۔',
+        'tr':
+            'İki harfin mahreci aynı, sıfatları farklı olursa sakin olan birinci harf ikinciye tamamen idgam edilir. Yaygın çiftler: ت-د, د-ت, ت-ط, ط-ت, ث-ذ, ذ-ظ ve ب-م.',
         'fr':
-            'Assimilation entre deux lettres de même point d’articulation avec attributs différents.',
-        'id': 'Idgham dua huruf yang makhrajnya sama namun sifatnya berbeda.',
+            'Deux lettres partagent le même point d\'articulation mais diffèrent par leurs attributs: la première, quiescente, s\'assimile entièrement à la seconde. Paires courantes: ت dans د, د dans ت, ت dans ط, ط dans ت, ث dans ذ, ذ dans ظ, et ب dans م.',
+        'id':
+            'Dua huruf yang sama makhrajnya tetapi berbeda sifatnya: huruf pertama yang sukun melebur sepenuhnya ke huruf kedua. Pasangan yang umum: ت ke د, د ke ت, ت ke ط, ط ke ت, ث ke ذ, ذ ke ظ, dan ب ke م.',
         'de':
-            'Assimilation zweier Buchstaben mit gleichem Artikulationsort und unterschiedlichen Eigenschaften.',
+            'Zwei Buchstaben teilen denselben Artikulationspunkt, unterscheiden sich aber in den Eigenschaften: der erste, sakin, geht vollständig im zweiten auf. Häufige Paare: ت in د, د in ت, ت in ط, ط in ت, ث in ذ, ذ in ظ und ب in م.',
       },
       exampleArabic: ['قَد تَّبَيَّنَ'],
       triggerLetters: [],
@@ -783,14 +793,19 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'The lam of "al-" is assimilated into the following sun letter and is not pronounced.',
-        'ar': 'تُدغم لام "ال" في الحرف الشمسي بعدها فلا تُنطق.',
-        'ur': 'لامِ تعریف اگلے حرفِ شمسی میں مدغم ہو جاتی ہے۔',
-        'tr': '"El-" takısındaki lam, ardından gelen şemsi harfe idğam edilir.',
-        'fr': 'Le lam de "al-" est assimilé à la lettre solaire suivante.',
-        'id': 'Lam pada "al-" dilebur ke huruf syamsiyah sesudahnya.',
+            'When "al-" is followed by one of the fourteen sun letters ت ث د ذ ر ز س ش ص ض ط ظ ل ن, the lam is not pronounced at all: it merges into that letter, which then carries a shaddah. With the moon letters the lam is pronounced clearly instead.',
+        'ar':
+            'إذا جاء بعد لام "ال" أحد الحروف الشمسية الأربعة عشر: ت ث د ذ ر ز س ش ص ض ط ظ ل ن، لم تُنطق اللام بل أُدغمت في الحرف بعدها فصار مشددًا. أما مع الحروف القمرية فتُظهر اللام.',
+        'ur':
+            'اگر "ال" کی لام کے بعد چودہ شمسی حروف ت ث د ذ ر ز س ش ص ض ط ظ ل ن میں سے کوئی آئے تو لام بالکل نہیں پڑھی جاتی؛ وہ اگلے حرف میں مدغم ہو جاتی ہے اور وہ مشدد ہو جاتا ہے۔ قمری حروف کے ساتھ لام ظاہر پڑھی جاتی ہے۔',
+        'tr':
+            '"el-" takısının lamından sonra on dört şemsi harften biri gelirse ت ث د ذ ر ز س ش ص ض ط ظ ل ن, lam hiç okunmaz; sonraki harfe idgam edilir ve o harf şedde alır. Kameri harflerde ise lam açıkça okunur.',
+        'fr':
+            'Lorsque "al-" est suivi de l\'une des quatorze lettres solaires ت ث د ذ ر ز س ش ص ض ط ظ ل ن, le lam n\'est pas prononcé du tout: il s\'assimile à cette lettre, qui porte alors une chadda. Avec les lettres lunaires, le lam se prononce clairement.',
+        'id':
+            'Bila "al-" diikuti salah satu dari empat belas huruf syamsiyah ت ث د ذ ر ز س ش ص ض ط ظ ل ن, lam sama sekali tidak dibaca: ia melebur ke huruf itu sehingga huruf tersebut bertasydid. Pada huruf qamariyah, lam dibaca jelas.',
         'de':
-            'Das Laam von "al-" wird in den folgenden Sonnenbuchstaben assimiliert.',
+            'Folgt auf "al-" einer der vierzehn Sonnenbuchstaben ت ث د ذ ر ز س ش ص ض ط ظ ل ن, wird das Lam gar nicht ausgesprochen: es geht in diesen Buchstaben auf, der dann ein Schadda trägt. Bei den Mondbuchstaben wird das Lam dagegen klar gesprochen.',
       },
       exampleArabic: ['الشَّمْسِ', 'النَّاسِ'],
       triggerLetters: [
