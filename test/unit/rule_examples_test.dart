@@ -166,7 +166,10 @@ void main() {
       TajweedRule.maddMunfasil: '٢–٥ حركات',
       TajweedRule.maddSilahSughra: '٢ حركة',
       TajweedRule.maddSilahKubra: '٤–٥ حركات',
-      TajweedRule.maddLazim: '٦ حركات',
+      TajweedRule.maddLazimKalimiMuthaqqal: '٦ حركات',
+      TajweedRule.maddLazimKalimiMukhaffaf: '٦ حركات',
+      TajweedRule.maddLazimHarfiMuthaqqal: '٦ حركات',
+      TajweedRule.maddLazimHarfiMukhaffaf: '٦ حركات',
     };
 
     for (final entry in expectedCounts.entries) {

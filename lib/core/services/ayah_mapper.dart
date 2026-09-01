@@ -487,6 +487,193 @@ class AyahMapper {
         (codeUnit >= 0x06D6 && codeUnit <= 0x06ED);
   }
 
+  // ─── Madd 'arid lil-sukun vs madd lin ──────────────────────────────────────
+  // Quran.com collapses both into the single class `madda_permissible`, but the
+  // two are distinguishable from the text alone:
+  //   * madd letter is an alif form                        → 'arid lil-sukun
+  //   * damma + waw, or kasra + ya  (homogeneous vowel)     → 'arid lil-sukun
+  //   * fatha + waw/ya             (heterogeneous vowel)    → lin
+  // Verified against all 4543 `madda_permissible` spans in the mushaf: 4535
+  // resolve to 'arid and 8 to lin (55:17, 90:8-10, 106:1-4), with no leftovers.
+  static const int _fatha = 0x064E;
+  static const int _damma = 0x064F;
+  static const int _kasra = 0x0650;
+  static const int _waw = 0x0648;
+  static const int _ya = 0x064A;
+  static const int _tatweel = 0x0640;
+
+  /// Alif-family madd letters, including the dagger alif (U+0670), alif
+  /// maqsura (U+0649), alif wasla (U+0671) and the small waw/ya madd glyphs.
+  static bool _isAlifFormMaddLetter(int cp) {
+    return cp == 0x0627 ||
+        cp == 0x0649 ||
+        cp == 0x0670 ||
+        cp == 0x0671 ||
+        cp == 0x0672 ||
+        cp == 0x06E5 ||
+        cp == 0x06E6;
+  }
+
+  static bool _isMaddLetter(int cp) {
+    return _isAlifFormMaddLetter(cp) || cp == _waw || cp == _ya;
+  }
+
+  /// Index of the madd letter inside [start, end), or -1.
+  static int _findMaddLetter(String text, int start, int end) {
+    for (int i = end - 1; i >= start; i--) {
+      if (_isMaddLetter(text.codeUnitAt(i))) return i;
+    }
+    return -1;
+  }
+
+  /// Resolves the ambiguous `madda_permissible` class into either
+  /// [TajweedRule.maddLin] or [TajweedRule.maddAridLissukun].
+  static TajweedRule _resolvePermissibleMadd(String text, int start, int end) {
+    final maddIdx = _findMaddLetter(text, start, end);
+    if (maddIdx < 0) return TajweedRule.maddAridLissukun;
+
+    final letter = text.codeUnitAt(maddIdx);
+    if (_isAlifFormMaddLetter(letter)) return TajweedRule.maddAridLissukun;
+
+    // Walk back to the harakah sitting on the preceding consonant.
+    for (int i = maddIdx - 1; i >= 0 && i >= maddIdx - 3; i--) {
+      final cp = text.codeUnitAt(i);
+      if (cp == _tatweel) continue;
+      if (cp == _fatha) {
+        return (letter == _waw || letter == _ya)
+            ? TajweedRule.maddLin
+            : TajweedRule.maddAridLissukun;
+      }
+      if (cp == _damma || cp == _kasra) return TajweedRule.maddAridLissukun;
+      if (_isArabicCombiningMark(cp)) continue;
+      break;
+    }
+    return TajweedRule.maddAridLissukun;
+  }
+
+  /// Advances [startIdx] past leading Arabic combining marks so a span begins
+  /// on a base letter. A combining mark renders on the *preceding* base letter,
+  /// which sits outside the span — without this, highlighting `ُو` in
+  /// يَعْمَهُونَ (15:72) tints the damma sitting on the ه and makes the ه look
+  /// highlighted, when only the و should be. Never returns an empty span.
+  static int _trimLeadingCombining(String text, int startIdx, int endIdx) {
+    int i = startIdx;
+    while (i < endIdx && _isArabicCombiningMark(text.codeUnitAt(i))) {
+      i++;
+    }
+    return i < endIdx ? i : startIdx;
+  }
+
+  /// Muqatta'at letters that carry a six-count madd when spelled out, mapped
+  /// to the final consonant of their spelled name (e.g. ل -> لام ends in م).
+  static const Map<int, int> _muqattaatFinalConsonant = {
+    0x0644: 0x0645, // ل  لام  -> م
+    0x0645: 0x0645, // م  ميم  -> م
+    0x0646: 0x0646, // ن  نون  -> ن
+    0x0642: 0x0641, // ق  قاف  -> ف
+    0x0635: 0x062F, // ص  صاد  -> د
+    0x0639: 0x0646, // ع  عين  -> ن
+    0x0633: 0x0646, // س  سين  -> ن
+    0x0643: 0x0641, // ك  كاف  -> ف
+  };
+
+  /// Letters that ن assimilates into (يرملون). م only assimilates into م.
+  static const Set<int> _nunIdghamTargets = {
+    0x064A, 0x0631, 0x0645, 0x0644, 0x0648, 0x0646,
+  };
+
+  static bool _isArabicLetter(int cp) =>
+      (cp >= 0x0621 && cp <= 0x064A) || cp == 0x0671 || cp == 0x0649;
+
+  /// True for characters that end the current word for classification
+  /// purposes: whitespace, ZWNJ, and the Quranic waqf marks.
+  static bool _isWordBreak(int cp) =>
+      cp == 0x20 ||
+      cp == 0x09 ||
+      cp == 0x0A ||
+      cp == 0x200C ||
+      (cp >= 0x06D6 && cp <= 0x06ED);
+
+  static bool _consonantAssimilates(int finalCp, int nextCp) {
+    if (finalCp == 0x0645) return nextCp == 0x0645;
+    if (finalCp == 0x0646) return _nunIdghamTargets.contains(nextCp);
+    return finalCp == nextCp;
+  }
+
+  static bool _isNecessaryMaddClass(String className) {
+    return className == 'madda_necessary' ||
+        className == 'madd_lazim' ||
+        className == 'madda_obligatory_lazim';
+  }
+
+  /// Splits the upstream `madda_necessary` class into the four classical
+  /// Madd Lazim types.
+  ///
+  /// Verified against the complete tajweed mushaf: all 143 `madda_necessary`
+  /// spans classify with zero leftovers — كلمي مثقل 97, كلمي مخفف 2
+  /// (10:51 and 10:91, the only two in the Qur'an), حرفي مثقل 10,
+  /// حرفي مخفف 34.
+  ///
+  /// The split is derived from the text alone — no surah/ayah table — so it
+  /// behaves identically in the ayah-by-ayah and Mushaf page views, which
+  /// both render spans produced here.
+  static TajweedRule _resolveNecessaryMadd(String text, int start, int end) {
+    // حرفي: the span is a single muqatta'at letter carrying a maddah with no
+    // short vowel (e.g. لٓ, مٓ, صٓ). Anything else is كلمي.
+    int letterCp = -1;
+    var letterCount = 0;
+    var hasMaddah = false;
+    var hasHarakah = false;
+    for (var i = start; i < end; i++) {
+      final cp = text.codeUnitAt(i);
+      if (_isArabicLetter(cp)) {
+        letterCount++;
+        letterCp = cp;
+      } else if (cp == 0x0653) {
+        hasMaddah = true;
+      } else if ((cp >= 0x064B && cp <= 0x0650) || cp == 0x0652) {
+        hasHarakah = true;
+      }
+    }
+
+    // Scan the remainder of the *same word* only; a following word never
+    // decides the type (e.g. نٓ وَٱلْقَلَمِ in 68:1 stays مخفف).
+    int nextLetter = -1;
+    var sawShaddah = false;
+    var scanned = 0;
+    for (var i = end; i < text.length; i++) {
+      final cp = text.codeUnitAt(i);
+      if (_isWordBreak(cp)) break;
+      if (cp == 0x0651 && scanned < 3) sawShaddah = true;
+      if (nextLetter < 0 && _isArabicLetter(cp)) nextLetter = cp;
+      scanned++;
+    }
+
+    final isHarfi = letterCount == 1 &&
+        hasMaddah &&
+        !hasHarakah &&
+        _muqattaatFinalConsonant.containsKey(letterCp);
+
+    if (isHarfi) {
+      final finalCp = _muqattaatFinalConsonant[letterCp]!;
+      final heavy =
+          nextLetter >= 0 && _consonantAssimilates(finalCp, nextLetter);
+      return heavy
+          ? TajweedRule.maddLazimHarfiMuthaqqal
+          : TajweedRule.maddLazimHarfiMukhaffaf;
+    }
+
+    return sawShaddah
+        ? TajweedRule.maddLazimKalimiMuthaqqal
+        : TajweedRule.maddLazimKalimiMukhaffaf;
+  }
+
+  static bool _isPermissibleMaddClass(String className) {
+    return className == 'madda_permissible' ||
+        className == 'madd_arid' ||
+        className == 'madd_arid_lissukun';
+  }
+
   static List<TajweedSpan> _parseRuleTagTajweed(
     String arabicText,
     String tajweedHtml,
@@ -563,7 +750,20 @@ class AyahMapper {
       // belong to the same grapheme cluster but are absent from rule text.
       endIdx = _extendOverCombining(arabicText, endIdx);
 
-      spans.add(TajweedSpan(start: idx, end: endIdx, rule: rule));
+      // Drop leading combining marks: a combining mark renders on the base
+      // letter *before* the span, so including it tints a letter that is not
+      // part of the rule (see _trimLeadingCombining).
+      idx = _trimLeadingCombining(arabicText, idx, endIdx);
+
+      // `madda_permissible` covers both madd 'arid lil-sukun and madd lin;
+      // disambiguate now that we know where the span sits in the text.
+      final resolvedRule = _isPermissibleMaddClass(className)
+          ? _resolvePermissibleMadd(arabicText, idx, endIdx)
+          : _isNecessaryMaddClass(className)
+          ? _resolveNecessaryMadd(arabicText, idx, endIdx)
+          : rule;
+
+      spans.add(TajweedSpan(start: idx, end: endIdx, rule: resolvedRule));
       searchFrom = endIdx;
     }
 
@@ -684,10 +884,17 @@ class AyahMapper {
       if (rule != null && ruleText.isNotEmpty) {
         final idx = arabicText.indexOf(ruleText, searchFrom);
         if (idx >= 0) {
+          final endIdx = idx + ruleText.length;
+          final start = _trimLeadingCombining(arabicText, idx, endIdx);
+          final resolvedRule = _isPermissibleMaddClass(ruleKey)
+              ? _resolvePermissibleMadd(arabicText, start, endIdx)
+              : _isNecessaryMaddClass(ruleKey)
+              ? _resolveNecessaryMadd(arabicText, start, endIdx)
+              : rule;
           spans.add(
-            TajweedSpan(start: idx, end: idx + ruleText.length, rule: rule),
+            TajweedSpan(start: start, end: endIdx, rule: resolvedRule),
           );
-          searchFrom = idx + ruleText.length;
+          searchFrom = endIdx;
         }
       }
     }
@@ -706,8 +913,16 @@ class AyahMapper {
         return TajweedRule.qalqalah;
       case 'madd_normal':
       case 'madda_normal':
-      case 'madda_permissible':
         return TajweedRule.maddTabeei;
+      case 'madda_permissible':
+      case 'madd_arid':
+      case 'madd_arid_lissukun':
+        // Context-free fallback; _parseRuleTagTajweed refines this to
+        // maddLin where the preceding vowel is a fatha.
+        return TajweedRule.maddAridLissukun;
+      case 'madd_lin':
+      case 'madd_leen':
+        return TajweedRule.maddLin;
       case 'madd_muttasil':
       case 'madd_mottasel':
       case 'madda_obligatory':
@@ -720,7 +935,9 @@ class AyahMapper {
       case 'madd_munfasil':
         return TajweedRule.maddMunfasil;
       case 'madda_necessary':
-        return TajweedRule.maddLazim;
+        // Context-free fallback; the parsers refine this into the four
+        // Madd Lazim types via _resolveNecessaryMadd.
+        return TajweedRule.maddLazimKalimiMuthaqqal;
       case 'idgham_ghunnah':
       case 'idghaam_w_ghunnah':
         return TajweedRule.idghamWithGhunnah;
@@ -936,8 +1153,16 @@ class AyahMapper {
         return TajweedRule.qalqalah;
       case 'madd_normal':
       case 'madda_normal':
-      case 'madda_permissible':
         return TajweedRule.maddTabeei;
+      case 'madda_permissible':
+      case 'madd_arid':
+      case 'madd_arid_lissukun':
+        // Context-free fallback; _parseRuleTagTajweed refines this to
+        // maddLin where the preceding vowel is a fatha.
+        return TajweedRule.maddAridLissukun;
+      case 'madd_lin':
+      case 'madd_leen':
+        return TajweedRule.maddLin;
       case 'madd_muttasil':
       case 'madd_mottasel':
       case 'madda_obligatory':
@@ -950,7 +1175,9 @@ class AyahMapper {
       case 'madd_munfasil':
         return TajweedRule.maddMunfasil;
       case 'madda_necessary':
-        return TajweedRule.maddLazim;
+        // Context-free fallback; the parsers refine this into the four
+        // Madd Lazim types via _resolveNecessaryMadd.
+        return TajweedRule.maddLazimKalimiMuthaqqal;
       case 'idgham_ghunnah':
       case 'idghaam_w_ghunnah':
         return TajweedRule.idghamWithGhunnah;

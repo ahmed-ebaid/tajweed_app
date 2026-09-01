@@ -455,33 +455,156 @@ class RulesRepository {
       triggerLetters: [],
     ),
     TajweedRuleDefinition(
-      rule: TajweedRule.maddLazim,
+      rule: TajweedRule.maddLazimKalimiMuthaqqal,
       names: {
-        'en': 'Madd Lazim',
-        'ar': 'مَدّ لَازِم',
-        'ur': 'مد لازم',
-        'tr': 'Meddi Lazım',
-        'fr': 'Madd Lazim',
-        'id': 'Mad Lazim',
-        'de': 'Madd Lazim',
+        'en': 'Madd Lazim Kalimi Muthaqqal',
+        'ar': 'مَدّ لَازِم كَلِمِيّ مُثَقَّل',
+        'ur': 'مد لازم کلمی مثقل',
+        'tr': 'Meddi Lazım Kelimi Müsakkal',
+        'fr': 'Madd Lazim Kalimi Muthaqqal',
+        'id': 'Mad Lazim Kilmi Mutsaqqal',
+        'de': 'Madd Lazim Kalimi Muthaqqal',
+      },
+      descriptions: {
+        'en': 'Within a word, a madd letter is followed by a letter carrying shaddah. Prolong 6 counts. Example: ٱلضَّآلِّينَ.',
+        'ar': 'أن يأتي بعد حرف المد حرف مشدد في كلمة واحدة، ويمد ٦ حركات. مثاله: ٱلضَّآلِّينَ.',
+        'ur': 'ایک ہی کلمے میں حرفِ مد کے بعد مشدد حرف آئے تو چھ حرکات کھینچا جاتا ہے۔ مثال: ٱلضَّآلِّينَ۔',
+        'tr': 'Bir kelimede med harfinden sonra şeddeli harf gelirse 6 hareke uzatılır. Örnek: ٱلضَّآلِّينَ.',
+        'fr': 'Dans un mot, la lettre de madd est suivie d\'une lettre portant une shadda. Allongez 6 temps. Exemple : ٱلضَّآلِّينَ.',
+        'id': 'Dalam satu kata, huruf mad diikuti huruf bertasydid. Dibaca 6 harakat. Contoh: ٱلضَّآلِّينَ.',
+        'de': 'Innerhalb eines Wortes folgt der Madd-Buchstabe ein Buchstabe mit Schadda. 6 Zählzeiten. Beispiel: ٱلضَّآلِّينَ.',
+      },
+      exampleArabic: ['ٱلضَّآلِّينَ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLazimKalimiMukhaffaf,
+      names: {
+        'en': 'Madd Lazim Kalimi Mukhaffaf',
+        'ar': 'مَدّ لَازِم كَلِمِيّ مُخَفَّف',
+        'ur': 'مد لازم کلمی مخفف',
+        'tr': 'Meddi Lazım Kelimi Muhaffef',
+        'fr': 'Madd Lazim Kalimi Mukhaffaf',
+        'id': 'Mad Lazim Kilmi Mukhaffaf',
+        'de': 'Madd Lazim Kalimi Mukhaffaf',
+      },
+      descriptions: {
+        'en': 'Within a word, a madd letter is followed by a letter with a plain sukoon. Prolong 6 counts. It occurs only twice in the Qur’an: 10:51 and 10:91 (ءَآلْـَٔـٰنَ).',
+        'ar': 'أن يأتي بعد حرف المد حرف ساكن سكونًا أصليًا في كلمة واحدة، ويمد ٦ حركات. ولم يقع إلا في موضعين: يونس ٥١ و٩١ (ءَآلْـَٔـٰنَ).',
+        'ur': 'ایک ہی کلمے میں حرفِ مد کے بعد ساکن حرف آئے تو چھ حرکات۔ قرآن میں صرف دو مقامات پر: یونس ۵۱ اور ۹۱۔',
+        'tr': 'Bir kelimede med harfinden sonra sükûnlu harf gelir; 6 hareke uzatılır. Kur’an’da sadece iki yerde: Yûnus 51 ve 91.',
+        'fr': 'Dans un mot, la lettre de madd est suivie d\'une lettre portant un soukoun. 6 temps. Seulement deux fois dans le Coran : 10:51 et 10:91.',
+        'id': 'Dalam satu kata, huruf mad diikuti huruf bersukun asli. Dibaca 6 harakat. Hanya dua tempat: Yunus 51 dan 91.',
+        'de': 'Innerhalb eines Wortes folgt dem Madd-Buchstaben ein Buchstabe mit Sukoon. 6 Zählzeiten. Nur zweimal im Koran: 10:51 und 10:91.',
+      },
+      exampleArabic: ['ءَآلْـَٔـٰنَ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLazimHarfiMuthaqqal,
+      names: {
+        'en': 'Madd Lazim Harfi Muthaqqal',
+        'ar': 'مَدّ لَازِم حَرْفِيّ مُثَقَّل',
+        'ur': 'مد لازم حرفی مثقل',
+        'tr': 'Meddi Lazım Harfi Müsakkal',
+        'fr': 'Madd Lazim Harfi Muthaqqal',
+        'id': 'Mad Lazim Harfi Mutsaqqal',
+        'de': 'Madd Lazim Harfi Muthaqqal',
+      },
+      descriptions: {
+        'en': 'In the disjointed letters opening some surahs, a spelled letter ends in a consonant that merges into the next letter. Prolong 6 counts. Example: the ل of الٓمٓ.',
+        'ar': 'في فواتح السور، يكون حرف المد في اسم الحرف مدغمًا آخره فيما بعده، ويمد ٦ حركات. مثاله: اللام في الٓمٓ.',
+        'ur': 'حروفِ مقطعات میں حرف کا آخری حصہ اگلے حرف میں مدغم ہو تو چھ حرکات۔ مثال: الٓمٓ کا لام۔',
+        'tr': 'Sûre başlarındaki hurûf-ı mukattaada harfin sonu sonrakine idgam olur; 6 hareke. Örnek: الٓمٓ’deki lâm.',
+        'fr': 'Dans les lettres isolées en début de sourate, la fin de la lettre épelée s\'assimile à la suivante. 6 temps. Exemple : le ل de الٓمٓ.',
+        'id': 'Pada huruf muqatha’ah, akhir nama huruf diidghamkan ke huruf berikutnya. 6 harakat. Contoh: lam pada الٓمٓ.',
+        'de': 'Bei den Einzelbuchstaben am Surenanfang verschmilzt der Endlaut mit dem nächsten Buchstaben. 6 Zählzeiten. Beispiel: das ل in الٓمٓ.',
+      },
+      exampleArabic: ['الٓمٓ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLazimHarfiMukhaffaf,
+      names: {
+        'en': 'Madd Lazim Harfi Mukhaffaf',
+        'ar': 'مَدّ لَازِم حَرْفِيّ مُخَفَّف',
+        'ur': 'مد لازم حرفی مخفف',
+        'tr': 'Meddi Lazım Harfi Muhaffef',
+        'fr': 'Madd Lazim Harfi Mukhaffaf',
+        'id': 'Mad Lazim Harfi Mukhaffaf',
+        'de': 'Madd Lazim Harfi Mukhaffaf',
+      },
+      descriptions: {
+        'en': 'In the disjointed letters opening some surahs, a spelled letter ends in a plain sukoon with no merging. Prolong 6 counts. Example: the س of يسٓ.',
+        'ar': 'في فواتح السور، يكون آخر اسم الحرف ساكنًا من غير إدغام، ويمد ٦ حركات. مثاله: السين في يسٓ.',
+        'ur': 'حروفِ مقطعات میں حرف کا آخر ساکن ہو اور ادغام نہ ہو تو چھ حرکات۔ مثال: يسٓ کا سین۔',
+        'tr': 'Hurûf-ı mukattaada harfin sonu idgamsız sâkin olur; 6 hareke. Örnek: يسٓ’deki sîn.',
+        'fr': 'Dans les lettres isolées, la lettre épelée se termine par un soukoun sans assimilation. 6 temps. Exemple : le س de يسٓ.',
+        'id': 'Pada huruf muqatha’ah, akhir nama huruf bersukun tanpa idgham. 6 harakat. Contoh: sin pada يسٓ.',
+        'de': 'Bei den Einzelbuchstaben endet der Buchstabe auf Sukoon ohne Verschmelzung. 6 Zählzeiten. Beispiel: das س in يسٓ.',
+      },
+      exampleArabic: ['يسٓ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddAridLissukun,
+      names: {
+        'en': 'Madd Arid Lissukun',
+        'ar': 'مَدّ عَارِض لِلسُّكُون',
+        'ur': 'مد عارض للسکون',
+        'tr': 'Meddi Ârız',
+        'fr': 'Madd Arid Lissoukoun',
+        'id': 'Mad Arid Lissukun',
+        'de': 'Madd Arid Lissukun',
       },
       descriptions: {
         'en':
-            'A compulsory madd prolonged for 6 counts when a madd letter is followed by a permanent sukoon or shaddah.',
+            'A madd letter followed by a letter that only takes sukoon because you stop on it. Prolong 2, 4, or 6 counts when stopping; it reverts to a natural 2-count madd when you continue.',
         'ar':
-            'مد لازم عند وقوع حرف المد قبل سكون أصلي أو شدة. مقداره: ٦ حركات.',
-        'ur': 'مد لازم میں حرفِ مد کو چھ حرکات تک کھینچا جاتا ہے۔',
+            'أن يأتي بعد حرف المد حرف يسكن للوقف فقط. مقداره عند الوقف: ٢ أو ٤ أو ٦ حركات، وإذا وصلت صار مدًا طبيعيًا بحركتين.',
+        'ur':
+            'حرفِ مد کے بعد ایسا حرف آئے جو صرف وقف کی وجہ سے ساکن ہو۔ وقف پر 2، 4 یا 6 حرکات، وصل میں مد طبیعی۔',
         'tr':
-            'Med harfinden sonra asli sükûn veya şedde gelirse 6 hareke uzatılır.',
+            'Med harfinden sonra gelen harf sadece durma sebebiyle sakin olur. Vakıfta 2, 4 veya 6 hareke uzatılır; vasılda normal med olur.',
         'fr':
-            'Allongement obligatoire de 6 temps quand la lettre de madd est suivie d’un soukoun permanent ou d’une shadda.',
+            'La lettre qui suit le madd ne devient sakinah que parce que vous vous arrêtez. Allongez de 2, 4 ou 6 temps à l’arrêt ; en continuant, cela redevient un madd naturel.',
         'id':
-            'Mad wajib sepanjang 6 harakat ketika huruf mad diikuti sukun asli atau tasydid.',
+            'Huruf setelah huruf mad menjadi sukun hanya karena waqaf. Panjangkan 2, 4, atau 6 harakat saat waqaf; saat washal kembali menjadi mad thabi‘i.',
         'de':
-            'Verpflichtende Verlängerung um 6 Zählzeiten bei Madd vor dauerhaftem Sukoon oder Schadda.',
+            'Der Buchstabe nach dem Madd erhält nur durch das Anhalten Sukoon. Beim Anhalten 2, 4 oder 6 Zählzeiten; beim Weiterlesen wieder ein natürliches Madd.',
       },
-      exampleArabic: ['الضَّالِّينَ', 'ٓالم'],
+      exampleArabic: ['يَعْمَهُونَ', 'نَسْتَعِينُ'],
       triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLin,
+      names: {
+        'en': 'Madd Lin',
+        'ar': 'مَدّ لِين',
+        'ur': 'مد لین',
+        'tr': 'Meddi Lîn',
+        'fr': 'Madd Lin',
+        'id': 'Mad Lin',
+        'de': 'Madd Lin',
+      },
+      descriptions: {
+        'en':
+            'A waw or yaa with sukoon preceded by a fatha, followed by a letter you stop on. Prolong 2, 4, or 6 counts when stopping; no elongation when continuing.',
+        'ar':
+            'الواو أو الياء الساكنة المفتوح ما قبلها، ويأتي بعدها حرف يوقف عليه. مقداره عند الوقف: ٢ أو ٤ أو ٦ حركات، ولا يمد عند الوصل.',
+        'ur':
+            'ساکن واو یا یاء جس سے پہلے زبر ہو اور اس کے بعد وقف کیا جائے۔ وقف پر 2، 4 یا 6 حرکات، وصل میں مد نہیں۔',
+        'tr':
+            'Öncesi fethalı sakin vav veya ya, ardından üzerinde durulan bir harf gelir. Vakıfta 2, 4 veya 6 hareke uzatılır; vasılda uzatılmaz.',
+        'fr':
+            'Un waw ou un ya sakinah précédé d’une fatha, suivi d’une lettre où vous vous arrêtez. Allongez de 2, 4 ou 6 temps à l’arrêt ; aucun allongement en continuant.',
+        'id':
+            'Wau atau ya sukun yang didahului fathah, lalu diikuti huruf yang diwaqafkan. Panjangkan 2, 4, atau 6 harakat saat waqaf; tidak dipanjangkan saat washal.',
+        'de':
+            'Ein Waw oder Ya mit Sukoon nach einer Fatha, gefolgt von einem Buchstaben, auf dem du anhältst. Beim Anhalten 2, 4 oder 6 Zählzeiten; beim Weiterlesen keine Verlängerung.',
+      },
+      exampleArabic: ['قُرَيْشٍ', 'خَوْفٍ'],
+      triggerLetters: ['و', 'ي'],
     ),
     TajweedRuleDefinition(
       rule: TajweedRule.idghamShafawi,

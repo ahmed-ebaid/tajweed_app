@@ -114,7 +114,12 @@ class _RulesScreenState extends State<RulesScreen> {
       case TajweedRule.maddTabeei:
       case TajweedRule.maddMuttasil:
       case TajweedRule.maddMunfasil:
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+      case TajweedRule.maddAridLissukun:
+      case TajweedRule.maddLin:
       case TajweedRule.maddSilahSughra:
       case TajweedRule.maddSilahKubra:
         return 'rules_category_madd';

@@ -1101,11 +1101,41 @@ class _PronunciationSection extends StatelessWidget {
           'When reciting this verse, perform sajdah according to your practice',
           'The sign is shown as ۩ in the text',
         ];
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddAridLissukun:
         return [
-          'Extend for 6 full counts — this is the longest madd',
-          'Occurs when a madd letter is followed by a letter with shaddah or sukoon in the same word',
-          'Found in special letters at the start of some surahs (e.g., الم)',
+          'Extend 2, 4, or 6 counts — all three lengths are permitted',
+          'Happens when the letter after the madd takes a temporary sukoon because you stop there',
+          'If you carry on without stopping it is just a 2-count natural madd',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'The lin letter is و or ي with sukoon preceded by a fatha (خَوْف, بَيْت)',
+          'Extend 2, 4, or 6 counts when you stop on the letter after it',
+          'No elongation at all when you continue without stopping',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return [
+          'Extend 6 full counts — the longest madd',
+          'A madd letter followed by a shaddah inside the same word',
+          'Classic example: ٱلضَّآلِّينَ at the end of Al-Fatiha',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          'Extend 6 full counts',
+          'A madd letter followed by a plain sukoon inside the same word',
+          'Occurs in only two places in the whole Qur’an: 10:51 and 10:91',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          'Extend 6 full counts',
+          'Only in the disjointed letters that open some surahs',
+          'The spelled letter merges into the next one — the ل of الٓمٓ',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          'Extend 6 full counts',
+          'Only in the disjointed letters that open some surahs',
+          'No merging follows — the س of يسٓ and the ص of صٓ',
         ];
       case TajweedRule.idghamShafawi:
         return [
@@ -1230,11 +1260,41 @@ class _PronunciationSection extends StatelessWidget {
           'عند قراءتها يُعمل بسجود التلاوة بحسب المذهب المتبع',
           'تظهر في المصحف بالرمز ۩',
         ];
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddAridLissukun:
+        return [
+          'يمد ٢ أو ٤ أو ٦ حركات، والثلاثة جائزة',
+          'يكون عند حرف المد إذا جاء بعده حرف يسكن للوقف',
+          'وإذا وصلت ولم تقف صار مدًا طبيعيًا بحركتين',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'حرف اللين: الواو أو الياء الساكنة المفتوح ما قبلها، نحو: خَوْف وبَيْت',
+          'يمد ٢ أو ٤ أو ٦ حركات عند الوقف على ما بعده',
+          'ولا يمد إذا وصلت القراءة',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
         return [
           'يمد ٦ حركات كاملة وهو أطول أنواع المد',
-          'يكون عند حرف المد إذا جاء بعده سكون أصلي أو شدة في نفس البنية',
-          'ويظهر أيضًا في أوائل بعض السور مثل: الم',
+          'حرف مد بعده حرف مشدد في نفس الكلمة',
+          'مثاله المشهور: ٱلضَّآلِّينَ في آخر الفاتحة',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          'يمد ٦ حركات',
+          'حرف مد بعده حرف ساكن سكونًا أصليًا في نفس الكلمة',
+          'لم يرد إلا في موضعين: يونس ٥١ و٩١',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          'يمد ٦ حركات',
+          'لا يكون إلا في فواتح السور',
+          'يدغم آخر اسم الحرف فيما بعده، كاللام في الٓمٓ',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          'يمد ٦ حركات',
+          'لا يكون إلا في فواتح السور',
+          'لا إدغام بعده، كالسين في يسٓ والصاد في صٓ',
         ];
       case TajweedRule.idghamShafawi:
         return [
@@ -1345,8 +1405,40 @@ class _PronunciationSection extends StatelessWidget {
           '۩ سجدہ آیت کی علامت ہے',
           'قراءت میں اس مقام پر سجدۂ تلاوت کیا جاتا ہے',
         ];
-      case TajweedRule.maddLazim:
-        return ['اس مد کو 6 حرکات تک کھینچیں', 'یہ سب سے مضبوط لازمی مد ہے'];
+      case TajweedRule.maddAridLissukun:
+        return [
+          'اسے 2، 4 یا 6 حرکات تک کھینچا جا سکتا ہے',
+          'جب حرفِ مد کے بعد والا حرف وقف کی وجہ سے ساکن ہو جائے',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'حرفِ لین: ساکن واو یا یاء جس سے پہلے زبر ہو، جیسے خَوْف اور بَیْت',
+          'وقف کی صورت میں 2، 4 یا 6 حرکات تک کھینچیں',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return [
+          'چھ حرکات کھینچیں',
+          'ایک ہی کلمے میں حرفِ مد کے بعد مشدد حرف',
+          'مثال: ٱلضَّآلِّينَ',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          'چھ حرکات کھینچیں',
+          'ایک ہی کلمے میں حرفِ مد کے بعد ساکن حرف',
+          'قرآن میں صرف دو مقامات: یونس ۵۱ اور ۹۱',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          'چھ حرکات کھینچیں',
+          'صرف حروفِ مقطعات میں',
+          'اگلے حرف میں ادغام، جیسے الٓمٓ کا لام',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          'چھ حرکات کھینچیں',
+          'صرف حروفِ مقطعات میں',
+          'ادغام نہیں، جیسے يسٓ کا سین',
+        ];
       case TajweedRule.idghamShafawi:
         return [
           'میم ساکن کو اگلی میم میں ادغام کریں',
@@ -1447,8 +1539,40 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.sajdah:
         return ['۩ secde ayetini gösterir', 'Tilavette bu yerde secde yapılır'];
-      case TajweedRule.maddLazim:
-        return ['Bu meddi 6 hareke uzatın', 'En güçlü zorunlu med türüdür'];
+      case TajweedRule.maddAridLissukun:
+        return [
+          '2, 4 veya 6 hareke uzatılabilir; üçü de caizdir',
+          'Med harfinden sonraki harf durma sebebiyle sakin olduğunda oluşur',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'Lin harfi: öncesi fethalı sakin vav veya ya (خَوْف, بَيْت)',
+          'Durduğunuzda 2, 4 veya 6 hareke uzatın',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return [
+          '6 hareke uzatın — en uzun med',
+          'Aynı kelimede med harfinden sonra şedde',
+          'Örnek: ٱلضَّآلِّينَ',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          '6 hareke uzatın',
+          'Aynı kelimede med harfinden sonra sükûn',
+          'Kur’an’da sadece iki yerde: Yûnus 51 ve 91',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          '6 hareke uzatın',
+          'Sadece sûre başlarındaki hurûf-ı mukattaada',
+          'Sonraki harfe idgam olur — الٓمٓ’deki lâm',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          '6 hareke uzatın',
+          'Sadece sûre başlarındaki hurûf-ı mukattaada',
+          'İdgam yok — يسٓ’deki sîn',
+        ];
       case TajweedRule.idghamShafawi:
         return [
           'Sakin mimin ardından gelen mime idğam edin',
@@ -1558,10 +1682,39 @@ class _PronunciationSection extends StatelessWidget {
           'Le signe ۩ indique un verset de prosternation',
           'On effectue la sajdah de récitation à cet endroit',
         ];
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddAridLissukun:
         return [
-          'Allongez à 6 temps complets',
-          'C est le madd le plus fort et obligatoire',
+          'Allongez de 2, 4 ou 6 temps — les trois sont permis',
+          'Se produit quand la lettre suivante devient sakinah parce que vous vous arrêtez',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'Lettre de lin : waw ou ya sakinah précédée d une fatha (خَوْف, بَيْت)',
+          'Allongez de 2, 4 ou 6 temps si vous vous arrêtez',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return [
+          'Allongez 6 temps — le plus long des madd',
+          'Lettre de madd suivie d\'une shadda dans le même mot',
+          'Exemple : ٱلضَّآلِّينَ',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          'Allongez 6 temps',
+          'Lettre de madd suivie d\'un soukoun dans le même mot',
+          'Seulement deux fois dans le Coran : 10:51 et 10:91',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          'Allongez 6 temps',
+          'Uniquement dans les lettres isolées en début de sourate',
+          'Assimilation à la lettre suivante — le ل de الٓمٓ',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          'Allongez 6 temps',
+          'Uniquement dans les lettres isolées en début de sourate',
+          'Aucune assimilation — le س de يسٓ',
         ];
       case TajweedRule.idghamShafawi:
         return [
@@ -1666,10 +1819,39 @@ class _PronunciationSection extends StatelessWidget {
           'Tanda ۩ menunjukkan ayat sajdah',
           'Pada ayat ini dilakukan sujud tilawah',
         ];
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddAridLissukun:
         return [
-          'Panjangkan sampai 6 harakat penuh',
-          'Ini jenis mad wajib paling kuat',
+          'Panjangkan 2, 4, atau 6 harakat — ketiganya dibolehkan',
+          'Terjadi bila huruf setelah huruf mad menjadi sukun karena waqaf',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'Huruf lin: wau atau ya sukun yang didahului fathah (خَوْف, بَيْت)',
+          'Panjangkan 2, 4, atau 6 harakat ketika waqaf',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return [
+          'Panjangkan 6 harakat — mad terpanjang',
+          'Huruf mad diikuti tasydid dalam satu kata',
+          'Contoh: ٱلضَّآلِّينَ',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          'Panjangkan 6 harakat',
+          'Huruf mad diikuti sukun asli dalam satu kata',
+          'Hanya dua tempat dalam Al-Qur’an: Yunus 51 dan 91',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          'Panjangkan 6 harakat',
+          'Hanya pada huruf muqatha’ah di awal surah',
+          'Diidghamkan ke huruf berikutnya — lam pada الٓمٓ',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          'Panjangkan 6 harakat',
+          'Hanya pada huruf muqatha’ah di awal surah',
+          'Tanpa idgham — sin pada يسٓ',
         ];
       case TajweedRule.idghamShafawi:
         return [
@@ -1783,10 +1965,39 @@ class _PronunciationSection extends StatelessWidget {
           'Das Zeichen ۩ markiert einen Niederwerfungsvers',
           'An dieser Stelle erfolgt Sajdah at-Tilawah',
         ];
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddAridLissukun:
         return [
-          'Verlängere auf volle 6 Zählzeiten',
-          'Dies ist die stärkste verpflichtende Madd-Form',
+          'Verlängere 2, 4 oder 6 Zählzeiten — alle drei sind erlaubt',
+          'Entsteht, wenn der folgende Buchstabe durch das Anhalten Sukun erhält',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'Lin-Buchstabe: Waw oder Ya mit Sukun nach einer Fatha (خَوْف, بَيْت)',
+          'Verlängere 2, 4 oder 6 Zählzeiten, wenn du anhältst',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return [
+          '6 Zählzeiten — das längste Madd',
+          'Madd-Buchstabe gefolgt von Schadda im selben Wort',
+          'Beispiel: ٱلضَّآلِّينَ',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          '6 Zählzeiten',
+          'Madd-Buchstabe gefolgt von Sukoon im selben Wort',
+          'Nur zwei Stellen im Koran: 10:51 und 10:91',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          '6 Zählzeiten',
+          'Nur bei den Einzelbuchstaben am Surenanfang',
+          'Verschmilzt mit dem nächsten Buchstaben — das ل in الٓمٓ',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          '6 Zählzeiten',
+          'Nur bei den Einzelbuchstaben am Surenanfang',
+          'Keine Verschmelzung — das س in يسٓ',
         ];
       case TajweedRule.idghamShafawi:
         return [
