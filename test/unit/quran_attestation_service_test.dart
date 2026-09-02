@@ -99,6 +99,17 @@ class _AttestationAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _StubProvider implements AttestationProvider {
+  @override
+  String get platformName => 'Stub';
+
+  @override
+  Future<AttestationToken> obtainToken() async => const AttestationToken(
+    value: 'stub-token',
+    expiresIn: Duration(minutes: 10),
+  );
+}
+
 void main() {
   late _FakeAppAttestClient appAttest;
   late _MemoryKeyStore keyStore;
@@ -115,7 +126,7 @@ void main() {
       workerOrigin: 'https://worker.example',
       appAttest: appAttest,
       keyStore: keyStore,
-      isIOS: () => true,
+      platform: () => AttestationPlatform.ios,
       client: dio,
     );
   });
@@ -156,5 +167,70 @@ void main() {
       throwsA(isA<QuranAttestationException>()),
     );
     expect(adapter.requests, isEmpty);
+  });
+
+  group('provider selection', () {
+    QuranAttestationService serviceFor(AttestationPlatform platform) {
+      final dio = Dio(BaseOptions(baseUrl: 'https://worker.example'))
+        ..httpClientAdapter = adapter;
+      return QuranAttestationService(
+        workerOrigin: 'https://worker.example',
+        appAttest: appAttest,
+        keyStore: keyStore,
+        platform: () => platform,
+        client: dio,
+      );
+    }
+
+    test('uses App Attest on iOS', () {
+      expect(
+        serviceFor(AttestationPlatform.ios).provider,
+        isA<AppAttestProvider>(),
+      );
+    });
+
+    test('falls back to the unsupported provider off iOS', () {
+      for (final platform in [
+        AttestationPlatform.android,
+        AttestationPlatform.other,
+      ]) {
+        expect(
+          serviceFor(platform).provider,
+          isA<UnsupportedAttestationProvider>(),
+          reason: 'expected $platform to have no attestation provider yet',
+        );
+      }
+    });
+
+    test('fails closed on Android without touching App Attest', () async {
+      await expectLater(
+        serviceFor(AttestationPlatform.android).accessToken(),
+        throwsA(
+          isA<QuranAttestationException>().having(
+            (error) => error.message,
+            'message',
+            contains('Android'),
+          ),
+        ),
+      );
+      expect(adapter.requests, isEmpty);
+      expect(appAttest.generatedKeys, 0);
+    });
+
+    test('honours an explicitly injected provider', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://worker.example'))
+        ..httpClientAdapter = adapter;
+      final service = QuranAttestationService(
+        workerOrigin: 'https://worker.example',
+        appAttest: appAttest,
+        keyStore: keyStore,
+        platform: () => AttestationPlatform.android,
+        provider: _StubProvider(),
+        client: dio,
+      );
+
+      expect(await service.accessToken(), 'stub-token');
+      expect(adapter.requests, isEmpty);
+    });
   });
 }

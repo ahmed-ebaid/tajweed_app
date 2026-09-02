@@ -88,9 +88,9 @@ equivalent platform attestation flow is implemented.
 
 ### 3. Run on an Android emulator
 
-Android builds and renders, but `QuranAttestationService` implements Apple App
-Attest only, so content requests fail closed with `This device does not
-support Apple App Attest.` The UI still draws, which is enough for layout,
+Android builds and renders, but only iOS has an attestation provider today, so
+content requests fail closed with `Android does not have a supported
+attestation provider yet.` The UI still draws, which is enough for layout,
 RTL, and localization checks.
 
 One-time SDK setup:
@@ -218,7 +218,9 @@ CI enforcement:
 - The bundled Amiri Quran font is provided by the Amiri Project under the SIL Open Font License 1.1
 
 ### API attestation
-- `QuranAttestationService` registers an Apple App Attest key and generates assertions
+- `QuranAttestationService` owns token caching and request coalescing, and delegates the platform handshake to an `AttestationProvider`
+- `AppAttestProvider` registers an Apple App Attest key and generates assertions; every other platform gets `UnsupportedAttestationProvider` and fails closed
+- Adding Android support means adding a `PlayIntegrityProvider` and a case in `QuranAttestationService._providerFor`; nothing else changes
 - The Cloudflare Worker validates Apple's certificate chain, app identity, one-time challenge, and monotonic assertion counter
 - Successful assertions receive environment-bound bearer tokens valid for ten minutes
 - Protected `/v2/content` routes reject missing, forged, expired, or cross-environment tokens
