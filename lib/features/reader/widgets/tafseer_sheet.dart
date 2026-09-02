@@ -536,8 +536,10 @@ class _TafseerSheetState extends State<TafseerSheet> {
   }
 
   /// Strip HTML tags and print-edition artifacts from tafseer text.
-  static String _stripHtml(String html) =>
-      TafseerTextSanitizer.stripHtml(html);
+  String _stripHtml(String html) => TafseerTextSanitizer.stripHtml(
+    html,
+    ayahNumber: int.tryParse(widget.verseKey.split(':').last),
+  );
 }
 
 class _TafseerSheetStrings {

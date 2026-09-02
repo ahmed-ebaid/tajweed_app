@@ -22,6 +22,23 @@ abstract final class TafseerTextSanitizer {
   /// Any stray marker delimiter left behind by an unbalanced source marker.
   static final RegExp _strayMarkerDelimiter = RegExp(r'&\s*;');
 
+  /// Start of the editor's critical apparatus, e.g. `------- الهوامش :`.
+  ///
+  /// These notes belong to the modern print edition rather than to the
+  /// mufassir: they cross-reference earlier volumes, record manuscript
+  /// variants and trace narrator chains. They are not useful in-app.
+  static final RegExp _footnoteSeparator = RegExp(
+    r'[-\u2010-\u2015]{3,}\s*الهوامش\s*:?',
+  );
+
+  /// A numbered footnote marker such as `(25)`.
+  static final RegExp _footnoteMarker = RegExp(r'\((\d+)\)');
+
+  /// Section dividers and dashes left dangling once the notes are removed.
+  static final RegExp _trailingDecoration = RegExp(
+    r'[\s*\u2022\u00b7\-\u2010-\u2015]+$',
+  );
+
   static const Map<String, String> _namedEntities = {
     '&nbsp;': ' ',
     '&lt;': '<',
@@ -46,7 +63,10 @@ abstract final class TafseerTextSanitizer {
   };
 
   /// Strips markup and editorial artifacts from [html] for plain display.
-  static String stripHtml(String html) {
+  ///
+  /// Pass [ayahNumber] so the verse's own number is never mistaken for a
+  /// footnote marker when the two happen to collide.
+  static String stripHtml(String html, {int? ayahNumber}) {
     if (html.isEmpty) return '';
 
     // Tags are removed first so decoded entities can never introduce markup.
@@ -54,7 +74,41 @@ abstract final class TafseerTextSanitizer {
     text = _decodeEntities(text);
     text = text.replaceAll(_printPageMarker, ' ');
     text = text.replaceAll(_strayMarkerDelimiter, ' ');
+    text = _normalizeWhitespace(text);
+    text = _removeEditorialFootnotes(text, ayahNumber);
     return _normalizeWhitespace(text);
+  }
+
+  /// Drops the editor's footnote section and the markers that point into it.
+  ///
+  /// Only markers actually defined in that section are removed, so an ayah
+  /// number such as `(64)` survives when no footnote `(64)` exists. When the
+  /// numbers do collide, the first occurrence is kept as the verse citation.
+  static String _removeEditorialFootnotes(String text, int? ayahNumber) {
+    final separator = _footnoteSeparator.firstMatch(text);
+    if (separator == null) return text;
+
+    final body = text.substring(0, separator.start);
+    final notes = text.substring(separator.end);
+    final defined = _footnoteMarker
+        .allMatches(notes)
+        .map((match) => match.group(1)!)
+        .toSet();
+    if (defined.isEmpty) return body.replaceFirst(_trailingDecoration, '');
+
+    final verseMarker = ayahNumber?.toString();
+    var keptVerseMarker = false;
+    final cleaned = body.replaceAllMapped(_footnoteMarker, (match) {
+      final number = match.group(1)!;
+      if (!defined.contains(number)) return match.group(0)!;
+      if (number == verseMarker && !keptVerseMarker) {
+        keptVerseMarker = true;
+        return match.group(0)!;
+      }
+      return ' ';
+    });
+
+    return cleaned.replaceFirst(_trailingDecoration, '');
   }
 
   static String _decodeEntities(String input) {

@@ -88,5 +88,67 @@ void main() {
 
       expect(result, '7192 - حدثنا 6-484 نص');
     });
+
+    test('removes the editorial footnote section and its markers', () {
+      const html =
+          '<p>قل يا أهل الكتاب (24) تعالوا إلى كلمة (25) سواء بيننا</p>'
+          '<p>----------------------- الهوامش :</p>'
+          '<p>(24) انظر تفسير "سواء" فيما سلف 1: 256</p>'
+          '<p>(25) في المطبوعة: زيادة</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html);
+
+      expect(result, 'قل يا أهل الكتاب تعالوا إلى كلمة سواء بيننا');
+    });
+
+    test('keeps the verse number when it collides with a footnote', () {
+      const html =
+          '<p>﴿قل يا أهل الكتاب﴾ (64) وقوله (64) يعني (2) كذا</p>'
+          '<p>------------ الهوامش:</p>'
+          '<p>(2) نص الحاشية</p>'
+          '<p>(64) حاشية أخرى</p>';
+
+      // Only the first `(64)` survives, as the verse citation.
+      final result = TafseerTextSanitizer.stripHtml(html, ayahNumber: 64);
+
+      expect(result, '﴿قل يا أهل الكتاب﴾ (64) وقوله يعني كذا');
+    });
+
+    test('keeps parenthesised numbers that no footnote defines', () {
+      const html =
+          '<p>ذكر في الآية (5) وفي غيرها (7) بيان</p>'
+          '<p>--------- الهوامش :</p>'
+          '<p>(7) تعليق المحقق</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html);
+
+      expect(result, 'ذكر في الآية (5) وفي غيرها بيان');
+    });
+
+    test('trims section decoration left dangling before the notes', () {
+      const html =
+          '<p>خاتمة الكلام (3)</p><p> * * * </p>'
+          '<p>-------------- الهوامش :</p><p>(3) حاشية</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html);
+
+      expect(result, 'خاتمة الكلام');
+    });
+
+    test('leaves text untouched when there is no footnote section', () {
+      const html = '<p>تفسير بغير حواشٍ وفيه رقم (12) مذكور</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html, ayahNumber: 12);
+
+      expect(result, 'تفسير بغير حواشٍ وفيه رقم (12) مذكور');
+    });
+
+    test('requires the separator rule before dropping a notes section', () {
+      const html = '<p>ذكر الهوامش في سياق الكلام (4) فقط</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html);
+
+      expect(result, 'ذكر الهوامش في سياق الكلام (4) فقط');
+    });
   });
 }
