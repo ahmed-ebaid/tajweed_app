@@ -318,8 +318,9 @@ class _TafseerSheetState extends State<TafseerSheet> {
   @override
   Widget build(BuildContext context) {
     final strings = _TafseerSheetStrings.of(context);
-    final strippedText = _stripHtml(_text ?? '');
-    final showEmptyState = !_loading && _error == null && strippedText.isEmpty;
+    final tafseer = _parseTafseer(_text ?? '');
+    final strippedText = tafseer.body;
+    final showEmptyState = !_loading && _error == null && tafseer.isEmpty;
     final localeCode = Localizations.localeOf(context).languageCode;
     final isRtl = localeCode == 'ar' || localeCode == 'ur';
 
@@ -433,16 +434,24 @@ class _TafseerSheetState extends State<TafseerSheet> {
                 : SingleChildScrollView(
                     controller: controller,
                     padding: const EdgeInsets.all(16),
-                    child: SelectableText(
-                      strippedText,
-                      textDirection: isRtl
-                          ? TextDirection.rtl
-                          : TextDirection.ltr,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        height: 1.8,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SelectableText(
+                          strippedText,
+                          textDirection: isRtl
+                              ? TextDirection.rtl
+                              : TextDirection.ltr,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                height: 1.8,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        if (tafseer.hasNotes)
+                          _buildFootnotes(strings, tafseer.notes, isRtl),
+                      ],
                     ),
                   ),
           ),
@@ -535,11 +544,75 @@ class _TafseerSheetState extends State<TafseerSheet> {
     return verseKey;
   }
 
-  /// Strip HTML tags and print-edition artifacts from tafseer text.
-  String _stripHtml(String html) => TafseerTextSanitizer.stripHtml(
+  /// The print edition's critical apparatus, collapsed by default.
+  ///
+  /// These notes are the editor's, not the mufassir's, so they sit out of the
+  /// reading flow. They are kept rather than dropped because they are part of
+  /// the published text.
+  Widget _buildFootnotes(
+    _TafseerSheetStrings strings,
+    List<String> notes,
+    bool isRtl,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Theme(
+        // Keeps the tile flush with the body text instead of boxed in.
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(top: 4, bottom: 8),
+          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          leading: Icon(
+            Icons.notes_rounded,
+            size: 20,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          title: Text(
+            strings.text('footnotes', {'count': '${notes.length}'}),
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          subtitle: Text(
+            strings.text('footnotes_hint'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+            ),
+          ),
+          children: [
+            for (final note in notes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: SelectableText(
+                  note,
+                  textDirection: isRtl
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    height: 1.7,
+                    fontSize: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Split tafseer into clean commentary and the editor's notes.
+  TafseerText _parseTafseer(String html) => TafseerTextSanitizer.parse(
     html,
     ayahNumber: int.tryParse(widget.verseKey.split(':').last),
   );
+
+  /// Strip HTML tags and print-edition artifacts from tafseer text.
+  String _stripHtml(String html) => _parseTafseer(html).body;
 }
 
 class _TafseerSheetStrings {
@@ -568,6 +641,8 @@ class _TafseerSheetStrings {
       'share': 'Share Tafseer',
       'share_heading': 'Tafseer — Ayah {verseKey}',
       'share_source': 'Source: {source}',
+      'footnotes': "Editor's notes ({count})",
+      'footnotes_hint': 'From the print edition, not the commentary',
     },
     'ar': {
       'title': 'التفسير — {verseKey}',
@@ -584,6 +659,8 @@ class _TafseerSheetStrings {
       'share': 'مشاركة التفسير',
       'share_heading': 'تفسير الآية {verseKey}',
       'share_source': 'المصدر: {source}',
+      'footnotes': 'الهوامش ({count})',
+      'footnotes_hint': 'من حواشي المحقق لا من نص التفسير',
     },
     'ur': {
       'title': 'تفسیر — {verseKey}',
@@ -600,6 +677,8 @@ class _TafseerSheetStrings {
       'share': 'تفسیر شیئر کریں',
       'share_heading': 'آیت {verseKey} کی تفسیر',
       'share_source': 'ماخذ: {source}',
+      'footnotes': 'محقق کے حواشی ({count})',
+      'footnotes_hint': 'مطبوعہ نسخے سے، تفسیر کے متن سے نہیں',
     },
     'tr': {
       'title': 'Tefsir — Ayet {verseKey}',
@@ -617,6 +696,8 @@ class _TafseerSheetStrings {
       'share': 'Tefsiri paylaş',
       'share_heading': 'Ayet {verseKey} tefsiri',
       'share_source': 'Kaynak: {source}',
+      'footnotes': 'Editör notları ({count})',
+      'footnotes_hint': 'Tefsir metninden değil, basılı baskıdan',
     },
     'fr': {
       'title': 'Tafsir — Ayah {verseKey}',
@@ -634,6 +715,8 @@ class _TafseerSheetStrings {
       'share': 'Partager le tafsir',
       'share_heading': 'Tafsir — Ayah {verseKey}',
       'share_source': 'Source : {source}',
+      'footnotes': "Notes de l'éditeur ({count})",
+      'footnotes_hint': "Issues de l'édition imprimée, non du commentaire",
     },
     'id': {
       'title': 'Tafsir — Ayat {verseKey}',
@@ -651,6 +734,8 @@ class _TafseerSheetStrings {
       'share': 'Bagikan tafsir',
       'share_heading': 'Tafsir — Ayat {verseKey}',
       'share_source': 'Sumber: {source}',
+      'footnotes': 'Catatan editor ({count})',
+      'footnotes_hint': 'Dari edisi cetak, bukan dari teks tafsir',
     },
     'de': {
       'title': 'Tafsir — Ayah {verseKey}',
@@ -668,6 +753,8 @@ class _TafseerSheetStrings {
       'share': 'Tafsir teilen',
       'share_heading': 'Tafsir — Ayah {verseKey}',
       'share_source': 'Quelle: {source}',
+      'footnotes': 'Anmerkungen des Herausgebers ({count})',
+      'footnotes_hint': 'Aus der Druckausgabe, nicht aus dem Kommentar',
     },
     'es': {
       'title': 'Tafsir — Aleya {verseKey}',
@@ -685,6 +772,8 @@ class _TafseerSheetStrings {
       'share': 'Compartir tafsir',
       'share_heading': 'Tafsir — Aleya {verseKey}',
       'share_source': 'Fuente: {source}',
+      'footnotes': 'Notas del editor ({count})',
+      'footnotes_hint': 'De la edición impresa, no del comentario',
     },
   };
 

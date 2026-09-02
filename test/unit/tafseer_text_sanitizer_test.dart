@@ -89,16 +89,20 @@ void main() {
       expect(result, '7192 - حدثنا 6-484 نص');
     });
 
-    test('removes the editorial footnote section and its markers', () {
+    test('splits the editorial footnote section off the commentary', () {
       const html =
           '<p>قل يا أهل الكتاب (24) تعالوا إلى كلمة (25) سواء بيننا</p>'
           '<p>----------------------- الهوامش :</p>'
           '<p>(24) انظر تفسير "سواء" فيما سلف 1: 256</p>'
           '<p>(25) في المطبوعة: زيادة</p>';
 
-      final result = TafseerTextSanitizer.stripHtml(html);
+      final result = TafseerTextSanitizer.parse(html);
 
-      expect(result, 'قل يا أهل الكتاب تعالوا إلى كلمة سواء بيننا');
+      expect(result.body, 'قل يا أهل الكتاب تعالوا إلى كلمة سواء بيننا');
+      expect(result.notes, [
+        '(24) انظر تفسير "سواء" فيما سلف 1: 256',
+        '(25) في المطبوعة: زيادة',
+      ]);
     });
 
     test('keeps the verse number when it collides with a footnote', () {
