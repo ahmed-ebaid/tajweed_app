@@ -62,7 +62,7 @@ class RulesRepository {
         'de':
             'Ein hallender/vibrierender Laut bei den Buchstaben ق ط ب ج د mit Sukoon oder am Wortende.',
       },
-      exampleArabic: ['قَدْ', 'يَبْسُطُ', 'بَعْدَ'],
+      exampleArabic: ['قَدْ', 'يَبْسُطُ', 'تَجْرِى'],
       triggerLetters: ['ق', 'ط', 'ب', 'ج', 'د'],
     ),
     TajweedRuleDefinition(
@@ -78,19 +78,19 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'Natural elongation of a long vowel for exactly 2 counts. Triggered by alif after fathah, waw after dammah, or ya after kasrah.',
+            'Natural elongation of a madd letter for exactly 2 counts: alif after a fatha, waw after a damma, or ya after a kasra, with no hamzah and no sukoon following it.',
         'ar':
-            'مد الحرف لوجود حرف المد (الألف أو الواو أو الياء) دون سبب يوجب زيادة المد. مقداره: ٢ حركة.',
+            'أن يأتي حرف المد — الألف الساكنة المفتوح ما قبلها، أو الواو الساكنة المضموم ما قبلها، أو الياء الساكنة المكسور ما قبلها — ولا يأتي بعده همز ولا سكون. مقداره: ٢ حركة (حركتان).',
         'ur':
-            'طبعی مد جو فتحہ کے بعد الف، ضمہ کے بعد واو، یا کسرہ کے بعد یاء آنے پر دو حرکات کا ہوتا ہے۔',
+            'حرف مد کو دو حرکات تک کھینچنا: الف جس سے پہلے فتحہ، واو جس سے پہلے ضمہ، یا یاء جس سے پہلے کسرہ ہو، اور اس کے بعد نہ ہمزہ ہو نہ سکون۔',
         'tr':
-            'Fethalı eliften, zammalı vavdan veya kesreli yadan önce gelen uzun ünlünün 2 hareke uzatılması.',
+            'Med harfinin tam 2 hareke uzatılması: öncesinde fetha bulunan elif, ötre bulunan vav veya esre bulunan ya; ardından hemze de sükûn da gelmez.',
         'fr':
-            'Allongement naturel d\'une longue voyelle pendant exactement 2 temps. Déclenché par alif après fathah, waw après dammah, ou ya après kasrah.',
+            'Prolongation naturelle de 2 temps d\'une lettre de madd: alif après une fatha, waw après une damma, ou ya après une kasra, sans hamza ni soukoun à sa suite.',
         'id':
-            'Pemanjangan vokal panjang selama tepat 2 harakat. Dipicu oleh alif setelah fathah, waw setelah dhammah, atau ya setelah kasrah.',
+            'Pemanjangan alami huruf mad selama tepat 2 harakat: alif setelah fathah, wau setelah dhammah, atau ya setelah kasrah, tanpa diikuti hamzah maupun sukun.',
         'de':
-            'Natürliche Verlängerung eines langen Vokals für genau 2 Zählzeiten. Ausgelöst durch Alif nach Fathah, Waw nach Dammah oder Ya nach Kasrah.',
+            'Natürliche Dehnung eines Madd-Buchstabens um genau 2 Zählzeiten: Alif nach Fatha, Waw nach Damma oder Ya nach Kasra, ohne folgendes Hamza und ohne Sukun.',
       },
       exampleArabic: ['قَالَ', 'يَقُولُ', 'قِيلَ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -287,19 +287,19 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'Concealment of noon sakinah or tanween before 15 letters. The noon is neither fully pronounced nor fully merged — held between the two with ghunnah for 2 counts.',
+            'Concealment of noon sakinah or tanween before the fifteen letters ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. The noon is neither clearly pronounced nor fully merged: the tongue does not touch its usual place, and a ghunnah is held for 2 counts while the mouth prepares for the next letter.',
         'ar':
-            'إخفاء النون الساكنة أو التنوين عند 15 حرفاً مع بقاء الغنة، بحيث لا تكون النون مظهرة ولا مدغمة.',
+            'إخفاء النون الساكنة أو التنوين إذا جاء بعدهما أحد الحروف الخمسة عشر: ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. فلا تُظهر النون ولا تُدغم، بل يُنطق بها بين الإظهار والإدغام مع غنة مقدارها حركتان، ويتهيأ اللسان لمخرج الحرف التالي.',
         'ur':
-            'نون ساکن یا تنوین کو 15 حروف کے قریب اخفاء کرنا۔ غنہ کے ساتھ نہ پوری طرح ظاہر نہ پوری طرح ادغام۔',
+            'نون ساکن یا تنوین کے بعد پندرہ حروف ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك میں سے کوئی آئے تو نون کو مخفی پڑھا جاتا ہے؛ نہ پوری ظاہر نہ پوری مدغم، دو حرکات کی غنہ کے ساتھ۔',
         'tr':
-            '15 harf önünde sükûnlu nun veya tenvinin gizlenerek günneli okunması.',
+            'Sakin nun veya tenvinden sonra şu on beş harften biri gelirse nun gizlenir: ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Ne tam açık ne tam idgam edilir; dil normal mahrecine değmez ve 2 hareke boyunca ğunne tutulur.',
         'fr':
-            'Dissimulation du noon sakinah ou tanween devant 15 lettres avec nasalisation maintenue.',
+            'Dissimulation du noun sakinah ou du tanwin devant les quinze lettres ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Le noun n\'est ni clairement prononcé ni complètement assimilé: la langue ne touche pas son point habituel et une ghounna est tenue 2 temps.',
         'id':
-            'Menyembunyikan nun sukun atau tanwin di hadapan 15 huruf dengan tetap mempertahankan dengung.',
+            'Menyamarkan nun sukun atau tanwin ketika bertemu salah satu dari lima belas huruf: ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Nun tidak dibaca jelas dan tidak pula diidghamkan, disertai ghunnah 2 harakat sementara mulut bersiap ke huruf berikutnya.',
         'de':
-            'Verbergen von Noon Sakinah oder Tanween vor 15 Buchstaben. Das Noon wird weder vollständig ausgesprochen noch vollständig verschmolzen.',
+            'Verbergen des Nun sakinah oder Tanwin vor den fünfzehn Buchstaben ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Das Nun wird weder klar ausgesprochen noch vollständig assimiliert: die Zunge berührt ihren üblichen Punkt nicht, und eine Ghunna wird 2 Zählzeiten gehalten.',
       },
       exampleArabic: ['مِن كُلِّ', 'عَنكَبُوتٌ', 'أَنتُمْ'],
       triggerLetters: [
@@ -455,33 +455,184 @@ class RulesRepository {
       triggerLetters: [],
     ),
     TajweedRuleDefinition(
-      rule: TajweedRule.maddLazim,
+      rule: TajweedRule.maddLazimKalimiMuthaqqal,
       names: {
-        'en': 'Madd Lazim',
-        'ar': 'مَدّ لَازِم',
-        'ur': 'مد لازم',
-        'tr': 'Meddi Lazım',
-        'fr': 'Madd Lazim',
-        'id': 'Mad Lazim',
-        'de': 'Madd Lazim',
+        'en': 'Madd Lazim Kalimi Muthaqqal',
+        'ar': 'مَدّ لَازِم كَلِمِيّ مُثَقَّل',
+        'ur': 'مد لازم کلمی مثقل',
+        'tr': 'Meddi Lazım Kelimi Müsakkal',
+        'fr': 'Madd Lazim Kalimi Muthaqqal',
+        'id': 'Mad Lazim Kilmi Mutsaqqal',
+        'de': 'Madd Lazim Kalimi Muthaqqal',
       },
       descriptions: {
         'en':
-            'A compulsory madd prolonged for 6 counts when a madd letter is followed by a permanent sukoon or shaddah.',
+            'Within a word, a madd letter is followed by a letter carrying shaddah. Prolong 6 counts. Example: ٱلضَّآلِّينَ.',
         'ar':
-            'مد لازم عند وقوع حرف المد قبل سكون أصلي أو شدة. مقداره: ٦ حركات.',
-        'ur': 'مد لازم میں حرفِ مد کو چھ حرکات تک کھینچا جاتا ہے۔',
+            'أن يأتي بعد حرف المد حرف مشدد في كلمة واحدة، ويمد ٦ حركات. مثاله: ٱلضَّآلِّينَ.',
+        'ur':
+            'ایک ہی کلمے میں حرفِ مد کے بعد مشدد حرف آئے تو چھ حرکات کھینچا جاتا ہے۔ مثال: ٱلضَّآلِّينَ۔',
         'tr':
-            'Med harfinden sonra asli sükûn veya şedde gelirse 6 hareke uzatılır.',
+            'Bir kelimede med harfinden sonra şeddeli harf gelirse 6 hareke uzatılır. Örnek: ٱلضَّآلِّينَ.',
         'fr':
-            'Allongement obligatoire de 6 temps quand la lettre de madd est suivie d’un soukoun permanent ou d’une shadda.',
+            'Dans un mot, la lettre de madd est suivie d\'une lettre portant une shadda. Allongez 6 temps. Exemple : ٱلضَّآلِّينَ.',
         'id':
-            'Mad wajib sepanjang 6 harakat ketika huruf mad diikuti sukun asli atau tasydid.',
+            'Dalam satu kata, huruf mad diikuti huruf bertasydid. Dibaca 6 harakat. Contoh: ٱلضَّآلِّينَ.',
         'de':
-            'Verpflichtende Verlängerung um 6 Zählzeiten bei Madd vor dauerhaftem Sukoon oder Schadda.',
+            'Innerhalb eines Wortes folgt der Madd-Buchstabe ein Buchstabe mit Schadda. 6 Zählzeiten. Beispiel: ٱلضَّآلِّينَ.',
       },
-      exampleArabic: ['الضَّالِّينَ', 'ٓالم'],
+      exampleArabic: ['ٱلضَّآلِّينَ'],
       triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLazimKalimiMukhaffaf,
+      names: {
+        'en': 'Madd Lazim Kalimi Mukhaffaf',
+        'ar': 'مَدّ لَازِم كَلِمِيّ مُخَفَّف',
+        'ur': 'مد لازم کلمی مخفف',
+        'tr': 'Meddi Lazım Kelimi Muhaffef',
+        'fr': 'Madd Lazim Kalimi Mukhaffaf',
+        'id': 'Mad Lazim Kilmi Mukhaffaf',
+        'de': 'Madd Lazim Kalimi Mukhaffaf',
+      },
+      descriptions: {
+        'en':
+            'Within a word, a madd letter is followed by a letter with a plain sukoon. Prolong 6 counts. It occurs only twice in the Qur’an: 10:51 and 10:91 (ءَآلْـَٔـٰنَ).',
+        'ar':
+            'أن يأتي بعد حرف المد حرف ساكن سكونًا أصليًا في كلمة واحدة، ويمد ٦ حركات. ولم يقع إلا في موضعين: يونس ٥١ و٩١ (ءَآلْـَٔـٰنَ).',
+        'ur':
+            'ایک ہی کلمے میں حرفِ مد کے بعد ساکن حرف آئے تو چھ حرکات۔ قرآن میں صرف دو مقامات پر: یونس ۵۱ اور ۹۱۔',
+        'tr':
+            'Bir kelimede med harfinden sonra sükûnlu harf gelir; 6 hareke uzatılır. Kur’an’da sadece iki yerde: Yûnus 51 ve 91.',
+        'fr':
+            'Dans un mot, la lettre de madd est suivie d\'une lettre portant un soukoun. 6 temps. Seulement deux fois dans le Coran : 10:51 et 10:91.',
+        'id':
+            'Dalam satu kata, huruf mad diikuti huruf bersukun asli. Dibaca 6 harakat. Hanya dua tempat: Yunus 51 dan 91.',
+        'de':
+            'Innerhalb eines Wortes folgt dem Madd-Buchstaben ein Buchstabe mit Sukoon. 6 Zählzeiten. Nur zweimal im Koran: 10:51 und 10:91.',
+      },
+      exampleArabic: ['ءَآلْـَٔـٰنَ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLazimHarfiMuthaqqal,
+      names: {
+        'en': 'Madd Lazim Harfi Muthaqqal',
+        'ar': 'مَدّ لَازِم حَرْفِيّ مُثَقَّل',
+        'ur': 'مد لازم حرفی مثقل',
+        'tr': 'Meddi Lazım Harfi Müsakkal',
+        'fr': 'Madd Lazim Harfi Muthaqqal',
+        'id': 'Mad Lazim Harfi Mutsaqqal',
+        'de': 'Madd Lazim Harfi Muthaqqal',
+      },
+      descriptions: {
+        'en':
+            'In the disjointed letters opening some surahs, a spelled letter ends in a consonant that merges into the next letter. Prolong 6 counts. Example: the ل of الٓمٓ.',
+        'ar':
+            'في فواتح السور، يكون حرف المد في اسم الحرف مدغمًا آخره فيما بعده، ويمد ٦ حركات. مثاله: اللام في الٓمٓ.',
+        'ur':
+            'حروفِ مقطعات میں حرف کا آخری حصہ اگلے حرف میں مدغم ہو تو چھ حرکات۔ مثال: الٓمٓ کا لام۔',
+        'tr':
+            'Sûre başlarındaki hurûf-ı mukattaada harfin sonu sonrakine idgam olur; 6 hareke. Örnek: الٓمٓ’deki lâm.',
+        'fr':
+            'Dans les lettres isolées en début de sourate, la fin de la lettre épelée s\'assimile à la suivante. 6 temps. Exemple : le ل de الٓمٓ.',
+        'id':
+            'Pada huruf muqatha’ah, akhir nama huruf diidghamkan ke huruf berikutnya. 6 harakat. Contoh: lam pada الٓمٓ.',
+        'de':
+            'Bei den Einzelbuchstaben am Surenanfang verschmilzt der Endlaut mit dem nächsten Buchstaben. 6 Zählzeiten. Beispiel: das ل in الٓمٓ.',
+      },
+      exampleArabic: ['الٓمٓ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLazimHarfiMukhaffaf,
+      names: {
+        'en': 'Madd Lazim Harfi Mukhaffaf',
+        'ar': 'مَدّ لَازِم حَرْفِيّ مُخَفَّف',
+        'ur': 'مد لازم حرفی مخفف',
+        'tr': 'Meddi Lazım Harfi Muhaffef',
+        'fr': 'Madd Lazim Harfi Mukhaffaf',
+        'id': 'Mad Lazim Harfi Mukhaffaf',
+        'de': 'Madd Lazim Harfi Mukhaffaf',
+      },
+      descriptions: {
+        'en':
+            'In the disjointed letters opening some surahs, a spelled letter ends in a plain sukoon with no merging. Prolong 6 counts. Example: the س of يسٓ.',
+        'ar':
+            'في فواتح السور، يكون آخر اسم الحرف ساكنًا من غير إدغام، ويمد ٦ حركات. مثاله: السين في يسٓ.',
+        'ur':
+            'حروفِ مقطعات میں حرف کا آخر ساکن ہو اور ادغام نہ ہو تو چھ حرکات۔ مثال: يسٓ کا سین۔',
+        'tr':
+            'Hurûf-ı mukattaada harfin sonu idgamsız sâkin olur; 6 hareke. Örnek: يسٓ’deki sîn.',
+        'fr':
+            'Dans les lettres isolées, la lettre épelée se termine par un soukoun sans assimilation. 6 temps. Exemple : le س de يسٓ.',
+        'id':
+            'Pada huruf muqatha’ah, akhir nama huruf bersukun tanpa idgham. 6 harakat. Contoh: sin pada يسٓ.',
+        'de':
+            'Bei den Einzelbuchstaben endet der Buchstabe auf Sukoon ohne Verschmelzung. 6 Zählzeiten. Beispiel: das س in يسٓ.',
+      },
+      exampleArabic: ['يسٓ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddAridLissukun,
+      names: {
+        'en': 'Madd Arid Lissukun',
+        'ar': 'مَدّ عَارِض لِلسُّكُون',
+        'ur': 'مد عارض للسکون',
+        'tr': 'Meddi Ârız',
+        'fr': 'Madd Arid Lissoukoun',
+        'id': 'Mad Arid Lissukun',
+        'de': 'Madd Arid Lissukun',
+      },
+      descriptions: {
+        'en':
+            'A madd letter — alif after a fatha, waw after a damma, or ya after a kasra — followed by a letter that becomes sakin only because you stop on it. When stopping, prolong 2, 4, or 6 counts and keep the same length throughout a passage; if you continue it reverts to a natural 2-count madd.',
+        'ar':
+            'أن يأتي بعد حرف المد حرفّ متحرك يسكن للوقف عليه. وحرف المد هو: الألف الساكنة المفتوح ما قبلها، أو الواو الساكنة المضموم ما قبلها، أو الياء الساكنة المكسور ما قبلها. مقداره عند الوقف: ٢ أو ٤ أو ٦ حركات، والأولى الالتزام بمقدار واحد. فإن وصلت زال السكون وعاد مدًا طبيعيًا بحركتين.',
+        'ur':
+            'حرف مد (الف جس سے پہلے فتحہ، واو جس سے پہلے ضمہ، یا یاء جس سے پہلے کسرہ) کے بعد ایسا حرف آئے جو صرف وقف کی وجہ سے ساکن ہو۔ وقف پر ۲، ۴ یا ۶ حرکات؛ وصل کی صورت میں دو حرکات کا مد طبعی رہ جاتا ہے۔',
+        'tr':
+            'Med harfinden (öncesinde fetha bulunan elif, ötre bulunan vav veya esre bulunan ya) sonra, yalnızca durduğunuz için sakin olan bir harf gelir. Durulduğunda 2, 4 veya 6 hareke uzatılır ve aynı ölçü korunur; geçildiğinde 2 harekelik tabii med olur.',
+        'fr':
+            'Une lettre de prolongation (alif précédé d\'une fatha, waw précédé d\'une damma, ya précédé d\'une kasra) suivie d\'une lettre qui ne devient quiescente que parce qu\'on s\'arrête dessus. À l\'arrêt: 2, 4 ou 6 temps, en gardant la même longueur; en continuant, il redevient un madd naturel de 2 temps.',
+        'id':
+            'Huruf mad (alif setelah fathah, wau setelah dhammah, atau ya setelah kasrah) diikuti huruf yang menjadi sukun hanya karena diwaqafkan. Saat berhenti: 2, 4, atau 6 harakat dengan ukuran yang konsisten; bila diteruskan kembali menjadi mad thabi\'i 2 harakat.',
+        'de':
+            'Ein Madd-Buchstabe (Alif nach Fatha, Waw nach Damma oder Ya nach Kasra), gefolgt von einem Buchstaben, der nur durch das Anhalten sakin wird. Beim Anhalten 2, 4 oder 6 Zählzeiten in gleichbleibender Länge; beim Weiterlesen wird daraus ein natürliches Madd von 2 Zählzeiten.',
+      },
+      exampleArabic: ['يَعْمَهُونَ', 'نَسْتَعِينُ'],
+      triggerLetters: ['ا', 'و', 'ي'],
+    ),
+    TajweedRuleDefinition(
+      rule: TajweedRule.maddLin,
+      names: {
+        'en': 'Madd Lin',
+        'ar': 'مَدّ لِين',
+        'ur': 'مد لین',
+        'tr': 'Meddi Lîn',
+        'fr': 'Madd Lin',
+        'id': 'Mad Lin',
+        'de': 'Madd Lin',
+      },
+      descriptions: {
+        'en':
+            'A lin letter — waw or ya carrying sukoon and preceded by a fatha, so the vowel before it does not match it — followed by a letter you stop on. When stopping, prolong 2, 4, or 6 counts; there is no elongation at all when you continue.',
+        'ar':
+            'الواو أو الياء الساكنة المفتوح ما قبلها، وتسمى حرف لين لأن حركة ما قبلها لا تجانسها، ويأتي بعدها حرف يوقف عليه. مقداره عند الوقف: ٢ أو ٤ أو ٦ حركات، ولا يمد عند الوصل.',
+        'ur':
+            'واو یا یاء ساکن ہو اور اس سے پہلے فتحہ ہو — یہ حرف لین کہلاتا ہے کیونکہ پچھلی حرکت اس کے موافق نہیں — اور اس کے بعد وہ حرف آئے جس پر وقف کیا جائے۔ وقف پر ۲، ۴ یا ۶ حرکات؛ وصل میں بالکل مد نہیں۔',
+        'tr':
+            'Sakin vav veya ya olup öncesinde fetha bulunur — önceki hareke kendisine uymadığı için lîn harfi denir — ve ardından üzerinde durulan bir harf gelir. Durulduğunda 2, 4 veya 6 hareke uzatılır; geçildiğinde hiç uzatılmaz.',
+        'fr':
+            'Une lettre de lin — waw ou ya portant un soukoun et précédé d\'une fatha, la voyelle précédente ne lui correspondant pas — suivie d\'une lettre sur laquelle on s\'arrête. À l\'arrêt: 2, 4 ou 6 temps; aucune prolongation en liaison.',
+        'id':
+            'Huruf lin — wau atau ya bersukun yang didahului fathah, sehingga harakat sebelumnya tidak sejenis dengannya — diikuti huruf yang diwaqafkan. Saat berhenti: 2, 4, atau 6 harakat; tidak ada pemanjangan sama sekali bila diteruskan.',
+        'de':
+            'Ein Lin-Buchstabe — Waw oder Ya mit Sukun und einem vorangehenden Fatha, das nicht zu ihm passt — gefolgt von einem Buchstaben, auf dem angehalten wird. Beim Anhalten 2, 4 oder 6 Zählzeiten; beim Weiterlesen keine Dehnung.',
+      },
+      exampleArabic: ['قُرَيْشٍ', 'خَوْفٍ'],
+      triggerLetters: ['و', 'ي'],
     ),
     TajweedRuleDefinition(
       rule: TajweedRule.idghamShafawi,
@@ -495,14 +646,20 @@ class RulesRepository {
         'de': 'Idgham Shafawi',
       },
       descriptions: {
-        'en': 'Meem sakinah merges into the following meem with ghunnah.',
-        'ar': 'إدغام الميم الساكنة في ميم بعدها مع غنة.',
-        'ur': 'میم ساکن کو اگلی میم میں غنہ کے ساتھ ادغام کیا جاتا ہے۔',
+        'en':
+            'Meem sakinah followed by another meem: the two merge into a single doubled meem, pronounced with the lips lightly closed and a ghunnah held for 2 counts.',
+        'ar':
+            'إذا جاء بعد الميم الساكنة ميمٌ أخرى أُدغمت الأولى في الثانية فصارتا ميمًا واحدة مشددة، تُنطق بإطباق الشفتين مع غنة مقدارها حركتان.',
+        'ur':
+            'میم ساکن کے بعد دوسری میم آئے تو دونوں مل کر ایک مشدد میم بن جاتی ہیں، جو ہونٹوں کو ملا کر دو حرکات کی غنہ کے ساتھ پڑھی جاتی ہے۔',
         'tr':
-            'Sakin mim, kendisinden sonraki mime günneli şekilde idğam edilir.',
-        'fr': 'Le meem sakinah fusionne dans le meem suivant avec ghounna.',
-        'id': 'Mim sukun dilebur ke mim berikutnya dengan dengung.',
-        'de': 'Meem Sakinah verschmilzt mit folgendem Meem mit Ghunna.',
+            'Sakin mimden sonra başka bir mim gelirse ikisi birleşip tek bir şedde\'li mim olur; dudaklar hafifçe kapatılarak 2 harekelik ğunne ile okunur.',
+        'fr':
+            'Un meem sakinah suivi d\'un autre meem: les deux fusionnent en un seul meem redoublé, prononcé lèvres légèrement fermées avec une ghounna de 2 temps.',
+        'id':
+            'Mim sukun bertemu mim berikutnya: keduanya melebur menjadi satu mim bertasydid, dibaca dengan bibir terkatup ringan dan ghunnah 2 harakat.',
+        'de':
+            'Auf ein Meem sakinah folgt ein weiteres Meem: beide verschmelzen zu einem einzigen verdoppelten Meem, mit leicht geschlossenen Lippen und einer Ghunna von 2 Zählzeiten.',
       },
       exampleArabic: ['لَكُم مَّا'],
       triggerLetters: ['م'],
@@ -520,15 +677,19 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'Assimilation between two letters with the same articulation point but different attributes.',
-        'ar': 'إدغام حرفين من مخرج واحد مع اختلاف في بعض الصفات.',
-        'ur': 'دو متجانس حروف میں ادغام جو ایک ہی مخرج سے ادا ہوں۔',
-        'tr': 'Mahreci aynı, sıfatları farklı iki harfin idğam edilmesi.',
+            'Two letters share the same articulation point but differ in attributes, so the first, which is sakin, merges completely into the second. The common pairs are ت into د, د into ت, ت into ط, ط into ت, ث into ذ, ذ into ظ, and ب into م.',
+        'ar':
+            'أن يلتقي حرفان اتحدا مخرجًا واختلفا صفةً، فيُدغم الأول الساكن في الثاني المتحرك إدغامًا كاملًا. وأشهر أمثلته: التاء في الدال، والدال في التاء، والتاء في الطاء، والطاء في التاء، والثاء في الذال، والذال في الظاء، والباء في الميم.',
+        'ur':
+            'دو حروف کا مخرج ایک ہو مگر صفات مختلف ہوں تو پہلا ساکن حرف دوسرے میں پوری طرح مدغم ہو جاتا ہے۔ مشہور جوڑے: ت میں د، د میں ت، ت میں ط، ط میں ت، ث میں ذ، ذ میں ظ، ب میں م۔',
+        'tr':
+            'İki harfin mahreci aynı, sıfatları farklı olursa sakin olan birinci harf ikinciye tamamen idgam edilir. Yaygın çiftler: ت-د, د-ت, ت-ط, ط-ت, ث-ذ, ذ-ظ ve ب-م.',
         'fr':
-            'Assimilation entre deux lettres de même point d’articulation avec attributs différents.',
-        'id': 'Idgham dua huruf yang makhrajnya sama namun sifatnya berbeda.',
+            'Deux lettres partagent le même point d\'articulation mais diffèrent par leurs attributs: la première, quiescente, s\'assimile entièrement à la seconde. Paires courantes: ت dans د, د dans ت, ت dans ط, ط dans ت, ث dans ذ, ذ dans ظ, et ب dans م.',
+        'id':
+            'Dua huruf yang sama makhrajnya tetapi berbeda sifatnya: huruf pertama yang sukun melebur sepenuhnya ke huruf kedua. Pasangan yang umum: ت ke د, د ke ت, ت ke ط, ط ke ت, ث ke ذ, ذ ke ظ, dan ب ke م.',
         'de':
-            'Assimilation zweier Buchstaben mit gleichem Artikulationsort und unterschiedlichen Eigenschaften.',
+            'Zwei Buchstaben teilen denselben Artikulationspunkt, unterscheiden sich aber in den Eigenschaften: der erste, sakin, geht vollständig im zweiten auf. Häufige Paare: ت in د, د in ت, ت in ط, ط in ت, ث in ذ, ذ in ظ und ب in م.',
       },
       exampleArabic: ['قَد تَّبَيَّنَ'],
       triggerLetters: [],
@@ -546,7 +707,8 @@ class RulesRepository {
       },
       descriptions: {
         'en': 'Concealment of meem sakinah before the letter ba with ghunnah.',
-        'ar': 'إخفاء الميم الساكنة عند الباء مع الغنة.',
+        'ar':
+            'إذا وقعت الميم الساكنة قبل حرف الباء تُخفى مع غنة مقدارها حركتان، مع إطباق الشفتين إطباقًا خفيفًا من غير ضغط.',
         'ur': 'میم ساکن کو باء سے پہلے غنہ کے ساتھ مخفی پڑھا جاتا ہے۔',
         'tr': 'Sakin mim, ب harfinden önce günneli şekilde ihfa edilir.',
         'fr': 'Dissimulation du meem sakinah devant la lettre ب avec ghounna.',
@@ -631,14 +793,19 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'The lam of "al-" is assimilated into the following sun letter and is not pronounced.',
-        'ar': 'تُدغم لام "ال" في الحرف الشمسي بعدها فلا تُنطق.',
-        'ur': 'لامِ تعریف اگلے حرفِ شمسی میں مدغم ہو جاتی ہے۔',
-        'tr': '"El-" takısındaki lam, ardından gelen şemsi harfe idğam edilir.',
-        'fr': 'Le lam de "al-" est assimilé à la lettre solaire suivante.',
-        'id': 'Lam pada "al-" dilebur ke huruf syamsiyah sesudahnya.',
+            'When "al-" is followed by one of the fourteen sun letters ت ث د ذ ر ز س ش ص ض ط ظ ل ن, the lam is not pronounced at all: it merges into that letter, which then carries a shaddah. With the moon letters the lam is pronounced clearly instead.',
+        'ar':
+            'إذا جاء بعد لام "ال" أحد الحروف الشمسية الأربعة عشر: ت ث د ذ ر ز س ش ص ض ط ظ ل ن، لم تُنطق اللام بل أُدغمت في الحرف بعدها فصار مشددًا. أما مع الحروف القمرية فتُظهر اللام.',
+        'ur':
+            'اگر "ال" کی لام کے بعد چودہ شمسی حروف ت ث د ذ ر ز س ش ص ض ط ظ ل ن میں سے کوئی آئے تو لام بالکل نہیں پڑھی جاتی؛ وہ اگلے حرف میں مدغم ہو جاتی ہے اور وہ مشدد ہو جاتا ہے۔ قمری حروف کے ساتھ لام ظاہر پڑھی جاتی ہے۔',
+        'tr':
+            '"el-" takısının lamından sonra on dört şemsi harften biri gelirse ت ث د ذ ر ز س ش ص ض ط ظ ل ن, lam hiç okunmaz; sonraki harfe idgam edilir ve o harf şedde alır. Kameri harflerde ise lam açıkça okunur.',
+        'fr':
+            'Lorsque "al-" est suivi de l\'une des quatorze lettres solaires ت ث د ذ ر ز س ش ص ض ط ظ ل ن, le lam n\'est pas prononcé du tout: il s\'assimile à cette lettre, qui porte alors une chadda. Avec les lettres lunaires, le lam se prononce clairement.',
+        'id':
+            'Bila "al-" diikuti salah satu dari empat belas huruf syamsiyah ت ث د ذ ر ز س ش ص ض ط ظ ل ن, lam sama sekali tidak dibaca: ia melebur ke huruf itu sehingga huruf tersebut bertasydid. Pada huruf qamariyah, lam dibaca jelas.',
         'de':
-            'Das Laam von "al-" wird in den folgenden Sonnenbuchstaben assimiliert.',
+            'Folgt auf "al-" einer der vierzehn Sonnenbuchstaben ت ث د ذ ر ز س ش ص ض ط ظ ل ن, wird das Lam gar nicht ausgesprochen: es geht in diesen Buchstaben auf, der dann ein Schadda trägt. Bei den Mondbuchstaben wird das Lam dagegen klar gesprochen.',
       },
       exampleArabic: ['الشَّمْسِ', 'النَّاسِ'],
       triggerLetters: [

@@ -9,6 +9,7 @@ import 'rules_repository.dart';
 import 'tajweed_article.dart';
 import 'tajweed_article_detail_screen.dart';
 import 'tajweed_articles_repository.dart';
+import 'widgets/rule_example_text.dart';
 
 enum _RulesLibraryTab { rules, more }
 
@@ -114,7 +115,12 @@ class _RulesScreenState extends State<RulesScreen> {
       case TajweedRule.maddTabeei:
       case TajweedRule.maddMuttasil:
       case TajweedRule.maddMunfasil:
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+      case TajweedRule.maddAridLissukun:
+      case TajweedRule.maddLin:
       case TajweedRule.maddSilahSughra:
       case TajweedRule.maddSilahKubra:
         return 'rules_category_madd';
@@ -639,8 +645,10 @@ class _RuleCard extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 6,
                     children: definition.exampleArabic
+                        .asMap()
+                        .entries
                         .map(
-                          (ex) => Container(
+                          (entry) => Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: definition.rule == TajweedRule.waqf
@@ -651,19 +659,16 @@ class _RuleCard extends StatelessWidget {
                               color: Theme.of(context).colorScheme.surface,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
-                              ex,
-                              style: TextStyle(
-                                fontFamily: 'UthmanicHafs',
-                                fontSize: definition.rule == TajweedRule.waqf
-                                    ? 30
-                                    : 20,
-                                fontWeight: definition.rule == TajweedRule.waqf
-                                    ? FontWeight.w700
-                                    : FontWeight.normal,
-                                color: definition.rule.color,
-                              ),
-                              textDirection: TextDirection.rtl,
+                            child: RuleExampleText(
+                              rule: definition.rule,
+                              text: entry.value,
+                              exampleIndex: entry.key,
+                              fontSize: definition.rule == TajweedRule.waqf
+                                  ? 30
+                                  : 20,
+                              fontWeight: definition.rule == TajweedRule.waqf
+                                  ? FontWeight.w700
+                                  : FontWeight.normal,
                             ),
                           ),
                         )

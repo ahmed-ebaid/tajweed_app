@@ -8,6 +8,8 @@ enum TajweedRule {
   maddTabeei,
   maddMuttasil,
   maddMunfasil,
+  maddAridLissukun,
+  maddLin,
   maddSilahSughra,
   maddSilahKubra,
   idghamWithGhunnah,
@@ -18,7 +20,10 @@ enum TajweedRule {
   shaddah,
   waqf,
   sajdah,
-  maddLazim,
+  maddLazimKalimiMuthaqqal,
+  maddLazimKalimiMukhaffaf,
+  maddLazimHarfiMuthaqqal,
+  maddLazimHarfiMukhaffaf,
   idghamShafawi,
   idghamMutajanisayn,
   ikhfaShafawi,
@@ -42,8 +47,18 @@ extension TajweedRuleExtension on TajweedRule {
         return const Color(0xFF3B5BA9);
       case TajweedRule.maddMunfasil:
         return const Color(0xFF6A4C93);
-      case TajweedRule.maddLazim:
+      case TajweedRule.maddAridLissukun:
+        return const Color(0xFF1F6F5C);
+      case TajweedRule.maddLin:
+        return const Color(0xFFB3003C);
+      case TajweedRule.maddLazimKalimiMuthaqqal:
         return const Color(0xFF5A189A);
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return const Color(0xFF000078);
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return const Color(0xFF0000E4);
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return const Color(0xFFA800E4);
       case TajweedRule.maddSilahSughra:
         return const Color(0xFF007A82);
       case TajweedRule.maddSilahKubra:
@@ -94,6 +109,10 @@ extension TajweedRuleExtension on TajweedRule {
         return 'rule_madd_muttasil';
       case TajweedRule.maddMunfasil:
         return 'rule_madd_munfasil';
+      case TajweedRule.maddAridLissukun:
+        return 'rule_madd_arid_lissukun';
+      case TajweedRule.maddLin:
+        return 'rule_madd_lin';
       case TajweedRule.maddSilahSughra:
         return 'rule_madd_silah_sughra';
       case TajweedRule.maddSilahKubra:
@@ -114,8 +133,14 @@ extension TajweedRuleExtension on TajweedRule {
         return 'rule_waqf';
       case TajweedRule.sajdah:
         return 'rule_sajdah';
-      case TajweedRule.maddLazim:
-        return 'rule_madd_lazim';
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return 'rule_madd_lazim_kalimi_muthaqqal';
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return 'rule_madd_lazim_kalimi_mukhaffaf';
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return 'rule_madd_lazim_harfi_muthaqqal';
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return 'rule_madd_lazim_harfi_mukhaffaf';
       case TajweedRule.idghamShafawi:
         return 'rule_idgham_shafawi';
       case TajweedRule.idghamMutajanisayn:
@@ -145,6 +170,10 @@ extension TajweedRuleExtension on TajweedRule {
         return 'مَدّ مُتَّصِل';
       case TajweedRule.maddMunfasil:
         return 'مَدّ مُنْفَصِل';
+      case TajweedRule.maddAridLissukun:
+        return 'مَدّ عَارِض لِلسُّكُون';
+      case TajweedRule.maddLin:
+        return 'مَدّ لِين';
       case TajweedRule.maddSilahSughra:
         return 'مَدّ صِلَة صُغْرَى';
       case TajweedRule.maddSilahKubra:
@@ -165,8 +194,14 @@ extension TajweedRuleExtension on TajweedRule {
         return 'وَقْف';
       case TajweedRule.sajdah:
         return 'سَجْدَة';
-      case TajweedRule.maddLazim:
-        return 'مَدّ لَازِم';
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return 'مَدّ لَازِم كَلِمِيّ مُثَقَّل';
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return 'مَدّ لَازِم كَلِمِيّ مُخَفَّف';
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return 'مَدّ لَازِم حَرْفِيّ مُثَقَّل';
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return 'مَدّ لَازِم حَرْفِيّ مُخَفَّف';
       case TajweedRule.idghamShafawi:
         return 'إِدْغَام شَفَوِيّ';
       case TajweedRule.idghamMutajanisayn:

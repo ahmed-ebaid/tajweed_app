@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +23,15 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      // Surface the bundled Amiri Quran font's SIL Open Font License so it
+      // appears in the standard Flutter license listing.
+      LicenseRegistry.addLicense(() async* {
+        final license = await rootBundle.loadString(
+          'assets/fonts/OFL-Amiri.txt',
+        );
+        yield LicenseEntryWithLineBreaks(const ['AmiriQuran'], license);
+      });
 
       // Show errors visually on screen (works in release mode)
       ErrorWidget.builder = (FlutterErrorDetails details) {

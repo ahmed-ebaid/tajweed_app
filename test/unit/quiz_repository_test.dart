@@ -49,10 +49,11 @@ void main() {
     expect(leveledRules, hasLength(TajweedRule.values.length));
   });
 
-  test('qalqalah in بَعْدَ highlights the final letter and its vowel', () {
+  test('qalqalah highlights the qalqalah letter and its sukoon only', () {
     final question = QuizRepository.all.firstWhere(
       (entry) =>
-          entry.rule == TajweedRule.qalqalah && entry.arabicText == 'بَعْدَ',
+          entry.rule == TajweedRule.qalqalah &&
+          entry.arabicText == '\u062A\u064E\u062C\u0652\u0631\u0650\u0649',
     );
 
     expect(
@@ -60,7 +61,7 @@ void main() {
         question.highlightRanges.single.start,
         question.highlightRanges.single.end,
       ),
-      'دَ',
+      '\u062C\u0652', // جْ
     );
   });
 
