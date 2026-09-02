@@ -1,4 +1,4 @@
-package com.ebaid.tajweed_practice
+package com.ebaidllc.tajweed_practice
 
 import io.flutter.embedding.android.FlutterActivity
 
