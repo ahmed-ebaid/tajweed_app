@@ -50,6 +50,16 @@ abstract final class TafseerTextSanitizer {
     r'[-\u2010-\u2015]{3,}\s*الهوامش\s*:?',
   );
 
+  /// The print edition's clause separator between successive quoted phrases.
+  ///
+  /// Tabari explains a verse phrase by phrase, and Shakir's edition marks each
+  /// boundary with `=`. On screen a bare equals sign reads as a typo, so it is
+  /// rendered as an em dash, which carries the same separating role.
+  static final RegExp _clauseSeparator = RegExp(r'\s*=+\s*');
+
+  /// A separator left dangling at either end once the text is trimmed.
+  static final RegExp _danglingSeparator = RegExp(r'^\s*—\s*|\s*—\s*$');
+
   /// A numbered footnote marker such as `(25)`.
   static final RegExp _footnoteMarker = RegExp(r'\((\d+)\)');
 
@@ -104,7 +114,25 @@ abstract final class TafseerTextSanitizer {
     text = text.replaceAll(_strayMarkerDelimiter, ' ');
     text = _normalizeWhitespace(text);
 
-    return _splitEditorialFootnotes(text, ayahNumber);
+    final split = _splitEditorialFootnotes(text, ayahNumber);
+    return TafseerText(
+      body: _normalizeClauseSeparators(split.body),
+      notes: split.notes
+          .map(_normalizeClauseSeparators)
+          .toList(growable: false),
+    );
+  }
+
+  /// Renders the print edition's clause separator as an em dash.
+  ///
+  /// Applied after the notes are split off so a run of separators can never be
+  /// mistaken for the dashed rule that introduces the apparatus.
+  static String _normalizeClauseSeparators(String text) {
+    if (!text.contains('=')) return text;
+    return text
+        .replaceAll(_clauseSeparator, ' — ')
+        .replaceAll(_danglingSeparator, '')
+        .trim();
   }
 
   /// Separates the editor's footnote section from the commentary body.

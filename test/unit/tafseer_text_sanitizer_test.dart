@@ -154,5 +154,52 @@ void main() {
 
       expect(result, 'ذكر الهوامش في سياق الكلام (4) فقط');
     });
+
+    test('renders the clause separator as an em dash', () {
+      const html = '<p>وهم أهل التوراة والإنجيل = " تعالوا " ، هلموا</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html);
+
+      expect(result, 'وهم أهل التوراة والإنجيل — " تعالوا " ، هلموا');
+    });
+
+    test('normalizes separator spacing and repetition', () {
+      const html = '<p>الأول=الثاني ==  الثالث</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html);
+
+      expect(result, 'الأول — الثاني — الثالث');
+    });
+
+    test('drops a separator left dangling at either end', () {
+      const html = '<p>= متن الكلام =</p>';
+
+      final result = TafseerTextSanitizer.stripHtml(html);
+
+      expect(result, 'متن الكلام');
+    });
+
+    test('converts separators inside the editor notes too', () {
+      const html =
+          '<p>المتن</p>'
+          '<p>-------------- الهوامش :</p>'
+          '<p>(1) الأثر = انظر ما مضى</p>';
+
+      final result = TafseerTextSanitizer.parse(html);
+
+      expect(result.notes, ['(1) الأثر — انظر ما مضى']);
+    });
+
+    test('keeps the apparatus rule distinct from clause separators', () {
+      const html =
+          '<p>المتن (1) هنا = وهناك</p>'
+          '<p>-------------- الهوامش :</p>'
+          '<p>(1) حاشية</p>';
+
+      final result = TafseerTextSanitizer.parse(html);
+
+      expect(result.body, 'المتن هنا — وهناك');
+      expect(result.notes, ['(1) حاشية']);
+    });
   });
 }
