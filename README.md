@@ -137,6 +137,44 @@ when `QF_ENV` is `production` or the token is shorter than 32 characters. Set
 the matching secret on the prelive Worker with
 `npx wrangler secret put SIMULATOR_TEST_TOKEN --env=""`.
 
+#### Play Integrity (the Android counterpart to App Attest)
+
+Android proves sender identity with the [Play Integrity
+API](https://developer.android.com/google/play/integrity) rather than App
+Attest, but the handshake is deliberately identical: the client asks the Worker
+for a single-use challenge, passes it to Google as the request **nonce**, and
+exchanges the returned token for the same bearer access token iOS receives. A
+*classic* request is used precisely because it accepts a caller-supplied nonce;
+standard requests are cached by Google and cannot bind a token to one challenge.
+
+Because the app is distributed outside Google Play, the client must name the
+Google Cloud project that owns the Play Integrity API:
+
+```bash
+flutter run -d emulator-5554 \
+  --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v2/content \
+  --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=<gcp-project-number>
+```
+
+Without that define the provider fails closed rather than falling back to an
+unauthenticated request. The Worker needs four matching secrets; until they are
+set it answers `integrity` challenges with `503`, which is also fail-closed:
+
+```bash
+npx wrangler secret put ANDROID_PACKAGE_NAME            # com.ebaidllc.tajweed_practice
+npx wrangler secret put ANDROID_CERT_SHA256             # signing cert digest, base64url
+npx wrangler secret put PLAY_INTEGRITY_SA_EMAIL         # service account with playintegrity scope
+npx wrangler secret put PLAY_INTEGRITY_SA_PRIVATE_KEY   # its PKCS#8 private key
+```
+
+**Emulators can never pass this check.** An AVD does not return
+`MEETS_DEVICE_INTEGRITY`, so the emulator can exercise the plumbing — channel
+call, challenge binding, server decode — but the device verdict will always
+fail. End-to-end verification requires a physical Android device. Sideloaded
+builds are tolerated only on prelive: the stricter `PLAY_RECOGNIZED` app
+verdict is asserted only when `QF_ENV` is `production`, mirroring the existing
+App Attest development/production split.
+
 ### 4. Offline audit for shifted end-token tajweed
 
 Run this before beta release to detect all ayahs where the end token has shifted tajweed payload:

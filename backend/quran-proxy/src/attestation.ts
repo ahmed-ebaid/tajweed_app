@@ -1,7 +1,7 @@
 import {Buffer} from "node:buffer";
 import {verifyAssertion, verifyAttestation} from "node-app-attest";
 
-export type AttestationPurpose = "register" | "assert";
+export type AttestationPurpose = "register" | "assert" | "integrity";
 
 export interface AttestationEnv {
   APPLE_BUNDLE_ID: string;
@@ -9,6 +9,28 @@ export interface AttestationEnv {
   ATT_TOKEN_SECRET: string;
   ATTESTATION_STATE: DurableObjectNamespace;
   QF_ENV: "prelive" | "production";
+  // Android/Play Integrity. Optional: when unset the Play Integrity endpoints
+  // report 503 and the iOS App Attest flow is unaffected.
+  ANDROID_PACKAGE_NAME?: string;
+  ANDROID_CERT_SHA256?: string;
+  PLAY_INTEGRITY_SA_EMAIL?: string;
+  PLAY_INTEGRITY_SA_PRIVATE_KEY?: string;
+}
+
+interface PlayIntegrityVerdict {
+  requestDetails?: {
+    requestPackageName?: string;
+    nonce?: string;
+    timestampMillis?: string;
+  };
+  appIntegrity?: {
+    appRecognitionVerdict?: string;
+    packageName?: string;
+    certificateSha256Digest?: string[];
+  };
+  deviceIntegrity?: {
+    deviceRecognitionVerdict?: string[];
+  };
 }
 
 interface ChallengeState {
@@ -40,6 +62,10 @@ const ACCESS_TOKEN_TTL_SECONDS = 10 * 60;
 const KEY_ID_PATTERN = /^[A-Za-z0-9+/]{43}=$/;
 const MAX_ATTESTATION_LENGTH = 128 * 1024;
 const MAX_ASSERTION_LENGTH = 16 * 1024;
+const MAX_INTEGRITY_TOKEN_LENGTH = 64 * 1024;
+const MAX_INTEGRITY_CLOCK_SKEW_MS = 60 * 1000;
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const PLAY_INTEGRITY_SCOPE = "https://www.googleapis.com/auth/playintegrity";
 
 function base64Url(input: Uint8Array | string): string {
   const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
@@ -114,6 +140,9 @@ export class AttestationState {
       if (url.pathname === "/token") {
         return this.verifyForToken(body);
       }
+      if (url.pathname === "/play-integrity") {
+        return this.verifyPlayIntegrity(body);
+      }
       return internalJson({error: "Not found"}, 404);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid request";
@@ -127,10 +156,18 @@ export class AttestationState {
   ): Promise<Response> {
     const keyId = body.key_id;
     const purpose = body.purpose;
-    if (!isKeyId(keyId) || (purpose !== "register" && purpose !== "assert")) {
+    if (
+      !isKeyId(keyId) ||
+      (purpose !== "register" && purpose !== "assert" && purpose !== "integrity")
+    ) {
       return internalJson({error: "Invalid request"}, 400);
     }
+    if (purpose === "integrity" && !this.playIntegrityConfigured()) {
+      return internalJson({error: "Play Integrity is not configured"}, 503);
+    }
 
+    // Play Integrity has no long-lived registered credential, so the
+    // register/assert credential checks below intentionally do not apply.
     const credential = await this.ctx.storage.get<CredentialState>(CREDENTIAL_KEY);
     if (purpose === "register" && credential) {
       return internalJson({error: "Key is already registered"}, 409);
@@ -250,6 +287,181 @@ export class AttestationState {
     await this.ctx.storage.put(CREDENTIAL_KEY, credential);
     return internalJson({status: "verified", key_id: keyId});
   }
+
+  private playIntegrityConfigured(): boolean {
+    return Boolean(
+      this.env.ANDROID_PACKAGE_NAME &&
+        this.env.ANDROID_CERT_SHA256 &&
+        this.env.PLAY_INTEGRITY_SA_EMAIL &&
+        this.env.PLAY_INTEGRITY_SA_PRIVATE_KEY,
+    );
+  }
+
+  private async verifyPlayIntegrity(
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    const keyId = body.key_id;
+    const integrityToken = body.integrity_token;
+    if (
+      !isKeyId(keyId) ||
+      typeof integrityToken !== "string" ||
+      integrityToken.length === 0 ||
+      integrityToken.length > MAX_INTEGRITY_TOKEN_LENGTH
+    ) {
+      return internalJson({error: "Invalid request"}, 400);
+    }
+    if (!this.playIntegrityConfigured()) {
+      return internalJson({error: "Play Integrity is not configured"}, 503);
+    }
+
+    // Consume first: a challenge is single-use even if verification fails, so a
+    // rejected token cannot be replayed against the same challenge.
+    const challenge = await this.consumeChallenge(body.challenge, "integrity");
+    const verdict = await decodeIntegrityToken(integrityToken, this.env);
+    assertPlayIntegrityVerdict(verdict, challenge, this.env);
+    return internalJson({status: "verified", key_id: keyId});
+  }
+}
+
+/// Asserts every property the Android client claims. Any mismatch throws, and
+/// the caller converts that into a 401.
+function assertPlayIntegrityVerdict(
+  verdict: PlayIntegrityVerdict,
+  challenge: string,
+  env: AttestationEnv,
+): void {
+  const packageName = env.ANDROID_PACKAGE_NAME;
+  const request = verdict.requestDetails;
+
+  // Binds this token to the challenge we just issued (replay defence).
+  if (request?.nonce !== challenge) {
+    throw new Error("Integrity nonce does not match the challenge");
+  }
+  if (request?.requestPackageName !== packageName) {
+    throw new Error("Integrity request package name is invalid");
+  }
+
+  const age = Date.now() - Number(request?.timestampMillis ?? Number.NaN);
+  if (
+    !Number.isFinite(age) ||
+    age < -MAX_INTEGRITY_CLOCK_SKEW_MS ||
+    age > CHALLENGE_TTL_MS
+  ) {
+    throw new Error("Integrity token is expired");
+  }
+
+  // App identity. These are populated even for sideloaded builds, which is what
+  // lets an off-Play build still prove which app it is.
+  const app = verdict.appIntegrity;
+  if (app?.packageName !== packageName) {
+    throw new Error("Integrity package name is invalid");
+  }
+  if (!(app?.certificateSha256Digest ?? []).includes(env.ANDROID_CERT_SHA256!)) {
+    throw new Error("Integrity signing certificate is not trusted");
+  }
+
+  // Genuine, untampered device. Emulators never satisfy this.
+  const device = verdict.deviceIntegrity?.deviceRecognitionVerdict ?? [];
+  if (!device.includes("MEETS_DEVICE_INTEGRITY")) {
+    throw new Error("Device does not meet integrity requirements");
+  }
+
+  // Mirrors the App Attest development/production split: prelive tolerates
+  // sideloaded builds so they can be tested, production does not.
+  if (
+    env.QF_ENV === "production" &&
+    app?.appRecognitionVerdict !== "PLAY_RECOGNIZED"
+  ) {
+    throw new Error("App is not recognized by Google Play");
+  }
+}
+
+async function decodeIntegrityToken(
+  integrityToken: string,
+  env: AttestationEnv,
+): Promise<PlayIntegrityVerdict> {
+  const accessToken = await googleAccessToken(env);
+  const packageName = encodeURIComponent(env.ANDROID_PACKAGE_NAME!);
+  const response = await fetch(
+    `https://playintegrity.googleapis.com/v1/${packageName}:decodeIntegrityToken`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({integrity_token: integrityToken}),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Play Integrity decode failed with ${response.status}`);
+  }
+  const payload = (await response.json()) as {
+    tokenPayloadExternal?: PlayIntegrityVerdict;
+  };
+  if (!payload.tokenPayloadExternal) {
+    throw new Error("Play Integrity response is malformed");
+  }
+  return payload.tokenPayloadExternal;
+}
+
+/// Exchanges a service-account JWT for a Google access token. Workers have no
+/// google-auth library, so the RS256 assertion is built with WebCrypto.
+async function googleAccessToken(env: AttestationEnv): Promise<string> {
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const header = base64Url(JSON.stringify({alg: "RS256", typ: "JWT"}));
+  const claims = base64Url(
+    JSON.stringify({
+      iss: env.PLAY_INTEGRITY_SA_EMAIL,
+      scope: PLAY_INTEGRITY_SCOPE,
+      aud: GOOGLE_TOKEN_URL,
+      iat: nowSeconds,
+      exp: nowSeconds + 300,
+    }),
+  );
+  const signingInput = `${header}.${claims}`;
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    await serviceAccountKey(env.PLAY_INTEGRITY_SA_PRIVATE_KEY!),
+    new TextEncoder().encode(signingInput),
+  );
+
+  const response = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: {"content-type": "application/x-www-form-urlencoded"},
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${signingInput}.${base64Url(new Uint8Array(signature))}`,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Google token exchange failed with ${response.status}`);
+  }
+  const payload = (await response.json()) as {access_token?: string};
+  if (!payload.access_token) {
+    throw new Error("Google token response is malformed");
+  }
+  return payload.access_token;
+}
+
+async function serviceAccountKey(pem: string): Promise<CryptoKey> {
+  // Secrets are commonly stored with literal \n escapes.
+  const normalized = pem.replaceAll("\\n", "\n");
+  const match =
+    /-----BEGIN PRIVATE KEY-----([\s\S]+?)-----END PRIVATE KEY-----/u.exec(
+      normalized,
+    );
+  if (!match) {
+    throw new Error("Service account key is not a PKCS#8 PEM");
+  }
+  const der = Buffer.from(match[1].replace(/\s+/gu, ""), "base64");
+  return crypto.subtle.importKey(
+    "pkcs8",
+    new Uint8Array(der),
+    {name: "RSASSA-PKCS1-v1_5", hash: "SHA-256"},
+    false,
+    ["sign"],
+  );
 }
 
 async function hmacKey(secret: string): Promise<CryptoKey> {

@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:app_attest/app_attest.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class QuranAttestationException implements Exception {
@@ -51,6 +54,50 @@ class NativeAppAttestClient implements AppAttestClient {
     required String challenge,
   }) {
     return AppAttest.generateAssertion(keyId: keyId, challenge: challenge);
+  }
+}
+
+/// Requests Play Integrity verdicts from Google Play services.
+abstract interface class PlayIntegrityClient {
+  Future<String> requestIntegrityToken({
+    required String nonce,
+    required int cloudProjectNumber,
+  });
+}
+
+class NativePlayIntegrityClient implements PlayIntegrityClient {
+  static const MethodChannel _channel = MethodChannel(
+    'com.ebaidllc.tajweed_practice/play_integrity',
+  );
+
+  const NativePlayIntegrityClient();
+
+  @override
+  Future<String> requestIntegrityToken({
+    required String nonce,
+    required int cloudProjectNumber,
+  }) async {
+    try {
+      final token = await _channel.invokeMethod<String>(
+        'requestIntegrityToken',
+        {'nonce': nonce, 'cloudProjectNumber': cloudProjectNumber},
+      );
+      if (token == null || token.isEmpty) {
+        throw const QuranAttestationException(
+          'Google Play Integrity returned an empty token.',
+        );
+      }
+      return token;
+    } on PlatformException catch (error) {
+      throw QuranAttestationException(
+        'Google Play Integrity is unavailable on this device: '
+        '${error.message ?? error.code}',
+      );
+    } on MissingPluginException {
+      throw const QuranAttestationException(
+        'Google Play Integrity is not available in this build.',
+      );
+    }
   }
 }
 
@@ -104,8 +151,7 @@ class AttestationToken {
 ///
 /// Each platform supplies its own implementation so token caching and request
 /// coalescing in [QuranAttestationService] stay platform-agnostic. iOS uses
-/// Apple App Attest; Android will use the Play Integrity API once it is wired
-/// up, which only requires adding a provider here.
+/// Apple App Attest; Android uses the Google Play Integrity API.
 abstract interface class AttestationProvider {
   /// Platform name used in user-facing error messages.
   String get platformName;
@@ -207,42 +253,141 @@ class AppAttestProvider implements AttestationProvider {
         'assertion': assertion.assertionObject,
       },
     );
-    final data = response.data;
-    final token = data?['access_token'];
-    final expiresIn = data?['expires_in'];
-    if (token is! String ||
-        token.isEmpty ||
-        expiresIn is! int ||
-        expiresIn <= 0) {
-      throw const QuranAttestationException(
-        'The attestation server returned an invalid access token.',
-      );
-    }
-
-    return AttestationToken(
-      value: token,
-      expiresIn: Duration(seconds: expiresIn),
-    );
+    return _parseAccessToken(response.data);
   }
 
-  Future<String> _requestChallenge(String keyId, String purpose) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      '/v1/attest/challenge',
-      data: {'key_id': keyId, 'purpose': purpose},
+  Future<String> _requestChallenge(String keyId, String purpose) =>
+      _requestAttestationChallenge(_dio, keyId, purpose);
+}
+
+/// Requests a single-use challenge from the proxy.
+Future<String> _requestAttestationChallenge(
+  Dio dio,
+  String keyId,
+  String purpose,
+) async {
+  final response = await dio.post<Map<String, dynamic>>(
+    '/v1/attest/challenge',
+    data: {'key_id': keyId, 'purpose': purpose},
+  );
+  final challenge = response.data?['challenge'];
+  if (challenge is! String || challenge.isEmpty) {
+    throw const QuranAttestationException(
+      'The attestation server returned an invalid challenge.',
     );
-    final challenge = response.data?['challenge'];
-    if (challenge is! String || challenge.isEmpty) {
+  }
+  return challenge;
+}
+
+/// Validates the token envelope returned by the proxy.
+AttestationToken _parseAccessToken(Map<String, dynamic>? data) {
+  final token = data?['access_token'];
+  final expiresIn = data?['expires_in'];
+  if (token is! String ||
+      token.isEmpty ||
+      expiresIn is! int ||
+      expiresIn <= 0) {
+    throw const QuranAttestationException(
+      'The attestation server returned an invalid access token.',
+    );
+  }
+  return AttestationToken(
+    value: token,
+    expiresIn: Duration(seconds: expiresIn),
+  );
+}
+
+/// Google Play Integrity provider.
+///
+/// Unlike App Attest there is no long-lived registered key. Every refresh
+/// requests a fresh challenge, binds it into an integrity token as the nonce,
+/// and exchanges that token for a bearer token. The stored identifier only
+/// routes the server's per-client state; it is not a credential and proves
+/// nothing on its own.
+class PlayIntegrityProvider implements AttestationProvider {
+  /// Required because Google Play cannot link a Cloud project to a build that
+  /// it did not distribute.
+  static const _cloudProjectNumberFromEnv = int.fromEnvironment(
+    'PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER',
+    defaultValue: 0,
+  );
+
+  final String workerOrigin;
+  final PlayIntegrityClient playIntegrity;
+  final AttestationKeyStore keyStore;
+  final int cloudProjectNumber;
+  final Dio _dio;
+
+  PlayIntegrityProvider({
+    required this.workerOrigin,
+    required this.playIntegrity,
+    required this.keyStore,
+    required Dio client,
+    int? cloudProjectNumber,
+  }) : cloudProjectNumber = cloudProjectNumber ?? _cloudProjectNumberFromEnv,
+       _dio = client;
+
+  @override
+  String get platformName => AttestationPlatform.android.displayName;
+
+  String get _keyStoreKey =>
+      'qf_play_integrity_id_${Uri.parse(workerOrigin).host}';
+
+  @override
+  Future<AttestationToken> obtainToken() async {
+    if (cloudProjectNumber <= 0) {
       throw const QuranAttestationException(
-        'The attestation server returned an invalid challenge.',
+        'This build is missing PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER, so Google '
+        'Play Integrity cannot verify it.',
       );
     }
-    return challenge;
+
+    final clientId = keyStore.read(_keyStoreKey) ?? await _createClientId();
+    try {
+      return await _exchangeIntegrityTokenFor(clientId);
+    } on DioException catch (error) {
+      // The server forgot this identifier, so start over with a fresh one.
+      if (error.response?.statusCode != 401) rethrow;
+      await keyStore.delete(_keyStoreKey);
+      return _exchangeIntegrityTokenFor(await _createClientId());
+    }
+  }
+
+  /// Generates a 32-byte identifier, matching the key-id shape the proxy
+  /// already validates.
+  Future<String> _createClientId() async {
+    final random = Random.secure();
+    final clientId = base64Encode(
+      List<int>.generate(32, (_) => random.nextInt(256)),
+    );
+    await keyStore.write(_keyStoreKey, clientId);
+    return clientId;
+  }
+
+  Future<AttestationToken> _exchangeIntegrityTokenFor(String clientId) async {
+    final challenge = await _requestAttestationChallenge(
+      _dio,
+      clientId,
+      'integrity',
+    );
+    final integrityToken = await playIntegrity.requestIntegrityToken(
+      nonce: challenge,
+      cloudProjectNumber: cloudProjectNumber,
+    );
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/v1/attest/play-integrity',
+      data: {
+        'key_id': clientId,
+        'challenge': challenge,
+        'integrity_token': integrityToken,
+      },
+    );
+    return _parseAccessToken(response.data);
   }
 }
 
-/// Fails closed on platforms that do not have an attestation provider yet.
-///
-/// Android lands here until the Play Integrity API is wired up.
+/// Fails closed on platforms that have no attestation provider.
 class UnsupportedAttestationProvider implements AttestationProvider {
   @override
   final String platformName;
@@ -304,6 +449,7 @@ class QuranAttestationService {
     required String workerOrigin,
     required AppAttestClient appAttest,
     required AttestationKeyStore keyStore,
+    PlayIntegrityClient playIntegrity = const NativePlayIntegrityClient(),
     AttestationPlatform Function()? platform,
     AttestationProvider? provider,
     Dio? client,
@@ -326,6 +472,7 @@ class QuranAttestationService {
             (platform ?? AttestationPlatform.current)(),
             workerOrigin: workerOrigin,
             appAttest: appAttest,
+            playIntegrity: playIntegrity,
             keyStore: keyStore,
             client: dio,
           ),
@@ -341,6 +488,7 @@ class QuranAttestationService {
     AttestationPlatform platform, {
     required String workerOrigin,
     required AppAttestClient appAttest,
+    required PlayIntegrityClient playIntegrity,
     required AttestationKeyStore keyStore,
     required Dio client,
   }) {
@@ -351,8 +499,15 @@ class QuranAttestationService {
         keyStore: keyStore,
         client: client,
       ),
-      AttestationPlatform.android || AttestationPlatform.other =>
-        UnsupportedAttestationProvider(platform.displayName),
+      AttestationPlatform.android => PlayIntegrityProvider(
+        workerOrigin: workerOrigin,
+        playIntegrity: playIntegrity,
+        keyStore: keyStore,
+        client: client,
+      ),
+      AttestationPlatform.other => UnsupportedAttestationProvider(
+        platform.displayName,
+      ),
     };
   }
 
