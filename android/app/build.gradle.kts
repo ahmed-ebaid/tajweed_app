@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Play Integrity API: the Android counterpart to iOS App Attest.
+    implementation("com.google.android.play:integrity:1.4.0")
+}
