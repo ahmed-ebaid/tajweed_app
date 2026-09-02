@@ -277,8 +277,17 @@ void main() {
         (span) => span.rule == TajweedRule.maddMuttasil,
       );
 
-      expect(word.arabic.substring(muttasil.start, muttasil.end), 'َآ');
-      expect(muttasil.start, word.arabic.indexOf('َآ'));
+      // The span must start on the alif itself, not on the fatha that renders
+      // on the preceding ba — highlighting that fatha tints a letter outside
+      // the rule (the same defect that coloured the dad in الضآلين).
+      const alifMaddah = '\u0627\u0653';
+      expect(word.arabic.substring(muttasil.start, muttasil.end), alifMaddah);
+      expect(muttasil.start, word.arabic.indexOf(alifMaddah));
+      expect(
+        word.arabic.codeUnitAt(muttasil.start - 1),
+        0x064E,
+        reason: 'the excluded fatha renders on the preceding ba',
+      );
       expect(
         muttasil.start,
         greaterThan(word.arabic.indexOf('ءَا')),
@@ -810,4 +819,232 @@ void main() {
       }
     },
   );
+
+  test('15:72 يعمهون highlights only the waw as madd arid lissukun', () {
+    // Upstream marks this span as `madda_permissible` and starts it on the
+    // dammah, which belongs to the preceding ha. The span must be trimmed to
+    // cover the waw alone, and classified as madd arid lissukun (not tabeei).
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '15:72',
+      'words': [
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'يَعْمَهُونَ',
+          'text_uthmani_tajweed':
+              'يَعْمَه<rule class=madda_permissible>ُو</rule>نَ',
+        },
+      ],
+    });
+
+    final word = ayah.words.first;
+    final spans = word.spans
+        .where((s) => s.rule == TajweedRule.maddAridLissukun)
+        .toList();
+
+    expect(spans, hasLength(1));
+    expect(
+      word.arabic.substring(spans.first.start, spans.first.end),
+      '\u0648',
+      reason: 'Only the waw may be highlighted, never the preceding ha',
+    );
+    expect(
+      word.spans.any((s) => s.rule == TajweedRule.maddTabeei),
+      isFalse,
+      reason: 'madda_permissible must no longer map to madd tabeei',
+    );
+  });
+
+  test('106:1 قريش is classified as madd lin, not madd arid lissukun', () {
+    // Same upstream class, but a fatha before a sakin ya means madd lin.
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '106:1',
+      'words': [
+        {
+          'char_type_name': 'word',
+          'text_uthmani': 'قُرَيْشٍ',
+          'text_uthmani_tajweed':
+              'قُرَ<rule class=madda_permissible>يْ</rule>شٍ',
+        },
+      ],
+    });
+
+    final rules = ayah.words.first.spans.map((s) => s.rule).toSet();
+    expect(rules, contains(TajweedRule.maddLin));
+    expect(rules, isNot(contains(TajweedRule.maddAridLissukun)));
+  });
+
+  test('1:7 الضالين does not colour the dad letter', () {
+    // Upstream opens the madda_necessary span on the fatha, which renders on
+    // the preceding dad. Reported visually as "the dad letter is coloured too".
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '1:7',
+      'words': [
+        {
+          'char_type_name': 'word',
+          'text_uthmani': '\u0627\u0644\u0636\u0651\u064e\u0627\u0653\u0644\u0651\u0650\u064a\u0646\u064e',
+          'text_uthmani_tajweed':
+              '<rule class=ham_wasl>\u0671</rule><rule class=laam_shamsiyah>\u0644</rule>\u0636\u0651'
+              '<rule class=madda_necessary>\u064e\u0627</rule>\u0653\u0644\u0651'
+              '<rule class=madda_permissible>\u0650\u064a</rule>\u0646\u064e',
+        },
+      ],
+    });
+
+    final word = ayah.words.first;
+    final dadIndex = word.arabic.indexOf('\u0636');
+    expect(dadIndex, isNonNegative);
+
+    for (final span in word.spans) {
+      expect(
+        span.start,
+        isNot(equals(dadIndex + 1)),
+        reason:
+            '${span.rule} starts on the fatha carried by the dad, which '
+            'tints the dad itself',
+      );
+      expect(
+        word.arabic.codeUnitAt(span.start),
+        isNot(anyOf(0x064E, 0x064F, 0x0650)),
+        reason: '${span.rule} must not start on a short vowel',
+      );
+    }
+  });
+
+  // Madd Lazim splits into four classical types. The classifier works from the
+  // text alone (no surah table), so it behaves identically in the ayah-by-ayah
+  // and Mushaf page views, which both render spans produced by AyahMapper.
+  //
+  // Fixtures are the real upstream markup for each verse. Arabic is written as
+  // explicit escapes because text_uthmani_tajweed uses decomposed forms that
+  // look identical to precomposed ones in a failure message.
+  group('madd lazim four-way classification', () {
+    test('1:7 -> maddLazimKalimiMuthaqqal', () {
+      // kalimi muthaqqal: madd letter then shaddah in-word
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '1:7',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0671\u0644\u0636\u0651\u064e\u0627\u0653\u0644\u0651\u0650\u064a\u0646\u064e',
+            'text_uthmani_tajweed': '<rule class=ham_wasl>\u0671</rule><rule class=laam_shamsiyah>\u0644</rule>\u0636\u0651<rule class=madda_necessary>\u064e\u0627</rule>\u0653\u0644\u0651<rule class=madda_permissible>\u0650\u064a</rule>\u0646\u064e',
+          },
+        ],
+      });
+
+      final lazim = ayah.words.first.spans
+          .where((s) => s.rule.name.startsWith('maddLazim'))
+          .toList();
+
+      expect(lazim, isNotEmpty, reason: 'expected a madd lazim span');
+      expect(
+        lazim.map((s) => s.rule),
+        contains(TajweedRule.maddLazimKalimiMuthaqqal),
+      );
+    });
+
+    test('10:51 -> maddLazimKalimiMukhaffaf', () {
+      // kalimi mukhaffaf: one of only two in the Quran
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '10:51',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0621\u064e\u0627\u0653\u0644\u0652\u0640\u0654\u064e\u0640\u0670\u0646\u064e',
+            'text_uthmani_tajweed': '\u0621\u064e<rule class=madda_necessary>\u0627</rule>\u0653\u0644\u0652\u0640\u0654\u064e<rule class=madda_normal>\u0640\u0670</rule>\u0646\u064e',
+          },
+        ],
+      });
+
+      final lazim = ayah.words.first.spans
+          .where((s) => s.rule.name.startsWith('maddLazim'))
+          .toList();
+
+      expect(lazim, isNotEmpty, reason: 'expected a madd lazim span');
+      expect(
+        lazim.map((s) => s.rule),
+        contains(TajweedRule.maddLazimKalimiMukhaffaf),
+      );
+    });
+
+    test('2:1 -> maddLazimHarfiMuthaqqal', () {
+      // harfi muthaqqal: lam of alif-lam-meem merges into meem
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '2:1',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0627\u0644\u0653\u0645\u0653',
+            'text_uthmani_tajweed': '\u0627<rule class=madda_necessary>\u0644\u0653</rule><rule class=madda_necessary>\u0645\u0653</rule>',
+          },
+        ],
+      });
+
+      final lazim = ayah.words.first.spans
+          .where((s) => s.rule.name.startsWith('maddLazim'))
+          .toList();
+
+      expect(lazim, isNotEmpty, reason: 'expected a madd lazim span');
+      expect(
+        lazim.map((s) => s.rule),
+        contains(TajweedRule.maddLazimHarfiMuthaqqal),
+      );
+    });
+
+    test('68:1 -> maddLazimHarfiMukhaffaf', () {
+      // harfi mukhaffaf: nun with nothing to merge into
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '68:1',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0646\u0653\u200c\u06da',
+            'text_uthmani_tajweed': '<rule class=madda_necessary>\u0646\u0653</rule>\u200c\u06da',
+          },
+        ],
+      });
+
+      final lazim = ayah.words.first.spans
+          .where((s) => s.rule.name.startsWith('maddLazim'))
+          .toList();
+
+      expect(lazim, isNotEmpty, reason: 'expected a madd lazim span');
+      expect(
+        lazim.map((s) => s.rule),
+        contains(TajweedRule.maddLazimHarfiMukhaffaf),
+      );
+    });
+
+    test('2:1 alif-lam-meem splits into muthaqqal then mukhaffaf', () {
+      // The lam merges into the following meem (muthaqqal); the trailing meem
+      // has nothing after it in the word, so it stays mukhaffaf. The alif is
+      // never part of either span.
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '2:1',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0627\u0644\u0653\u0645\u0653',
+            'text_uthmani_tajweed':
+                '\u0627<rule class=madda_necessary>\u0644\u0653</rule>'
+                '<rule class=madda_necessary>\u0645\u0653</rule>',
+          },
+        ],
+      });
+
+      final word = ayah.words.first;
+      final lazim = word.spans
+          .where((s) => s.rule.name.startsWith('maddLazim'))
+          .toList();
+
+      expect(lazim, hasLength(2));
+      expect(lazim[0].rule, TajweedRule.maddLazimHarfiMuthaqqal);
+      expect(lazim[1].rule, TajweedRule.maddLazimHarfiMukhaffaf);
+      expect(
+        lazim.every((s) => s.start > 0),
+        isTrue,
+        reason: 'the alif must never be highlighted',
+      );
+    });
+  });
+
 }

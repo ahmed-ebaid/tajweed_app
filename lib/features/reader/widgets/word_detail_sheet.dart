@@ -6,6 +6,7 @@ import '../../../core/models/tajweed_models.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../rules/rules_repository.dart';
 import 'tajweed_text.dart';
+import '../../rules/widgets/rule_example_text.dart';
 
 class WordDetailSheet extends StatefulWidget {
   final TajweedRule rule;
@@ -134,8 +135,10 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                 spacing: 8,
                 runSpacing: 8,
                 children: definition.exampleArabic
+                    .asMap()
+                    .entries
                     .map(
-                      (ex) => Container(
+                      (entry) => Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
@@ -146,14 +149,11 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                             width: 0.5,
                           ),
                         ),
-                        child: Text(
-                          ex,
-                          style: TextStyle(
-                            fontFamily: 'UthmanicHafs',
-                            fontSize: 20,
-                            color: widget.rule.color,
-                          ),
-                          textDirection: TextDirection.rtl,
+                        child: RuleExampleText(
+                          rule: widget.rule,
+                          text: entry.value,
+                          exampleIndex: entry.key,
+                          fontSize: 20,
                         ),
                       ),
                     )

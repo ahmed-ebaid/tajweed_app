@@ -1,3 +1,21 @@
+/// Plain-text tafseer, split into the commentary and the editor's apparatus.
+///
+/// Classical editions interleave the mufassir's words with the modern editor's
+/// footnotes. Keeping them apart lets the reader see clean commentary while the
+/// notes stay available rather than being discarded.
+class TafseerText {
+  const TafseerText({required this.body, this.notes = const []});
+
+  /// The commentary itself, with footnote pointers removed.
+  final String body;
+
+  /// The editor's notes, one entry per numbered footnote.
+  final List<String> notes;
+
+  bool get isEmpty => body.isEmpty && notes.isEmpty;
+  bool get hasNotes => notes.isNotEmpty;
+}
+
 /// Converts raw tafseer HTML from the content API into readable plain text.
 ///
 /// Classical tafseer sources embed print-edition artifacts that must not reach
@@ -21,6 +39,37 @@ abstract final class TafseerTextSanitizer {
 
   /// Any stray marker delimiter left behind by an unbalanced source marker.
   static final RegExp _strayMarkerDelimiter = RegExp(r'&\s*;');
+
+  /// Start of the editor's critical apparatus, e.g. `------- الهوامش :`.
+  ///
+  /// These notes belong to the modern print edition rather than to the
+  /// mufassir: they cross-reference earlier volumes, record manuscript
+  /// variants and trace narrator chains. They are shown separately so the
+  /// commentary reads cleanly without discarding published scholarship.
+  static final RegExp _footnoteSeparator = RegExp(
+    r'[-\u2010-\u2015]{3,}\s*الهوامش\s*:?',
+  );
+
+  /// The print edition's clause separator between successive quoted phrases.
+  ///
+  /// Tabari explains a verse phrase by phrase, and Shakir's edition marks each
+  /// boundary with `=`. On screen a bare equals sign reads as a typo, so it is
+  /// rendered as an em dash, which carries the same separating role.
+  static final RegExp _clauseSeparator = RegExp(r'\s*=+\s*');
+
+  /// A separator left dangling at either end once the text is trimmed.
+  static final RegExp _danglingSeparator = RegExp(r'^\s*—\s*|\s*—\s*$');
+
+  /// A numbered footnote marker such as `(25)`.
+  static final RegExp _footnoteMarker = RegExp(r'\((\d+)\)');
+
+  /// The start of a note definition, i.e. a marker at the head of an entry.
+  static final RegExp _footnoteDefinition = RegExp(r'\(\d+\)\s*');
+
+  /// Section dividers and dashes left dangling once the notes are removed.
+  static final RegExp _trailingDecoration = RegExp(
+    r'[\s*\u2022\u00b7\-\u2010-\u2015]+$',
+  );
 
   static const Map<String, String> _namedEntities = {
     '&nbsp;': ' ',
@@ -46,16 +95,101 @@ abstract final class TafseerTextSanitizer {
   };
 
   /// Strips markup and editorial artifacts from [html] for plain display.
-  static String stripHtml(String html) {
-    if (html.isEmpty) return '';
+  ///
+  /// Returns the commentary only. Use [parse] to keep the editor's notes.
+  static String stripHtml(String html, {int? ayahNumber}) =>
+      parse(html, ayahNumber: ayahNumber).body;
+
+  /// Splits [html] into readable commentary and the editor's numbered notes.
+  ///
+  /// Pass [ayahNumber] so the verse's own number is never mistaken for a
+  /// footnote marker when the two happen to collide.
+  static TafseerText parse(String html, {int? ayahNumber}) {
+    if (html.isEmpty) return const TafseerText(body: '');
 
     // Tags are removed first so decoded entities can never introduce markup.
     var text = html.replaceAll(_tag, ' ');
     text = _decodeEntities(text);
     text = text.replaceAll(_printPageMarker, ' ');
     text = text.replaceAll(_strayMarkerDelimiter, ' ');
-    return _normalizeWhitespace(text);
+    text = _normalizeWhitespace(text);
+
+    final split = _splitEditorialFootnotes(text, ayahNumber);
+    return TafseerText(
+      body: _normalizeClauseSeparators(split.body),
+      notes: split.notes
+          .map(_normalizeClauseSeparators)
+          .toList(growable: false),
+    );
   }
+
+  /// Renders the print edition's clause separator as an em dash.
+  ///
+  /// Applied after the notes are split off so a run of separators can never be
+  /// mistaken for the dashed rule that introduces the apparatus.
+  static String _normalizeClauseSeparators(String text) {
+    if (!text.contains('=')) return text;
+    return text
+        .replaceAll(_clauseSeparator, ' — ')
+        .replaceAll(_danglingSeparator, '')
+        .trim();
+  }
+
+  /// Separates the editor's footnote section from the commentary body.
+  ///
+  /// Only markers actually defined in that section are removed from the body,
+  /// so an ayah number such as `(64)` survives when no footnote `(64)` exists.
+  /// When the numbers do collide, the first occurrence is kept as the verse
+  /// citation, because footnote numbering starts low enough to clash with it.
+  static TafseerText _splitEditorialFootnotes(String text, int? ayahNumber) {
+    final separator = _footnoteSeparator.firstMatch(text);
+    if (separator == null) return TafseerText(body: text);
+
+    final rawBody = text.substring(0, separator.start);
+    final notes = _splitNotes(text.substring(separator.end));
+    if (notes.isEmpty) {
+      return TafseerText(body: _trimDecoration(rawBody));
+    }
+
+    final defined = notes
+        .map((note) => _footnoteMarker.matchAsPrefix(note)?.group(1))
+        .whereType<String>()
+        .toSet();
+
+    final verseMarker = ayahNumber?.toString();
+    var keptVerseMarker = false;
+    final body = rawBody.replaceAllMapped(_footnoteMarker, (match) {
+      final number = match.group(1)!;
+      if (!defined.contains(number)) return match.group(0)!;
+      if (number == verseMarker && !keptVerseMarker) {
+        keptVerseMarker = true;
+        return match.group(0)!;
+      }
+      return ' ';
+    });
+
+    return TafseerText(body: _trimDecoration(body), notes: notes);
+  }
+
+  /// Breaks the apparatus into entries, each beginning with its own marker.
+  static List<String> _splitNotes(String section) {
+    final starts = _footnoteDefinition
+        .allMatches(section)
+        .map((match) => match.start)
+        .toList();
+    if (starts.isEmpty) return const [];
+
+    final notes = <String>[];
+    for (var i = 0; i < starts.length; i++) {
+      final end = i + 1 < starts.length ? starts[i + 1] : section.length;
+      final note = _normalizeWhitespace(section.substring(starts[i], end));
+      if (note.isNotEmpty) notes.add(note);
+    }
+    return notes;
+  }
+
+  static String _trimDecoration(String body) =>
+      _normalizeWhitespace(body).replaceFirst(_trailingDecoration, '');
 
   static String _decodeEntities(String input) {
     var text = input;

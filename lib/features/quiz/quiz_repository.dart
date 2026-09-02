@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../../core/models/tajweed_models.dart';
+import '../rules/rule_example_highlight.dart';
 import '../rules/rules_repository.dart';
 import '../rules/waqf_symbols.dart';
 
@@ -60,7 +61,12 @@ class QuizRepository {
       rules: [
         TajweedRule.maddMuttasil,
         TajweedRule.maddMunfasil,
-        TajweedRule.maddLazim,
+        TajweedRule.maddLazimKalimiMuthaqqal,
+        TajweedRule.maddLazimKalimiMukhaffaf,
+        TajweedRule.maddLazimHarfiMuthaqqal,
+        TajweedRule.maddLazimHarfiMukhaffaf,
+        TajweedRule.maddAridLissukun,
+        TajweedRule.maddLin,
         TajweedRule.maddSilahSughra,
         TajweedRule.maddSilahKubra,
         TajweedRule.idghamShafawi,
@@ -285,46 +291,19 @@ class QuizRepository {
     String arabic,
     int exampleIndex,
   ) {
-    final fragments = _highlightFragments[rule];
-    if (fragments == null || fragments.isEmpty) {
+    final fragment = RuleExampleHighlight.fragmentFor(rule, exampleIndex);
+    if (fragment == null) {
       throw StateError('No quiz highlight fragments defined for ${rule.name}');
     }
-
-    final fragment = fragments[exampleIndex % fragments.length];
-    final start = arabic.indexOf(fragment);
-    if (start < 0) {
+    final range = RuleExampleHighlight.rangeIn(rule, arabic, exampleIndex);
+    if (range == null) {
       throw StateError(
         'Quiz highlight "$fragment" was not found in "$arabic" for ${rule.name}',
       );
     }
-    return (start: start, end: start + fragment.length);
+    return range;
   }
 
-  static const Map<TajweedRule, List<String>> _highlightFragments = {
-    TajweedRule.ghunnah: ['نَّ', 'مَّ', 'نَّ'],
-    TajweedRule.qalqalah: ['دْ', 'بْ', 'دَ'],
-    TajweedRule.maddTabeei: ['ا', 'و', 'ي'],
-    TajweedRule.maddMuttasil: ['اء', 'اء', 'اء'],
-    TajweedRule.maddMunfasil: ['ي ', 'وا ', 'ا '],
-    TajweedRule.maddSilahSughra: ['هِۦ', 'هُۥ'],
-    TajweedRule.maddSilahKubra: ['هِۦٓ', 'هُۥٓ'],
-    TajweedRule.idghamWithGhunnah: ['ن يَّ', 'ن نِّ'],
-    TajweedRule.idghamWithoutGhunnah: ['ن رَّ', 'ًى لِّ'],
-    TajweedRule.ikhfa: ['ن ك', 'نك', 'نت'],
-    TajweedRule.iqlab: ['نْ ب', 'ٌ ب'],
-    TajweedRule.izhar: ['نْ آ', 'ٌ ح'],
-    TajweedRule.shaddah: ['يَّ', 'رَّ', 'مَّ'],
-    TajweedRule.waqf: ['ۘ', 'ۙ', 'ۚ', 'ۗ', 'ۖ', 'ۛ', 'ۜ'],
-    TajweedRule.sajdah: ['۩'],
-    TajweedRule.maddLazim: ['الِّ', 'ٓالم'],
-    TajweedRule.idghamShafawi: ['م مَّ'],
-    TajweedRule.idghamMutajanisayn: ['د تَّ'],
-    TajweedRule.ikhfaShafawi: ['م ب'],
-    TajweedRule.hamzatWasl: ['ٱ', 'ٱ', 'ٱ'],
-    TajweedRule.hamzatQat: ['أ', 'إ', 'أ'],
-    TajweedRule.laamShamsiyah: ['الشَّ', 'النَّ'],
-    TajweedRule.silent: ['و', 'ٰ'],
-  };
 
   static Map<String, String> _explanationTemplate(
     TajweedRuleDefinition def,
