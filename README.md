@@ -86,7 +86,58 @@ Release and Profile builds use the production Worker and complete Quran
 dataset. Android, macOS, Simulator, and older builds fail closed until an
 equivalent platform attestation flow is implemented.
 
-### 3. Offline audit for shifted end-token tajweed
+### 3. Run on an Android emulator
+
+Android builds and renders, but `QuranAttestationService` implements Apple App
+Attest only, so content requests fail closed with `This device does not
+support Apple App Attest.` The UI still draws, which is enough for layout,
+RTL, and localization checks.
+
+One-time SDK setup:
+
+```bash
+brew install --cask android-commandlinetools
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
+sdkmanager --sdk_root="$ANDROID_HOME" \
+  platform-tools emulator \
+  "platforms;android-36" "build-tools;36.0.0" \
+  "system-images;android-36;google_apis;arm64-v8a"
+flutter config --android-sdk "$ANDROID_HOME"
+```
+
+Create an emulator and boot it:
+
+```bash
+avdmanager create avd -n tajweed_test \
+  -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_7
+"$ANDROID_HOME/emulator/emulator" -avd tajweed_test &
+```
+
+`avdmanager` prints `Error: Could not load devices from ... devices.xml` when
+it applies the `-d` hardware profile. The AVD still boots, but only the device
+*name* is recorded — the skin and display-cutout geometry are not. A known
+side effect is that the emulator's own status-bar clock renders clipped along
+its baseline. This is cosmetic and confined to system UI; app content is
+unaffected.
+
+To load real content, use the existing simulator bypass — it is
+platform-agnostic and works on Android:
+
+```bash
+flutter run -d emulator-5554 \
+  --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v2/content \
+  --dart-define=QURAN_BYPASS_APP_ATTEST_IN_DEBUG=true \
+  --dart-define=QURAN_PROXY_TEST_TOKEN="$SIMULATOR_TEST_TOKEN"
+```
+
+The bypass is guarded on both ends and cannot reach a shipping build: the
+client disables it whenever `kReleaseMode` is true, and the Worker refuses it
+when `QF_ENV` is `production` or the token is shorter than 32 characters. Set
+the matching secret on the prelive Worker with
+`npx wrangler secret put SIMULATOR_TEST_TOKEN --env=""`.
+
+### 4. Offline audit for shifted end-token tajweed
 
 Run this before beta release to detect all ayahs where the end token has shifted tajweed payload:
 
@@ -116,7 +167,7 @@ Input JSON can be either:
 - `{ "verses": [ ... ] }`
 - per-surah map like `{ "1": [ ... ], "2": [ ... ] }`
 
-### 4. Release integrity gate
+### 5. Release integrity gate
 
 Before every release candidate, run both checks below:
 
@@ -213,8 +264,10 @@ CI enforcement:
 
 ## App Store release
 
-The public version is read from `pubspec.yaml`; the value `1.1.1+60` produces
-App Store version **1.1.1** and internal build **60**.
+The public version is read from `pubspec.yaml` in `<marketing>+<build>` form:
+`1.1.1+63` produces App Store version **1.1.1** and internal build **63**.
+Increment the build number for every upload, even when the marketing version
+is unchanged — App Store Connect rejects a duplicate build number.
 
 Before submission:
 
