@@ -93,13 +93,21 @@ analytics SDK, no advertising SDK, and no crash reporting SDK.
 
 ## Permissions
 
-Declared in the merged manifest:
+Present in the merged release manifest:
 
 - `INTERNET` — fetch Quran text, translations, Tafseer, and audio.
-- `FOREGROUND_SERVICE` — continue recitation playback while the app is
-  backgrounded.
+- `ACCESS_NETWORK_STATE` — added by the networking plugins to detect
+  connectivity before a request.
+- `<package>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` — added automatically by
+  AndroidX for its internal broadcast receivers.
 
-Neither is a Play "sensitive" permission, so no declaration form is required.
+None of these is a Play "sensitive" permission, so no declaration form is
+required.
+
+Note: recitation playback continues in the background on iOS but not on
+Android. Android background playback needs a media foreground service
+(`audio_service`), which this app does not yet integrate, so the listing copy
+deliberately avoids claiming it.
 
 ## Screenshot captions
 
