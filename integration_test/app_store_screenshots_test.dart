@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +46,27 @@ const _releaseScreenshotLocales = [
   'es',
 ];
 
+bool _surfaceConvertedForScreenshots = false;
+
+/// Takes a screenshot, preparing the Android render surface on first use.
+///
+/// Android draws into a SurfaceView that cannot be read back directly, so the
+/// binding must swap it for an image surface before the first capture or
+/// `takeScreenshot` throws. iOS needs no such conversion, which is why the
+/// iOS-only App Store runs never hit this.
+Future<void> _captureScreenshot(
+  WidgetTester tester,
+  IntegrationTestWidgetsFlutterBinding binding,
+  String name,
+) async {
+  if (Platform.isAndroid && !_surfaceConvertedForScreenshots) {
+    await binding.convertFlutterSurfaceToImage();
+    await tester.pumpAndSettle();
+    _surfaceConvertedForScreenshots = true;
+  }
+  await binding.takeScreenshot(name);
+}
+
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -82,11 +105,11 @@ void main() {
     );
     await _waitForUi(tester);
 
-    await binding.takeScreenshot('01-home');
+    await _captureScreenshot(tester, binding, '01-home');
 
     await tester.tap(find.byIcon(Icons.menu_book_rounded));
     await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
-    await binding.takeScreenshot('02-ayah-reader');
+    await _captureScreenshot(tester, binding, '02-ayah-reader');
 
     final readerContext = tester.element(find.byType(ReaderScreen));
     showModalBottomSheet<void>(
@@ -122,7 +145,7 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(WordDetailSheet), findsOneWidget);
-    await binding.takeScreenshot('09-word-tajweed');
+    await _captureScreenshot(tester, binding, '09-word-tajweed');
     Navigator.of(readerContext).pop();
     await _finishTransition(tester);
 
@@ -140,7 +163,7 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(TafseerSheet), findsOneWidget);
-    await binding.takeScreenshot('03-tafseer');
+    await _captureScreenshot(tester, binding, '03-tafseer');
     Navigator.of(readerContext).pop();
     await _finishTransition(tester);
     expect(find.byType(TafseerSheet), findsNothing);
@@ -148,7 +171,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.chrome_reader_mode_outlined));
     await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
     expect(find.byType(ReaderScreen), findsOneWidget);
-    await binding.takeScreenshot('04-mushaf');
+    await _captureScreenshot(tester, binding, '04-mushaf');
 
     if (_onboardingAssetsOnly) {
       final mushafPageView = tester.widget<PageView>(find.byType(PageView));
@@ -158,19 +181,19 @@ void main() {
       expect(hizbMarker, findsOneWidget);
       await tester.tap(hizbMarker);
       await _finishTransition(tester);
-      await binding.takeScreenshot('05-hizb-boundary');
+      await _captureScreenshot(tester, binding, '05-hizb-boundary');
       return;
     }
 
     await tester.tap(find.byIcon(Icons.quiz_outlined));
     await _waitForUi(tester);
     expect(find.byType(QuizScreen), findsOneWidget);
-    await binding.takeScreenshot('05-quiz');
+    await _captureScreenshot(tester, binding, '05-quiz');
 
     await tester.tap(find.byIcon(Icons.library_books_outlined));
     await _waitForUi(tester);
     expect(find.byType(RulesScreen), findsOneWidget);
-    await binding.takeScreenshot('06-rules-library');
+    await _captureScreenshot(tester, binding, '06-rules-library');
 
     final navigator = Navigator.of(readerContext);
     navigator.push(
@@ -180,7 +203,7 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(RuleDetailScreen), findsOneWidget);
-    await binding.takeScreenshot('07-rule-detail');
+    await _captureScreenshot(tester, binding, '07-rule-detail');
 
     navigator.pop();
     await _finishTransition(tester);
@@ -189,9 +212,19 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(SettingsScreen), findsOneWidget);
-    await binding.takeScreenshot('08-settings');
+    await _captureScreenshot(tester, binding, '08-settings');
 
-    await tester.tap(find.byIcon(Icons.copyright_outlined));
+    // The licence row sits below the fold on shorter viewports (Android at
+    // 1080x1920 is ~731dp tall). The settings body is a lazy ListView, so the
+    // row is not merely off-screen but unbuilt -- it has to be scrolled to.
+    final licenseTile = find.byIcon(Icons.copyright_outlined);
+    await tester.scrollUntilVisible(
+      licenseTile,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(licenseTile);
     await _finishTransition(tester);
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
     navigator.pop();
@@ -202,7 +235,7 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(LanguageSelectorScreen), findsOneWidget);
-    await binding.takeScreenshot('10-languages');
+    await _captureScreenshot(tester, binding, '10-languages');
   });
 }
 
@@ -236,14 +269,14 @@ Future<void> _captureLocalizedReleasePages(
     await tester.tap(find.byIcon(Icons.library_books_outlined));
     await _waitForUi(tester);
     expect(find.byType(RulesScreen), findsOneWidget);
-    await binding.takeScreenshot('$languageCode/06-rules-library');
+    await _captureScreenshot(tester, binding, '$languageCode/06-rules-library');
 
     Navigator.of(
       tester.element(find.byType(RulesScreen)),
     ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
     await _finishTransition(tester);
     expect(find.byType(SettingsScreen), findsOneWidget);
-    await binding.takeScreenshot('$languageCode/08-settings');
+    await _captureScreenshot(tester, binding, '$languageCode/08-settings');
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
