@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ebaid.tajweed_practice"
+    namespace = "com.ebaidllc.tajweed_practice"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.ebaid.tajweed_practice"
+        applicationId = "com.ebaidllc.tajweed_practice"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -41,4 +41,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Play Integrity API: the Android counterpart to iOS App Attest.
+    implementation("com.google.android.play:integrity:1.4.0")
 }

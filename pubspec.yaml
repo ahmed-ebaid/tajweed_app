@@ -51,6 +51,21 @@ dev_dependencies:
   hive_generator: ^2.0.1
   build_runner: ^2.4.8
   flutter_gen_runner: ^5.9.0   # Asset code generation
+  flutter_launcher_icons: ^0.14.4
+
+# Regenerate with: dart run flutter_launcher_icons
+#
+# Android only: the iOS icon set is already published to the App Store, so it is
+# left untouched here. Android 8+ masks the launcher icon into a device-specific
+# shape, which is why the adaptive background/foreground layers are supplied
+# separately instead of relying on the single full-bleed image.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/app_icon/app_icon_1024.png
+  adaptive_icon_background: assets/app_icon/app_icon_background_1024.png
+  adaptive_icon_foreground: assets/app_icon/app_icon_foreground_1024.png
+  adaptive_icon_monochrome: assets/app_icon/app_icon_monochrome_1024.png
 
 flutter:
   uses-material-design: true
