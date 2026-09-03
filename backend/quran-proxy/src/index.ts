@@ -271,7 +271,9 @@ async function handleAttestationRequest(
     });
   }
   const operation = url.pathname.slice(ATTESTATION_PREFIX.length);
-  if (!["challenge", "register", "token"].includes(operation)) {
+  if (
+    !["challenge", "register", "token", "play-integrity"].includes(operation)
+  ) {
     return json({error: "Not found"}, 404, requestId);
   }
 
@@ -316,7 +318,7 @@ async function handleAttestationRequest(
     return json(internalBody, internal.status, requestId);
   }
 
-  if (operation === "token") {
+  if (operation === "token" || operation === "play-integrity") {
     const access = await issueAccessToken(keyId, env);
     return json(
       {

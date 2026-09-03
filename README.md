@@ -86,7 +86,133 @@ Release and Profile builds use the production Worker and complete Quran
 dataset. Android, macOS, Simulator, and older builds fail closed until an
 equivalent platform attestation flow is implemented.
 
-### 3. Offline audit for shifted end-token tajweed
+### 3. Run on an Android emulator
+
+Android builds and renders, but only iOS has an attestation provider today, so
+content requests fail closed with `Android does not have a supported
+attestation provider yet.` The UI still draws, which is enough for layout,
+RTL, and localization checks.
+
+One-time SDK setup:
+
+```bash
+brew install --cask android-commandlinetools
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
+sdkmanager --sdk_root="$ANDROID_HOME" \
+  platform-tools emulator \
+  "platforms;android-36" "build-tools;36.0.0" \
+  "system-images;android-36;google_apis;arm64-v8a"
+flutter config --android-sdk "$ANDROID_HOME"
+```
+
+Create an emulator and boot it:
+
+```bash
+avdmanager create avd -n tajweed_test \
+  -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_7
+"$ANDROID_HOME/emulator/emulator" -avd tajweed_test &
+```
+
+`avdmanager` prints `Error: Could not load devices from ... devices.xml` when
+it applies the `-d` hardware profile. The AVD still boots, but only the device
+*name* is recorded — the skin and display-cutout geometry are not. A known
+side effect is that the emulator's own status-bar clock renders clipped along
+its baseline. This is cosmetic and confined to system UI; app content is
+unaffected.
+
+To load real content, use the existing simulator bypass — it is
+platform-agnostic and works on Android:
+
+```bash
+flutter run -d emulator-5554 \
+  --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v2/content \
+  --dart-define=QURAN_BYPASS_APP_ATTEST_IN_DEBUG=true \
+  --dart-define=QURAN_PROXY_TEST_TOKEN="$SIMULATOR_TEST_TOKEN"
+```
+
+The bypass is guarded on both ends and cannot reach a shipping build: the
+client disables it whenever `kReleaseMode` is true, and the Worker refuses it
+when `QF_ENV` is `production` or the token is shorter than 32 characters. Set
+the matching secret on the prelive Worker with
+`npx wrangler secret put SIMULATOR_TEST_TOKEN --env=""`.
+
+#### Play Integrity (the Android counterpart to App Attest)
+
+Android proves sender identity with the [Play Integrity
+API](https://developer.android.com/google/play/integrity) rather than App
+Attest, but the handshake is deliberately identical: the client asks the Worker
+for a single-use challenge, passes it to Google as the request **nonce**, and
+exchanges the returned token for the same bearer access token iOS receives. A
+*classic* request is used precisely because it accepts a caller-supplied nonce;
+standard requests are cached by Google and cannot bind a token to one challenge.
+
+Because the app is distributed outside Google Play, the client must name the
+Google Cloud project that owns the Play Integrity API:
+
+```bash
+flutter run -d emulator-5554 \
+  --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v2/content \
+  --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=<gcp-project-number>
+```
+
+Without that define the provider fails closed rather than falling back to an
+unauthenticated request. The Worker needs four matching secrets; until they are
+set it answers `integrity` challenges with `503`, which is also fail-closed:
+`ANDROID_PACKAGE_NAME`, `ANDROID_CERT_SHA256`, `PLAY_INTEGRITY_SA_EMAIL`, and
+`PLAY_INTEGRITY_SA_PRIVATE_KEY`.
+
+##### One-time Google Cloud setup
+
+1. Create (or pick) a Google Cloud project and note its **project number** —
+   that is the value for `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER`. The number, not
+   the project ID.
+2. Enable the **Play Integrity API** for that project.
+3. Create a service account and grant it access to the Play Integrity API, then
+   download a JSON key for it.
+
+##### Writing the secrets
+
+`scripts/setup-play-integrity.sh` derives the certificate digest from a keystore
+and extracts the service-account fields from that JSON key, so the stored values
+always match what Google reports. Run it from `backend/quran-proxy`:
+
+```bash
+# Preview the values without writing anything
+./scripts/setup-play-integrity.sh \
+  --service-account ~/Downloads/play-integrity-sa.json --dry-run
+
+# Write all four secrets to prelive
+./scripts/setup-play-integrity.sh \
+  --service-account ~/Downloads/play-integrity-sa.json
+```
+
+It defaults to the Android debug keystore and the prelive Worker, which is the
+combination a sideloaded build needs. For a release build, pass the release
+keystore and target production:
+
+```bash
+./scripts/setup-play-integrity.sh \
+  --service-account ~/Downloads/play-integrity-sa.json \
+  --keystore /path/to/release.jks --alias upload \
+  --storepass "$KEYSTORE_PASSWORD" --env production
+```
+
+The digest must be the base64url-encoded SHA-256 of the DER certificate with
+padding stripped; any other encoding fails the comparison with a generic
+"certificate is not trusted" error. The script handles that encoding, so prefer
+it over setting `ANDROID_CERT_SHA256` by hand.
+
+**Emulators can never pass this check.** An AVD does not return
+`MEETS_DEVICE_INTEGRITY`, so the emulator can exercise the plumbing — channel
+call, challenge binding, server decode — but the device verdict will always
+fail. End-to-end verification requires a physical Android device. Sideloaded
+builds are tolerated only on prelive: the stricter `PLAY_RECOGNIZED` app
+verdict is asserted only when `QF_ENV` is `production`, mirroring the existing
+App Attest development/production split. A real device plus a prelive Worker is
+therefore enough to verify the whole flow without publishing to Google Play.
+
+### 4. Offline audit for shifted end-token tajweed
 
 Run this before beta release to detect all ayahs where the end token has shifted tajweed payload:
 
@@ -116,7 +242,7 @@ Input JSON can be either:
 - `{ "verses": [ ... ] }`
 - per-surah map like `{ "1": [ ... ], "2": [ ... ] }`
 
-### 4. Release integrity gate
+### 5. Release integrity gate
 
 Before every release candidate, run both checks below:
 
@@ -167,7 +293,9 @@ CI enforcement:
 - The bundled Amiri Quran font is provided by the Amiri Project under the SIL Open Font License 1.1
 
 ### API attestation
-- `QuranAttestationService` registers an Apple App Attest key and generates assertions
+- `QuranAttestationService` owns token caching and request coalescing, and delegates the platform handshake to an `AttestationProvider`
+- `AppAttestProvider` registers an Apple App Attest key and generates assertions; every other platform gets `UnsupportedAttestationProvider` and fails closed
+- Adding Android support means adding a `PlayIntegrityProvider` and a case in `QuranAttestationService._providerFor`; nothing else changes
 - The Cloudflare Worker validates Apple's certificate chain, app identity, one-time challenge, and monotonic assertion counter
 - Successful assertions receive environment-bound bearer tokens valid for ten minutes
 - Protected `/v2/content` routes reject missing, forged, expired, or cross-environment tokens
@@ -213,8 +341,10 @@ CI enforcement:
 
 ## App Store release
 
-The public version is read from `pubspec.yaml`; the value `1.1.1+60` produces
-App Store version **1.1.1** and internal build **60**.
+The public version is read from `pubspec.yaml` in `<marketing>+<build>` form:
+`1.1.1+63` produces App Store version **1.1.1** and internal build **63**.
+Increment the build number for every upload, even when the marketing version
+is unchanged — App Store Connect rejects a duplicate build number.
 
 Before submission:
 
