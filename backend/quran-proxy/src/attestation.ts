@@ -327,9 +327,16 @@ export class AttestationState {
   }
 }
 
+/// Drops trailing base64 padding so padded and unpadded encodings of the same
+/// value compare equal. Returns undefined unchanged so a missing nonce can
+/// never match a real challenge.
+function stripBase64Padding(value: string | undefined): string | undefined {
+  return value?.replace(/=+$/, "");
+}
+
 /// Asserts every property the Android client claims. Any mismatch throws, and
 /// the caller converts that into a 401.
-function assertPlayIntegrityVerdict(
+export function assertPlayIntegrityVerdict(
   verdict: PlayIntegrityVerdict,
   challenge: string,
   env: AttestationEnv,
@@ -338,7 +345,9 @@ function assertPlayIntegrityVerdict(
   const request = verdict.requestDetails;
 
   // Binds this token to the challenge we just issued (replay defence).
-  if (request?.nonce !== challenge) {
+  // Play Integrity echoes the nonce back with base64 padding restored, while
+  // the challenges we mint are unpadded base64url, so compare canonical forms.
+  if (stripBase64Padding(request?.nonce) !== stripBase64Padding(challenge)) {
     throw new Error("Integrity nonce does not match the challenge");
   }
   if (request?.requestPackageName !== packageName) {
@@ -354,20 +363,45 @@ function assertPlayIntegrityVerdict(
     throw new Error("Integrity token is expired");
   }
 
-  // App identity. These are populated even for sideloaded builds, which is what
-  // lets an off-Play build still prove which app it is.
+  // App identity. Google only populates packageName/certificateSha256Digest
+  // when Play recognized the build ("set iff app_recognition_verdict !=
+  // UNEVALUATED"), so a sideloaded build reports UNEVALUATED and carries no app
+  // identity at all. Production still demands the full identity, because it also
+  // requires PLAY_RECOGNIZED below and therefore always has these fields. Outside
+  // production we fall back to requestDetails.requestPackageName, which Play
+  // Services fills in from the real calling package and is verified above.
   const app = verdict.appIntegrity;
-  if (app?.packageName !== packageName) {
-    throw new Error("Integrity package name is invalid");
-  }
-  if (!(app?.certificateSha256Digest ?? []).includes(env.ANDROID_CERT_SHA256!)) {
-    throw new Error("Integrity signing certificate is not trusted");
+  const identityAvailable = app?.appRecognitionVerdict !== "UNEVALUATED";
+  if (env.QF_ENV === "production" || identityAvailable) {
+    if (app?.packageName !== packageName) {
+      throw new Error("Integrity package name is invalid");
+    }
+    if (
+      !(app?.certificateSha256Digest ?? []).includes(env.ANDROID_CERT_SHA256!)
+    ) {
+      throw new Error("Integrity signing certificate is not trusted");
+    }
   }
 
-  // Genuine, untampered device. Emulators never satisfy this.
+  // Genuine, untampered device. Production demands a Play-certified device;
+  // prelive also accepts MEETS_BASIC_INTEGRITY so a device that fails only the
+  // stricter hardware-backed check can still be used for testing. Note this is
+  // not enough to let an emulator through: emulators return an empty verdict by
+  // design and cannot pass either label, so the last mile of this flow can only
+  // be exercised on physical hardware. The verdict is echoed into the error
+  // because an empty list and a rejected list are otherwise indistinguishable
+  // from the client.
   const device = verdict.deviceIntegrity?.deviceRecognitionVerdict ?? [];
-  if (!device.includes("MEETS_DEVICE_INTEGRITY")) {
-    throw new Error("Device does not meet integrity requirements");
+  const accepted =
+    env.QF_ENV === "production"
+      ? ["MEETS_DEVICE_INTEGRITY"]
+      : ["MEETS_DEVICE_INTEGRITY", "MEETS_BASIC_INTEGRITY"];
+  if (!accepted.some((label) => device.includes(label))) {
+    throw new Error(
+      `Device does not meet integrity requirements (verdict: ${
+        device.join(",") || "none"
+      })`,
+    );
   }
 
   // Mirrors the App Attest development/production split: prelive tolerates
