@@ -131,17 +131,21 @@ export class AttestationState {
     try {
       const url = new URL(request.url);
       const body = await readObject(request);
+      // These are awaited rather than returned directly: returning a promise
+      // from inside `try` hands the rejection to the caller instead of the
+      // `catch` below, so a rejected handler escaped as an unhandled rejection
+      // and the runtime turned it into a 500.
       if (url.pathname === "/challenge") {
-        return this.issueChallenge(body);
+        return await this.issueChallenge(body);
       }
       if (url.pathname === "/register") {
-        return this.register(body);
+        return await this.register(body);
       }
       if (url.pathname === "/token") {
-        return this.verifyForToken(body);
+        return await this.verifyForToken(body);
       }
       if (url.pathname === "/play-integrity") {
-        return this.verifyPlayIntegrity(body);
+        return await this.verifyPlayIntegrity(body);
       }
       return internalJson({error: "Not found"}, 404);
     } catch (error) {
