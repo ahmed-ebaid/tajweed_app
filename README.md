@@ -159,13 +159,49 @@ flutter run -d emulator-5554 \
 Without that define the provider fails closed rather than falling back to an
 unauthenticated request. The Worker needs four matching secrets; until they are
 set it answers `integrity` challenges with `503`, which is also fail-closed:
+`ANDROID_PACKAGE_NAME`, `ANDROID_CERT_SHA256`, `PLAY_INTEGRITY_SA_EMAIL`, and
+`PLAY_INTEGRITY_SA_PRIVATE_KEY`.
+
+##### One-time Google Cloud setup
+
+1. Create (or pick) a Google Cloud project and note its **project number** —
+   that is the value for `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER`. The number, not
+   the project ID.
+2. Enable the **Play Integrity API** for that project.
+3. Create a service account and grant it access to the Play Integrity API, then
+   download a JSON key for it.
+
+##### Writing the secrets
+
+`scripts/setup-play-integrity.sh` derives the certificate digest from a keystore
+and extracts the service-account fields from that JSON key, so the stored values
+always match what Google reports. Run it from `backend/quran-proxy`:
 
 ```bash
-npx wrangler secret put ANDROID_PACKAGE_NAME            # com.ebaidllc.tajweed_practice
-npx wrangler secret put ANDROID_CERT_SHA256             # signing cert digest, base64url
-npx wrangler secret put PLAY_INTEGRITY_SA_EMAIL         # service account with playintegrity scope
-npx wrangler secret put PLAY_INTEGRITY_SA_PRIVATE_KEY   # its PKCS#8 private key
+# Preview the values without writing anything
+./scripts/setup-play-integrity.sh \
+  --service-account ~/Downloads/play-integrity-sa.json --dry-run
+
+# Write all four secrets to prelive
+./scripts/setup-play-integrity.sh \
+  --service-account ~/Downloads/play-integrity-sa.json
 ```
+
+It defaults to the Android debug keystore and the prelive Worker, which is the
+combination a sideloaded build needs. For a release build, pass the release
+keystore and target production:
+
+```bash
+./scripts/setup-play-integrity.sh \
+  --service-account ~/Downloads/play-integrity-sa.json \
+  --keystore /path/to/release.jks --alias upload \
+  --storepass "$KEYSTORE_PASSWORD" --env production
+```
+
+The digest must be the base64url-encoded SHA-256 of the DER certificate with
+padding stripped; any other encoding fails the comparison with a generic
+"certificate is not trusted" error. The script handles that encoding, so prefer
+it over setting `ANDROID_CERT_SHA256` by hand.
 
 **Emulators can never pass this check.** An AVD does not return
 `MEETS_DEVICE_INTEGRITY`, so the emulator can exercise the plumbing — channel
@@ -173,7 +209,8 @@ call, challenge binding, server decode — but the device verdict will always
 fail. End-to-end verification requires a physical Android device. Sideloaded
 builds are tolerated only on prelive: the stricter `PLAY_RECOGNIZED` app
 verdict is asserted only when `QF_ENV` is `production`, mirroring the existing
-App Attest development/production split.
+App Attest development/production split. A real device plus a prelive Worker is
+therefore enough to verify the whole flow without publishing to Google Play.
 
 ### 4. Offline audit for shifted end-token tajweed
 
