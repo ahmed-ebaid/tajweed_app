@@ -7,6 +7,26 @@ let preferredFontName = CommandLine.arguments.count > 2
   ? CommandLine.arguments[2]
   : "Farah"
 
+// Which layer to render:
+//   full        - gradient + text, used for iOS and the legacy Android icon
+//   background  - gradient only, the adaptive icon's background layer
+//   foreground  - text only on transparency, the adaptive icon's foreground
+//   monochrome  - like foreground but flat and unshadowed, for themed icons
+//
+// Android composites the background and foreground layers and then masks the
+// result into a device-specific shape, so the two must be rendered separately
+// rather than baked into one image.
+let layer = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "full"
+
+guard ["full", "background", "foreground", "monochrome"].contains(layer) else {
+  fputs("Unknown layer '\(layer)'. Use full, background, foreground or monochrome.\n", stderr)
+  exit(1)
+}
+
+let drawsBackground = layer == "full" || layer == "background"
+let drawsText = layer != "background"
+let drawsShadow = layer == "full" || layer == "foreground"
+
 let size = NSSize(width: 1024, height: 1024)
 let image = NSImage(size: size)
 let gradientTop = NSColor(calibratedRed: 0.17, green: 0.76, blue: 0.47, alpha: 1.0)
@@ -14,11 +34,13 @@ let gradientBottom = NSColor(calibratedRed: 0.05, green: 0.52, blue: 0.27, alpha
 
 image.lockFocus()
 
-if let gradient = NSGradient(starting: gradientTop, ending: gradientBottom) {
-  gradient.draw(in: NSRect(x: 0, y: 0, width: 1024, height: 1024), angle: 90)
-} else {
-  gradientTop.setFill()
-  NSBezierPath(rect: NSRect(x: 0, y: 0, width: 1024, height: 1024)).fill()
+if drawsBackground {
+  if let gradient = NSGradient(starting: gradientTop, ending: gradientBottom) {
+    gradient.draw(in: NSRect(x: 0, y: 0, width: 1024, height: 1024), angle: 90)
+  } else {
+    gradientTop.setFill()
+    NSBezierPath(rect: NSRect(x: 0, y: 0, width: 1024, height: 1024)).fill()
+  }
 }
 
 let fontNames = [
@@ -49,12 +71,16 @@ shadow.shadowBlurRadius = 18
 shadow.shadowOffset = NSSize(width: 0, height: -10)
 shadow.shadowColor = NSColor(calibratedWhite: 0, alpha: 0.16)
 
-let attributes: [NSAttributedString.Key: Any] = [
-  .paragraphStyle: paragraph,
-  .shadow: shadow,
-]
+let attributes: [NSAttributedString.Key: Any] = drawsShadow
+  ? [.paragraphStyle: paragraph, .shadow: shadow]
+  : [.paragraphStyle: paragraph]
 
 let title = "تجويد" as NSString
+
+// All layers share one text box. Android's adaptive-icon safe zone is handled
+// by the 16% inset that flutter_launcher_icons writes into
+// mipmap-anydpi-v26/ic_launcher.xml, so shrinking the text here as well would
+// scale it down twice and leave the glyph floating in empty space.
 let textRect = NSRect(x: 94, y: 214, width: 836, height: 560)
 
 let maxFontSize: CGFloat = 468
@@ -102,7 +128,9 @@ let centeredTextRect = NSRect(
   height: chosenBounds.height
 )
 
-title.draw(in: centeredTextRect, withAttributes: finalAttributes)
+if drawsText {
+  title.draw(in: centeredTextRect, withAttributes: finalAttributes)
+}
 
 image.unlockFocus()
 
