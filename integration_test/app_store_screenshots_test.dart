@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/providers/bookmark_provider.dart';
@@ -16,6 +18,7 @@ import 'package:tajweed_practice/core/providers/recitation_provider.dart';
 import 'package:tajweed_practice/core/providers/streak_provider.dart';
 import 'package:tajweed_practice/core/providers/tafseer_provider.dart';
 import 'package:tajweed_practice/core/services/quran_api_service.dart';
+import 'package:tajweed_practice/core/services/quran_content_sync_service.dart';
 import 'package:tajweed_practice/features/quiz/quiz_screen.dart';
 import 'package:tajweed_practice/features/reader/reader_screen.dart';
 import 'package:tajweed_practice/features/reader/widgets/audio_player_bar.dart';
@@ -259,12 +262,17 @@ void main() {
     await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
     expect(find.byType(ReaderScreen), findsOneWidget);
     await _captureScreenshot(tester, binding, '04-mushaf');
-    await _captureOnboardingAsset(tester, binding, '06-mushaf-bookmark');
 
     if (_onboardingAssetsOnly) {
+      // Onboarding page 6 reads "Bookmark a Mushaf page", so the screenshot has
+      // to show a page that is actually bookmarked. The mushaf opens on page 1,
+      // which is not, so jump to the seeded page-5 bookmark first — otherwise
+      // the image contradicts its own caption.
       final mushafPageView = tester.widget<PageView>(find.byType(PageView));
       mushafPageView.controller!.jumpToPage(4);
       await _waitForUi(tester, seconds: 5);
+      await _captureOnboardingAsset(tester, binding, '06-mushaf-bookmark');
+
       final hizbMarker = find.byKey(const ValueKey('mushaf-hizb-boundary'));
       expect(hizbMarker, findsOneWidget);
       await tester.tap(hizbMarker);
@@ -538,6 +546,7 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
   if (_onboardingAssetsOnly) {
     await _seedPageFiveFixture();
     await _seedOnboardingBookmarks();
+    await _seedOnboardingRecitation();
   }
   await Hive.box(
     'verse_cache',
@@ -559,6 +568,89 @@ String _localizedAlBaqarahName(String languageCode) {
 
 /// Seeds a couple of bookmarks so the onboarding bookmark screenshot shows a
 /// populated list instead of the empty-state hint.
+/// Seeds the reader's downloaded-audio cache so the play button is live
+/// offline.
+///
+/// The screenshot run has no network, so the real recitations fetch fails and
+/// the reader ends up with an empty audio map — the play button does nothing
+/// and the audio player bar never appears.
+///
+/// Seeding only the recitation URL map is not enough. Those values are treated
+/// as CDN-relative paths and get a `https://verses.quran.com/` prefix, and an
+/// unreachable file reports `completed` immediately, so the reader's completion
+/// listener clears `_playingAyahNumber` and the bar vanishes before capture.
+///
+/// So we seed the *downloaded* cache instead, which is the app's own offline
+/// path: real files on disk registered in the `audio_cache` box make the reader
+/// take its `playFile` branch. Silence keeps the run quiet while genuinely
+/// staying in the playing state.
+Future<void> _seedOnboardingRecitation() async {
+  const reciterId = 1;
+  const surahNumber = 1;
+  const ayahCount = 7;
+
+  final directory = await getApplicationDocumentsDirectory();
+  final audioDir = Directory('${directory.path}/onboarding-audio');
+  await audioDir.create(recursive: true);
+
+  final silence = File('${audioDir.path}/silence.wav');
+  await silence.writeAsBytes(_silentWavBytes(seconds: 60));
+
+  final box = Hive.box('audio_cache');
+  for (var ayah = 1; ayah <= ayahCount; ayah++) {
+    await box.put('r${reciterId}_s${surahNumber}_a$ayah', silence.path);
+  }
+
+  // The reader still needs a non-empty audio map to consider the surah
+  // playable, even though playback itself comes from the cached files.
+  await QuranContentSyncService().cacheRecitationMap(
+    reciterId: reciterId,
+    surahNumber: surahNumber,
+    audioUrls: {
+      for (var ayah = 1; ayah <= ayahCount; ayah++)
+        '$surahNumber:$ayah':
+            '$reciterId/${surahNumber.toString().padLeft(3, '0')}'
+            '${ayah.toString().padLeft(3, '0')}.mp3',
+    },
+  );
+}
+
+/// Builds a mono 16-bit PCM WAV of pure silence.
+///
+/// 16-bit samples are used because silence is all-zero bytes there, whereas
+/// 8-bit PCM is unsigned and would need 0x80 fill.
+List<int> _silentWavBytes({required int seconds}) {
+  const sampleRate = 8000;
+  const bytesPerSample = 2;
+  final dataBytes = sampleRate * bytesPerSample * seconds;
+
+  final header = BytesBuilder();
+  void ascii(String value) => header.add(value.codeUnits);
+  void uint32(int value) => header.add([
+    value & 0xFF,
+    (value >> 8) & 0xFF,
+    (value >> 16) & 0xFF,
+    (value >> 24) & 0xFF,
+  ]);
+  void uint16(int value) => header.add([value & 0xFF, (value >> 8) & 0xFF]);
+
+  ascii('RIFF');
+  uint32(36 + dataBytes);
+  ascii('WAVE');
+  ascii('fmt ');
+  uint32(16); // PCM chunk size
+  uint16(1); // PCM format
+  uint16(1); // mono
+  uint32(sampleRate);
+  uint32(sampleRate * bytesPerSample); // byte rate
+  uint16(bytesPerSample); // block align
+  uint16(8 * bytesPerSample); // bits per sample
+  ascii('data');
+  uint32(dataBytes);
+
+  return [...header.takeBytes(), ...List<int>.filled(dataBytes, 0)];
+}
+
 Future<void> _seedOnboardingBookmarks() async {
   final now = DateTime.now().millisecondsSinceEpoch;
   await Hive.box('bookmarks').put('bookmarks_list', [

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yaml/yaml.dart';
 
 /// Locales that ship a localized onboarding screenshot set.
 const _locales = <String>['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
@@ -64,19 +63,13 @@ void main() {
     });
 
     test('every guide image is declared in pubspec assets', () {
-      final pubspec = loadYaml(File('pubspec.yaml').readAsStringSync()) as Map;
-      final declared = ((pubspec['flutter'] as Map)['assets'] as List)
-          .map((e) => e.toString())
-          .toList();
-
+      final pubspec = File('pubspec.yaml').readAsStringSync();
       for (final locale in _locales) {
         final dir = 'assets/onboarding/$locale/';
-        final covered = declared.any(
-          (entry) =>
-              entry == dir ||
-              entry == 'assets/onboarding/' ||
-              _files.any((file) => entry == '$dir$file'),
-        );
+        final covered =
+            pubspec.contains('- $dir\n') ||
+            pubspec.contains('- assets/onboarding/\n') ||
+            _files.any((file) => pubspec.contains('- $dir$file\n'));
         expect(covered, isTrue, reason: '$dir is not declared in pubspec.yaml');
       }
     });
