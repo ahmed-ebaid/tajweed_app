@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
 import 'package:tajweed_practice/features/reader/widgets/tajweed_text.dart';
 
@@ -50,7 +51,15 @@ List<Map<String, dynamic>> _loadVersesFromJson(String jsonPath) {
 /// A run must start with something that occupies horizontal space. Nonspacing
 /// marks and zero-width format characters give the shaper no advance, so what
 /// follows lands on top of the preceding letter.
-bool _lacksVisibleBase(String text) {
+/// A *body* run must start with something that occupies space. Nonspacing
+/// combining marks and zero-width format characters give the shaper no advance,
+/// so a body run opening with one has been torn out of its grapheme cluster.
+///
+/// Marker runs are exempt and checked separately by
+/// [_waqfMarkerRunIsIsolatedSign]: a waqf sign is *meant* to be a bare
+/// nonspacing mark, because it is positioned by the font relative to the
+/// preceding letter and Skia keeps it in that letter's shaping run.
+bool _bodyRunLacksVisibleBase(String text) {
   if (text.isEmpty) return false;
   final cp = text.codeUnitAt(0);
   if (cp == 0x200B || (cp >= 0x200C && cp <= 0x200F) || cp == 0xFEFF) {
@@ -62,6 +71,48 @@ bool _lacksVisibleBase(String text) {
       (cp >= 0x06DF && cp <= 0x06E8) ||
       (cp >= 0x06EA && cp <= 0x06ED);
 }
+
+const Set<int> _waqfRunes = {
+  0x06D6,
+  0x06D7,
+  0x06D8,
+  0x06D9,
+  0x06DA,
+  0x06DB,
+  0x06DC,
+};
+
+
+/// Collects body runs that open without a visible base *and* are not the
+/// harmless trailing-mark case.
+///
+/// 19 corpus words (e.g. 33:38 لَهُۖۥ, 2:245 وَيَبۡصُۜطُ) carry combining marks
+/// *after* the waqf sign. Splitting the sign out leaves those marks opening a
+/// body run. `test/unit/waqf_render_geometry_test.dart` renders those words with and
+/// without the split and finds no glyph moves — the runs share a typeface, so
+/// Skia keeps them in one shaping run and the marks still attach. A body run
+/// that opens with a mark right after a waqf marker run is therefore expected.
+List<String> _strandedBodyRuns(
+  List<({String text, TajweedRule? markerRule, bool isMarker})> runs,
+) {
+  final offenders = <String>[];
+  var afterWaqfMarker = false;
+  for (final run in runs) {
+    final isWaqfMarker = run.isMarker && run.markerRule == TajweedRule.waqf;
+    if (!run.isMarker && !afterWaqfMarker && _bodyRunLacksVisibleBase(run.text)) {
+      offenders.add(run.text);
+    }
+    afterWaqfMarker = isWaqfMarker;
+  }
+  return offenders;
+}
+
+/// A waqf marker run must be exactly the sign — no separator carried along.
+///
+/// A leading space would give the nonspacing mark its own base and push the
+/// sign clear of the word instead of stacking it over the harakah.
+bool _waqfMarkerRunIsIsolatedSign(String text) =>
+    text.length == 1 && _waqfRunes.contains(text.codeUnitAt(0));
 
 class _Drop {
   final String verseKey;
@@ -151,7 +202,7 @@ void main() {
   // GCB=Extend, so letter + harakah + ZWNJ + waqf collapse into one grapheme
   // cluster; splitting the sign into its own styled run then leaves a nonspacing
   // mark with no advance width and it is painted over the letter's harakah.
-  test('no rendered run starts without a visible base glyph', () {
+  test('every waqf sign gets an isolated coloured run with an intact base', () {
     final jsonPath = Platform.environment['QURAN_WORDS_JSON_PATH'];
     if (jsonPath == null || jsonPath.isEmpty) {
       print(
@@ -163,24 +214,46 @@ void main() {
 
     final verses = _loadVersesFromJson(jsonPath);
     final offenders = <String>[];
+    final unisolated = <String>[];
     var wordsWithWaqf = 0;
+    var colouredWaqfRuns = 0;
 
     for (final verse in verses) {
       final verseKey = verse['verse_key']?.toString() ?? 'unknown';
       final ayah = AyahMapper.fromApi(verse);
 
       for (final word in ayah.words) {
-        final hasWaqf = word.arabic.runes.any(
-          (rune) => rune >= 0x06D6 && rune <= 0x06DC,
-        );
-        if (hasWaqf) wordsWithWaqf++;
+        final waqfCount = word.arabic.runes
+            .where((rune) => _waqfRunes.contains(rune))
+            .length;
+        if (waqfCount > 0) wordsWithWaqf++;
 
-        for (final run in TajweedText.splitIntoStyledRuns(word.arabic)) {
-          if (!_lacksVisibleBase(run.text)) continue;
-          if (offenders.length < 10) {
-            offenders.add('$verseKey  ${word.arabic}  run="${run.text}"');
+        final runs = TajweedText.splitIntoStyledRuns(word.arabic);
+        var seenWaqfRuns = 0;
+        for (final run in runs) {
+          if (run.isMarker &&
+              run.text.runes.any((rune) => _waqfRunes.contains(rune))) {
+            seenWaqfRuns++;
+            colouredWaqfRuns++;
+            if (!_waqfMarkerRunIsIsolatedSign(run.text) &&
+                unisolated.length < 10) {
+              unisolated.add('$verseKey  ${word.arabic}  run="${run.text}"');
+            }
           }
         }
+        for (final stranded in _strandedBodyRuns(runs)) {
+          if (offenders.length < 10) {
+            offenders.add('$verseKey  ${word.arabic}  run="$stranded"');
+          }
+        }
+
+        // Every waqf sign must reach the palette; none may be silently
+        // absorbed into a body run and lose its colour.
+        expect(
+          seenWaqfRuns,
+          waqfCount,
+          reason: '$verseKey ${word.arabic}: waqf sign lost its marker run.',
+        );
       }
     }
 
@@ -190,11 +263,26 @@ void main() {
       reason: 'Audit input should exercise the waqf path broadly.',
     );
     expect(
+      colouredWaqfRuns,
+      greaterThan(3000),
+      reason: 'Audit should observe waqf signs actually getting a marker run.',
+    );
+    expect(
+      unisolated,
+      isEmpty,
+      reason:
+          'A waqf marker run must contain only the sign. A carried separator '
+          'gives the nonspacing mark its own base and pushes the sign clear '
+          'of the word instead of stacking it above the harakah:\n'
+          '${unisolated.join('\n')}',
+    );
+    expect(
       offenders,
       isEmpty,
       reason:
-          'These runs open with a nonspacing or zero-width character, so the '
-          'mark is drawn over the preceding harakah:\n${offenders.join('\n')}',
+          'These body runs open with a nonspacing or zero-width character, so '
+          'they have been torn out of their grapheme cluster and the mark is '
+          'drawn over the preceding harakah:\n${offenders.join('\n')}',
     );
   });
 }
