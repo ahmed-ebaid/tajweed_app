@@ -29,8 +29,22 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Run ayah mapper regression tests
-        run: flutter test test/unit/ayah_mapper_test.dart
+      # Errors only. There are 4 pre-existing warnings in reader_screen.dart
+      # (dead fields/methods and a redundant `!`) and ~54 infos; failing on
+      # those would gate this release on unrelated cleanup. This still catches
+      # anything that breaks compilation.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      # The gate previously ran only ayah_mapper_test.dart, so the widget
+      # tests, the waqf render-geometry invariant and the tajweed span audits
+      # never ran on a pull request. A regression in any of them reached a
+      # release build before anyone noticed.
+      - name: Run test suite
+        run: flutter test
+
+      # The span audits sweep all 6236 ayahs and need a words dump that is too
+      # large to commit, so they skip themselves when this is unset. Point it at
+      # a cached dump to turn them on in CI.
       - name: Verify sajdah first-word integrity from API
         run: node tool/check_sajdah_ayahs.js
