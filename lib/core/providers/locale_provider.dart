@@ -1,10 +1,14 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class LocaleProvider extends ChangeNotifier {
   static const _boxKey = 'settings';
   static const _localeKey = 'locale';
-  static const _defaultLocaleCode = 'ar';
+
+  /// Used only when the device language is not one of [supportedLocales].
+  static const _fallbackLocaleCode = 'ar';
 
   // Supported locales: English, Arabic, Urdu, Turkish, French, Indonesian, German, Spanish
   static const List<Locale> supportedLocales = [
@@ -34,20 +38,58 @@ class LocaleProvider extends ChangeNotifier {
 
   late Locale _locale;
 
-  LocaleProvider() {
+  /// Injectable so tests can drive resolution: `PlatformDispatcher.instance` is
+  /// the real dispatcher even under `TestWidgetsFlutterBinding`, so
+  /// `localesTestValue` would not be observed here.
+  final List<Locale> Function() _deviceLocales;
+
+  LocaleProvider({List<Locale> Function()? deviceLocales})
+    : _deviceLocales = deviceLocales ?? _platformLocales {
     _locale = _loadSaved();
   }
+
+  static List<Locale> _platformLocales() => PlatformDispatcher.instance.locales;
 
   Locale get locale => _locale;
 
   bool get isRtl => rtlLanguages.contains(_locale.languageCode);
 
+  /// True while the app is tracking the device language because the reader has
+  /// never picked one explicitly.
+  bool get followsDeviceLanguage => Hive.box(_boxKey).get(_localeKey) == null;
+
+  /// An explicit choice always wins. Absent one, follow the device language —
+  /// the key must be read as nullable rather than with a `defaultValue`, since
+  /// "never chose" and "chose Arabic" are different states and the old code
+  /// could not tell them apart.
   Locale _loadSaved() {
-    final box = Hive.box(_boxKey);
-    final saved =
-        box.get(_localeKey, defaultValue: _defaultLocaleCode) as String;
-    return Locale(saved);
+    final saved = Hive.box(_boxKey).get(_localeKey) as String?;
+    if (saved != null && _isSupported(saved)) return Locale(saved);
+    return _deviceLocale();
   }
+
+  /// Defers to Flutter's standard locale resolution, so device preferences
+  /// with country or script codes (`pt_BR`, `zh_Hant`) and the full ordered
+  /// preference list are handled by the same rules the framework uses for its
+  /// own localizations, rather than a hand-rolled match.
+  ///
+  /// `basicLocaleListResolution` falls back to `supportedLocales.first`, so
+  /// the "nothing matched" case is detected up front to honour the app's own
+  /// Arabic fallback instead.
+  ///
+  /// Read from the device rather than the binding so this works before
+  /// `WidgetsBinding` is initialised. iOS and Android both relaunch the app
+  /// when the system language changes, so resolving once at startup is enough.
+  Locale _deviceLocale() {
+    final preferred = _deviceLocales();
+    if (!preferred.any((l) => _isSupported(l.languageCode))) {
+      return const Locale(_fallbackLocaleCode);
+    }
+    return basicLocaleListResolution(preferred, supportedLocales);
+  }
+
+  static bool _isSupported(String languageCode) =>
+      supportedLocales.any((l) => l.languageCode == languageCode);
 
   Future<void> setLocale(Locale locale) async {
     if (!supportedLocales.contains(locale)) return;
