@@ -122,6 +122,60 @@ class _Drop {
   const _Drop(this.verseKey, this.word, this.ruleClass);
 }
 
+bool _isCombiningOrInvisible(int rune) =>
+    (rune >= 0x064B && rune <= 0x065F) ||
+    rune == 0x0670 ||
+    rune == 0x0653 ||
+    (rune >= 0x06D6 && rune <= 0x06ED) ||
+    rune == 0x0640 ||
+    rune == 0x200C ||
+    rune == 0x0020;
+
+/// The base letters of [text], with harakat, waqf signs, tatweel, ZWNJ and
+/// spaces removed. Comparing base letters is what makes an extent check
+/// meaningful: the mapper deliberately widens spans over combining marks, so a
+/// raw string comparison would flag correct behaviour as a defect.
+String _baseLetters(String text) =>
+    String.fromCharCodes(text.runes.where((r) => !_isCombiningOrInvisible(r)));
+
+/// Top-level `<rule>` tags with any nested inner tags flattened away.
+///
+/// Quran.com nests tags, wrapping a `custom-alef-maksora` tag inside a
+/// `madda_normal` one, so a flat non-greedy regex captures the inner opening
+/// tag as the outer tag's text and reports thousands of phantom mismatches.
+List<({String ruleClass, String text})> _topLevelRuleTags(String html) {
+  final tags = <({String ruleClass, String text})>[];
+  final openTag = RegExp(r'<rule class=([a-z0-9_\-]+)>');
+  final buffer = StringBuffer();
+  var index = 0;
+  var depth = 0;
+  String? ruleClass;
+
+  while (index < html.length) {
+    final match = openTag.matchAsPrefix(html, index);
+    if (match != null) {
+      if (depth == 0) {
+        ruleClass = match.group(1);
+        buffer.clear();
+      }
+      depth++;
+      index = match.end;
+      continue;
+    }
+    if (html.startsWith('</rule>', index)) {
+      depth--;
+      index += '</rule>'.length;
+      if (depth == 0 && ruleClass != null) {
+        tags.add((ruleClass: ruleClass, text: buffer.toString()));
+      }
+      continue;
+    }
+    if (depth > 0) buffer.write(html[index]);
+    index++;
+  }
+  return tags;
+}
+
 void main() {
   // Guards against tajweed rules being silently discarded during parsing.
   //
@@ -283,6 +337,124 @@ void main() {
           'These body runs open with a nonspacing or zero-width character, so '
           'they have been torn out of their grapheme cluster and the mark is '
           'drawn over the preceding harakah:\n${offenders.join('\n')}',
+    );
+  });
+
+  // Guards span *extent*, which the drop audit above cannot see.
+  //
+  // `unmatchedRuleClasses` only asks whether a rule class was matched somewhere
+  // in the word. A span that starts in the right place but swallows an extra
+  // letter satisfies it completely, so an over-coloured span regresses in
+  // silence. That is the gap that let 26:31 كُنتَ look like a defect: the whole
+  // word really is coloured, and nothing in the suite could say whether that
+  // was two correct spans or one broken one.
+  //
+  // The oracle compares base letters only, because the mapper widens spans over
+  // combining marks in two directions on purpose:
+  //   * forward, to carry a letter's own harakah — colouring a letter but
+  //     leaving its vowel black looks broken;
+  //   * backward, when a tag contains nothing but marks, to reach the base
+  //     letter they attach to — a bare nonspacing mark cannot be rendered on
+  //     its own.
+  // Both widenings are legitimate and are counted separately rather than
+  // failed.
+  test('no tajweed span over-extends beyond its source tag', () {
+    final jsonPath = Platform.environment['QURAN_WORDS_JSON_PATH'];
+    if (jsonPath == null || jsonPath.isEmpty) {
+      print(
+        'Skipping extent audit: set QURAN_WORDS_JSON_PATH to a full 6236-ayah '
+        'words dump JSON (generate with tool/fetch_quran_words_dump.dart).',
+      );
+      return;
+    }
+
+    // ٱلرِّبَوٰٓا۟ carries a silent alif written with U+06DF (small high rounded
+    // zero). The source tag covers وا; the mapper stops at و, so the silent
+    // alif renders uncoloured. Two occurrences, both the same word, and the
+    // visual difference is one unvowelled letter. Recorded rather than fixed so
+    // that a *new* deviation fails loudly instead of hiding in a raw count.
+    const knownDeviations = {'2:278', '3:130'};
+
+    final verses = _loadVersesFromJson(jsonPath);
+    expect(verses.length, 6236);
+
+    final offenders = <String>[];
+    var spansChecked = 0;
+    var exactMatches = 0;
+    var baseWidened = 0;
+
+    for (final verse in verses) {
+      final verseKey = verse['verse_key'] as String? ?? '?';
+      final words = verse['words'];
+      if (words is! List) continue;
+
+      for (final rawWord in words) {
+        if (rawWord is! Map) continue;
+        final word = _asStringDynamicMap(rawWord);
+        if (word['char_type_name'] != 'word') continue;
+        final html = word['text_uthmani_tajweed'] as String? ?? '';
+        if (!html.contains('<rule')) continue;
+
+        final ayah = AyahMapper.fromApi({
+          'verse_key': verseKey,
+          'page_number': verse['page_number'] ?? 1,
+          'text_uthmani': word['text_uthmani'],
+          'words': [word],
+        });
+        if (ayah.words.isEmpty) continue;
+
+        final mapped = ayah.words.first;
+        final spans = [...mapped.spans]
+          ..sort((a, b) => a.start.compareTo(b.start));
+        final tags = _topLevelRuleTags(html);
+
+        // A count mismatch means a rule was dropped, which the audit above
+        // already owns. Skipping keeps one failure from being reported twice.
+        if (spans.length != tags.length) continue;
+
+        for (var i = 0; i < spans.length; i++) {
+          spansChecked++;
+          final rendered =
+              _baseLetters(mapped.arabic.substring(spans[i].start, spans[i].end));
+          final source = _baseLetters(tags[i].text);
+
+          if (rendered == source) {
+            exactMatches++;
+            continue;
+          }
+          if (source.isEmpty && rendered.runes.length == 1) {
+            baseWidened++;
+            continue;
+          }
+          if (knownDeviations.contains(verseKey)) continue;
+
+          offenders.add(
+            '$verseKey ${word['text_uthmani']} [${tags[i].ruleClass}] '
+            'tag="$source" span="$rendered"',
+          );
+        }
+      }
+    }
+
+    expect(
+      spansChecked,
+      greaterThan(60000),
+      reason: 'Extent audit should cover the whole corpus.',
+    );
+    expect(
+      exactMatches + baseWidened,
+      greaterThan((spansChecked * 0.99).round()),
+      reason:
+          'Nearly every span should either match its tag exactly or be widened '
+          'to reach a base letter.',
+    );
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'These spans cover different base letters than their source tag, so '
+          'they colour letters the rule does not apply to (or miss letters it '
+          'does):\n${offenders.take(25).join('\n')}',
     );
   });
 }
