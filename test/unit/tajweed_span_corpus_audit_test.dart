@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
+import 'package:tajweed_practice/features/reader/widgets/tajweed_text.dart';
 
 Map<String, dynamic> _asStringDynamicMap(dynamic input) {
   return Map<String, dynamic>.from(input as Map);
@@ -44,6 +45,22 @@ List<Map<String, dynamic>> _loadVersesFromJson(String jsonPath) {
   }
 
   return verses;
+}
+
+/// A run must start with something that occupies horizontal space. Nonspacing
+/// marks and zero-width format characters give the shaper no advance, so what
+/// follows lands on top of the preceding letter.
+bool _lacksVisibleBase(String text) {
+  if (text.isEmpty) return false;
+  final cp = text.codeUnitAt(0);
+  if (cp == 0x200B || (cp >= 0x200C && cp <= 0x200F) || cp == 0xFEFF) {
+    return true;
+  }
+  return (cp >= 0x0610 && cp <= 0x061A) ||
+      (cp >= 0x064B && cp <= 0x065F) ||
+      (cp >= 0x06D6 && cp <= 0x06DC) ||
+      (cp >= 0x06DF && cp <= 0x06E8) ||
+      (cp >= 0x06EA && cp <= 0x06ED);
 }
 
 class _Drop {
@@ -125,5 +142,59 @@ void main() {
     }
 
     fail(summary.toString());
+  });
+
+  // Guards against waqf signs losing their base glyph.
+  //
+  // Quran.com's tajweed HTML separates a waqf sign from the preceding word with
+  // a zero-width non-joiner where `text_uthmani` uses a space. ZWNJ is
+  // GCB=Extend, so letter + harakah + ZWNJ + waqf collapse into one grapheme
+  // cluster; splitting the sign into its own styled run then leaves a nonspacing
+  // mark with no advance width and it is painted over the letter's harakah.
+  test('no rendered run starts without a visible base glyph', () {
+    final jsonPath = Platform.environment['QURAN_WORDS_JSON_PATH'];
+    if (jsonPath == null || jsonPath.isEmpty) {
+      print(
+        'Skipping audit: set QURAN_WORDS_JSON_PATH to a full 6236-ayah words '
+        'dump JSON (generate with tool/fetch_quran_words_dump.dart).',
+      );
+      return;
+    }
+
+    final verses = _loadVersesFromJson(jsonPath);
+    final offenders = <String>[];
+    var wordsWithWaqf = 0;
+
+    for (final verse in verses) {
+      final verseKey = verse['verse_key']?.toString() ?? 'unknown';
+      final ayah = AyahMapper.fromApi(verse);
+
+      for (final word in ayah.words) {
+        final hasWaqf = word.arabic.runes.any(
+          (rune) => rune >= 0x06D6 && rune <= 0x06DC,
+        );
+        if (hasWaqf) wordsWithWaqf++;
+
+        for (final run in TajweedText.splitIntoStyledRuns(word.arabic)) {
+          if (!_lacksVisibleBase(run.text)) continue;
+          if (offenders.length < 10) {
+            offenders.add('$verseKey  ${word.arabic}  run="${run.text}"');
+          }
+        }
+      }
+    }
+
+    expect(
+      wordsWithWaqf,
+      greaterThan(3000),
+      reason: 'Audit input should exercise the waqf path broadly.',
+    );
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'These runs open with a nonspacing or zero-width character, so the '
+          'mark is drawn over the preceding harakah:\n${offenders.join('\n')}',
+    );
   });
 }
