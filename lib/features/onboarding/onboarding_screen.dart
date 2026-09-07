@@ -352,7 +352,7 @@ class _ScreenshotGuidePage extends StatelessWidget {
           Image.asset(
             assetPath,
             fit: BoxFit.cover,
-            alignment: page == 4 ? Alignment.center : Alignment.topCenter,
+            alignment: _screenshotAlignment(page),
           ),
           if (page == 4)
             _HizbMarkerOverlay(label: calloutLabel)
@@ -364,6 +364,22 @@ class _ScreenshotGuidePage extends StatelessWidget {
   }
 }
 
+/// Chooses which part of the 414x900 screenshot stays visible inside the
+/// phone frame.
+///
+/// The frame is squarer than the screenshot, so `BoxFit.cover` always drops
+/// part of it. Which part matters is page-specific: bottom-sheet features
+/// (tafseer, bookmarks) and the audio player bar all live at the bottom of
+/// the screen and were previously cropped away by a blanket top alignment.
+Alignment _screenshotAlignment(int page) => switch (page) {
+  0 => Alignment.topCenter, // Coloured tajweed rules in the ayah list.
+  1 => Alignment.bottomCenter, // Tafseer sheet with the source picker open.
+  2 => Alignment.bottomCenter, // Audio player bar.
+  3 => Alignment.bottomCenter, // Saved bookmarks sheet.
+  4 => Alignment.center, // Hizb marker sits mid-page.
+  _ => Alignment.topCenter, // Mushaf page view.
+};
+
 class _InteractionOverlay extends StatelessWidget {
   final int page;
   final String label;
@@ -374,73 +390,60 @@ class _InteractionOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final overlayColor = colors.primary;
+    // Only position and icon are page-specific. The bubble deliberately has no
+    // fixed size: it previously carried a hand-tuned `Size` per page, which
+    // ellipsised its own label ("Doub…", "Bookm…") even in English and would
+    // have truncated far worse in the longer locales.
     final config = switch (page) {
-      0 => (
-        const Alignment(0.50, -0.04),
-        Icons.touch_app_rounded,
-        label,
-        const Size(150, 52),
-      ),
-      1 => (
-        const Alignment(0.88, -0.89),
-        Icons.lightbulb_rounded,
-        label,
-        const Size(178, 58),
-      ),
-      2 => (
-        const Alignment(0.18, -0.10),
-        Icons.graphic_eq_rounded,
-        label,
-        const Size(110, 52),
-      ),
-      3 => (
-        const Alignment(-0.60, 0.40),
-        Icons.bookmark_add_rounded,
-        label,
-        const Size(125, 52),
-      ),
-      _ => (
-        const Alignment(0.0, 0.82),
-        Icons.bookmark_rounded,
-        label,
-        const Size(145, 52),
-      ),
+      0 => (const Alignment(0.50, -0.04), Icons.touch_app_rounded),
+      1 => (const Alignment(0.88, -0.89), Icons.lightbulb_rounded),
+      2 => (const Alignment(0.18, -0.10), Icons.graphic_eq_rounded),
+      3 => (const Alignment(-0.60, 0.40), Icons.bookmark_add_rounded),
+      _ => (const Alignment(0.0, 0.82), Icons.bookmark_rounded),
     };
 
-    return Align(
-      alignment: config.$1,
-      child: Container(
-        width: config.$4.width,
-        height: config.$4.height,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: overlayColor, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: colors.shadow.withValues(alpha: 0.16),
-              blurRadius: 12,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(config.$2, color: overlayColor, size: 23),
-            const SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                config.$3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.onSurface,
-                  fontWeight: FontWeight.w700,
+    return LayoutBuilder(
+      builder: (context, constraints) => Align(
+        alignment: config.$1,
+        child: Container(
+          constraints: BoxConstraints(
+            minHeight: 52,
+            // Keeps the bubble inside the screenshot frame; `Align` never
+            // overflows a child that fits its parent.
+            maxWidth: constraints.maxWidth * 0.9,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: overlayColor, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow.withValues(alpha: 0.16),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(config.$2, color: overlayColor, size: 23),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -495,7 +498,12 @@ class _HizbMarkerOverlay extends StatelessWidget {
                 left: 62,
                 top: markerCenterY - 28,
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 190),
+                  // Relative to the frame rather than a fixed 190px, which
+                  // ellipsised longer locales' labels. 62 is this bubble's
+                  // left offset; 10 keeps it clear of the frame's right edge.
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth - 62 - 10,
+                  ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 9,
@@ -524,6 +532,7 @@ class _HizbMarkerOverlay extends StatelessWidget {
                       Flexible(
                         child: Text(
                           label,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: colors.onSurface,

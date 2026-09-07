@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -186,6 +187,59 @@ void main() {
         asset.assetName,
         'assets/onboarding/${locale.languageCode}/01-tajweed-rules.png',
       );
+    }
+  });
+
+  testWidgets('callout labels are never truncated in any locale', (
+    tester,
+  ) async {
+    // Guards the bug where each callout carried a hand-tuned fixed `Size`, so
+    // its own label ellipsised ("Doub…", "Bookm…") even in English. Asserting
+    // the rendered paragraph never exceeds its line budget catches that for
+    // every locale, including ones nobody manually reviews.
+    final service = OnboardingService(settingsBox: settingsBox);
+
+    for (final locale in AppLocalizations.supportedLocales) {
+      await tester.pumpWidget(
+        app(
+          locale: locale,
+          // A fresh key per locale resets the PageView, which would otherwise
+          // still sit on the last page from the previous iteration.
+          home: OnboardingScreen(
+            key: ValueKey(locale.languageCode),
+            service: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(OnboardingScreen)),
+      );
+
+      for (var page = 0; page < 6; page++) {
+        if (page > 0) {
+          await tester.tap(find.byKey(const Key('onboarding_next')));
+          await tester.pumpAndSettle();
+        }
+
+        final label = l10n.get('onboarding_mockup_callout_${page + 1}');
+        final finder = find.text(label);
+        expect(
+          finder,
+          findsOneWidget,
+          reason: 'callout $page missing for ${locale.languageCode}',
+        );
+
+        final paragraph = tester.renderObject<RenderParagraph>(finder);
+        expect(
+          paragraph.didExceedMaxLines,
+          isFalse,
+          reason:
+              'callout "$label" (page $page, ${locale.languageCode}) is '
+              'truncated — the bubble is too small for its own text',
+        );
+      }
     }
   });
 
