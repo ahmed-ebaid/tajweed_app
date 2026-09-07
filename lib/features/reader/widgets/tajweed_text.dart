@@ -401,32 +401,35 @@ class TajweedText extends StatelessWidget {
         continue;
       }
 
-      // Waqf signs are nonspacing marks, so a run of their own leaves them no
-      // glyph to attach to and the shaper draws them back over the preceding
-      // letter's harakah.
-      var base = '';
+      // Waqf signs are nonspacing marks. They carry no advance width, so the
+      // font's mark attachment is what places them above the preceding
+      // letter's harakah — and that only works while they stay in the same
+      // shaping run as that letter.
+      //
+      // Skia merges adjacent style runs that differ only by paint into a
+      // single shaping run, so giving the sign its own colour does *not*
+      // break the attachment. Only a change of typeface does, which is why
+      // the marker style below keeps the body font for waqf. Measured, not
+      // assumed: see tool/waqf_placement_comparison_test.dart, where the
+      // colour-only split renders pixel-identical to an unsplit run.
+      //
+      // The separator that precedes the sign is therefore unwanted: it gives
+      // the mark a space to sit on and pushes it clear of the word. Drop it so
+      // the sign stacks over the letter it annotates.
       if (_waqfRunes.contains(rune)) {
         final pending = plainText.toString();
-        final separator = pending.isEmpty
-            ? null
-            : pending.codeUnitAt(pending.length - 1);
-
-        if (separator == 0x20 || separator == 0x200C) {
-          // Carry the separator across so the sign stays anchored to it.
-          base = String.fromCharCode(separator!);
-          plainText.clear();
-          plainText.write(pending.substring(0, pending.length - 1));
-        } else if (pending.isNotEmpty) {
-          // Sits directly on a letter: leave it there rather than tear it off
-          // its base. It loses the marker colour but stays legible.
-          plainText.writeCharCode(rune);
-          continue;
+        if (pending.isNotEmpty) {
+          final separator = pending.codeUnitAt(pending.length - 1);
+          if (separator == 0x20 || separator == 0x200C) {
+            plainText.clear();
+            plainText.write(pending.substring(0, pending.length - 1));
+          }
         }
       }
 
       flushPlainText();
       runs.add((
-        text: '$base${String.fromCharCode(rune)}',
+        text: String.fromCharCode(rune),
         markerRule: markerRule,
         isMarker: true,
       ));
@@ -502,6 +505,25 @@ class TajweedText extends StatelessWidget {
       return sajdahMarkerStyle(style, color: markerRule?.color ?? style.color);
     }
 
+    // Waqf signs keep the body typeface, deliberately.
+    //
+    // They are nonspacing marks positioned by the font's mark attachment
+    // relative to the preceding letter. That attachment is what lifts the sign
+    // above the harakah, and it only survives while the sign shapes in the
+    // same run as that letter. A colour change alone does not split the
+    // shaping run, but a *typeface* change does — switching to Scheherazade
+    // here would tear the sign out of its run and drop it back onto the
+    // harakah, which is the exact overlap this path exists to avoid.
+    //
+    // Structural markers below are spacing glyphs with their own advance, so
+    // they have nothing to attach to and keep their dedicated font path.
+    if (markerRule == TajweedRule.waqf) {
+      return style.copyWith(
+        color: markerRule?.color ?? style.color,
+        decoration: TextDecoration.none,
+      );
+    }
+
     // Keep marker glyphs on a dedicated font path instead of sharing the
     // body-text font. This reduces iOS fallback differences for U+06DE.
     final markerBase = style.copyWith(
@@ -518,6 +540,21 @@ class TajweedText extends StatelessWidget {
     );
     return GoogleFonts.scheherazadeNew(textStyle: markerBase);
   }
+
+  /// Test seam for [_quranMarkerStyleFrom].
+  ///
+  /// Only safe to call for [TajweedRule.waqf], which returns before the
+  /// `GoogleFonts` lookup; the other branches attempt a network fetch.
+  @visibleForTesting
+  static TextStyle markerStyleFrom(
+    TextStyle style, {
+    required TajweedRule? markerRule,
+    bool isSajdah = false,
+  }) => _quranMarkerStyleFrom(
+    style,
+    markerRule: markerRule,
+    isSajdah: isSajdah,
+  );
 
   static TextStyle sajdahMarkerStyle(TextStyle style, {Color? color}) {
     final markerBase = style.copyWith(
