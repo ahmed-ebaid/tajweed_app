@@ -19,6 +19,17 @@ class AyahMapper {
   static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
     '\u0651([\u064B-\u0650])',
   );
+
+  /// The zero-width non-joiner Quran.com places before a waqf sign.
+  ///
+  /// `text_uthmani` puts a real space there; only the tajweed HTML substitutes
+  /// a ZWNJ. Waqf signs are nonspacing marks with no advance width, so keeping
+  /// the ZWNJ leaves them nothing to sit in and they are drawn back over the
+  /// preceding letter's harakah. Restoring the space matches the mushaf and
+  /// preserves span offsets, since it is a one-for-one replacement.
+  static final RegExp _zwnjBeforeQuranicMarkPattern = RegExp(
+    '\u200C(?=[\u06D6-\u06ED])',
+  );
   static const String _canonicalMarkerGlyph = '\u06DE';
   static const String _sajdahGlyph = '\u06E9';
   static const int _rubElHizbRune = 0x06DE;
@@ -676,8 +687,9 @@ class AyahMapper {
 
   static List<TajweedSpan> _parseRuleTagTajweed(
     String arabicText,
-    String tajweedHtml,
-  ) {
+    String tajweedHtml, {
+    List<String>? unmatchedClasses,
+  }) {
     final spans = <TajweedSpan>[];
     final pattern = RegExp(r'<rule\s+class="?([\w-]+)"?>([\s\S]*?)</rule>');
     int searchFrom = 0;
@@ -743,7 +755,27 @@ class AyahMapper {
         }
       }
 
-      if (idx < 0) continue;
+      // Pass 4: retry from before the combining marks the previous span
+      // already consumed. `_normalizeArabicText` moves a shaddah *after* the
+      // short vowel it precedes, which can slide it between the previous
+      // rule's letter and the harakah this rule opens with — as in إِنَّآ,
+      // where نّ + َآ normalizes to ن + َ + ّ + ا + ٓ. `searchFrom` then sits
+      // past this rule's opening fatha and every forward pass misses it.
+      if (idx < 0) {
+        final relaxedFrom = _rewindOverCombining(arabicText, searchFrom);
+        if (relaxedFrom < searchFrom) {
+          final fm = _flexibleMatch(arabicText, ruleText, relaxedFrom);
+          if (fm != null) {
+            idx = fm[0];
+            endIdx = fm[1];
+          }
+        }
+      }
+
+      if (idx < 0) {
+        unmatchedClasses?.add(className);
+        continue;
+      }
 
       // Extend endIdx over any trailing Arabic combining / Quranic marks
       // (e.g. U+06ED ۭ small low meem, U+06E2 ۢ small high meem) that
@@ -768,6 +800,33 @@ class AyahMapper {
     }
 
     return spans;
+  }
+
+  /// Rule classes in [word]'s tajweed HTML whose text could not be located in
+  /// the word's normalized display text.
+  ///
+  /// Each entry is a rule Quran.com annotated but the app dropped, so the
+  /// corresponding letters render uncoloured. A correct parse returns empty.
+  @visibleForTesting
+  /// Exposes the display normalization applied to every word and verse.
+  @visibleForTesting
+  static String normalizeArabicForDisplay(String text) =>
+      _normalizeArabicText(text);
+
+  static List<String> unmatchedRuleClasses(Map<String, dynamic> word) {
+    final wordTajweedHtml = word['text_uthmani_tajweed'] as String?;
+    if (wordTajweedHtml == null || wordTajweedHtml.isEmpty) return const [];
+
+    final textForDisplay = _normalizeArabicText(
+      _stripHtmlPreserveSpacing(wordTajweedHtml),
+    );
+    final unmatched = <String>[];
+    _parseRuleTagTajweed(
+      textForDisplay,
+      wordTajweedHtml,
+      unmatchedClasses: unmatched,
+    );
+    return unmatched;
   }
 
   static bool _containsSajdahInWordDisplaySource(
@@ -830,6 +889,18 @@ class AyahMapper {
     final m = re.firstMatch(sub);
     if (m == null) return null;
     return [searchFrom + m.start, searchFrom + m.end];
+  }
+
+  /// Moves [index] back over any Arabic combining marks directly preceding it.
+  ///
+  /// Used to reopen the search window when shaddah reordering has pushed the
+  /// scan position past a harakah that the next rule's text begins with.
+  static int _rewindOverCombining(String text, int index) {
+    int i = index;
+    while (i > 0 && _isArabicCombiningMark(text.codeUnitAt(i - 1))) {
+      i--;
+    }
+    return i;
   }
 
   /// Advances [endIdx] past any trailing Arabic combining marks so that the
@@ -1086,11 +1157,11 @@ class AyahMapper {
     bool forceRubElHizb = false,
     bool forceSajdahGlyph = false,
   }) {
-    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (
-      match,
-    ) {
-      return '${match.group(1)}\u0651';
-    });
+    final reordered = text
+        .replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+          return '${match.group(1)}\u0651';
+        })
+        .replaceAll(_zwnjBeforeQuranicMarkPattern, ' ');
 
     final out = StringBuffer();
     bool previousWasCanonicalMarker = false;

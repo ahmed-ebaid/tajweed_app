@@ -278,22 +278,31 @@ void main() {
     tester,
   ) async {
     const stopSymbols = 'ۘۙۚۗۖۛۜ';
-    const waqfAyah = Ayah(
+    // The mushaf and the API both separate a stop sign from the preceding
+    // word. The renderer drops that separator so the sign shapes as a
+    // nonspacing mark on the preceding letter and the font stacks it above
+    // the harakah.
+    final spacedSymbols = stopSymbols.runes
+        .map((rune) => ' ${String.fromCharCode(rune)}')
+        .join();
+    final waqfAyah = Ayah(
       surahNumber: 2,
       ayahNumber: 1,
       pageNumber: 2,
-      arabic: 'قَوْمًا$stopSymbols',
-      translations: {},
+      arabic: 'قَوْمًا$spacedSymbols',
+      translations: const {},
       words: [
         TajweedWord(
-          arabic: 'قَوْمًا$stopSymbols',
-          spans: [TajweedSpan(start: 0, end: 13, rule: TajweedRule.maddTabeei)],
+          arabic: 'قَوْمًا$spacedSymbols',
+          spans: const [
+            TajweedSpan(start: 0, end: 13, rule: TajweedRule.maddTabeei),
+          ],
         ),
       ],
     );
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: TajweedText(
             ayah: waqfAyah,
@@ -309,10 +318,23 @@ void main() {
         .whereType<TextSpan>()
         .toList();
 
+    final bodyFamily = children
+        .firstWhere((span) => (span.text ?? '').contains('\u0642'))
+        .style
+        ?.fontFamily;
+    expect(bodyFamily, isNotNull);
+
     for (final rune in stopSymbols.runes) {
       final symbol = String.fromCharCode(rune);
       final marker = children.singleWhere((span) => span.text == symbol);
       expect(marker.style?.color, TajweedRule.waqf.color);
+      expect(
+        marker.style?.fontFamily,
+        bodyFamily,
+        reason: 'U+${rune.toRadixString(16)} must keep the body typeface; a '
+            'typeface change forces a separate shaping run and drops the sign '
+            "back onto the preceding letter's harakah.",
+      );
     }
     expect(
       children
@@ -356,10 +378,32 @@ void main() {
     final richText = tester.widget<RichText>(find.byType(RichText).first);
     final children = (richText.text as TextSpan).children!
         .whereType<TextSpan>();
-    final marker = children.singleWhere((span) => span.text == 'ۘ');
+    final marker = children.singleWhere(
+      (span) => (span.text ?? '').endsWith('ۘ'),
+    );
 
+    expect(
+      marker.text,
+      'ۘ',
+      reason:
+          'The stop sign is a nonspacing mark and must stand alone in its run '
+          'so the font can stack it above the harakah. A carried separator '
+          'would give it its own base and push it clear of the word.',
+    );
     expect(marker.style?.color, TajweedRule.waqf.color);
     expect(marker.style?.color, isNot(const Color(0xFF1A1A1A)));
+    final bodyFamily = children
+        .firstWhere((span) => (span.text ?? '').contains('\u0645'))
+        .style
+        ?.fontFamily;
+    expect(bodyFamily, isNotNull);
+    expect(
+      marker.style?.fontFamily,
+      bodyFamily,
+      reason:
+          'A typeface change forces a separate shaping run, which drops the '
+          "sign back onto the preceding letter's harakah.",
+    );
   });
 
   testWidgets('renders Tajweed rules without underlining Quran text', (

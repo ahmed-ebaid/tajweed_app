@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/providers/bookmark_provider.dart';
@@ -14,8 +18,10 @@ import 'package:tajweed_practice/core/providers/recitation_provider.dart';
 import 'package:tajweed_practice/core/providers/streak_provider.dart';
 import 'package:tajweed_practice/core/providers/tafseer_provider.dart';
 import 'package:tajweed_practice/core/services/quran_api_service.dart';
+import 'package:tajweed_practice/core/services/quran_content_sync_service.dart';
 import 'package:tajweed_practice/features/quiz/quiz_screen.dart';
 import 'package:tajweed_practice/features/reader/reader_screen.dart';
+import 'package:tajweed_practice/features/reader/widgets/audio_player_bar.dart';
 import 'package:tajweed_practice/features/reader/widgets/tafseer_sheet.dart';
 import 'package:tajweed_practice/features/reader/widgets/word_detail_sheet.dart';
 import 'package:tajweed_practice/features/rules/rule_detail_screen.dart';
@@ -43,6 +49,100 @@ const _releaseScreenshotLocales = [
   'de',
   'es',
 ];
+
+bool _surfaceConvertedForScreenshots = false;
+
+/// Takes a screenshot, preparing the Android render surface on first use.
+///
+/// Android draws into a SurfaceView that cannot be read back directly, so the
+/// binding must swap it for an image surface before the first capture or
+/// `takeScreenshot` throws. iOS needs no such conversion, which is why the
+/// iOS-only App Store runs never hit this.
+Future<void> _captureScreenshot(
+  WidgetTester tester,
+  IntegrationTestWidgetsFlutterBinding binding,
+  String name,
+) async {
+  if (Platform.isAndroid && !_surfaceConvertedForScreenshots) {
+    await binding.convertFlutterSurfaceToImage();
+    await tester.pumpAndSettle();
+    _surfaceConvertedForScreenshots = true;
+  }
+  await binding.takeScreenshot(name);
+}
+
+/// Captures an onboarding guide asset under its final bundled filename.
+///
+/// Onboarding assets used to be hand-copied out of the App Store capture run,
+/// which is how pages 3 and 4 ended up sharing one byte-identical image. Naming
+/// them at capture time removes that manual mapping step.
+Future<void> _captureOnboardingAsset(
+  WidgetTester tester,
+  IntegrationTestWidgetsFlutterBinding binding,
+  String name,
+) async {
+  if (!_onboardingAssetsOnly) return;
+  await _captureScreenshot(tester, binding, 'onboarding-$name');
+}
+
+/// Opens the saved-bookmarks sheet and captures it for onboarding page 4.
+///
+/// [_seedOnboardingBookmarks] pre-populates the box, so the sheet shows a real
+/// list rather than the empty-state hint.
+Future<void> _captureBookmarkOnboardingAsset(
+  WidgetTester tester,
+  IntegrationTestWidgetsFlutterBinding binding,
+) async {
+  await tester.tap(find.byIcon(Icons.bookmark_border_rounded));
+  await _finishTransition(tester);
+  expect(find.byIcon(Icons.bookmark_rounded), findsWidgets);
+  await _captureOnboardingAsset(tester, binding, '04-bookmark-ayah');
+  Navigator.of(tester.element(find.byType(ReaderScreen))).pop();
+  await _finishTransition(tester);
+}
+
+/// Starts playback so the audio player bar is on screen, then captures it for
+/// onboarding page 3.
+///
+/// Tapping play first opens a "Play All options" sheet whose strings are
+/// hardcoded English. That sheet is dismissed and never captured.
+Future<void> _captureListenOnboardingAsset(
+  WidgetTester tester,
+  IntegrationTestWidgetsFlutterBinding binding,
+) async {
+  await tester.tap(find.byIcon(Icons.play_circle_outline).first);
+  await _finishTransition(tester);
+
+  final streamOption = find.text('Play now (stream missing ayahs)');
+  if (streamOption.evaluate().isNotEmpty) {
+    await tester.tap(streamOption);
+    await _finishTransition(tester);
+  }
+
+  await _waitForUi(tester, seconds: 3);
+  expect(find.byType(AudioPlayerBar), findsOneWidget);
+  await _captureOnboardingAsset(tester, binding, '03-listen-ayah');
+
+  await tester.tap(find.byIcon(Icons.stop_circle_outlined));
+  await _waitForUi(tester, seconds: 2);
+  expect(find.byType(AudioPlayerBar), findsNothing);
+}
+
+/// Expands the Tafseer source picker so the screenshot shows that several
+/// tafsir sources are available, not just the currently selected one.
+Future<void> _openTafseerSourceDropdown(WidgetTester tester) async {
+  final dropdown = find.byKey(const ValueKey('tafseer-source-dropdown-169'));
+  expect(dropdown, findsOneWidget);
+  await tester.tap(dropdown);
+  await _finishTransition(tester);
+
+  // The selected entry is rendered both in the closed field and in the open
+  // menu, so two matches proves the menu actually expanded.
+  expect(
+    find.byKey(const ValueKey('tafseer-source-169')),
+    findsAtLeastNWidgets(2),
+  );
+}
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -82,13 +182,19 @@ void main() {
     );
     await _waitForUi(tester);
 
-    await binding.takeScreenshot('01-home');
+    await _captureScreenshot(tester, binding, '01-home');
 
     await tester.tap(find.byIcon(Icons.menu_book_rounded));
     await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
-    await binding.takeScreenshot('02-ayah-reader');
+    await _captureScreenshot(tester, binding, '02-ayah-reader');
+    await _captureOnboardingAsset(tester, binding, '01-tajweed-rules');
 
     final readerContext = tester.element(find.byType(ReaderScreen));
+
+    if (_onboardingAssetsOnly) {
+      await _captureBookmarkOnboardingAsset(tester, binding);
+      await _captureListenOnboardingAsset(tester, binding);
+    }
     showModalBottomSheet<void>(
       context: readerContext,
       showDragHandle: true,
@@ -122,7 +228,7 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(WordDetailSheet), findsOneWidget);
-    await binding.takeScreenshot('09-word-tajweed');
+    await _captureScreenshot(tester, binding, '09-word-tajweed');
     Navigator.of(readerContext).pop();
     await _finishTransition(tester);
 
@@ -140,7 +246,14 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(TafseerSheet), findsOneWidget);
-    await binding.takeScreenshot('03-tafseer');
+    await _captureScreenshot(tester, binding, '03-tafseer');
+    if (_onboardingAssetsOnly) {
+      await _openTafseerSourceDropdown(tester);
+      await _captureOnboardingAsset(tester, binding, '02-tafseer');
+      // Dismiss the dropdown overlay before popping the sheet itself.
+      await tester.tapAt(const Offset(8, 8));
+      await _finishTransition(tester);
+    }
     Navigator.of(readerContext).pop();
     await _finishTransition(tester);
     expect(find.byType(TafseerSheet), findsNothing);
@@ -148,29 +261,36 @@ void main() {
     await tester.tap(find.byIcon(Icons.chrome_reader_mode_outlined));
     await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
     expect(find.byType(ReaderScreen), findsOneWidget);
-    await binding.takeScreenshot('04-mushaf');
+    await _captureScreenshot(tester, binding, '04-mushaf');
 
     if (_onboardingAssetsOnly) {
+      // Onboarding page 6 reads "Bookmark a Mushaf page", so the screenshot has
+      // to show a page that is actually bookmarked. The mushaf opens on page 1,
+      // which is not, so jump to the seeded page-5 bookmark first — otherwise
+      // the image contradicts its own caption.
       final mushafPageView = tester.widget<PageView>(find.byType(PageView));
       mushafPageView.controller!.jumpToPage(4);
       await _waitForUi(tester, seconds: 5);
+      await _captureOnboardingAsset(tester, binding, '06-mushaf-bookmark');
+
       final hizbMarker = find.byKey(const ValueKey('mushaf-hizb-boundary'));
       expect(hizbMarker, findsOneWidget);
       await tester.tap(hizbMarker);
       await _finishTransition(tester);
-      await binding.takeScreenshot('05-hizb-boundary');
+      await _captureScreenshot(tester, binding, '05-hizb-boundary');
+      await _captureOnboardingAsset(tester, binding, '05-hizb-boundary');
       return;
     }
 
     await tester.tap(find.byIcon(Icons.quiz_outlined));
     await _waitForUi(tester);
     expect(find.byType(QuizScreen), findsOneWidget);
-    await binding.takeScreenshot('05-quiz');
+    await _captureScreenshot(tester, binding, '05-quiz');
 
     await tester.tap(find.byIcon(Icons.library_books_outlined));
     await _waitForUi(tester);
     expect(find.byType(RulesScreen), findsOneWidget);
-    await binding.takeScreenshot('06-rules-library');
+    await _captureScreenshot(tester, binding, '06-rules-library');
 
     final navigator = Navigator.of(readerContext);
     navigator.push(
@@ -180,7 +300,7 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(RuleDetailScreen), findsOneWidget);
-    await binding.takeScreenshot('07-rule-detail');
+    await _captureScreenshot(tester, binding, '07-rule-detail');
 
     navigator.pop();
     await _finishTransition(tester);
@@ -189,9 +309,19 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(SettingsScreen), findsOneWidget);
-    await binding.takeScreenshot('08-settings');
+    await _captureScreenshot(tester, binding, '08-settings');
 
-    await tester.tap(find.byIcon(Icons.copyright_outlined));
+    // The licence row sits below the fold on shorter viewports (Android at
+    // 1080x1920 is ~731dp tall). The settings body is a lazy ListView, so the
+    // row is not merely off-screen but unbuilt -- it has to be scrolled to.
+    final licenseTile = find.byIcon(Icons.copyright_outlined);
+    await tester.scrollUntilVisible(
+      licenseTile,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(licenseTile);
     await _finishTransition(tester);
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
     navigator.pop();
@@ -202,7 +332,7 @@ void main() {
     );
     await _finishTransition(tester);
     expect(find.byType(LanguageSelectorScreen), findsOneWidget);
-    await binding.takeScreenshot('10-languages');
+    await _captureScreenshot(tester, binding, '10-languages');
   });
 }
 
@@ -236,14 +366,14 @@ Future<void> _captureLocalizedReleasePages(
     await tester.tap(find.byIcon(Icons.library_books_outlined));
     await _waitForUi(tester);
     expect(find.byType(RulesScreen), findsOneWidget);
-    await binding.takeScreenshot('$languageCode/06-rules-library');
+    await _captureScreenshot(tester, binding, '$languageCode/06-rules-library');
 
     Navigator.of(
       tester.element(find.byType(RulesScreen)),
     ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
     await _finishTransition(tester);
     expect(find.byType(SettingsScreen), findsOneWidget);
-    await binding.takeScreenshot('$languageCode/08-settings');
+    await _captureScreenshot(tester, binding, '$languageCode/08-settings');
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
@@ -266,16 +396,107 @@ Future<void> _finishTransition(WidgetTester tester) async {
 class _ScreenshotQuranApiService extends QuranApiService {
   @override
   Future<List<Map<String, dynamic>>> fetchAvailableTafsirs() async {
-    return [
-      {
-        'id': 169,
-        'name': _localizedTafsirName(_screenshotLanguageCode),
-        'author_name': _localizedTafsirAuthor(_screenshotLanguageCode),
-        'language_name': _localizedLanguageName(_screenshotLanguageCode),
-      },
-    ];
+    return _realTafsirCatalogue;
   }
 }
+
+/// The real `/resources/tafsirs` catalogue, mirrored so screenshot runs are
+/// deterministic without hiding how many sources users actually get.
+///
+/// Returning the full multi-language list (rather than a single hand-picked
+/// entry) lets [TafseerProvider.sourcesForLanguage] do the real filtering:
+/// Arabic resolves to seven sources, Urdu to four, and every other locale
+/// falls back to the three English ones. That fallback is genuine app
+/// behaviour, so the onboarding screenshot shows the true source count.
+const _realTafsirCatalogue = <Map<String, dynamic>>[
+  // English — also the fallback list for tr/fr/id/de/es.
+  {
+    'id': 169,
+    'name': 'Ibn Kathir (Abridged)',
+    'author_name': 'Hafiz Ibn Kathir',
+    'language_name': 'english',
+  },
+  {
+    'id': 168,
+    'name': "Ma'arif al-Qur'an",
+    'author_name': 'Mufti Muhammad Shafi',
+    'language_name': 'english',
+  },
+  {
+    'id': 817,
+    'name': 'Tazkirul Quran(Maulana Wahiduddin Khan)',
+    'author_name': 'Maulana Wahid Uddin Khan',
+    'language_name': 'english',
+  },
+  // Arabic.
+  {
+    'id': 16,
+    'name': 'Tafsir Muyassar',
+    'author_name': 'المیسر',
+    'language_name': 'arabic',
+  },
+  {
+    'id': 93,
+    'name': 'Al-Tafsir al-Wasit (Tantawi)',
+    'author_name': 'Waseet',
+    'language_name': 'arabic',
+  },
+  {
+    'id': 14,
+    'name': 'Tafsir Ibn Kathir',
+    'author_name': 'Hafiz Ibn Kathir',
+    'language_name': 'arabic',
+  },
+  {
+    'id': 15,
+    'name': 'Tafsir al-Tabari',
+    'author_name': 'Tabari',
+    'language_name': 'arabic',
+  },
+  {
+    'id': 90,
+    'name': 'Al-Qurtubi',
+    'author_name': 'Qurtubi',
+    'language_name': 'arabic',
+  },
+  {
+    'id': 91,
+    'name': "السعدي Al-Sa'di",
+    'author_name': 'Saddi',
+    'language_name': 'arabic',
+  },
+  {
+    'id': 94,
+    'name': 'Tafseer Al-Baghawi',
+    'author_name': 'Baghawy',
+    'language_name': 'arabic',
+  },
+  // Urdu.
+  {
+    'id': 157,
+    'name': 'Fi Zilal al-Quran',
+    'author_name': 'Sayyid Ibrahim Qutb',
+    'language_name': 'urdu',
+  },
+  {
+    'id': 160,
+    'name': 'Tafsir Ibn Kathir',
+    'author_name': 'Hafiz Ibn Kathir',
+    'language_name': 'urdu',
+  },
+  {
+    'id': 818,
+    'name': 'Tazkir ul Quran',
+    'author_name': 'Maulana Wahid Uddin Khan',
+    'language_name': 'urdu',
+  },
+  {
+    'id': 159,
+    'name': 'Bayan ul Quran',
+    'author_name': 'Dr. Israr Ahmad',
+    'language_name': 'urdu',
+  },
+];
 
 Future<void> _initializeFixtureStorage(String languageCode) async {
   await Hive.initFlutter('app_store_screenshots');
@@ -324,6 +545,8 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
   ).put('quran_tajweed_surah_1', <String, String>{});
   if (_onboardingAssetsOnly) {
     await _seedPageFiveFixture();
+    await _seedOnboardingBookmarks();
+    await _seedOnboardingRecitation();
   }
   await Hive.box(
     'verse_cache',
@@ -341,6 +564,115 @@ String _localizedAlBaqarahName(String languageCode) {
     'es' => 'Al-Báqara',
     _ => 'Al-Baqarah',
   };
+}
+
+/// Seeds a couple of bookmarks so the onboarding bookmark screenshot shows a
+/// populated list instead of the empty-state hint.
+/// Seeds the reader's downloaded-audio cache so the play button is live
+/// offline.
+///
+/// The screenshot run has no network, so the real recitations fetch fails and
+/// the reader ends up with an empty audio map — the play button does nothing
+/// and the audio player bar never appears.
+///
+/// Seeding only the recitation URL map is not enough. Those values are treated
+/// as CDN-relative paths and get a `https://verses.quran.com/` prefix, and an
+/// unreachable file reports `completed` immediately, so the reader's completion
+/// listener clears `_playingAyahNumber` and the bar vanishes before capture.
+///
+/// So we seed the *downloaded* cache instead, which is the app's own offline
+/// path: real files on disk registered in the `audio_cache` box make the reader
+/// take its `playFile` branch. Silence keeps the run quiet while genuinely
+/// staying in the playing state.
+Future<void> _seedOnboardingRecitation() async {
+  const reciterId = 1;
+  const surahNumber = 1;
+  const ayahCount = 7;
+
+  final directory = await getApplicationDocumentsDirectory();
+  final audioDir = Directory('${directory.path}/onboarding-audio');
+  await audioDir.create(recursive: true);
+
+  final silence = File('${audioDir.path}/silence.wav');
+  await silence.writeAsBytes(_silentWavBytes(seconds: 60));
+
+  final box = Hive.box('audio_cache');
+  for (var ayah = 1; ayah <= ayahCount; ayah++) {
+    await box.put('r${reciterId}_s${surahNumber}_a$ayah', silence.path);
+  }
+
+  // The reader still needs a non-empty audio map to consider the surah
+  // playable, even though playback itself comes from the cached files.
+  await QuranContentSyncService().cacheRecitationMap(
+    reciterId: reciterId,
+    surahNumber: surahNumber,
+    audioUrls: {
+      for (var ayah = 1; ayah <= ayahCount; ayah++)
+        '$surahNumber:$ayah':
+            '$reciterId/${surahNumber.toString().padLeft(3, '0')}'
+            '${ayah.toString().padLeft(3, '0')}.mp3',
+    },
+  );
+}
+
+/// Builds a mono 16-bit PCM WAV of pure silence.
+///
+/// 16-bit samples are used because silence is all-zero bytes there, whereas
+/// 8-bit PCM is unsigned and would need 0x80 fill.
+List<int> _silentWavBytes({required int seconds}) {
+  const sampleRate = 8000;
+  const bytesPerSample = 2;
+  final dataBytes = sampleRate * bytesPerSample * seconds;
+
+  final header = BytesBuilder();
+  void ascii(String value) => header.add(value.codeUnits);
+  void uint32(int value) => header.add([
+    value & 0xFF,
+    (value >> 8) & 0xFF,
+    (value >> 16) & 0xFF,
+    (value >> 24) & 0xFF,
+  ]);
+  void uint16(int value) => header.add([value & 0xFF, (value >> 8) & 0xFF]);
+
+  ascii('RIFF');
+  uint32(36 + dataBytes);
+  ascii('WAVE');
+  ascii('fmt ');
+  uint32(16); // PCM chunk size
+  uint16(1); // PCM format
+  uint16(1); // mono
+  uint32(sampleRate);
+  uint32(sampleRate * bytesPerSample); // byte rate
+  uint16(bytesPerSample); // block align
+  uint16(8 * bytesPerSample); // bits per sample
+  ascii('data');
+  uint32(dataBytes);
+
+  return [...header.takeBytes(), ...List<int>.filled(dataBytes, 0)];
+}
+
+Future<void> _seedOnboardingBookmarks() async {
+  final now = DateTime.now().millisecondsSinceEpoch;
+  await Hive.box('bookmarks').put('bookmarks_list', [
+    {
+      'type': 'ayah',
+      'surah': 1,
+      'ayah': 5,
+      'pageNumber': null,
+      'label': null,
+      'scrollOffset': 0.0,
+      'timestamp': now,
+    },
+    {
+      'type': 'page',
+      'surah': 2,
+      'ayah': 1,
+      'pageNumber': 5,
+      'label': null,
+      'scrollOffset': 0.0,
+      'timestamp': now - 86400000,
+    },
+  ]);
 }
 
 Future<void> _seedPageFiveFixture() async {
@@ -377,12 +709,6 @@ String _firstAyahTranslation(String languageCode) {
 String _localizedTafsirName(String languageCode) =>
     _tafsirNames[languageCode] ?? _tafsirNames['en']!;
 
-String _localizedTafsirAuthor(String languageCode) =>
-    _tafsirAuthors[languageCode] ?? _tafsirAuthors['en']!;
-
-String _localizedLanguageName(String languageCode) =>
-    _languageNames[languageCode] ?? _languageNames['en']!;
-
 String _localizedTafsirContent(String languageCode) =>
     _tafsirContents[languageCode] ?? _tafsirContents['en']!;
 
@@ -395,28 +721,6 @@ const _tafsirNames = <String, String>{
   'id': 'Tafsir Ibnu Katsir (Ringkas)',
   'de': 'Tafsir Ibn Kathir (gekürzt)',
   'es': 'Tafsir de Ibn Kathir (abreviado)',
-};
-
-const _tafsirAuthors = <String, String>{
-  'en': 'Hafiz Ibn Kathir',
-  'ar': 'الحافظ ابن كثير',
-  'ur': 'حافظ ابن کثیر',
-  'tr': 'Hafız İbn Kesir',
-  'fr': 'Hafiz Ibn Kathir',
-  'id': 'Hafiz Ibnu Katsir',
-  'de': 'Hafiz Ibn Kathir',
-  'es': 'Hafiz Ibn Kathir',
-};
-
-const _languageNames = <String, String>{
-  'en': 'English',
-  'ar': 'العربية',
-  'ur': 'اردو',
-  'tr': 'Türkçe',
-  'fr': 'Français',
-  'id': 'Bahasa Indonesia',
-  'de': 'Deutsch',
-  'es': 'Español',
 };
 
 const _tafsirContents = <String, String>{
