@@ -352,7 +352,7 @@ class _ScreenshotGuidePage extends StatelessWidget {
           Image.asset(
             assetPath,
             fit: BoxFit.cover,
-            alignment: page == 4 ? Alignment.center : Alignment.topCenter,
+            alignment: _screenshotAlignment(page),
           ),
           if (page == 4)
             _HizbMarkerOverlay(label: calloutLabel)
@@ -363,6 +363,22 @@ class _ScreenshotGuidePage extends StatelessWidget {
     );
   }
 }
+
+/// Chooses which part of the 414x900 screenshot stays visible inside the
+/// phone frame.
+///
+/// The frame is squarer than the screenshot, so `BoxFit.cover` always drops
+/// part of it. Which part matters is page-specific: bottom-sheet features
+/// (tafseer, bookmarks) and the audio player bar all live at the bottom of
+/// the screen and were previously cropped away by a blanket top alignment.
+Alignment _screenshotAlignment(int page) => switch (page) {
+  0 => Alignment.topCenter, // Coloured tajweed rules in the ayah list.
+  1 => Alignment.bottomCenter, // Tafseer sheet with the source picker open.
+  2 => Alignment.bottomCenter, // Audio player bar.
+  3 => Alignment.bottomCenter, // Saved bookmarks sheet.
+  4 => Alignment.center, // Hizb marker sits mid-page.
+  _ => Alignment.topCenter, // Mushaf page view.
+};
 
 class _InteractionOverlay extends StatelessWidget {
   final int page;
