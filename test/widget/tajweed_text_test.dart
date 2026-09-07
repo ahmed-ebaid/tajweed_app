@@ -278,9 +278,10 @@ void main() {
     tester,
   ) async {
     const stopSymbols = 'ۘۙۚۗۖۛۜ';
-    // The mushaf always separates a stop sign from the preceding word, and the
-    // API does too. Without that separator the sign is a nonspacing mark with
-    // nothing to attach to.
+    // The mushaf and the API both separate a stop sign from the preceding
+    // word. The renderer drops that separator so the sign shapes as a
+    // nonspacing mark on the preceding letter and the font stacks it above
+    // the harakah.
     final spacedSymbols = stopSymbols.runes
         .map((rune) => ' ${String.fromCharCode(rune)}')
         .join();
@@ -317,10 +318,23 @@ void main() {
         .whereType<TextSpan>()
         .toList();
 
+    final bodyFamily = children
+        .firstWhere((span) => (span.text ?? '').contains('\u0642'))
+        .style
+        ?.fontFamily;
+    expect(bodyFamily, isNotNull);
+
     for (final rune in stopSymbols.runes) {
       final symbol = String.fromCharCode(rune);
-      final marker = children.singleWhere((span) => span.text == ' $symbol');
+      final marker = children.singleWhere((span) => span.text == symbol);
       expect(marker.style?.color, TajweedRule.waqf.color);
+      expect(
+        marker.style?.fontFamily,
+        bodyFamily,
+        reason: 'U+${rune.toRadixString(16)} must keep the body typeface; a '
+            'typeface change forces a separate shaping run and drops the sign '
+            "back onto the preceding letter's harakah.",
+      );
     }
     expect(
       children
@@ -370,11 +384,26 @@ void main() {
 
     expect(
       marker.text,
-      ' ۘ',
-      reason: 'The stop sign must keep the separator as its base glyph.',
+      'ۘ',
+      reason:
+          'The stop sign is a nonspacing mark and must stand alone in its run '
+          'so the font can stack it above the harakah. A carried separator '
+          'would give it its own base and push it clear of the word.',
     );
     expect(marker.style?.color, TajweedRule.waqf.color);
     expect(marker.style?.color, isNot(const Color(0xFF1A1A1A)));
+    final bodyFamily = children
+        .firstWhere((span) => (span.text ?? '').contains('\u0645'))
+        .style
+        ?.fontFamily;
+    expect(bodyFamily, isNotNull);
+    expect(
+      marker.style?.fontFamily,
+      bodyFamily,
+      reason:
+          'A typeface change forces a separate shaping run, which drops the '
+          "sign back onto the preceding letter's harakah.",
+    );
   });
 
   testWidgets('renders Tajweed rules without underlining Quran text', (
