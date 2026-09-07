@@ -278,22 +278,30 @@ void main() {
     tester,
   ) async {
     const stopSymbols = 'ۘۙۚۗۖۛۜ';
-    const waqfAyah = Ayah(
+    // The mushaf always separates a stop sign from the preceding word, and the
+    // API does too. Without that separator the sign is a nonspacing mark with
+    // nothing to attach to.
+    final spacedSymbols = stopSymbols.runes
+        .map((rune) => ' ${String.fromCharCode(rune)}')
+        .join();
+    final waqfAyah = Ayah(
       surahNumber: 2,
       ayahNumber: 1,
       pageNumber: 2,
-      arabic: 'قَوْمًا$stopSymbols',
-      translations: {},
+      arabic: 'قَوْمًا$spacedSymbols',
+      translations: const {},
       words: [
         TajweedWord(
-          arabic: 'قَوْمًا$stopSymbols',
-          spans: [TajweedSpan(start: 0, end: 13, rule: TajweedRule.maddTabeei)],
+          arabic: 'قَوْمًا$spacedSymbols',
+          spans: const [
+            TajweedSpan(start: 0, end: 13, rule: TajweedRule.maddTabeei),
+          ],
         ),
       ],
     );
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: TajweedText(
             ayah: waqfAyah,
@@ -311,7 +319,7 @@ void main() {
 
     for (final rune in stopSymbols.runes) {
       final symbol = String.fromCharCode(rune);
-      final marker = children.singleWhere((span) => span.text == symbol);
+      final marker = children.singleWhere((span) => span.text == ' $symbol');
       expect(marker.style?.color, TajweedRule.waqf.color);
     }
     expect(
@@ -356,8 +364,15 @@ void main() {
     final richText = tester.widget<RichText>(find.byType(RichText).first);
     final children = (richText.text as TextSpan).children!
         .whereType<TextSpan>();
-    final marker = children.singleWhere((span) => span.text == 'ۘ');
+    final marker = children.singleWhere(
+      (span) => (span.text ?? '').endsWith('ۘ'),
+    );
 
+    expect(
+      marker.text,
+      ' ۘ',
+      reason: 'The stop sign must keep the separator as its base glyph.',
+    );
     expect(marker.style?.color, TajweedRule.waqf.color);
     expect(marker.style?.color, isNot(const Color(0xFF1A1A1A)));
   });
