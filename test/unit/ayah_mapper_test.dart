@@ -1047,4 +1047,113 @@ void main() {
     });
   });
 
+  // Pins the deliberate ikhfa convention, reviewed 2026-09-07 against rendered
+  // output and kept.
+  //
+  // 26:31 كُنتَ is coloured end to end, which reads like one over-wide span but
+  // is two distinct ikhfa instances:
+  //   * ك  — trigger letter for the نْ that ends the PREVIOUS word إِن
+  //   * نت — this word's own نْ plus its trigger ت
+  //
+  // Quran.com tags carrier and trigger together (3241 of 8531 ikhfa tags in the
+  // corpus are bare trigger letters), and rule_example_highlight.dart documents
+  // the same convention for the rules screen. Each span is widened to carry its
+  // harakah, because colouring a letter while leaving its vowel black looks
+  // broken.
+  //
+  // Narrowing ikhfa to the carrier alone was rendered and rejected: a medial
+  // نـ inside a ligature is a tooth, so the rule became invisible at reading
+  // size. See tool/ikhfa_colour_comparison_test.dart.
+  group('ikhfa span extent', () {
+    test('26:31 كُنتَ carries two ikhfa spans covering the whole word', () {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '26:31',
+        'page_number': 368,
+        'text_uthmani': '\u0625\u0650\u0646 \u0643\u064F\u0646\u062A\u064E',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0625\u0650\u0646',
+            'text_uthmani_tajweed':
+                '\u0625\u0650<rule class=ikhafa>\u0646</rule>',
+          },
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0643\u064F\u0646\u062A\u064E',
+            'text_uthmani_tajweed':
+                '<rule class=ikhafa>\u0643</rule>\u064F'
+                '<rule class=ikhafa>\u0646\u062A</rule>\u064E',
+          },
+        ],
+      });
+
+      final inn = ayah.words[0];
+      final innIkhfa =
+          inn.spans.where((s) => s.rule == TajweedRule.ikhfa).toList();
+      expect(innIkhfa, hasLength(1));
+      expect(
+        inn.arabic.substring(innIkhfa[0].start, innIkhfa[0].end),
+        '\u0646',
+        reason: 'إِن contributes only its carrier noon',
+      );
+
+      final kunta = ayah.words[1];
+      final spans = kunta.spans
+          .where((s) => s.rule == TajweedRule.ikhfa)
+          .toList()
+        ..sort((a, b) => a.start.compareTo(b.start));
+
+      expect(
+        spans,
+        hasLength(2),
+        reason: 'two separate ikhfa instances, not one merged span',
+      );
+      expect(
+        kunta.arabic.substring(spans[0].start, spans[0].end),
+        '\u0643\u064F',
+        reason: 'trigger letter for the previous word\'s noon, with its harakah',
+      );
+      expect(
+        kunta.arabic.substring(spans[1].start, spans[1].end),
+        '\u0646\u062A\u064E',
+        reason: 'this word\'s own carrier plus trigger, with its harakah',
+      );
+      expect(
+        spans[0].start,
+        0,
+        reason: 'nothing before the first span may be left uncoloured',
+      );
+      expect(
+        spans[1].end,
+        kunta.arabic.length,
+        reason: 'the two spans together cover the whole word',
+      );
+    });
+
+    test('an ikhfa span never starts on a bare combining mark', () {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '26:31',
+        'page_number': 368,
+        'text_uthmani': '\u0643\u064F\u0646\u062A\u064E',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': '\u0643\u064F\u0646\u062A\u064E',
+            'text_uthmani_tajweed':
+                '<rule class=ikhafa>\u0643</rule>\u064F'
+                '<rule class=ikhafa>\u0646\u062A</rule>\u064E',
+          },
+        ],
+      });
+
+      for (final span in ayah.words.first.spans) {
+        final first = ayah.words.first.arabic.codeUnitAt(span.start);
+        expect(
+          (first >= 0x064B && first <= 0x065F) || first == 0x0670,
+          isFalse,
+          reason: 'span at ${span.start} opens on a combining mark',
+        );
+      }
+    });
+  });
 }
