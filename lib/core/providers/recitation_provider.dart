@@ -4,16 +4,21 @@ import 'package:hive_flutter/hive_flutter.dart';
 class RecitationProvider extends ChangeNotifier {
   static const _boxKey = 'settings';
   static const _reciterIdKey = 'reciter_id';
-  static const _defaultReciterId = 1;
+  // Al-Husary (Muallim) — the teaching recitation, which is also what the
+  // rules and article screens use for their worked examples.
+  static const _defaultReciterId = 12;
   static const Set<int> supportedReciterIds = {
+    // dart format off
     1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12,
+    // dart format on
   };
 
   late int _selectedReciterId;
 
   RecitationProvider() {
     final box = Hive.box(_boxKey);
-    final savedId = box.get(_reciterIdKey, defaultValue: _defaultReciterId) as int;
+    final savedId =
+        box.get(_reciterIdKey, defaultValue: _defaultReciterId) as int;
     _selectedReciterId = supportedReciterIds.contains(savedId)
         ? savedId
         : _defaultReciterId;
