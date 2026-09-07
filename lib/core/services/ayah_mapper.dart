@@ -676,8 +676,9 @@ class AyahMapper {
 
   static List<TajweedSpan> _parseRuleTagTajweed(
     String arabicText,
-    String tajweedHtml,
-  ) {
+    String tajweedHtml, {
+    List<String>? unmatchedClasses,
+  }) {
     final spans = <TajweedSpan>[];
     final pattern = RegExp(r'<rule\s+class="?([\w-]+)"?>([\s\S]*?)</rule>');
     int searchFrom = 0;
@@ -743,7 +744,27 @@ class AyahMapper {
         }
       }
 
-      if (idx < 0) continue;
+      // Pass 4: retry from before the combining marks the previous span
+      // already consumed. `_normalizeArabicText` moves a shaddah *after* the
+      // short vowel it precedes, which can slide it between the previous
+      // rule's letter and the harakah this rule opens with — as in إِنَّآ,
+      // where نّ + َآ normalizes to ن + َ + ّ + ا + ٓ. `searchFrom` then sits
+      // past this rule's opening fatha and every forward pass misses it.
+      if (idx < 0) {
+        final relaxedFrom = _rewindOverCombining(arabicText, searchFrom);
+        if (relaxedFrom < searchFrom) {
+          final fm = _flexibleMatch(arabicText, ruleText, relaxedFrom);
+          if (fm != null) {
+            idx = fm[0];
+            endIdx = fm[1];
+          }
+        }
+      }
+
+      if (idx < 0) {
+        unmatchedClasses?.add(className);
+        continue;
+      }
 
       // Extend endIdx over any trailing Arabic combining / Quranic marks
       // (e.g. U+06ED ۭ small low meem, U+06E2 ۢ small high meem) that
@@ -768,6 +789,28 @@ class AyahMapper {
     }
 
     return spans;
+  }
+
+  /// Rule classes in [word]'s tajweed HTML whose text could not be located in
+  /// the word's normalized display text.
+  ///
+  /// Each entry is a rule Quran.com annotated but the app dropped, so the
+  /// corresponding letters render uncoloured. A correct parse returns empty.
+  @visibleForTesting
+  static List<String> unmatchedRuleClasses(Map<String, dynamic> word) {
+    final wordTajweedHtml = word['text_uthmani_tajweed'] as String?;
+    if (wordTajweedHtml == null || wordTajweedHtml.isEmpty) return const [];
+
+    final textForDisplay = _normalizeArabicText(
+      _stripHtmlPreserveSpacing(wordTajweedHtml),
+    );
+    final unmatched = <String>[];
+    _parseRuleTagTajweed(
+      textForDisplay,
+      wordTajweedHtml,
+      unmatchedClasses: unmatched,
+    );
+    return unmatched;
   }
 
   static bool _containsSajdahInWordDisplaySource(
@@ -830,6 +873,18 @@ class AyahMapper {
     final m = re.firstMatch(sub);
     if (m == null) return null;
     return [searchFrom + m.start, searchFrom + m.end];
+  }
+
+  /// Moves [index] back over any Arabic combining marks directly preceding it.
+  ///
+  /// Used to reopen the search window when shaddah reordering has pushed the
+  /// scan position past a harakah that the next rule's text begins with.
+  static int _rewindOverCombining(String text, int index) {
+    int i = index;
+    while (i > 0 && _isArabicCombiningMark(text.codeUnitAt(i - 1))) {
+      i--;
+    }
+    return i;
   }
 
   /// Advances [endIdx] past any trailing Arabic combining marks so that the
