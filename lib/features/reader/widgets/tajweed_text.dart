@@ -347,50 +347,93 @@ class TajweedText extends StatelessWidget {
     }
 
     final spans = <InlineSpan>[];
-    for (final cluster in normalizedText.characters) {
-      final plainText = StringBuffer();
+    for (final run in splitIntoStyledRuns(normalizedText)) {
+      spans.add(
+        TextSpan(
+          text: run.text,
+          style: run.isMarker
+              ? _quranMarkerStyleFrom(
+                  style,
+                  markerRule: run.markerRule,
+                  isSajdah: run.markerRule == TajweedRule.sajdah,
+                )
+              : style,
+          recognizer: onTap != null
+              ? (TapGestureRecognizer()..onTap = onTap)
+              : null,
+        ),
+      );
+    }
+    return spans;
+  }
 
-      void flushPlainText() {
-        if (plainText.isEmpty) return;
-        spans.add(
-          TextSpan(
-            text: plainText.toString(),
-            style: style,
-            recognizer: onTap != null
-                ? (TapGestureRecognizer()..onTap = onTap)
-                : null,
-          ),
-        );
-        plainText.clear();
+  /// Splits [normalizedText] into the runs that get styled independently,
+  /// separating Quran markers from ordinary body text.
+  ///
+  /// Kept apart from styling so run boundaries can be verified without
+  /// resolving fonts — the boundaries are what decide whether a mark keeps a
+  /// glyph to attach to.
+  @visibleForTesting
+  static List<({String text, TajweedRule? markerRule, bool isMarker})>
+  splitIntoStyledRuns(String normalizedText) {
+    final runs = <({String text, TajweedRule? markerRule, bool isMarker})>[];
+    final plainText = StringBuffer();
+
+    void flushPlainText() {
+      if (plainText.isEmpty) return;
+      runs.add((
+        text: plainText.toString(),
+        markerRule: null,
+        isMarker: false,
+      ));
+      plainText.clear();
+    }
+
+    // Body text accumulates across grapheme clusters and only breaks at a
+    // marker. Flushing per cluster would strand marks that Dart's segmentation
+    // splits off — small yeh (U+06E6) in بِهِۦ, for one — in a run with no base.
+    for (final rune in normalizedText.runes) {
+      final markerRule = _markerRuleForRune(rune);
+      final isStructuralMarker =
+          rune == _rubElHizbRune || rune == _endOfAyahGlyph.codeUnitAt(0);
+      if (markerRule == null && !isStructuralMarker) {
+        plainText.writeCharCode(rune);
+        continue;
       }
 
-      for (final rune in cluster.runes) {
-        final markerRule = _markerRuleForRune(rune);
-        final isStructuralMarker =
-            rune == _rubElHizbRune || rune == _endOfAyahGlyph.codeUnitAt(0);
-        if (markerRule == null && !isStructuralMarker) {
+      // Waqf signs are nonspacing marks, so a run of their own leaves them no
+      // glyph to attach to and the shaper draws them back over the preceding
+      // letter's harakah.
+      var base = '';
+      if (_waqfRunes.contains(rune)) {
+        final pending = plainText.toString();
+        final separator = pending.isEmpty
+            ? null
+            : pending.codeUnitAt(pending.length - 1);
+
+        if (separator == 0x20 || separator == 0x200C) {
+          // Carry the separator across so the sign stays anchored to it.
+          base = String.fromCharCode(separator!);
+          plainText.clear();
+          plainText.write(pending.substring(0, pending.length - 1));
+        } else if (pending.isNotEmpty) {
+          // Sits directly on a letter: leave it there rather than tear it off
+          // its base. It loses the marker colour but stays legible.
           plainText.writeCharCode(rune);
           continue;
         }
-
-        flushPlainText();
-        spans.add(
-          TextSpan(
-            text: String.fromCharCode(rune),
-            style: _quranMarkerStyleFrom(
-              style,
-              markerRule: markerRule,
-              isSajdah: markerRule == TajweedRule.sajdah,
-            ),
-            recognizer: onTap != null
-                ? (TapGestureRecognizer()..onTap = onTap)
-                : null,
-          ),
-        );
       }
+
       flushPlainText();
+      runs.add((
+        text: '$base${String.fromCharCode(rune)}',
+        markerRule: markerRule,
+        isMarker: true,
+      ));
     }
-    return spans;
+    flushPlainText();
+
+    return runs;
   }
 
   static bool _containsQuranMarker(String text) {

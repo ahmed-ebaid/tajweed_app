@@ -19,6 +19,17 @@ class AyahMapper {
   static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
     '\u0651([\u064B-\u0650])',
   );
+
+  /// The zero-width non-joiner Quran.com places before a waqf sign.
+  ///
+  /// `text_uthmani` puts a real space there; only the tajweed HTML substitutes
+  /// a ZWNJ. Waqf signs are nonspacing marks with no advance width, so keeping
+  /// the ZWNJ leaves them nothing to sit in and they are drawn back over the
+  /// preceding letter's harakah. Restoring the space matches the mushaf and
+  /// preserves span offsets, since it is a one-for-one replacement.
+  static final RegExp _zwnjBeforeQuranicMarkPattern = RegExp(
+    '\u200C(?=[\u06D6-\u06ED])',
+  );
   static const String _canonicalMarkerGlyph = '\u06DE';
   static const String _sajdahGlyph = '\u06E9';
   static const int _rubElHizbRune = 0x06DE;
@@ -797,6 +808,11 @@ class AyahMapper {
   /// Each entry is a rule Quran.com annotated but the app dropped, so the
   /// corresponding letters render uncoloured. A correct parse returns empty.
   @visibleForTesting
+  /// Exposes the display normalization applied to every word and verse.
+  @visibleForTesting
+  static String normalizeArabicForDisplay(String text) =>
+      _normalizeArabicText(text);
+
   static List<String> unmatchedRuleClasses(Map<String, dynamic> word) {
     final wordTajweedHtml = word['text_uthmani_tajweed'] as String?;
     if (wordTajweedHtml == null || wordTajweedHtml.isEmpty) return const [];
@@ -1141,11 +1157,11 @@ class AyahMapper {
     bool forceRubElHizb = false,
     bool forceSajdahGlyph = false,
   }) {
-    final reordered = text.replaceAllMapped(_shaddaBeforeShortVowelPattern, (
-      match,
-    ) {
-      return '${match.group(1)}\u0651';
-    });
+    final reordered = text
+        .replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
+          return '${match.group(1)}\u0651';
+        })
+        .replaceAll(_zwnjBeforeQuranicMarkPattern, ' ');
 
     final out = StringBuffer();
     bool previousWasCanonicalMarker = false;
