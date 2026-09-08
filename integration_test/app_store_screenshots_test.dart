@@ -104,8 +104,11 @@ Future<void> _captureBookmarkOnboardingAsset(
 /// Starts playback so the audio player bar is on screen, then captures it for
 /// onboarding page 3.
 ///
-/// Tapping play first opens a "Play All options" sheet whose strings are
-/// hardcoded English. That sheet is dismissed and never captured.
+/// Al-Fatihah is seeded as fully downloaded, so the reader plays straight from
+/// its offline cache. That matters twice over: the hardcoded-English "Play All
+/// options" sheet is only shown for a partially cached surah, and a real file
+/// on disk keeps playback -- and therefore the player bar -- alive long enough
+/// to capture.
 Future<void> _captureListenOnboardingAsset(
   WidgetTester tester,
   IntegrationTestWidgetsFlutterBinding binding,
@@ -113,51 +116,32 @@ Future<void> _captureListenOnboardingAsset(
   await tester.tap(find.byIcon(Icons.play_circle_outline).first);
   await _finishTransition(tester);
 
-  // The sheet only appears when the surah is not fully cached, and it can take
-  // a moment to animate in, so poll rather than assuming it is already there.
-  final streamOption = find.text('Play now (stream missing ayahs)');
-  await _pumpUntilFound(tester, streamOption, timeoutSeconds: 5);
-  if (streamOption.evaluate().isNotEmpty) {
-    await tester.tap(streamOption);
-  }
-
-  // Poll tightly from the moment the option is tapped. `_playingAyahNumber` is
-  // set synchronously before playback begins, so the bar is on screen almost
-  // immediately -- but if the audio stream stalls the reader resets that state,
-  // so a `pumpAndSettle` here can easily step straight over the window.
   final bar = find.byType(AudioPlayerBar);
-  await _pumpUntilFound(tester, bar, timeoutSeconds: 45);
-  if (bar.evaluate().isEmpty) {
+  final ready = await _pumpUntil(
+    tester,
+    () => bar.evaluate().isNotEmpty,
+    timeoutSeconds: 30,
+  );
+  if (!ready) {
     fail(
-      'AudioPlayerBar never appeared. '
+      'Audio player bar never appeared. '
+      'optionsSheet=${find.text('Play All options').evaluate().length} '
       'reader=${find.byType(ReaderScreen).evaluate().length} '
-      'sheets=${find.byType(BottomSheet).evaluate().length} '
       'playIcons=${find.byIcon(Icons.play_circle_outline).evaluate().length} '
       'stopIcons=${find.byIcon(Icons.stop_circle_outlined).evaluate().length}',
     );
   }
-  expect(bar, findsOneWidget);
+
+  // Guard the image, not just the flow: an English sheet in a localized
+  // screenshot shipped once already because nothing asserted it was gone.
+  expect(find.text('Play All options'), findsNothing);
+  expect(find.text('Download surah then play'), findsNothing);
+  expect(find.text('Play now (stream missing ayahs)'), findsNothing);
   await _captureOnboardingAsset(tester, binding, '03-listen-ayah');
 
   await tester.tap(find.byIcon(Icons.stop_circle_outlined));
   await _waitForUi(tester, seconds: 2);
   expect(find.byType(AudioPlayerBar), findsNothing);
-}
-
-/// Expands the Tafseer source picker so the screenshot shows that several
-/// tafsir sources are available, not just the currently selected one.
-Future<void> _openTafseerSourceDropdown(WidgetTester tester) async {
-  final dropdown = find.byKey(const ValueKey('tafseer-source-dropdown-169'));
-  expect(dropdown, findsOneWidget);
-  await tester.tap(dropdown);
-  await _finishTransition(tester);
-
-  // The selected entry is rendered both in the closed field and in the open
-  // menu, so two matches proves the menu actually expanded.
-  expect(
-    find.byKey(const ValueKey('tafseer-source-169')),
-    findsAtLeastNWidgets(2),
-  );
 }
 
 void main() {
@@ -264,11 +248,15 @@ void main() {
     expect(find.byType(TafseerSheet), findsOneWidget);
     await _captureScreenshot(tester, binding, '03-tafseer');
     if (_onboardingAssetsOnly) {
-      await _openTafseerSourceDropdown(tester);
+      // The source picker used to be opened here, but its menu covers the whole
+      // sheet -- the guide image showed a list of source names and none of the
+      // tafsir text it is meant to be teaching. The closed selector already
+      // shows that the source is switchable.
+      expect(
+        find.byKey(const ValueKey('tafseer-source-dropdown-169')),
+        findsOneWidget,
+      );
       await _captureOnboardingAsset(tester, binding, '02-tafseer');
-      // Dismiss the dropdown overlay before popping the sheet itself.
-      await tester.tapAt(const Offset(8, 8));
-      await _finishTransition(tester);
     }
     Navigator.of(readerContext).pop();
     await _finishTransition(tester);
@@ -416,11 +404,28 @@ Future<bool> _pumpUntilFound(
   Finder finder, {
   int timeoutSeconds = 60,
 }) async {
+  return _pumpUntil(
+    tester,
+    () => finder.evaluate().isNotEmpty,
+    timeoutSeconds: timeoutSeconds,
+  );
+}
+
+/// Pumps in small steps until [condition] holds, or the timeout elapses.
+///
+/// Prefer this over `pumpAndSettle` for states the app can leave on its own:
+/// settling can overshoot a transient window entirely, and it never settles at
+/// all while an indeterminate progress animation is on screen.
+Future<bool> _pumpUntil(
+  WidgetTester tester,
+  bool Function() condition, {
+  int timeoutSeconds = 60,
+}) async {
   for (var i = 0; i < timeoutSeconds * 10; i++) {
-    if (finder.evaluate().isNotEmpty) return true;
+    if (condition()) return true;
     await tester.pump(const Duration(milliseconds: 100));
   }
-  return finder.evaluate().isNotEmpty;
+  return condition();
 }
 
 /// Blocks until the reader has actually rendered ayahs.
@@ -649,9 +654,16 @@ String _localizedAlBaqarahName(String languageCode) {
 /// take its `playFile` branch. Silence keeps the run quiet while genuinely
 /// staying in the playing state.
 Future<void> _seedOnboardingRecitation() async {
-  const reciterId = 1;
+  // Must match the reciter the app will actually ask for. The cache is keyed by
+  // reciter id, so seeding a different one reads as "0 ayahs downloaded": the
+  // reader then shows its English "Play All options" sheet and streams a remote
+  // URL that fails on the simulator. Pin the setting rather than relying on the
+  // app default staying put.
+  const reciterId = 12;
   const surahNumber = 1;
   const ayahCount = 7;
+
+  await Hive.box('settings').put('reciter_id', reciterId);
 
   final directory = await getApplicationDocumentsDirectory();
   final audioDir = Directory('${directory.path}/onboarding-audio');
