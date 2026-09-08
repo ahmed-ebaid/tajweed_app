@@ -27,6 +27,12 @@
 # Environment:
 #   SIMULATOR_UDID   Simulator to drive. Defaults to a booted iPhone 17.
 #   SKIP_INSTALL=1   Capture and resize only; leave assets/onboarding untouched.
+#   QURAN_PROXY_TEST_TOKEN
+#                    Simulators have no App Attest, so Quran content sync fails
+#                    closed and the listen screen never gets an AudioPlayerBar,
+#                    which aborts the whole run. Setting this forwards the debug
+#                    bypass to the app. Keep the value in the environment; it
+#                    must not be committed.
 
 set -euo pipefail
 
@@ -72,6 +78,15 @@ resolve_simulator() {
 readonly SIMULATOR="$(resolve_simulator)"
 echo "==> Simulator: $SIMULATOR"
 
+# A simulator cannot produce an App Attest assertion, so without the debug
+# bypass the content sync fails and the capture dies on the listen screen.
+attest_defines=()
+if [[ -n "${QURAN_PROXY_TEST_TOKEN:-}" ]]; then
+  attest_defines+=(--dart-define=QURAN_BYPASS_APP_ATTEST_IN_DEBUG=true)
+  attest_defines+=(--dart-define="QURAN_PROXY_TEST_TOKEN=$QURAN_PROXY_TEST_TOKEN")
+  echo "==> App Attest bypass enabled for capture"
+fi
+
 failed_locales=()
 
 for locale in "${locales[@]}"; do
@@ -88,6 +103,7 @@ for locale in "${locales[@]}"; do
     -d "$SIMULATOR" \
     --dart-define=ONBOARDING_ASSETS_ONLY=true \
     --dart-define="SCREENSHOT_LOCALE=$locale" \
+    ${attest_defines[@]+"${attest_defines[@]}"} \
     > "$out_dir/capture.log" 2>&1; then
     echo "    capture FAILED (see $out_dir/capture.log)" >&2
     failed_locales+=("$locale")
