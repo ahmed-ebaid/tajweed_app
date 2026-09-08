@@ -248,15 +248,30 @@ void main() {
     expect(find.byType(TafseerSheet), findsOneWidget);
     await _captureScreenshot(tester, binding, '03-tafseer');
     if (_onboardingAssetsOnly) {
-      // The source picker used to be opened here, but its menu covers the whole
-      // sheet -- the guide image showed a list of source names and none of the
-      // tafsir text it is meant to be teaching. The closed selector already
-      // shows that the source is switchable.
-      expect(
-        find.byKey(const ValueKey('tafseer-source-dropdown-169')),
-        findsOneWidget,
+      // The picker is opened so the guide shows that several tafsir sources
+      // are available. Its menu is height-capped, so the tafsir text stays
+      // visible underneath -- an uncapped menu covered the whole sheet and the
+      // image taught nothing but a list of source names.
+      final dropdown = find.byKey(
+        const ValueKey('tafseer-source-dropdown-169'),
       );
+      expect(dropdown, findsOneWidget);
+      await tester.tap(dropdown);
+      await _finishTransition(tester);
+
+      // The selected entry renders both in the closed field and in the open
+      // menu, so two matches proves the menu actually expanded.
+      expect(
+        find.byKey(const ValueKey('tafseer-source-169')),
+        findsAtLeastNWidgets(2),
+      );
+      // The capped menu must not swallow the sheet it sits on.
+      expect(find.byType(TafseerSheet), findsOneWidget);
       await _captureOnboardingAsset(tester, binding, '02-tafseer');
+
+      // Dismiss the dropdown overlay before popping the sheet itself.
+      await tester.tapAt(const Offset(8, 8));
+      await _finishTransition(tester);
     }
     Navigator.of(readerContext).pop();
     await _finishTransition(tester);
