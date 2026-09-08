@@ -2045,15 +2045,9 @@ class _ReaderScreenState extends State<ReaderScreen>
         );
       }
     } else {
-      // Find surah name for label
-      String label = '${ayah.surahNumber}:${ayah.ayahNumber}';
-      for (final s in _allSurahs) {
-        if (s['id'] == ayah.surahNumber) {
-          label =
-              '${s['name_arabic'] ?? s['name_simple']} — Ayah ${ayah.ayahNumber}';
-          break;
-        }
-      }
+      final langCode = Localizations.localeOf(context).languageCode;
+      final label =
+          '${_surahArabicName(ayah.surahNumber)} — ${l10n.get('ayah')} ${_localizedDigits(ayah.ayahNumber, langCode)}';
 
       final scrollOffset = _scrollController.hasClients
           ? _scrollController.offset
@@ -2132,7 +2126,8 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     final anchorSurah = _currentMushafAnchorSurah();
     final anchorAyah = _currentMushafAnchorAyah();
-    final label = '${_surahArabicName(anchorSurah)} — Page $pageNumber';
+    final label =
+        '${_surahArabicName(anchorSurah)} — ${l10n.get('page')} ${_localizedDigits(pageNumber, Localizations.localeOf(context).languageCode)}';
     bm.addPageBookmark(
       pageNumber,
       surah: anchorSurah,
@@ -2191,6 +2186,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       ),
       builder: (_) => _BookmarksSheet(
         bookmarks: bm.groupedByTypeThenNewest(),
+        surahNameFor: _surahArabicName,
         onTap: (bookmark) {
           Navigator.pop(context);
           if (bookmark.isPage) {
@@ -4898,7 +4894,7 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                             ),
                           ),
                           subtitle: Text(
-                            '$targetSimple • Ayah ${target.ayah}',
+                            '$targetSimple • ${AppLocalizations.of(context).get('ayah')} ${_ReaderScreenState._localizedDigits(target.ayah, langCode)}',
                             style: const TextStyle(fontSize: 12),
                           ),
                           trailing: const Icon(
@@ -5536,11 +5532,13 @@ class _BookmarksSheet extends StatelessWidget {
   final List<Bookmark> bookmarks;
   final void Function(Bookmark) onTap;
   final void Function(Bookmark) onDelete;
+  final String Function(int) surahNameFor;
 
   const _BookmarksSheet({
     required this.bookmarks,
     required this.onTap,
     required this.onDelete,
+    required this.surahNameFor,
   });
 
   @override
@@ -5623,6 +5621,14 @@ class _BookmarksSheet extends StatelessWidget {
                       final subtitleText = bm.isPage
                           ? '${l10n.get('page')} $localizedPageNumber • ${l10n.get('surah')} $localizedSurah'
                           : '${l10n.get('surah')} $localizedSurah • ${l10n.get('ayah')} $localizedAyah';
+                      // Derive the title here rather than reading bm.label.
+                      // The label was composed in English at bookmark-creation
+                      // time and persisted, so it never followed a later
+                      // language change, and when it was absent the title fell
+                      // back to bare numbers with no surah name.
+                      final titleText = bm.isPage
+                          ? '${surahNameFor(bm.surah)} — ${l10n.get('page')} $localizedPageNumber'
+                          : '${surahNameFor(bm.surah)} — ${l10n.get('ayah')} $localizedAyah';
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5659,7 +5665,7 @@ class _BookmarksSheet extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            title: Text(bm.label ?? subtitleText),
+                            title: Text(titleText),
                             subtitle: Text(
                               '${_formatDate(bm.timestamp)} • $subtitleText',
                               style: const TextStyle(fontSize: 11),

@@ -373,7 +373,7 @@ class _ScreenshotGuidePage extends StatelessWidget {
 /// the screen and were previously cropped away by a blanket top alignment.
 Alignment _screenshotAlignment(int page) => switch (page) {
   0 => Alignment.topCenter, // Coloured tajweed rules in the ayah list.
-  1 => Alignment.bottomCenter, // Tafseer sheet with the source picker open.
+  1 => Alignment.center, // Tafseer sheet: source menu plus the tafsir text.
   2 => Alignment.bottomCenter, // Audio player bar.
   3 => Alignment.bottomCenter, // Saved bookmarks sheet.
   4 => Alignment.center, // Hizb marker sits mid-page.

@@ -104,8 +104,11 @@ Future<void> _captureBookmarkOnboardingAsset(
 /// Starts playback so the audio player bar is on screen, then captures it for
 /// onboarding page 3.
 ///
-/// Tapping play first opens a "Play All options" sheet whose strings are
-/// hardcoded English. That sheet is dismissed and never captured.
+/// Al-Fatihah is seeded as fully downloaded, so the reader plays straight from
+/// its offline cache. That matters twice over: the hardcoded-English "Play All
+/// options" sheet is only shown for a partially cached surah, and a real file
+/// on disk keeps playback -- and therefore the player bar -- alive long enough
+/// to capture.
 Future<void> _captureListenOnboardingAsset(
   WidgetTester tester,
   IntegrationTestWidgetsFlutterBinding binding,
@@ -113,35 +116,32 @@ Future<void> _captureListenOnboardingAsset(
   await tester.tap(find.byIcon(Icons.play_circle_outline).first);
   await _finishTransition(tester);
 
-  final streamOption = find.text('Play now (stream missing ayahs)');
-  if (streamOption.evaluate().isNotEmpty) {
-    await tester.tap(streamOption);
-    await _finishTransition(tester);
+  final bar = find.byType(AudioPlayerBar);
+  final ready = await _pumpUntil(
+    tester,
+    () => bar.evaluate().isNotEmpty,
+    timeoutSeconds: 30,
+  );
+  if (!ready) {
+    fail(
+      'Audio player bar never appeared. '
+      'optionsSheet=${find.text('Play All options').evaluate().length} '
+      'reader=${find.byType(ReaderScreen).evaluate().length} '
+      'playIcons=${find.byIcon(Icons.play_circle_outline).evaluate().length} '
+      'stopIcons=${find.byIcon(Icons.stop_circle_outlined).evaluate().length}',
+    );
   }
 
-  await _waitForUi(tester, seconds: 3);
-  expect(find.byType(AudioPlayerBar), findsOneWidget);
+  // Guard the image, not just the flow: an English sheet in a localized
+  // screenshot shipped once already because nothing asserted it was gone.
+  expect(find.text('Play All options'), findsNothing);
+  expect(find.text('Download surah then play'), findsNothing);
+  expect(find.text('Play now (stream missing ayahs)'), findsNothing);
   await _captureOnboardingAsset(tester, binding, '03-listen-ayah');
 
   await tester.tap(find.byIcon(Icons.stop_circle_outlined));
   await _waitForUi(tester, seconds: 2);
   expect(find.byType(AudioPlayerBar), findsNothing);
-}
-
-/// Expands the Tafseer source picker so the screenshot shows that several
-/// tafsir sources are available, not just the currently selected one.
-Future<void> _openTafseerSourceDropdown(WidgetTester tester) async {
-  final dropdown = find.byKey(const ValueKey('tafseer-source-dropdown-169'));
-  expect(dropdown, findsOneWidget);
-  await tester.tap(dropdown);
-  await _finishTransition(tester);
-
-  // The selected entry is rendered both in the closed field and in the open
-  // menu, so two matches proves the menu actually expanded.
-  expect(
-    find.byKey(const ValueKey('tafseer-source-169')),
-    findsAtLeastNWidgets(2),
-  );
 }
 
 void main() {
@@ -185,7 +185,7 @@ void main() {
     await _captureScreenshot(tester, binding, '01-home');
 
     await tester.tap(find.byIcon(Icons.menu_book_rounded));
-    await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
+    await _waitForReaderContent(tester);
     await _captureScreenshot(tester, binding, '02-ayah-reader');
     await _captureOnboardingAsset(tester, binding, '01-tajweed-rules');
 
@@ -248,8 +248,27 @@ void main() {
     expect(find.byType(TafseerSheet), findsOneWidget);
     await _captureScreenshot(tester, binding, '03-tafseer');
     if (_onboardingAssetsOnly) {
-      await _openTafseerSourceDropdown(tester);
+      // The picker is opened so the guide shows that several tafsir sources
+      // are available. Its menu is height-capped, so the tafsir text stays
+      // visible underneath -- an uncapped menu covered the whole sheet and the
+      // image taught nothing but a list of source names.
+      final dropdown = find.byKey(
+        const ValueKey('tafseer-source-dropdown-169'),
+      );
+      expect(dropdown, findsOneWidget);
+      await tester.tap(dropdown);
+      await _finishTransition(tester);
+
+      // The selected entry renders both in the closed field and in the open
+      // menu, so two matches proves the menu actually expanded.
+      expect(
+        find.byKey(const ValueKey('tafseer-source-169')),
+        findsAtLeastNWidgets(2),
+      );
+      // The capped menu must not swallow the sheet it sits on.
+      expect(find.byType(TafseerSheet), findsOneWidget);
       await _captureOnboardingAsset(tester, binding, '02-tafseer');
+
       // Dismiss the dropdown overlay before popping the sheet itself.
       await tester.tapAt(const Offset(8, 8));
       await _finishTransition(tester);
@@ -270,10 +289,15 @@ void main() {
       // the image contradicts its own caption.
       final mushafPageView = tester.widget<PageView>(find.byType(PageView));
       mushafPageView.controller!.jumpToPage(4);
-      await _waitForUi(tester, seconds: 5);
+
+      // Wait for the page to actually render rather than guessing at a delay.
+      // The hizb marker only exists once page 5's content is laid out, so it
+      // doubles as the "page is ready" signal for the bookmark shot below.
+      final hizbMarker = find.byKey(const ValueKey('mushaf-hizb-boundary'));
+      await _pumpUntilFound(tester, hizbMarker, timeoutSeconds: 60);
+      await _waitForUi(tester, seconds: 2);
       await _captureOnboardingAsset(tester, binding, '06-mushaf-bookmark');
 
-      final hizbMarker = find.byKey(const ValueKey('mushaf-hizb-boundary'));
       expect(hizbMarker, findsOneWidget);
       await tester.tap(hizbMarker);
       await _finishTransition(tester);
@@ -385,6 +409,66 @@ Future<void> _waitForUi(WidgetTester tester, {int seconds = 2}) async {
   for (var i = 0; i < seconds * 10; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
+}
+
+/// Pumps until [finder] matches, rather than sleeping a fixed interval.
+///
+/// Returns false if it never matched within [timeoutSeconds].
+Future<bool> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  int timeoutSeconds = 60,
+}) async {
+  return _pumpUntil(
+    tester,
+    () => finder.evaluate().isNotEmpty,
+    timeoutSeconds: timeoutSeconds,
+  );
+}
+
+/// Pumps in small steps until [condition] holds, or the timeout elapses.
+///
+/// Prefer this over `pumpAndSettle` for states the app can leave on its own:
+/// settling can overshoot a transient window entirely, and it never settles at
+/// all while an indeterminate progress animation is on screen.
+Future<bool> _pumpUntil(
+  WidgetTester tester,
+  bool Function() condition, {
+  int timeoutSeconds = 60,
+}) async {
+  for (var i = 0; i < timeoutSeconds * 10; i++) {
+    if (condition()) return true;
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  return condition();
+}
+
+/// Blocks until the reader has actually rendered ayahs.
+///
+/// This used to be a flat `_waitForUi(seconds: 3)` on the onboarding path,
+/// which only ever passed because an earlier full-screenshot run (which waits
+/// 35s) had warmed the on-device content cache. On a clean simulator container
+/// the content fetch is still in flight at 3s, so every onboarding image was
+/// captured behind a spinner and the listen step then failed outright because
+/// there were no ayahs to play. Waiting on the content itself removes the race
+/// instead of trading one magic number for a larger one.
+Future<void> _waitForReaderContent(
+  WidgetTester tester, {
+  int timeoutSeconds = 120,
+}) async {
+  final spinner = find.byType(CircularProgressIndicator);
+  for (var i = 0; i < timeoutSeconds * 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (spinner.evaluate().isEmpty) {
+      // Let the first frame of real content settle before it is captured.
+      await _waitForUi(tester, seconds: 2);
+      return;
+    }
+  }
+  fail(
+    'Reader still showed a loading indicator after ${timeoutSeconds}s, so '
+    'Quran content never arrived. Screenshots would have been blank.',
+  );
 }
 
 Future<void> _finishTransition(WidgetTester tester) async {
@@ -585,9 +669,16 @@ String _localizedAlBaqarahName(String languageCode) {
 /// take its `playFile` branch. Silence keeps the run quiet while genuinely
 /// staying in the playing state.
 Future<void> _seedOnboardingRecitation() async {
-  const reciterId = 1;
+  // Must match the reciter the app will actually ask for. The cache is keyed by
+  // reciter id, so seeding a different one reads as "0 ayahs downloaded": the
+  // reader then shows its English "Play All options" sheet and streams a remote
+  // URL that fails on the simulator. Pin the setting rather than relying on the
+  // app default staying put.
+  const reciterId = 12;
   const surahNumber = 1;
   const ayahCount = 7;
+
+  await Hive.box('settings').put('reciter_id', reciterId);
 
   final directory = await getApplicationDocumentsDirectory();
   final audioDir = Directory('${directory.path}/onboarding-audio');

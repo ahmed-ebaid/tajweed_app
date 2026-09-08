@@ -502,6 +502,11 @@ class _TafseerSheetState extends State<TafseerSheet> {
         key: ValueKey('tafseer-source-dropdown-$_selectedTafsirId'),
         initialValue: hasSelectedSource ? _selectedTafsirId : null,
         isExpanded: true,
+        // Without a cap the menu is as tall as the source list, which covers
+        // the entire sheet -- you lose sight of the tafsir you are switching
+        // away from. Roughly four rows keeps the text underneath visible and
+        // makes it obvious the list scrolls.
+        menuMaxHeight: 232,
         decoration: InputDecoration(
           labelText: strings.text('select_source'),
           border: const OutlineInputBorder(),
