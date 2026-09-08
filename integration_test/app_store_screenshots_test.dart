@@ -113,14 +113,30 @@ Future<void> _captureListenOnboardingAsset(
   await tester.tap(find.byIcon(Icons.play_circle_outline).first);
   await _finishTransition(tester);
 
+  // The sheet only appears when the surah is not fully cached, and it can take
+  // a moment to animate in, so poll rather than assuming it is already there.
   final streamOption = find.text('Play now (stream missing ayahs)');
+  await _pumpUntilFound(tester, streamOption, timeoutSeconds: 5);
   if (streamOption.evaluate().isNotEmpty) {
     await tester.tap(streamOption);
-    await _finishTransition(tester);
   }
 
-  await _waitForUi(tester, seconds: 3);
-  expect(find.byType(AudioPlayerBar), findsOneWidget);
+  // Poll tightly from the moment the option is tapped. `_playingAyahNumber` is
+  // set synchronously before playback begins, so the bar is on screen almost
+  // immediately -- but if the audio stream stalls the reader resets that state,
+  // so a `pumpAndSettle` here can easily step straight over the window.
+  final bar = find.byType(AudioPlayerBar);
+  await _pumpUntilFound(tester, bar, timeoutSeconds: 45);
+  if (bar.evaluate().isEmpty) {
+    fail(
+      'AudioPlayerBar never appeared. '
+      'reader=${find.byType(ReaderScreen).evaluate().length} '
+      'sheets=${find.byType(BottomSheet).evaluate().length} '
+      'playIcons=${find.byIcon(Icons.play_circle_outline).evaluate().length} '
+      'stopIcons=${find.byIcon(Icons.stop_circle_outlined).evaluate().length}',
+    );
+  }
+  expect(bar, findsOneWidget);
   await _captureOnboardingAsset(tester, binding, '03-listen-ayah');
 
   await tester.tap(find.byIcon(Icons.stop_circle_outlined));
@@ -185,7 +201,7 @@ void main() {
     await _captureScreenshot(tester, binding, '01-home');
 
     await tester.tap(find.byIcon(Icons.menu_book_rounded));
-    await _waitForUi(tester, seconds: _onboardingAssetsOnly ? 3 : 35);
+    await _waitForReaderContent(tester);
     await _captureScreenshot(tester, binding, '02-ayah-reader');
     await _captureOnboardingAsset(tester, binding, '01-tajweed-rules');
 
@@ -270,10 +286,15 @@ void main() {
       // the image contradicts its own caption.
       final mushafPageView = tester.widget<PageView>(find.byType(PageView));
       mushafPageView.controller!.jumpToPage(4);
-      await _waitForUi(tester, seconds: 5);
+
+      // Wait for the page to actually render rather than guessing at a delay.
+      // The hizb marker only exists once page 5's content is laid out, so it
+      // doubles as the "page is ready" signal for the bookmark shot below.
+      final hizbMarker = find.byKey(const ValueKey('mushaf-hizb-boundary'));
+      await _pumpUntilFound(tester, hizbMarker, timeoutSeconds: 60);
+      await _waitForUi(tester, seconds: 2);
       await _captureOnboardingAsset(tester, binding, '06-mushaf-bookmark');
 
-      final hizbMarker = find.byKey(const ValueKey('mushaf-hizb-boundary'));
       expect(hizbMarker, findsOneWidget);
       await tester.tap(hizbMarker);
       await _finishTransition(tester);
@@ -385,6 +406,49 @@ Future<void> _waitForUi(WidgetTester tester, {int seconds = 2}) async {
   for (var i = 0; i < seconds * 10; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
+}
+
+/// Pumps until [finder] matches, rather than sleeping a fixed interval.
+///
+/// Returns false if it never matched within [timeoutSeconds].
+Future<bool> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  int timeoutSeconds = 60,
+}) async {
+  for (var i = 0; i < timeoutSeconds * 10; i++) {
+    if (finder.evaluate().isNotEmpty) return true;
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  return finder.evaluate().isNotEmpty;
+}
+
+/// Blocks until the reader has actually rendered ayahs.
+///
+/// This used to be a flat `_waitForUi(seconds: 3)` on the onboarding path,
+/// which only ever passed because an earlier full-screenshot run (which waits
+/// 35s) had warmed the on-device content cache. On a clean simulator container
+/// the content fetch is still in flight at 3s, so every onboarding image was
+/// captured behind a spinner and the listen step then failed outright because
+/// there were no ayahs to play. Waiting on the content itself removes the race
+/// instead of trading one magic number for a larger one.
+Future<void> _waitForReaderContent(
+  WidgetTester tester, {
+  int timeoutSeconds = 120,
+}) async {
+  final spinner = find.byType(CircularProgressIndicator);
+  for (var i = 0; i < timeoutSeconds * 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (spinner.evaluate().isEmpty) {
+      // Let the first frame of real content settle before it is captured.
+      await _waitForUi(tester, seconds: 2);
+      return;
+    }
+  }
+  fail(
+    'Reader still showed a loading indicator after ${timeoutSeconds}s, so '
+    'Quran content never arrived. Screenshots would have been blank.',
+  );
 }
 
 Future<void> _finishTransition(WidgetTester tester) async {
