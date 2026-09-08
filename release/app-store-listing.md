@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.1
+# App Store listing — Tajweed 1.1.3
 
 ## App information
 
@@ -8,8 +8,8 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.1
-- **Build:** 60
+- **Version:** 1.1.3
+- **Build:** 65
 
 ## URLs
 
@@ -74,16 +74,18 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Tajweed 1.1.1 expands the rules library and makes every rule easier to learn.
+Tajweed 1.1.3 sharpens the Tajweed colouring and finishes the translation work.
 
-- New Tafkheem (Tafkhim), Tarqeeq (Tarqiq), and Waqf & Ibtida learning pages
-- Localized explanations, highlighted Quran examples, and focused audio
-- New Hamzat al-Qat rule with quiz examples
-- New six-step onboarding guide in all eight app languages
-- Audio highlighting now follows the reciter's actual word timing
-- Improved rule details, quizzes, captions, and audio controls
-- Fixed Waqf symbol layout, Tarqeeq wording, and Arabic text
-- Fixed stray characters that appeared inside Tafseer passages
+- Added Madd 'Arid lis-Sukun and Madd Lin, and split Madd Lazim into its types
+- More accurate Tajweed colouring: Ikhfa now covers only the letter it applies
+  to, and rules are no longer dropped on words carrying a shaddah
+- Waqf signs now sit above the harakah instead of overlapping it
+- The app follows your device language on first launch
+- Al-Husary (Muallim) is now the default reciter
+- Bookmark and ayah labels are translated instead of always showing English
+- The onboarding guide is fully translated and now shows the real screens it
+  describes
+- Choosing a Tafsir source no longer hides the Tafsir you are reading
 
 ## Screenshot set
 
