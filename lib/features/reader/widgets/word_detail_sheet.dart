@@ -107,7 +107,7 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Ayah ${widget.ayah!.surahNumber}:${widget.ayah!.ayahNumber}',
+                      '${l10n.get('ayah')} ${widget.ayah!.surahNumber}:${widget.ayah!.ayahNumber}',
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
                     const SizedBox(height: 6),
