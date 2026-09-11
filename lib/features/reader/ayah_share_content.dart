@@ -14,7 +14,7 @@ abstract final class AyahShareContent {
       if (translation.isNotEmpty) translation,
       '',
       AppLinks.productName,
-      AppLinks.appStore,
+      AppLinks.storeListing,
     ].join('\n');
   }
 }
