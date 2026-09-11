@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/app_version.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/recitation_provider.dart';
@@ -15,8 +16,6 @@ import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/onboarding_service.dart';
 import '../onboarding/onboarding_screen.dart';
 import 'language_selector_screen.dart';
-
-const _appVersion = '1.1.0';
 
 String _localizedSettingsNumber(BuildContext context, int value) {
   final languageCode = Localizations.localeOf(context).languageCode;
@@ -139,7 +138,7 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.info_outline_rounded),
             title: Text(s.text('version')),
             trailing: Text(
-              _appVersion,
+              appVersion,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -1638,7 +1637,7 @@ class _AboutSourcesSheet extends StatelessWidget {
                   onPressed: () => showLicensePage(
                     context: context,
                     applicationName: 'Tajweed Practice',
-                    applicationVersion: _appVersion,
+                    applicationVersion: appVersion,
                   ),
                   icon: const Icon(Icons.article_outlined, size: 18),
                   label: Text(s.text('view_licenses')),
@@ -1646,7 +1645,7 @@ class _AboutSourcesSheet extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                '${s.text('version')} $_appVersion',
+                '${s.text('version')} $appVersion',
                 style: textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
