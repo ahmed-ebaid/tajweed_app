@@ -326,7 +326,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
     lines
       ..add('')
       ..add(appName)
-      ..add(AppLinks.storeListing);
+      ..add(AppLinks.appStore);
 
     final text = lines.join('\n');
     final subject = localizedName.isNotEmpty ? localizedName : appName;

@@ -75,7 +75,7 @@ class TafseerShareContent {
       tafseerText.trim(),
       '',
       appName,
-      AppLinks.storeListing,
+      AppLinks.appStore,
     ].join('\n');
   }
 }
