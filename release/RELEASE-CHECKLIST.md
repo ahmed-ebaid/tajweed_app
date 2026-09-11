@@ -40,13 +40,55 @@ per release for both stores.
   items. **Re-`GET` the submission and its items before retrying** — creating a
   second one leaves a stray empty submission behind.
 
-- [ ] Release type is `AFTER_APPROVAL`, so approval does **not** put it on sale.
-      Someone has to release it by hand.
+- [ ] **Decide the release type before you submit.** This app has defaulted to
+      `AFTER_APPROVAL`, which means Apple puts the version **on sale
+      automatically** the moment review passes — nobody presses a button, and
+      there is no pause to catch a late problem. 1.1.3 went live this way on
+      2026-09-08.
+
+      If you want to hold the version back, set `releaseType` to `MANUAL` **on
+      the version, before submitting**:
+
+      ```
+      PATCH /v1/appStoreVersions/{id}
+      { "data": { "id": "{id}", "type": "appStoreVersions",
+                  "attributes": { "releaseType": "MANUAL" } } }
+      ```
+
+      Then release it deliberately once you have verified the build. The three
+      values are `MANUAL` (you press the button), `AFTER_APPROVAL` (auto-release
+      on approval), and `SCHEDULED` (a date you set).
+
+- [ ] Confirm what you actually chose:
+
+      ```
+      GET /v1/apps/{app_id}/appStoreVersions?fields[appStoreVersions]=versionString,appStoreState,releaseType
+      ```
+
+      Note the `fields[...]` parameter 404s on a single `appStoreVersions/{id}`
+      — query the collection as above, or omit `fields` entirely.
+
+- [ ] To check from outside App Store Connect whether a version is really live:
+
+      ```
+      curl -s "https://itunes.apple.com/lookup?id=6794283460&country=us"
+      ```
+
+      Read `version` and `currentVersionReleaseDate`.
 
 ## Android
 
 - [ ] `flutter build appbundle --release`, signed with the upload keystore.
 - [ ] Upload to the Play Console track and reuse the same localized release notes.
+- [ ] **Decide how it publishes, same as iOS.** Play has two independent
+      controls, and neither is the App Store's `releaseType`:
+
+      - *Managed publishing* (Publishing overview). When it is **off**, an
+        approved release goes live on its own. Turn it **on** to hold approved
+        changes until you click Publish. Verify the current setting in the
+        Console rather than assuming — it is a per-app setting.
+      - *Staged rollout* percentage on the production track. Shipping at less
+        than 100% limits blast radius and can be halted.
 
 ## Both stores
 
