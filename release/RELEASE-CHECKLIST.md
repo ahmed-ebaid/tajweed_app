@@ -61,7 +61,21 @@ per release for both stores.
 
 ## Keys
 
-- [ ] `~/.config/tajweed/upload-keystore.jks` (plus its password) and
-      `~/.config/tajweed/signing/dist.key` exist on one machine only. Losing the
-      upload keystore means the Play listing cannot be updated again under the
-      same package name. Back them up somewhere durable.
+- [ ] Back up `~/.config/tajweed/upload-keystore.jks` (plus its password) and
+      `~/.config/tajweed/signing/dist.key` — they exist on one machine only.
+
+      Losing the upload keystore is recoverable, not fatal. The app ships as an
+      app bundle and is therefore enrolled in Play App Signing, so Google holds
+      the *app signing* key and what is on this machine is only the *upload* key.
+      If it is lost, generate a new keystore and ask Play Console support to
+      reset the accepted upload certificate.
+
+      Back it up anyway: a reset takes days, and a new app signed with this same
+      keystore would have no reset path until its first upload registers it with
+      Google.
+
+      (The "lose the key and the listing is dead forever" warning you will read
+      elsewhere describes apps predating Play App Signing, where the developer
+      held the single key Google verified updates against. It does not apply
+      here.)
+
