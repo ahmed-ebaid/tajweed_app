@@ -25,6 +25,16 @@ class _AudioPlayerBarState extends State<AudioPlayerBar> {
   double _speed = 1.0;
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5];
 
+  /// Non-null only while the user is dragging the scrubber. Holds the
+  /// dragged position in milliseconds so the thumb follows the finger
+  /// instead of being yanked back by incoming [positionStream] events.
+  double? _dragMs;
+
+  Future<void> _onSeekEnd(double valueMs) async {
+    await widget.audioService.seekTo(Duration(milliseconds: valueMs.round()));
+    if (mounted) setState(() => _dragMs = null);
+  }
+
   void _cycleSpeed() {
     final nextIdx = (_speeds.indexOf(_speed) + 1) % _speeds.length;
     _speed = _speeds[nextIdx];
@@ -56,27 +66,48 @@ class _AudioPlayerBarState extends State<AudioPlayerBar> {
                   builder: (context, durSnap) {
                     final pos = posSnap.data ?? Duration.zero;
                     final dur = durSnap.data ?? Duration.zero;
-                    final progress = dur.inMilliseconds > 0
-                        ? pos.inMilliseconds / dur.inMilliseconds
-                        : 0.0;
+                    // Duration is unknown until the source loads; without it
+                    // there is nothing meaningful to seek within.
+                    final canSeek = dur.inMilliseconds > 0;
+                    final shownMs = _dragMs ??
+                        pos.inMilliseconds
+                            .clamp(0, dur.inMilliseconds)
+                            .toDouble();
 
                     return Column(
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(2),
-                          child: LinearProgressIndicator(
-                            value: progress.clamp(0.0, 1.0),
-                            minHeight: 3,
-                            backgroundColor:
-                                Theme.of(context).colorScheme.surfaceVariant,
-                            valueColor: const AlwaysStoppedAnimation(
-                                Color(0xFF1D9E75)),
+                        SizedBox(
+                          height: 28,
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 3,
+                              activeTrackColor: const Color(0xFF1D9E75),
+                              inactiveTrackColor:
+                                  Theme.of(context).colorScheme.surfaceVariant,
+                              thumbColor: const Color(0xFF1D9E75),
+                              overlayColor: const Color(0x291D9E75),
+                              thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 6),
+                              overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 14),
+                            ),
+                            child: Slider(
+                              value: canSeek ? shownMs : 0,
+                              max: canSeek ? dur.inMilliseconds.toDouble() : 1,
+                              onChanged: canSeek
+                                  ? (v) => setState(() => _dragMs = v)
+                                  : null,
+                              onChangeEnd: canSeek ? _onSeekEnd : null,
+                              semanticFormatterCallback: (v) =>
+                                  _format(Duration(milliseconds: v.round())),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(_format(pos),
+                            Text(
+                                _format(
+                                    Duration(milliseconds: shownMs.round())),
                                 style: Theme.of(context).textTheme.bodySmall),
                             const Spacer(),
                             Text(_format(dur),
