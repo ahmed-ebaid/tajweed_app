@@ -59,9 +59,17 @@ class RuleExampleReferences {
   //          it carries kasrah, shortest verse found for this case.
   //   1:1  — بِسْمِ ٱللَّهِ — the lam of Allah light because it follows the
   //          kasrah ending بِسْمِ (Lam and Alif conditional case).
+  // madd_al_farq: only six places in the Qur'an, one chosen per section.
+  //   27:59 — قُلِ ٱلۡحَمۡدُ لِلَّهِ … ءَآللَّهُ خَيۡرٌ — the clearest case of the
+  //          madd carrying the whole interrogative meaning.
+  //   6:143 — ءَآلذَّكَرَيۡنِ حَرَّمَ — muthaqqal, the ذّ after the madd is doubled.
+  //   10:91 — ءَآلۡـَٔـٰنَ وَقَدۡ عَصَيۡتَ — mukhaffaf, the ل after the madd is sakin.
+  //          Chosen over the other mukhaffaf place (10:51) because 10:51 is
+  //          already used as the maddLazimKalimiMukhaffaf audio example.
   static const Map<String, List<String>> articleExampleCodes = {
     'tafkhim': ['001007', '055001', '086006'],
     'tarqiq': ['001005', '051022', '001001'],
+    'madd_al_farq': ['027059', '006143', '010091'],
   };
 
   // Short, verse-specific explanations shown under each example, one per
@@ -153,6 +161,48 @@ class RuleExampleReferences {
         'بِسْمِ ٱللَّهِ: el lam de Allah permanece ligero tras la kasra de بِسْمِ.',
       ],
     },
+    'madd_al_farq': {
+      'en': [
+        'ءَآللَّهُ: the long alif is the question — without it this would be a statement.',
+        'ءَآلذَّكَرَيۡنِ: the ذّ after the madd carries shaddah — heavy, 6 counts.',
+        'ءَآلۡـَٔـٰنَ: the ل after the madd is sakin — still 6 counts, but light.',
+      ],
+      'ar': [
+        'ءَآللَّهُ: الألف المدية هي علامة الاستفهام، ولولاها لكان خبراً.',
+        'ءَآلذَّكَرَيۡنِ: الذال بعد حرف المد مشددة، فهو مثقل ويمد ست حركات.',
+        'ءَآلۡـَٔـٰنَ: اللام بعد حرف المد ساكنة، فهو مخفف ويمد ست حركات أيضاً.',
+      ],
+      'ur': [
+        'ءَآللَّهُ: الفِ مدہ ہی سوال کی علامت ہے، ورنہ یہ خبر ہوتی۔',
+        'ءَآلذَّكَرَيۡنِ: حرفِ مد کے بعد ذال مشدد ہے، اس لیے مثقل، چھ حرکات۔',
+        'ءَآلۡـَٔـٰنَ: حرفِ مد کے بعد لام ساکن ہے، مخفف، مگر چھ حرکات ہی۔',
+      ],
+      'tr': [
+        'ءَآللَّهُ: uzun elif sorunun kendisidir; onsuz bu bir haber olurdu.',
+        'ءَآلذَّكَرَيۡنِ: medden sonraki ذ şeddelidir — ağır, 6 hareke.',
+        'ءَآلۡـَٔـٰنَ: medden sonraki ل sakindir — yine 6 hareke, fakat hafif.',
+      ],
+      'fr': [
+        'ءَآللَّهُ : l\'alif long est l\'interrogation ; sans lui ce serait une affirmation.',
+        'ءَآلذَّكَرَيۡنِ : le ذ après le madd porte une shadda — lourd, 6 temps.',
+        'ءَآلۡـَٔـٰنَ : le ل après le madd est sakin — toujours 6 temps, mais léger.',
+      ],
+      'id': [
+        'ءَآللَّهُ: alif panjang itulah pertanyaannya; tanpanya ini kalimat berita.',
+        'ءَآلذَّكَرَيۡنِ: ذ setelah mad bertasydid — berat, 6 harakat.',
+        'ءَآلۡـَٔـٰنَ: ل setelah mad sukun — tetap 6 harakat, tetapi ringan.',
+      ],
+      'de': [
+        'ءَآللَّهُ: Das lange Alif ist die Frage; ohne es wäre dies eine Aussage.',
+        'ءَآلذَّكَرَيۡنِ: Das ذ nach dem Madd trägt Schadda — schwer, 6 Zählzeiten.',
+        'ءَآلۡـَٔـٰنَ: Das ل nach dem Madd ist ruhend — weiterhin 6 Zählzeiten, aber leicht.',
+      ],
+      'es': [
+        'ءَآللَّهُ: el alif largo es la pregunta; sin él, esto sería una afirmación.',
+        'ءَآلذَّكَرَيۡنِ: la ذ tras el madd lleva shadda — pesado, 6 tiempos.',
+        'ءَآلۡـَٔـٰنَ: la ل tras el madd es sakin — siguen siendo 6 tiempos, pero ligero.',
+      ],
+    },
   };
 
   static List<String> captionsForArticle(
@@ -179,6 +229,11 @@ class RuleExampleReferences {
       [],
       ['رِزْقُكُمْ'],
       ['ٱللَّهِ'],
+    ],
+    'madd_al_farq': [
+      ['ءَآللَّهُ'],
+      ['ءَآلذَّكَرَيۡنِ'],
+      ['ءَآلۡـَٔـٰنَ'],
     ],
   };
 
