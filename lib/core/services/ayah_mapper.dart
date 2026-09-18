@@ -315,6 +315,10 @@ class AyahMapper {
       }
     }
 
+    // Upstream ships Madd al-Farq with no markup at all; rebuild it here so the
+    // four مثقل places (6:143, 6:144, 10:59, 27:59) are not left uncoloured.
+    _appendMaddAlFarqSpans(textForDisplay, spans);
+
     // Detect ۩ (U+06E9 Arabic place of sajdah) embedded directly in text.
     // The API uses a plain Unicode character — no HTML class is emitted.
     const sajdahChar = '\u06E9';
@@ -625,6 +629,11 @@ class AyahMapper {
   /// (10:51 and 10:91, the only two in the Qur'an), حرفي مثقل 10,
   /// حرفي مخفف 34.
   ///
+  /// Those counts describe what upstream actually tags. Four further كلمي مثقل
+  /// places — the مد الفرق words at 6:143, 6:144, 10:59 and 27:59 — reach us
+  /// with no markup at all and so never enter this function; they are rebuilt
+  /// separately in [_appendMaddAlFarqSpans].
+  ///
   /// The split is derived from the text alone — no surah/ayah table — so it
   /// behaves identically in the ayah-by-ayah and Mushaf page views, which
   /// both render spans produced here.
@@ -683,6 +692,79 @@ class AyahMapper {
     return className == 'madda_permissible' ||
         className == 'madd_arid' ||
         className == 'madd_arid_lissukun';
+  }
+
+  static const int _hamzaCp = 0x0621;
+  static const int _alifMaddaCp = 0x0622;
+  static const int _alifCp = 0x0627;
+  static const int _maddahAboveCp = 0x0653;
+  static const int _shaddahCp = 0x0651;
+  static const int _tatweelCp = 0x0640;
+
+  /// True when a shaddah sits within the first few letters after [from],
+  /// scanning the current word only.
+  static bool _shaddahFollowsInWord(String text, int from) {
+    var letters = 0;
+    for (var i = from; i < text.length; i++) {
+      final cp = text.codeUnitAt(i);
+      if (_isWordBreak(cp)) break;
+      if (cp == _shaddahCp) return true;
+      if (cp != _tatweelCp && _isArabicLetter(cp)) {
+        letters++;
+        if (letters > 3) break;
+      }
+    }
+    return false;
+  }
+
+  /// Synthesises Madd al-Farq (مد الفرق) spans that the upstream dataset omits.
+  ///
+  /// When the interrogative hamza precedes a word opening with hamzat wasl, the
+  /// wasl is lengthened to six harakat so the question is not misread as a
+  /// statement. Quran.com annotates this in only the two مخفف places — ءَآلْـَٰٔنَ
+  /// at 10:51 and 10:91 — and ships the four مثقل places with no markup at all:
+  /// ءَآللَّهُ (10:59, 27:59) and ءَآلذَّكَرَيْنِ (6:143, 6:144). Those four render
+  /// uncoloured unless they are reconstructed here.
+  ///
+  /// Derived from the text alone — no surah/ayah table — so it stays correct in
+  /// every view and never fires on a word the upstream already tagged.
+  static void _appendMaddAlFarqSpans(String text, List<TajweedSpan> spans) {
+    for (var i = 0; i < text.length; i++) {
+      if (text.codeUnitAt(i) != _hamzaCp) continue;
+      // The interrogative hamza must open the word.
+      if (i > 0 && !_isWordBreak(text.codeUnitAt(i - 1))) continue;
+
+      var j = i + 1;
+      if (j < text.length && text.codeUnitAt(j) == _fatha) j++;
+      if (j >= text.length) continue;
+
+      final start = j;
+      final cp = text.codeUnitAt(j);
+      if (cp == _alifMaddaCp) {
+        j++;
+      } else if (cp == _alifCp &&
+          j + 1 < text.length &&
+          text.codeUnitAt(j + 1) == _maddahAboveCp) {
+        j += 2;
+      } else {
+        continue;
+      }
+      if (j < text.length && text.codeUnitAt(j) == _maddahAboveCp) j++;
+      final end = j;
+
+      // Never override an upstream annotation.
+      if (spans.any((s) => s.start < end && start < s.end)) continue;
+
+      spans.add(
+        TajweedSpan(
+          start: start,
+          end: end,
+          rule: _shaddahFollowsInWord(text, end)
+              ? TajweedRule.maddLazimKalimiMuthaqqal
+              : TajweedRule.maddLazimKalimiMukhaffaf,
+        ),
+      );
+    }
   }
 
   static List<TajweedSpan> _parseRuleTagTajweed(
@@ -1142,9 +1224,48 @@ class AyahMapper {
       }
     }
 
-    return segments;
+    return _applyMaddAlFarqToSegments(segments);
   }
 
+  /// Splits untagged segments so Madd al-Farq is coloured in the segment-based
+  /// views too, matching the span-based reader path.
+  static List<TajweedSegment> _applyMaddAlFarqToSegments(
+    List<TajweedSegment> segments,
+  ) {
+    final result = <TajweedSegment>[];
+    for (final segment in segments) {
+      if (segment.rule != null) {
+        result.add(segment);
+        continue;
+      }
+      final spans = <TajweedSpan>[];
+      _appendMaddAlFarqSpans(segment.text, spans);
+      if (spans.isEmpty) {
+        result.add(segment);
+        continue;
+      }
+      spans.sort((a, b) => a.start.compareTo(b.start));
+      var cursor = 0;
+      for (final span in spans) {
+        if (cursor < span.start) {
+          result.add(
+            TajweedSegment(text: segment.text.substring(cursor, span.start)),
+          );
+        }
+        result.add(
+          TajweedSegment(
+            text: segment.text.substring(span.start, span.end),
+            rule: span.rule,
+          ),
+        );
+        cursor = span.end;
+      }
+      if (cursor < segment.text.length) {
+        result.add(TajweedSegment(text: segment.text.substring(cursor)));
+      }
+    }
+    return result;
+  }
   static String _stripHtmlPreserveSpacing(String text) {
     return text.replaceAll(RegExp(r'<[^>]*>'), '');
   }
