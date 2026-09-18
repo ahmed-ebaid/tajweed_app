@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/arabic_shaping.dart';
+
 import '../../../core/models/tajweed_models.dart';
 
 /// Displays the Arabic text of a quiz question along with the question prompt.
@@ -35,6 +37,7 @@ class QuizCard extends StatelessWidget {
               fontFamily: 'UthmanicHafs',
               fontSize: 36,
               height: 1.8,
+              fontFeatures: arabicShapingFeatures,
             ),
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,
@@ -62,10 +65,11 @@ class QuizCard extends StatelessWidget {
       spans.add(
         TextSpan(
           text: arabic.substring(range.start, range.end),
+          // Only colour may change across spans of one word. Varying the
+          // weight starts a new shaping run and breaks Arabic joining.
           style: TextStyle(
             color: highlightColor,
             backgroundColor: highlightColor.withValues(alpha: 0.12),
-            fontWeight: FontWeight.w700,
           ),
         ),
       );

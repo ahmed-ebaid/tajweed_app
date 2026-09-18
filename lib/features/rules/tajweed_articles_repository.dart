@@ -160,6 +160,95 @@ class TajweedArticlesRepository {
       },
     ),
     TajweedArticle(
+      id: 'madd_al_farq',
+      category: TajweedArticleCategory.fundamentals,
+      titles: {
+        'en': 'Madd al-Farq',
+        'ar': 'مد الفرق',
+        'ur': 'مدِ فرق',
+        'tr': 'Meddi Fark',
+        'fr': 'Madd al-Farq',
+        'id': 'Mad Farq',
+        'de': 'Madd al-Farq',
+        'es': 'Madd al-Farq',
+      },
+      summaries: {
+        'en':
+            'The lengthening that turns a statement into a question, in six places of the Qur\'an.',
+        'ar': 'المد الذي يميز الاستفهام من الخبر في ستة مواضع من القرآن.',
+        'ur': 'وہ مد جو چھ مقامات پر خبر اور استفہام میں فرق کرتا ہے۔',
+        'tr': 'Kur\'an\'da altı yerde haber ile soruyu ayıran uzatma.',
+        'fr':
+            'L\'allongement qui distingue l\'interrogation de l\'affirmation, en six endroits du Coran.',
+        'id':
+            'Mad yang membedakan kalimat tanya dari kalimat berita, di enam tempat dalam Al-Qur\'an.',
+        'de':
+            'Die Dehnung, die an sechs Stellen des Korans Frage von Aussage unterscheidet.',
+        'es':
+            'El alargamiento que distingue la pregunta de la afirmación, en seis lugares del Corán.',
+      },
+      sectionTitles: {
+        'en': [
+          'Why it is called al-Farq',
+          'Muthaqqal: followed by a shaddah',
+          'Mukhaffaf: followed by a sakin letter',
+        ],
+        'ar': [
+          'لماذا سمي مد الفرق',
+          'المثقل: بعده حرف مشدد',
+          'المخفف: بعده حرف ساكن',
+        ],
+        'ur': [
+          'اسے مدِ فرق کیوں کہتے ہیں',
+          'مثقل: اس کے بعد مشدد حرف',
+          'مخفف: اس کے بعد ساکن حرف',
+        ],
+        'tr': [
+          'Neden Fark denir',
+          'Müsakkal: ardından şeddeli harf',
+          'Muhaffef: ardından sakin harf',
+        ],
+        'fr': [
+          'Pourquoi on l\'appelle al-Farq',
+          'Muthaqqal : suivi d\'une shadda',
+          'Mukhaffaf : suivi d\'une lettre sakinah',
+        ],
+        'id': [
+          'Mengapa disebut al-Farq',
+          'Mutsaqqal: diikuti huruf bertasydid',
+          'Mukhaffaf: diikuti huruf sukun',
+        ],
+        'de': [
+          'Warum es al-Farq heißt',
+          'Muthaqqal: gefolgt von einer Schadda',
+          'Mukhaffaf: gefolgt von einem ruhenden Buchstaben',
+        ],
+        'es': [
+          'Por qué se llama al-Farq',
+          'Muzaqqal: seguido de una shadda',
+          'Mujaffaf: seguido de una letra sakin',
+        ],
+      },
+      bodies: {
+        'en':
+            'When the interrogative hamza enters on a word beginning with the definite article ٱل, two hamzas would collide. The second is turned into a long alif instead, and that lengthening is what tells the listener a question is being asked rather than a statement. Without it قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ ("Say: has Allah permitted you?") would sound like a plain report. It is called al-Farq — the distinction — for exactly that reason, and it occurs in only six places in the Qur\'an.\n\nBecause the letter after the madd carries a shaddah, it is a madd lazim kalimi muthaqqal and is held for 6 counts. Four of the six places are of this kind: ءَآلذَّكَرَيۡنِ in 6:143 and 6:144, and ءَآللَّهُ in 10:59 and 27:59. The heaviness comes from the doubled letter that follows the long vowel, so do not shorten the madd in order to reach it.\n\nIn the remaining two places the letter after the madd is sakin rather than doubled, so the same 6 counts are held but the ending is light: ءَآلۡـَٔـٰنَ in 10:51 and 10:91. This is madd lazim kalimi mukhaffaf. The length does not change between the two types — only the weight of what follows it.',
+        'ar':
+            'إذا دخلت همزة الاستفهام على كلمة مبدوءة بـ«ال» التعريف اجتمعت همزتان، فتُبدل الثانية ألفاً مدية، وهذا المد هو الذي يُعلم السامع أن الكلام استفهام لا خبر. فلولاه لالتبس قوله تعالى: قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ بالخبر المحض. ولذلك سُمي مد الفرق، لأنه يفرق بين الاستفهام والخبر، ولا يقع إلا في ستة مواضع من القرآن.\n\nولمّا كان الحرف الذي بعد حرف المد مشدداً كان مداً لازماً كلمياً مثقلاً، ويمد ست حركات. وأربعة من المواضع الستة من هذا النوع: ءَآلذَّكَرَيۡنِ في الأنعام ١٤٣ و١٤٤، وءَآللَّهُ في يونس ٥٩ والنمل ٥٩. والثقل آتٍ من التشديد بعد حرف المد، فلا يجوز قصر المد استعجالاً للوصول إليه.\n\nوفي الموضعين الباقيين يكون ما بعد حرف المد ساكناً غير مشدد، فيمد ست حركات أيضاً لكن مع خفة في آخره: ءَآلۡـَٔـٰنَ في يونس ٥١ و٩١، وهو مد لازم كلمي مخفف. والمقدار واحد في النوعين، وإنما يختلف ثقل ما بعد حرف المد.',
+        'ur':
+            'جب استفہام کا ہمزہ ایسے کلمے پر آتا ہے جو «ال» تعریف سے شروع ہو تو دو ہمزے جمع ہو جاتے ہیں، چنانچہ دوسرے کو الفِ مدہ سے بدل دیا جاتا ہے۔ یہی مد سننے والے کو بتاتا ہے کہ یہ سوال ہے، خبر نہیں۔ اگر یہ نہ ہوتا تو قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ محض خبر معلوم ہوتا۔ اسی لیے اسے مدِ فرق کہا جاتا ہے، اور یہ قرآن میں صرف چھ مقامات پر آتا ہے۔\n\nچونکہ حرفِ مد کے بعد مشدد حرف آتا ہے اس لیے یہ مد لازم کلمی مثقل ہے اور چھ حرکات کھینچا جاتا ہے۔ چھ میں سے چار مقامات اسی قسم کے ہیں: سورہ انعام ١٤٣ اور ١٤٤ میں ءَآلذَّكَرَيۡنِ، اور سورہ یونس ٥٩ اور سورہ نمل ٥٩ میں ءَآللَّهُ۔ ثقل تشدید کی وجہ سے ہے، اس لیے اس تک پہنچنے کی جلدی میں مد کو کم نہ کریں۔\n\nباقی دو مقامات پر حرفِ مد کے بعد ساکن حرف ہوتا ہے، مشدد نہیں، تو مد چھ حرکات ہی رہتا ہے مگر آخر ہلکا ہوتا ہے: سورہ یونس ٥١ اور ٩١ میں ءَآلۡـَٔـٰنَ۔ یہ مد لازم کلمی مخفف ہے۔ دونوں قسموں میں مقدار ایک ہی ہے، فرق صرف بعد والے حرف کے بوجھ کا ہے۔',
+        'tr':
+            'Soru hemzesi, başında «el» takısı bulunan bir kelimeye geldiğinde iki hemze yan yana gelir; ikincisi uzun bir elife çevrilir. Bu uzatma, dinleyene bunun bir haber değil soru olduğunu bildirir. Olmasaydı قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ sıradan bir haber gibi duyulurdu. Bu yüzden ona Fark meddi denir ve Kur\'an\'da yalnızca altı yerde geçer.\n\nMed harfinden sonra şeddeli bir harf geldiği için bu, meddi lazım kelimi müsakkaldir ve 6 hareke uzatılır. Altı yerin dördü bu türdendir: En\'âm 143 ve 144\'te ءَآلذَّكَرَيۡنِ, Yûnus 59 ve Neml 59\'da ءَآللَّهُ. Ağırlık, med harfinden sonraki şeddeden gelir; ona yetişmek için meddi kısaltmayın.\n\nKalan iki yerde med harfinden sonraki harf şeddeli değil sakindir; uzunluk yine 6 hareke, fakat sonu hafiftir: Yûnus 51 ve 91\'de ءَآلۡـَٔـٰنَ. Bu, meddi lazım kelimi muhaffeftir. İki türde de süre aynıdır; değişen yalnızca sonrasının ağırlığıdır.',
+        'fr':
+            'Lorsque le hamza interrogatif se place sur un mot commençant par l\'article défini ٱل, deux hamzas se rencontrent ; le second est transformé en un alif long. C\'est cet allongement qui indique à l\'auditeur qu\'il s\'agit d\'une question et non d\'une affirmation. Sans lui, قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ sonnerait comme un simple constat. D\'où son nom al-Farq, « la distinction », et il n\'apparaît qu\'en six endroits du Coran.\n\nComme la lettre qui suit la lettre de madd porte une shadda, il s\'agit d\'un madd lazim kalimi muthaqqal, allongé sur 6 temps. Quatre des six endroits sont de ce type : ءَآلذَّكَرَيۡنِ en 6:143 et 6:144, et ءَآللَّهُ en 10:59 et 27:59. La lourdeur vient du redoublement qui suit la voyelle longue ; n\'abrégez donc pas le madd pour l\'atteindre.\n\nDans les deux endroits restants, la lettre qui suit est sakinah et non redoublée : la durée reste de 6 temps mais la fin est légère : ءَآلۡـَٔـٰنَ en 10:51 et 10:91. C\'est le madd lazim kalimi mukhaffaf. La durée ne change pas entre les deux types, seul le poids de ce qui suit change.',
+        'id':
+            'Ketika hamzah istifham masuk pada kata yang diawali alif lam ta\'rif, dua hamzah bertemu; yang kedua diganti menjadi alif panjang. Panjang inilah yang memberi tahu pendengar bahwa ini pertanyaan, bukan berita. Tanpanya, قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ akan terdengar seperti kalimat berita biasa. Karena itu disebut mad farq, yaitu pembeda, dan hanya terdapat di enam tempat dalam Al-Qur\'an.\n\nKarena huruf setelah huruf mad bertasydid, ini adalah mad lazim kilmi mutsaqqal dan dibaca 6 harakat. Empat dari enam tempat termasuk jenis ini: ءَآلذَّكَرَيۡنِ pada 6:143 dan 6:144, serta ءَآللَّهُ pada 10:59 dan 27:59. Beratnya berasal dari tasydid setelah huruf mad, jadi jangan memendekkan mad karena tergesa mencapainya.\n\nPada dua tempat sisanya, huruf setelah mad adalah sukun, bukan bertasydid, sehingga tetap 6 harakat tetapi akhirnya ringan: ءَآلۡـَٔـٰنَ pada 10:51 dan 10:91. Ini mad lazim kilmi mukhaffaf. Panjangnya sama pada kedua jenis; yang berbeda hanyalah berat huruf sesudahnya.',
+        'de':
+            'Wenn das Frage-Hamza auf ein Wort trifft, das mit dem bestimmten Artikel ٱل beginnt, treffen zwei Hamzas aufeinander; das zweite wird in ein langes Alif umgewandelt. Diese Dehnung zeigt dem Hörer an, dass eine Frage gestellt wird und keine Aussage. Ohne sie klänge قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ wie eine bloße Feststellung. Daher der Name al-Farq, die Unterscheidung, und er kommt nur an sechs Stellen im Koran vor.\n\nDa der Buchstabe nach dem Madd-Buchstaben eine Schadda trägt, ist dies ein Madd Lazim Kalimi Muthaqqal und wird 6 Zählzeiten gehalten. Vier der sechs Stellen sind von dieser Art: ءَآلذَّكَرَيۡنِ in 6:143 und 6:144 sowie ءَآللَّهُ in 10:59 und 27:59. Die Schwere entsteht durch die Verdopplung nach dem langen Vokal; kürzen Sie den Madd nicht, um sie zu erreichen.\n\nAn den übrigen zwei Stellen ist der folgende Buchstabe ruhend statt verdoppelt: Die Länge bleibt bei 6 Zählzeiten, doch der Abschluss ist leicht: ءَآلۡـَٔـٰنَ in 10:51 und 10:91. Das ist Madd Lazim Kalimi Mukhaffaf. Die Länge ändert sich zwischen beiden Arten nicht, nur das Gewicht des Folgenden.',
+        'es':
+            'Cuando el hamza interrogativo entra sobre una palabra que comienza con el artículo definido ٱل, se encuentran dos hamzas; el segundo se convierte en un alif largo. Ese alargamiento es lo que indica al oyente que se trata de una pregunta y no de una afirmación. Sin él, قُلۡ ءَآللَّهُ أَذِنَ لَكُمۡ sonaría como una simple noticia. Por eso se llama al-Farq, «la distinción», y solo aparece en seis lugares del Corán.\n\nComo la letra que sigue a la letra de madd lleva shadda, es un madd lazim kalimi muzaqqal y se alarga 6 tiempos. Cuatro de los seis lugares son de este tipo: ءَآلذَّكَرَيۡنِ en 6:143 y 6:144, y ءَآللَّهُ en 10:59 y 27:59. La pesadez proviene de la duplicación que sigue a la vocal larga; no acorte el madd para llegar a ella.\n\nEn los dos lugares restantes, la letra siguiente es sakin y no duplicada: la duración sigue siendo de 6 tiempos, pero el final es ligero: ءَآلۡـَٔـٰنَ en 10:51 y 10:91. Es madd lazim kalimi mujaffaf. La duración no cambia entre los dos tipos; solo cambia el peso de lo que sigue.',
+      },
+    ),
+    TajweedArticle(
       id: 'waqf_ibtida',
       category: TajweedArticleCategory.fundamentals,
       titles: {

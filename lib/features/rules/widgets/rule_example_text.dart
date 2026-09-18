@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/arabic_shaping.dart';
 import '../../../core/models/tajweed_models.dart';
 import '../rule_example_highlight.dart';
 
@@ -42,6 +43,7 @@ class RuleExampleText extends StatelessWidget {
       fontSize: fontSize,
       fontWeight: fontWeight,
       height: 1.5,
+      fontFeatures: arabicShapingFeatures,
     );
 
     if (range == null) {
@@ -62,10 +64,10 @@ class RuleExampleText extends StatelessWidget {
             ),
           TextSpan(
             text: text.substring(range.start, range.end),
-            style: style.copyWith(
-              color: highlight,
-              fontWeight: FontWeight.w700,
-            ),
+            // Colour is the only thing that may change mid-word: a different
+            // weight would start a new shaping run and split the ligatures,
+            // rendering the letters in isolated forms.
+            style: style.copyWith(color: highlight),
           ),
           if (range.end < text.length)
             TextSpan(
