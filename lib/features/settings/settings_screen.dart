@@ -1957,7 +1957,7 @@ class _SettingsStrings {
       'reciter_label': 'Reciter',
       'other_sources_title': 'Other content sources',
       'other_b1':
-          'Tajweed rule definitions used in lessons and quizzes are bundled locally in assets/tajweed/rules_db.json.',
+          'Tajweed rule definitions used in lessons and quizzes are bundled locally in the app.',
       'other_b2':
           'Mushaf pages are rendered from Quran.Foundation Uthmani text and page metadata; the app does not redistribute page images.',
       'other_b3':
@@ -2068,7 +2068,7 @@ class _SettingsStrings {
       'reciter_label': 'القارئ',
       'other_sources_title': 'مصادر محتوى أخرى',
       'other_b1':
-          'يتم تضمين تعريفات أحكام التجويد المستخدمة في الدروس والاختبارات محلياً في assets/tajweed/rules_db.json.',
+          'يتم تضمين تعريفات أحكام التجويد المستخدمة في الدروس والاختبارات محلياً داخل التطبيق.',
       'other_b2':
           'تُعرض صفحات المصحف من نص عثماني وبيانات الصفحات من Quran.Foundation، ولا يعيد التطبيق توزيع صور صفحات المصحف.',
       'other_b3':
@@ -2180,7 +2180,7 @@ class _SettingsStrings {
       'reciter_label': 'قاری',
       'other_sources_title': 'دیگر مواد کے ماخذ',
       'other_b1':
-          'اسباق اور کوئز میں استعمال ہونے والے تجوید قوانین کی تعریفیں assets/tajweed/rules_db.json میں مقامی طور پر شامل ہیں۔',
+          'اسباق اور کوئز میں استعمال ہونے والے تجوید قوانین کی تعریفیں ایپ میں مقامی طور پر شامل ہیں۔',
       'other_b2':
           'مصحف کے صفحات Quran.Foundation کے عثمانی متن اور صفحہ معلومات سے دکھائے جاتے ہیں؛ ایپ صفحات کی تصاویر تقسیم نہیں کرتی۔',
       'other_b3':
@@ -2290,7 +2290,7 @@ class _SettingsStrings {
       'reciter_label': 'Kari',
       'other_sources_title': 'Diğer içerik kaynakları',
       'other_b1':
-          'Derslerde ve quizlerde kullanılan tecvid kural tanımları assets/tajweed/rules_db.json içinde yerel olarak paketlenmiştir.',
+          'Derslerde ve quizlerde kullanılan tecvid kural tanımları uygulama içinde yerel olarak paketlenmiştir.',
       'other_b2':
           'Mushaf sayfaları Quran.Foundation Uthmani metni ve sayfa verilerinden oluşturulur; uygulama sayfa görsellerini dağıtmaz.',
       'other_b3':
@@ -2418,7 +2418,7 @@ class _SettingsStrings {
       'reciter_label': 'Récitateur',
       'other_sources_title': 'Autres sources de contenu',
       'other_b1':
-          'Les définitions des règles de tajwid utilisées dans les leçons et les quiz sont intégrées localement dans assets/tajweed/rules_db.json.',
+          'Les définitions des règles de tajwid utilisées dans les leçons et les quiz sont intégrées localement dans l\'application.',
       'other_b2':
           'Les pages du mushaf sont rendues à partir du texte uthmani et des métadonnées de page de Quran.Foundation ; l’application ne redistribue pas d’images de pages.',
       'other_b3':
@@ -2533,7 +2533,7 @@ class _SettingsStrings {
       'reciter_label': 'Qari',
       'other_sources_title': 'Sumber konten lainnya',
       'other_b1':
-          'Definisi aturan tajwid yang digunakan dalam pelajaran dan kuis dibundel secara lokal di assets/tajweed/rules_db.json.',
+          'Definisi aturan tajwid yang digunakan dalam pelajaran dan kuis dibundel secara lokal di dalam aplikasi.',
       'other_b2':
           'Halaman mushaf dirender dari teks Uthmani dan metadata halaman Quran.Foundation; aplikasi tidak mendistribusikan ulang gambar halaman.',
       'other_b3':
@@ -2655,7 +2655,7 @@ class _SettingsStrings {
       'reciter_label': 'Rezitator',
       'other_sources_title': 'Weitere Inhaltsquellen',
       'other_b1':
-          'Die in Lektionen und Quiz verwendeten Tajweed-Regeldefinitionen sind lokal in assets/tajweed/rules_db.json enthalten.',
+          'Die in Lektionen und Quiz verwendeten Tajweed-Regeldefinitionen sind lokal in der App enthalten.',
       'other_b2':
           'Mushaf-Seiten werden aus Uthmani-Text und Seitenmetadaten von Quran.Foundation gerendert; die App verteilt keine Seitenbilder.',
       'other_b3':
@@ -2774,7 +2774,7 @@ class _SettingsStrings {
       'reciter_label': 'Recitador',
       'other_sources_title': 'Otras fuentes de contenido',
       'other_b1':
-          'Las definiciones de reglas de tajwid utilizadas en las lecciones y cuestionarios se incluyen localmente en assets/tajweed/rules_db.json.',
+          'Las definiciones de reglas de tajwid utilizadas en las lecciones y cuestionarios se incluyen localmente en la aplicación.',
       'other_b2':
           'Las páginas del mushaf se renderizan con texto uthmani y metadatos de Quran.Foundation; la aplicación no redistribuye imágenes de páginas.',
       'other_b3':
