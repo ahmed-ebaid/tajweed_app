@@ -1,8 +1,10 @@
 # Quran Foundation proxy
 
 Cloudflare Worker that keeps Quran Foundation credentials and OAuth token
-exchange outside the Flutter application. Apple App Attest protects every
-Content API route from clients that are not genuine iOS app installations.
+exchange outside the Flutter application. Apple App Attest on iOS and Google
+Play Integrity on Android protect Content API routes. See the
+[Android setup guide](../../README.md#play-integrity-the-android-counterpart-to-app-attest)
+for Google Cloud configuration and Play app-signing certificate requirements.
 
 ## Local setup
 
@@ -45,6 +47,7 @@ The deployments and credentials remain isolated:
 - `POST /v1/attest/challenge`
 - `POST /v1/attest/register`
 - `POST /v1/attest/token`
+- `POST /v1/attest/play-integrity`
 - `GET /v2/content/<allowlisted Content API path>`
 - `GET /v2/content/resources/sync`
 - `GET /v2/content/resources/snapshots/{translations|tafsirs|recitations}/{id}`
@@ -61,6 +64,14 @@ ten-minute environment-bound bearer token. Content routes fail closed without
 that token. Production accepts only production attestations; prelive also
 accepts development attestations from physical development devices.
 
+Android exchanges a Google Play Integrity token bound to a single-use challenge
+for the same ten-minute bearer token. The Worker checks the request package,
+nonce, timestamp, app identity, signing certificate, and device verdict.
+Production requires `PLAY_RECOGNIZED` and `MEETS_DEVICE_INTEGRITY`, with
+`ANDROID_CERT_SHA256` matching Google's app-signing certificate, not the upload
+keystore. Prelive tolerates sideloaded builds and also accepts
+`MEETS_BASIC_INTEGRITY`.
+
 The prelive Worker can also accept `x-simulator-test-token` for simulator-only
 integration tests when `SIMULATOR_TEST_TOKEN` is configured. This bypass is
 disabled in production regardless of whether a secret is present, and release
@@ -70,12 +81,13 @@ Flutter builds never send the header.
 characters in each environment. Rotating it immediately invalidates all
 outstanding bearer tokens. Do not reuse Quran.Foundation credentials.
 
-The app requires a physical iOS 15+ device. Simulator, macOS, Android, and
-older app builds cannot call protected Content routes.
+Production content access requires a physical iOS 15+ device or a supported
+Android device with a Play-recognized installation that passes device integrity
+checks. Unsupported platforms cannot call protected Content routes.
 
 The legacy public `/v1/content` namespace is intentionally not routed. Health
 and challenge issuance remain public, but neither endpoint returns Quran
-content or grants access without a valid Apple attestation and assertion.
+content or grants access without successful platform attestation.
 
 Quran Foundation Search uses a separate API and OAuth scope. It is intentionally
 not exposed by this Content API Worker and will be integrated separately.

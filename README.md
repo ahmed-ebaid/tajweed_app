@@ -1,7 +1,21 @@
 # Tajweed Practice — Flutter Project
 
-A multilingual Quran tajweed practice app supporting English, Arabic, Urdu,
+A multilingual Quran tajweed practice app for iOS and Android supporting English, Arabic, Urdu,
 Turkish, French, Indonesian, German, and Spanish.
+
+[Download on the App Store](https://apps.apple.com/app/id6794283460) ·
+[Get it on Google Play](https://play.google.com/store/apps/details?id=com.ebaidllc.tajweed_practice)
+
+[Website](https://ahmed-ebaid.github.io/tajweed_app/) ·
+[Privacy policy](https://ahmed-ebaid.github.io/tajweed_app/privacy-policy.html) ·
+[Terms of use](https://ahmed-ebaid.github.io/tajweed_app/terms-of-use.html) ·
+[Support](https://ahmed-ebaid.github.io/tajweed_app/support.html)
+
+The public website is served by GitHub Pages from `/docs` on `main`. Website
+changes go live after they are merged into `main` and the Pages deployment
+finishes; they do not require a new app binary. Keep store links and support
+guidance current, and review both stores' privacy disclosures whenever actual
+data handling changes.
 
 ---
 
@@ -33,7 +47,7 @@ tajweed_app/
 ├── backend/quran-proxy/
 │   ├── src/
 │   │   ├── index.ts                  # Quran.Foundation proxy routes
-│   │   └── attestation.ts            # Apple App Attest verification
+│   │   └── attestation.ts            # Apple App Attest / Google Play Integrity
 │   ├── test/                         # Worker and attestation tests
 │   ├── wrangler.jsonc                # Prelive/production Cloudflare config
 │   └── README.md                     # Proxy setup and deployment
@@ -83,15 +97,22 @@ open ios/Runner.xcworkspace
 ```
 
 Release and Profile builds use the production Worker and complete Quran
-dataset. Android, macOS, Simulator, and older builds fail closed until an
-equivalent platform attestation flow is implemented.
+dataset. Android uses Google Play Integrity as described below. Unsupported
+platforms, including macOS and iOS Simulator without the prelive debug bypass,
+fail closed.
 
-### 3. Run on an Android emulator
+### 3. Run on Android
 
-Android builds and renders, but only iOS has an attestation provider today, so
-content requests fail closed with `Android does not have a supported
-attestation provider yet.` The UI still draws, which is enough for layout,
-RTL, and localization checks.
+For production testing, install from Google Play on a physical Play
+Protect-certified device. The production Worker requires a Play-recognized
+app, the Google Play app-signing certificate, and device integrity. Use a
+Play Internal testing release to test an update before production rollout.
+The upload-key-signed APK is not a substitute for a Play-distributed build.
+
+For local development, use prelive with Play Integrity on a physical device,
+or the guarded debug bypass for emulator layout, RTL, and localization checks.
+
+#### Android SDK and emulator setup
 
 One-time SDK setup:
 
@@ -147,11 +168,11 @@ exchanges the returned token for the same bearer access token iOS receives. A
 *classic* request is used precisely because it accepts a caller-supplied nonce;
 standard requests are cached by Google and cannot bind a token to one challenge.
 
-Because the app is distributed outside Google Play, the client must name the
-Google Cloud project that owns the Play Integrity API:
+The current client explicitly names the Google Cloud project that owns the
+Play Integrity API in both local and store builds:
 
 ```bash
-flutter run -d emulator-5554 \
+flutter run -d <android-device-id> \
   --dart-define=QURAN_CONTENT_API_BASE_URL=https://tajweed-quran-proxy.ebaidllc.workers.dev/v2/content \
   --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=<gcp-project-number>
 ```
@@ -187,15 +208,16 @@ always match what Google reports. Run it from `backend/quran-proxy`:
   --service-account ~/Downloads/play-integrity-sa.json
 ```
 
-It defaults to the Android debug keystore and the prelive Worker, which is the
-combination a sideloaded build needs. For a release build, pass the release
-keystore and target production:
+It defaults to the Android debug keystore and the prelive Worker for local
+testing. For production, use the SHA-256 fingerprint of the **app signing key
+certificate** from Play Console's App integrity / App signing page, not the
+local upload key. Google re-signs the app before distributing it:
 
 ```bash
 ./scripts/setup-play-integrity.sh \
   --service-account ~/Downloads/play-integrity-sa.json \
-  --keystore /path/to/release.jks --alias upload \
-  --storepass "$KEYSTORE_PASSWORD" --env production
+  --cert-sha256 "<play-app-signing-certificate-sha256>" \
+  --env production
 ```
 
 The digest must be the base64url-encoded SHA-256 of the DER certificate with
@@ -203,14 +225,32 @@ padding stripped; any other encoding fails the comparison with a generic
 "certificate is not trusted" error. The script handles that encoding, so prefer
 it over setting `ANDROID_CERT_SHA256` by hand.
 
-**Emulators can never pass this check.** An AVD does not return
-`MEETS_DEVICE_INTEGRITY`, so the emulator can exercise the plumbing — channel
-call, challenge binding, server decode — but the device verdict will always
-fail. End-to-end verification requires a physical Android device. Sideloaded
+Use a physical device for end-to-end integrity verification; the development
+AVD above is intended for the prelive debug bypass, not production attestation.
+Production requires `MEETS_DEVICE_INTEGRITY`; prelive also accepts
+`MEETS_BASIC_INTEGRITY`. Sideloaded
 builds are tolerated only on prelive: the stricter `PLAY_RECOGNIZED` app
 verdict is asserted only when `QF_ENV` is `production`, mirroring the existing
 App Attest development/production split. A real device plus a prelive Worker is
 therefore enough to verify the whole flow without publishing to Google Play.
+
+#### Prepare a Google Play update
+
+The Android package is `com.ebaidllc.tajweed_practice`. Configure the upload
+keystore through `android/key.properties` or the shared
+`~/.config/tajweed/key.properties`; never commit signing credentials.
+
+```bash
+flutter build appbundle --release \
+  --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680
+```
+
+Upload `build/app/outputs/bundle/release/app-release.aab` to Play Console.
+Google Play generates device-specific APKs from the bundle. A locally built
+APK is for direct installation and may fail production integrity checks.
+Building an artifact does not upload, submit, or publish it.
+Follow [the release checklist](release/RELEASE-CHECKLIST.md) for versioning,
+signing, device checks, and publishing controls.
 
 ### 4. Offline audit for shifted end-token tajweed
 
@@ -294,9 +334,9 @@ CI enforcement:
 
 ### API attestation
 - `QuranAttestationService` owns token caching and request coalescing, and delegates the platform handshake to an `AttestationProvider`
-- `AppAttestProvider` registers an Apple App Attest key and generates assertions; every other platform gets `UnsupportedAttestationProvider` and fails closed
-- Adding Android support means adding a `PlayIntegrityProvider` and a case in `QuranAttestationService._providerFor`; nothing else changes
-- The Cloudflare Worker validates Apple's certificate chain, app identity, one-time challenge, and monotonic assertion counter
+- `AppAttestProvider` registers an Apple App Attest key and generates assertions on iOS; `PlayIntegrityProvider` obtains Google Play Integrity tokens on Android
+- Other platforms get `UnsupportedAttestationProvider` and fail closed unless using the explicitly enabled prelive debug bypass
+- The Cloudflare Worker validates Apple's certificate chain, app identity, one-time challenge, and monotonic assertion counter, or Google's decoded app identity, signing certificate, challenge, timestamp, and device integrity verdict
 - Successful assertions receive environment-bound bearer tokens valid for ten minutes
 - Protected `/v2/content` routes reject missing, forged, expired, or cross-environment tokens
 - App Attest private keys remain in Apple's Secure Enclave; only the key identifier is stored locally
