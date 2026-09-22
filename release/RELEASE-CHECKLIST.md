@@ -78,7 +78,15 @@ per release for both stores.
 
 ## Android
 
-- [ ] `flutter build appbundle --release`, signed with the upload keystore.
+- [ ] Build the Google Play AAB with the upload keystore configured (not the
+      debug-signing fallback):
+      `flutter build appbundle --release --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`.
+- [ ] If a direct-install APK is needed, use
+      `flutter build apk --release --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`.
+      This APK uses the upload key, not Google's app-signing key: it cannot
+      update a Play-signed installation, and sideloading may fail production
+      Play Integrity checks. Use Play Internal testing for distribution testing.
+      Building either artifact does not upload or submit it.
 - [ ] Upload to the Play Console track and reuse the same localized release notes.
 - [ ] **Decide how it publishes, same as iOS.** Play has two independent
       controls, and neither is the App Store's `releaseType`:
@@ -120,4 +128,3 @@ per release for both stores.
       elsewhere describes apps predating Play App Signing, where the developer
       held the single key Google verified updates against. It does not apply
       here.)
-

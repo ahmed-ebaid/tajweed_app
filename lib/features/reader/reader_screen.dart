@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:tajweed_practice/shared/widgets/platform_share_icon.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -5211,7 +5211,7 @@ class _AyahTile extends StatelessWidget {
                 const Spacer(),
                 Builder(
                   builder: (shareContext) => IconButton(
-                    icon: const Icon(CupertinoIcons.share, size: 22),
+                    icon: const PlatformShareIcon(),
                     color: const Color(0xFF1D9E75),
                     tooltip: MaterialLocalizations.of(context).shareButtonLabel,
                     onPressed: () {

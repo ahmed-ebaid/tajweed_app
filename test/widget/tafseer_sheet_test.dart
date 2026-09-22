@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/services/quran_api_service.dart';
@@ -73,6 +75,7 @@ class _FakeOfflineSyncService extends QuranOfflineSyncService {
 }
 
 void main() {
+  tearDown(() => debugDefaultTargetPlatformOverride = null);
   const ibnKathir = <String, dynamic>{
     'id': 169,
     'name': 'Ibn Kathir',
@@ -99,21 +102,60 @@ void main() {
     expect(sources.first.label, 'Al-Tabari — Al-Tabari');
   });
 
-  test('Tafseer share content includes attribution and the app link', () {
-    final content = TafseerShareContent.build(
-      heading: 'Tafseer — Ayah 1:1',
-      sourceLine: 'Source: Ibn Kathir',
-      tafseerText: 'Commentary text',
-      appName: AppLinks.productName,
+  for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    test(
+      'Tafseer share content includes attribution and the $platform app link',
+      () {
+        debugDefaultTargetPlatformOverride = platform;
+        final content = TafseerShareContent.build(
+          heading: 'Tafseer — Ayah 1:1',
+          sourceLine: 'Source: Ibn Kathir',
+          tafseerText: 'Commentary text',
+          appName: AppLinks.productName,
+        );
+
+        expect(content, contains('Tafseer — Ayah 1:1'));
+        expect(content, contains('Source: Ibn Kathir'));
+        expect(content, contains('Commentary text'));
+        expect(content, contains('\n${AppLinks.productName}\n'));
+        expect(content, isNot(contains('تعلم التجويد')));
+        final isAndroid = platform == TargetPlatform.android;
+        expect(
+          content,
+          endsWith(isAndroid ? AppLinks.googlePlay : AppLinks.appStore),
+        );
+        expect(
+          content,
+          isNot(contains(isAndroid ? AppLinks.appStore : AppLinks.googlePlay)),
+        );
+      },
     );
 
-    expect(content, contains('Tafseer — Ayah 1:1'));
-    expect(content, contains('Source: Ibn Kathir'));
-    expect(content, contains('Commentary text'));
-    expect(content, contains('\n${AppLinks.productName}\n'));
-    expect(content, isNot(contains('تعلم التجويد')));
-    expect(content, contains(AppLinks.appStore));
-  });
+    testWidgets('Tafseer share button uses the $platform icon', (tester) async {
+      await tester.pumpWidget(
+        _testApp(
+          platform: platform,
+          api: _FakeQuranApiService(
+            sources: const [ibnKathir],
+            textByTafsirId: const {169: 'Commentary'},
+          ),
+          onSelected: (_, _) async {},
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byTooltip('Share Tafseer'),
+          matching: find.byIcon(
+            platform == TargetPlatform.android
+                ? Icons.share_rounded
+                : CupertinoIcons.share,
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+  }
 
   testWidgets('successful selection updates content and persists globally', (
     tester,
@@ -222,8 +264,10 @@ Widget _testApp({
   required _FakeQuranApiService api,
   required Future<void> Function(int, String) onSelected,
   _FakeOfflineSyncService? offlineSync,
+  TargetPlatform? platform,
 }) {
   return MaterialApp(
+    theme: ThemeData(platform: platform),
     home: Scaffold(
       body: SizedBox(
         height: 800,

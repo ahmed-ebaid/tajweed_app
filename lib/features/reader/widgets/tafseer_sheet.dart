@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:tajweed_practice/shared/widgets/platform_share_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -75,7 +75,7 @@ class TafseerShareContent {
       tafseerText.trim(),
       '',
       appName,
-      AppLinks.appStore,
+      AppLinks.store,
     ].join('\n');
   }
 }
@@ -381,7 +381,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
                           strippedText.isEmpty
                       ? null
                       : _shareTafseer,
-                  icon: const Icon(CupertinoIcons.share, size: 22),
+                  icon: const PlatformShareIcon(),
                   color: const Color(0xFF1D9E75),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
