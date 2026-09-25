@@ -16,12 +16,23 @@ class _FakeQuranApiService extends QuranApiService {
   final String? cancelAtTafsirVerse;
   final List<String> tafsirAyahCalls = [];
 
+  List<Map<String, dynamic>> tafsirSources = const [];
+  bool failTafsirSources = false;
+  int tafsirSourceCalls = 0;
+
   _FakeQuranApiService({
     this.failAtSurahs = const {},
     this.tafsirByAyah = const {},
     this.tafsirBySurah = const {},
     this.cancelAtTafsirVerse,
   });
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchAvailableTafsirs() async {
+    tafsirSourceCalls++;
+    if (failTafsirSources) throw Exception('offline');
+    return tafsirSources;
+  }
 
   @override
   Future<List<Map<String, dynamic>>> fetchVerses({
@@ -604,5 +615,65 @@ void main() {
       surahNumber: 72,
     );
     expect(cached, {'72:1': 'bulk 72:1', '72:2': 'single 72:2'});
+  });
+
+  group('tafsir source catalogue', () {
+    List<Map<String, dynamic>> catalogue(int count) => List.generate(
+      count,
+      (i) => {
+        'id': i + 1,
+        'name': 'Tafsir ${i + 1}',
+        'language_name': 'english',
+      },
+    );
+
+    test('cold cache fetches and persists the catalogue', () async {
+      final api = _FakeQuranApiService()..tafsirSources = catalogue(4);
+      final service = QuranOfflineSyncService(api: api);
+
+      final sources = await service.loadTafsirSources();
+
+      expect(sources, hasLength(4));
+      expect(await service.getCachedTafsirSources(), hasLength(4));
+    });
+
+    test('cached catalogue survives a failing refresh', () async {
+      final api = _FakeQuranApiService()..tafsirSources = catalogue(4);
+      final service = QuranOfflineSyncService(api: api);
+      await service.loadTafsirSources();
+
+      api.failTafsirSources = true;
+      final sources = await service.loadTafsirSources();
+
+      // The full list is still served, and the background revalidation that
+      // just failed must not have emptied what is on disk.
+      expect(sources, hasLength(4));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(await service.getCachedTafsirSources(), hasLength(4));
+    });
+
+    test('a truncated fetch never shrinks the cached catalogue', () async {
+      final api = _FakeQuranApiService()..tafsirSources = catalogue(4);
+      final service = QuranOfflineSyncService(api: api);
+      await service.loadTafsirSources();
+
+      api.tafsirSources = catalogue(1);
+      await service.saveTafsirSources(catalogue(1));
+
+      expect(await service.getCachedTafsirSources(), hasLength(4));
+    });
+
+    test(
+      'a cold cache propagates the failure instead of returning empty',
+      () async {
+        final api = _FakeQuranApiService()..failTafsirSources = true;
+        final service = QuranOfflineSyncService(api: api);
+
+        await expectLater(
+          service.loadTafsirSources(),
+          throwsA(isA<Exception>()),
+        );
+      },
+    );
   });
 }

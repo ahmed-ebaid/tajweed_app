@@ -39,11 +39,17 @@ class _FakeQuranApiService extends QuranApiService {
 
 class _FakeOfflineSyncService extends QuranOfflineSyncService {
   final Map<String, Map<String, String>> _cache = {};
+  List<Map<String, dynamic>> cachedSources;
+  bool failSourceFetch;
+  final _FakeQuranApiService? api;
 
   _FakeOfflineSyncService({
     int? tafsirId,
     int? surahNumber,
     Map<String, String>? tafsirMap,
+    this.cachedSources = const [],
+    this.failSourceFetch = false,
+    this.api,
   }) {
     if (tafsirId != null && surahNumber != null && tafsirMap != null) {
       _cache[_key(tafsirId, surahNumber)] = Map<String, String>.from(tafsirMap);
@@ -69,6 +75,28 @@ class _FakeOfflineSyncService extends QuranOfflineSyncService {
     required Map<String, String> tafsirMap,
   }) async {
     _cache[_key(tafsirId, surahNumber)] = Map<String, String>.from(tafsirMap);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCachedTafsirSources() async =>
+      cachedSources;
+
+  @override
+  Future<void> saveTafsirSources(List<Map<String, dynamic>> sources) async {
+    if (sources.isEmpty || sources.length < cachedSources.length) return;
+    cachedSources = sources;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> loadTafsirSources({
+    Duration timeout = const Duration(seconds: 15),
+    bool forceRefresh = false,
+  }) async {
+    if (cachedSources.isNotEmpty) return cachedSources;
+    if (failSourceFetch) throw Exception('Offline');
+    final fetched = await api!.fetchAvailableTafsirs();
+    await saveTafsirSources(fetched);
+    return fetched;
   }
 }
 
@@ -203,6 +231,7 @@ void main() {
           tafsirId: 169,
           surahNumber: 1,
           tafsirMap: const {'1:1': 'Cached offline commentary'},
+          failSourceFetch: true,
         ),
         onSelected: (_, __) async {},
       ),
@@ -214,7 +243,55 @@ void main() {
       find.byKey(const ValueKey('tafseer-source-dropdown-169')),
       findsOneWidget,
     );
-    expect(find.textContaining('sources could not'), findsNothing);
+  });
+
+  testWidgets('a failed source fetch is reported instead of silently '
+      'showing only the selected Tafseer', (tester) async {
+    await tester.pumpWidget(
+      _testApp(
+        api: _FakeQuranApiService(
+          sources: const [],
+          textByTafsirId: const {169: 'Initial commentary'},
+          failSources: true,
+        ),
+        offlineSync: _FakeOfflineSyncService(failSourceFetch: true),
+        onSelected: (_, _) async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The single-entry fallback must not masquerade as the whole catalogue.
+    expect(find.text('Could not load Tafseer sources.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tafseer-sources-retry')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('tafseer-source-dropdown-169')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a cached source catalogue survives a failing refresh', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _testApp(
+        api: _FakeQuranApiService(
+          sources: const [],
+          textByTafsirId: const {169: 'Initial commentary'},
+          failSources: true,
+        ),
+        offlineSync: _FakeOfflineSyncService(
+          cachedSources: const [ibnKathir, tabari],
+          failSourceFetch: true,
+        ),
+        onSelected: (_, _) async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Could not load Tafseer sources.'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('tafseer-source-dropdown-169')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('tafseer-source-15')), findsWidgets);
   });
 }
 
@@ -232,7 +309,7 @@ Widget _testApp({
           tafsirId: 169,
           tafsirName: 'Ibn Kathir',
           api: api,
-          offlineSync: offlineSync ?? _FakeOfflineSyncService(),
+          offlineSync: offlineSync ?? _FakeOfflineSyncService(api: api),
           onTafsirSelected: onSelected,
         ),
       ),

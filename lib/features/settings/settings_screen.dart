@@ -217,7 +217,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showTafseerPicker(BuildContext context) {
-    final api = QuranApiService();
+    final offlineSync = QuranOfflineSyncService();
     final s = _SettingsStrings.of(context);
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     showModalBottomSheet(
@@ -229,7 +229,7 @@ class SettingsScreen extends StatelessWidget {
       builder: (_) => _AsyncPickerSheet<Map<String, dynamic>>(
         title: s.text('select_tafseer'),
         fetchItems: () async {
-          final all = await api.fetchAvailableTafsirs();
+          final all = await offlineSync.loadTafsirSources();
           return TafseerProvider.sourcesForLanguage(all, langCode);
         },
         itemTitle: (t) {
@@ -1758,6 +1758,7 @@ class _AsyncPickerSheet<T> extends StatefulWidget {
 class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
   List<T>? _items;
   bool _loading = true;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -1766,15 +1767,25 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
   }
 
   Future<void> _load() async {
+    if (mounted) setState(() => _loading = true);
     try {
       final items = await widget.fetchItems();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _items = items;
           _loading = false;
+          _failed = false;
         });
+      }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      // An empty list and a failed fetch are not the same thing; conflating
+      // them made a network error look like "there is nothing to choose from".
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _failed = true;
+        });
+      }
     }
   }
 
@@ -1809,6 +1820,24 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
+                : _failed
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _SettingsStrings.of(context).text('load_failed'),
+                          textAlign: TextAlign.center,
+                        ),
+                        TextButton(
+                          onPressed: _load,
+                          child: Text(
+                            _SettingsStrings.of(context).text('retry'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : _items == null || _items!.isEmpty
                 ? Center(
                     child: Text(
@@ -1964,6 +1993,8 @@ class _SettingsStrings {
           'Mushaf text uses the Amiri Quran font by the Amiri Project, licensed under the SIL Open Font License 1.1.',
       'view_licenses': 'View licenses',
       'no_items_available': 'No items available',
+      'load_failed': 'Could not load the list.',
+      'retry': 'Retry',
     },
     'ar': {
       'audio_section': 'الصوت',
@@ -2075,6 +2106,8 @@ class _SettingsStrings {
           'يستخدم نص المصحف خط Amiri Quran من مشروع Amiri، المرخص بموجب رخصة SIL Open Font License 1.1.',
       'view_licenses': 'عرض التراخيص',
       'no_items_available': 'لا توجد عناصر متاحة',
+      'load_failed': 'تعذر تحميل القائمة.',
+      'retry': 'إعادة المحاولة',
     },
     'ur': {
       'audio_section': 'آڈیو',
@@ -2187,6 +2220,8 @@ class _SettingsStrings {
           'مصحف کے متن کے لیے Amiri Project کا Amiri Quran فونٹ استعمال ہوتا ہے، جو SIL Open Font License 1.1 کے تحت ہے۔',
       'view_licenses': 'لائسنس دیکھیں',
       'no_items_available': 'کوئی آئٹم دستیاب نہیں',
+      'load_failed': 'فہرست لوڈ نہیں ہو سکی۔',
+      'retry': 'دوبارہ کوشش کریں',
     },
     'tr': {
       'audio_section': 'Ses',
@@ -2297,6 +2332,8 @@ class _SettingsStrings {
           'Mushaf metni, SIL Open Font License 1.1 ile lisanslanan Amiri Project Amiri Quran yazı tipini kullanır.',
       'view_licenses': 'Lisansları görüntüle',
       'no_items_available': 'Kullanılabilir öğe yok',
+      'load_failed': 'Liste yüklenemedi.',
+      'retry': 'Yeniden dene',
     },
     'fr': {
       'audio_section': 'Audio',
@@ -2425,6 +2462,8 @@ class _SettingsStrings {
           'Le texte du mushaf utilise la police Amiri Quran du projet Amiri, sous licence SIL Open Font License 1.1.',
       'view_licenses': 'Afficher les licences',
       'no_items_available': 'Aucun élément disponible',
+      'load_failed': 'Impossible de charger la liste.',
+      'retry': 'Réessayer',
     },
     'id': {
       'audio_section': 'Audio',
@@ -2540,6 +2579,8 @@ class _SettingsStrings {
           'Teks mushaf menggunakan font Amiri Quran dari Amiri Project, berlisensi SIL Open Font License 1.1.',
       'view_licenses': 'Lihat lisensi',
       'no_items_available': 'Tidak ada item tersedia',
+      'load_failed': 'Tidak dapat memuat daftar.',
+      'retry': 'Coba lagi',
     },
     'de': {
       'audio_section': 'Audio',
@@ -2662,6 +2703,8 @@ class _SettingsStrings {
           'Der Mushaf-Text verwendet die Schrift Amiri Quran des Amiri Project unter der SIL Open Font License 1.1.',
       'view_licenses': 'Lizenzen anzeigen',
       'no_items_available': 'Keine Elemente verfügbar',
+      'load_failed': 'Die Liste konnte nicht geladen werden.',
+      'retry': 'Erneut versuchen',
     },
     'es': {
       'audio_section': 'Audio',
@@ -2781,6 +2824,8 @@ class _SettingsStrings {
           'El texto del mushaf utiliza la fuente Amiri Quran del proyecto Amiri, bajo la SIL Open Font License 1.1.',
       'view_licenses': 'Ver licencias',
       'no_items_available': 'No hay elementos disponibles',
+      'load_failed': 'No se pudo cargar la lista.',
+      'retry': 'Reintentar',
     },
   };
 

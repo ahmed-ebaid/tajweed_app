@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -119,6 +121,10 @@ class QuranOfflineSyncService {
   static String _tafsirCacheKey(int tafsirId, int surahNumber) =>
       'tafsir_${tafsirId}_surah_$surahNumber';
 
+  /// The catalogue of available tafsir sources. Near-static, so it is cached
+  /// rather than re-fetched every time a picker opens.
+  static const String _tafsirSourcesCacheKey = 'tafsir_sources';
+
   Box get _settingsBox => Hive.box(_settingsBoxKey);
 
   Box get _cacheBox => Hive.box(_cacheBoxKey);
@@ -219,6 +225,58 @@ class QuranOfflineSyncService {
     required Map<String, String> tafsirMap,
   }) async {
     await _cacheBox.put(_tafsirCacheKey(tafsirId, surahNumber), tafsirMap);
+  }
+
+  /// Returns the cached tafsir source catalogue, or an empty list.
+  Future<List<Map<String, dynamic>>> getCachedTafsirSources() async {
+    final raw = _cacheBox.get(_tafsirSourcesCacheKey);
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList(growable: false);
+  }
+
+  /// Persists the tafsir source catalogue. A failed or truncated fetch must
+  /// never shrink what is already on disk, so shorter lists are ignored.
+  Future<void> saveTafsirSources(List<Map<String, dynamic>> sources) async {
+    if (sources.isEmpty) return;
+    final cached = await getCachedTafsirSources();
+    if (sources.length < cached.length) return;
+    await _cacheBox.put(_tafsirSourcesCacheKey, sources);
+  }
+
+  /// Loads the tafsir source catalogue, preferring the cached copy so the
+  /// picker never depends on the network to show a complete list.
+  ///
+  /// When a cached copy exists it is returned immediately and the network copy
+  /// is revalidated in the background, applying on the next open. Only a cold
+  /// cache blocks, and that call is bounded so it ends in a list or an error.
+  Future<List<Map<String, dynamic>>> loadTafsirSources({
+    Duration timeout = const Duration(seconds: 15),
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = await getCachedTafsirSources();
+      if (cached.isNotEmpty) {
+        unawaited(_revalidateTafsirSources(timeout));
+        return cached;
+      }
+    }
+
+    final sources = await _api.fetchAvailableTafsirs().timeout(timeout);
+    await saveTafsirSources(sources);
+    return sources;
+  }
+
+  Future<void> _revalidateTafsirSources(Duration timeout) async {
+    try {
+      final sources = await _api.fetchAvailableTafsirs().timeout(timeout);
+      await saveTafsirSources(sources);
+    } catch (_) {
+      // The cached catalogue is already on screen; a failed refresh is silent
+      // by design and simply leaves the previous copy in place.
+    }
   }
 
   Future<Map<String, String>> syncTafsirSurah({
