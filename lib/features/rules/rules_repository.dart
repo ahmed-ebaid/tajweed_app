@@ -451,7 +451,7 @@ class RulesRepository {
         'id': 'Tanda sajdah (۩) menandai ayat-ayat sajdah tilawah.',
         'de': 'Das Sajdah-Zeichen (۩) markiert Verse der Niederwerfung.',
       },
-      exampleArabic: ['۩'],
+      exampleArabic: ['فَاسْجُدُوا لِلَّهِ وَاعْبُدُوا ۩'],
       triggerLetters: [],
     ),
     TajweedRuleDefinition(
