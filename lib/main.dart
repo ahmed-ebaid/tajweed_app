@@ -52,12 +52,7 @@ void main() {
       };
 
       try {
-        await Hive.initFlutter();
-        await Hive.openBox('settings');
-        await Hive.openBox('streak');
-        await Hive.openBox('verse_cache');
-        await Hive.openBox('bookmarks');
-        await Hive.openBox('audio_cache');
+        await _initHiveBoxes();
       } catch (e) {
         runApp(_ErrorApp(message: 'Hive init failed: $e'));
         return;
@@ -105,6 +100,38 @@ void main() {
       runApp(_ErrorApp(message: 'Uncaught error:\n$error'));
     },
   );
+}
+
+/// Boxes required before the first frame.
+///
+/// `root_scaffold` builds `QuranContentSyncService` in a field initializer,
+/// which resolves `verse_cache` and `audio_cache` synchronously, so none of
+/// these can be deferred without a wider refactor. They are independent of one
+/// another, however, so they are opened concurrently instead of one at a time —
+/// `verse_cache` alone dominates the total and grows with every surah cached.
+const _startupHiveBoxes = [
+  'settings',
+  'streak',
+  'verse_cache',
+  'bookmarks',
+  'audio_cache',
+];
+
+Future<void> _initHiveBoxes() async {
+  final stopwatch = kDebugMode ? (Stopwatch()..start()) : null;
+  await Hive.initFlutter();
+  final initMs = stopwatch?.elapsedMilliseconds;
+
+  await Future.wait(_startupHiveBoxes.map(Hive.openBox));
+
+  if (stopwatch != null) {
+    debugPrint(
+      'Startup: Hive.initFlutter ${initMs}ms, '
+      '${_startupHiveBoxes.length} boxes opened in '
+      '${stopwatch.elapsedMilliseconds - initMs!}ms '
+      '(total ${stopwatch.elapsedMilliseconds}ms)',
+    );
+  }
 }
 
 /// Minimal error display app — no dependencies, always renders.

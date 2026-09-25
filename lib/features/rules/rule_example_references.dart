@@ -259,15 +259,16 @@ class RuleExampleReferences {
   }
 
   // Per-symbol audio references for the Waqf table, matching the excerpts
-  // already curated in WaqfSymbols.examples (index -> surah/ayah), all from
-  // Surah Al-Baqarah:
+  // already curated in WaqfSymbols.examples (index -> surah/ayah). Indices 0-5
+  // are drawn from Surah Al-Baqarah; index 6 uses Surah Al-Qiyamah because the
+  // only genuine sakta positions in Hafs 'an 'Asim lie outside Al-Baqarah:
   // 0 م   (lazim)      -> 2:26
   // 1 لا  (la taqif)   -> 2:25
   // 2 ج   (ja'iz)      -> 2:19
   // 3 قلى (waqf awla)  -> 2:13
   // 4 صلى (wasl awla)  -> 2:5
   // 5 ∴   (mu'anaqah)  -> 2:2
-  // 6 س   (sakta)      -> 2:245
+  // 6 س   (sakta)      -> 75:27
   static const Map<int, String> waqfSymbolAudioCodes = {
     0: '002026',
     1: '002025',
@@ -275,7 +276,7 @@ class RuleExampleReferences {
     3: '002013',
     4: '002005',
     5: '002002',
-    6: '002245',
+    6: '075027',
   };
 
   static AyahReference? referenceForWaqfSymbol(int index) {

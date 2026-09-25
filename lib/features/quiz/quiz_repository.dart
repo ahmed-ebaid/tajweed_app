@@ -126,6 +126,10 @@ class QuizRepository {
         questions.addAll(_buildWaqfQuestions());
         continue;
       }
+      if (rules[ri].rule == TajweedRule.sajdah) {
+        questions.add(_buildSajdahQuestion(rules[ri]));
+        continue;
+      }
       for (int variant = 0; variant < 5; variant++) {
         questions.add(_buildQuestionForRule(rules, ri, variant));
       }
@@ -224,6 +228,28 @@ class QuizRepository {
     );
   }
 
+  /// The sajdah glyph is a mushaf notation marker, not a pronunciation
+  /// ruling, so it gets a dedicated prompt (mirroring the Waqf treatment)
+  /// with notation-style distractors instead of tajweed rule names.
+  static QuizQuestion _buildSajdahQuestion(TajweedRuleDefinition def) {
+    final arabic = def.exampleArabic.isEmpty
+        ? _sajdahSymbol
+        : def.exampleArabic.first;
+    final highlight = _highlightRange(TajweedRule.sajdah, arabic, 0);
+
+    return QuizQuestion(
+      rule: TajweedRule.sajdah,
+      arabicText: arabic,
+      highlightRanges: [
+        QuizHighlightRange(start: highlight.start, end: highlight.end),
+      ],
+      questionText: _sajdahQuestionTemplate,
+      options: _sajdahOptions,
+      correctIndex: _sajdahCorrectIndex,
+      explanation: _sajdahExplanation,
+    );
+  }
+
   static List<QuizHighlightRange> _rangesForSymbol(String text, String symbol) {
     final ranges = <QuizHighlightRange>[];
     var start = text.indexOf(symbol);
@@ -262,6 +288,93 @@ class QuizRepository {
     'id': 'Apa arti tanda waqaf yang disorot?',
     'de': 'Was bedeutet das hervorgehobene Waqf-Zeichen?',
     'es': '¿Qué indica el signo de waqf resaltado?',
+  };
+
+  static const _sajdahSymbol = '۩';
+
+  static const _sajdahCorrectIndex = 2;
+
+  static const _sajdahQuestionTemplate = {
+    'en': 'What does the highlighted sign indicate?',
+    'ar': 'ماذا تدل العلامة الملوّنة؟',
+    'ur': 'نمایاں علامت کیا بتاتی ہے؟',
+    'tr': 'Vurgulanan işaret neyi belirtir?',
+    'fr': 'Que signifie le signe surligné ?',
+    'id': 'Apa arti tanda yang disorot?',
+    'de': 'Was bedeutet das hervorgehobene Zeichen?',
+    'es': '¿Qué indica el signo resaltado?',
+  };
+
+  /// All four options are mushaf notation markers so the answer cannot be
+  /// found by elimination against unrelated pronunciation rules.
+  static const _sajdahOptions = <Map<String, String>>[
+    {
+      'en': 'Obligatory stop',
+      'ar': 'وقف لازم',
+      'ur': 'وقف لازم',
+      'tr': 'Zorunlu durak',
+      'fr': 'Arrêt obligatoire',
+      'id': 'Berhenti wajib',
+      'de': 'Verpflichtender Halt',
+      'es': 'Pausa obligatoria',
+    },
+    {
+      'en': 'End of hizb',
+      'ar': 'نهاية الحزب',
+      'ur': 'حزب کا اختتام',
+      'tr': 'Hizb sonu',
+      'fr': 'Fin du hizb',
+      'id': 'Akhir hizb',
+      'de': 'Ende des Hizb',
+      'es': 'Fin del hizb',
+    },
+    {
+      'en': 'Place of recitation prostration',
+      'ar': 'موضع سجود التلاوة',
+      'ur': 'سجدۂ تلاوت کا مقام',
+      'tr': 'Tilavet secdesi yeri',
+      'fr': 'Lieu de prosternation de récitation',
+      'id': 'Tempat sujud tilawah',
+      'de': 'Ort der Rezitationsniederwerfung',
+      'es': 'Lugar de postración de recitación',
+    },
+    {
+      'en': 'Juz marker',
+      'ar': 'علامة الجزء',
+      'ur': 'پارے کی علامت',
+      'tr': 'Cüz işareti',
+      'fr': 'Marque de juz',
+      'id': 'Tanda juz',
+      'de': 'Juz-Markierung',
+      'es': 'Marcador de yuz',
+    },
+  ];
+
+  static const _sajdahExplanation = {
+    'en':
+        'Sajdah sign: ۩ marks a place of recitation prostration. It is a '
+        'mushaf notation marker, not a pronunciation rule.',
+    'ar':
+        'علامة السجدة: ۩ تدل على موضع سجود التلاوة، وهي علامة كتابية في المصحف '
+        'وليست حكمًا في النطق.',
+    'ur':
+        'علامتِ سجدہ: ۩ سجدۂ تلاوت کے مقام کو ظاہر کرتی ہے۔ یہ مصحف کی کتابتی '
+        'علامت ہے، تلفظ کا حکم نہیں۔',
+    'tr':
+        'Secde işareti: ۩ tilavet secdesi yerini gösterir. Bu bir mushaf yazım '
+        'işaretidir, telaffuz kuralı değildir.',
+    'fr':
+        'Signe de sajdah : ۩ indique un lieu de prosternation de récitation. '
+        'C’est une marque de notation du mushaf, non une règle de prononciation.',
+    'id':
+        'Tanda sajdah: ۩ menandai tempat sujud tilawah. Ini adalah tanda '
+        'notasi mushaf, bukan hukum pelafalan.',
+    'de':
+        'Sajdah-Zeichen: ۩ markiert einen Ort der Rezitationsniederwerfung. Es '
+        'ist ein Notationszeichen im Mushaf, keine Ausspracheregel.',
+    'es':
+        'Signo de sajdah: ۩ marca un lugar de postración de recitación. Es una '
+        'marca de notación del mushaf, no una regla de pronunciación.',
   };
 
   static Map<String, String> _nameMap(TajweedRuleDefinition def) => {

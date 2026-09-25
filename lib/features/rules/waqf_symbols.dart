@@ -56,7 +56,7 @@ class WaqfSymbols {
       index: 6,
       displaySymbol: 'س',
       quranSymbol: 'ۜ',
-      arabicText: 'يَقْبِضُ وَيَبْصُۜطُ وَإِلَيْهِ',
+      arabicText: 'وَقِيلَ مَنْ ۜ رَاقٍ',
     ),
   ];
 

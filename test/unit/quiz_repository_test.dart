@@ -15,7 +15,11 @@ void main() {
           .toList(growable: false);
       expect(
         questions,
-        hasLength(rule == TajweedRule.waqf ? 7 : 5),
+        hasLength(switch (rule) {
+          TajweedRule.waqf => 7,
+          TajweedRule.sajdah => 1,
+          _ => 5,
+        }),
         reason: 'Missing quiz examples for $rule',
       );
       expect(
@@ -89,6 +93,46 @@ void main() {
           question.optionText(question.correctIndex, languageCode),
           WaqfRuleStrings(languageCode).text('name_${example.index}'),
         );
+      }
+    }
+  });
+
+  test('sajdah is asked as a notation question with verse context', () {
+    const languageCodes = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
+    final question = QuizRepository.all.singleWhere(
+      (entry) => entry.rule == TajweedRule.sajdah,
+    );
+
+    expect(question.arabicText, contains('۩'));
+    expect(
+      question.arabicText.replaceAll('۩', '').trim(),
+      isNotEmpty,
+      reason: 'Sajdah question must show surrounding verse context',
+    );
+
+    final range = question.highlightRanges.single;
+    expect(question.arabicText.substring(range.start, range.end), '۩');
+
+    expect(question.options, hasLength(4));
+    for (final languageCode in languageCodes) {
+      expect(question.questionText[languageCode]?.trim(), isNotEmpty);
+      expect(question.explanation[languageCode]?.trim(), isNotEmpty);
+      for (var i = 0; i < question.options.length; i++) {
+        expect(
+          question.options[i][languageCode]?.trim(),
+          isNotEmpty,
+          reason: 'Missing sajdah option $i for $languageCode',
+        );
+      }
+      // The prompt must not frame the sign as a tajweed ruling, and no option
+      // may reuse a pronunciation rule name.
+      final ruleNames = RulesRepository.all
+          .where((entry) => entry.rule != TajweedRule.sajdah)
+          .map((entry) => entry.names[languageCode])
+          .whereType<String>()
+          .toSet();
+      for (final option in question.options) {
+        expect(ruleNames, isNot(contains(option[languageCode])));
       }
     }
   });
