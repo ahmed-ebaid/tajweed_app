@@ -126,11 +126,12 @@ these if promotional variants are produced later:
 ## Release notes (max 500)
 
 ```
-• New Tafkheem, Tarqeeq, and Waqf & Ibtida learning pages
-• Localized explanations, highlighted Quran examples, and focused audio
-• New Hamzat al-Qat rule with quiz examples
-• New six-step onboarding guide in all eight app languages
-• Audio highlighting now follows the reciter's actual word timing
-• Improved rule details, quizzes, captions, and audio controls
-• Fixed Waqf symbol layout, Tarqeeq wording, and Arabic text
+• Surahs you have already opened now appear straight away
+• Audio timings and page markers load in the background instead of holding up the text
+• The Tafsir list shows every source again, and offers Retry when it cannot load
+• Corrected the sakta example in the rules library to Al-Qiyamah 75:27
+• The sajdah quiz question now shows its verse, An-Najm 53:62
 ```
+
+358 characters, within Play's 500 limit. The full-length App Store wording for
+all eight locales is in the session file `whatsnew_117.py`.

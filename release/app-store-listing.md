@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.3
+# App Store listing — Tajweed 1.1.7
 
 ## App information
 
@@ -74,18 +74,20 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Tajweed 1.1.3 sharpens the Tajweed colouring and finishes the translation work.
+Localised copy for all eight App Store locales lives in the session file
+`whatsnew_117.py` (`WHATS_NEW` keyed by locale; `PLAY_NOTES` holds the
+condensed Google Play form). The English text is reproduced here.
 
-- Added Madd 'Arid lis-Sukun and Madd Lin, and split Madd Lazim into its types
-- More accurate Tajweed colouring: Ikhfa now covers only the letter it applies
-  to, and rules are no longer dropped on words carrying a shaddah
-- Waqf signs now sit above the harakah instead of overlapping it
-- The app follows your device language on first launch
-- Al-Husary (Muallim) is now the default reciter
-- Bookmark and ayah labels are translated instead of always showing English
-- The onboarding guide is fully translated and now shows the real screens it
-  describes
-- Choosing a Tafsir source no longer hides the Tafsir you are reading
+Tajweed 1.1.7 fixes the reader's loading delay and the Tafsir source list.
+
+- Surahs you have already opened now appear straight away. Audio timings and
+  page markers load in the background instead of holding up the text.
+- The Tafsir list shows every source again. If it cannot load, the app now says
+  so and offers Retry instead of quietly showing a single entry.
+- Corrected the sakta example in the rules library: it now uses Al-Qiyamah
+  75:27, where the pause mark stands on its own.
+- The prostration-mark question in the quiz now shows the verse it comes from,
+  An-Najm 53:62, with answer choices drawn from the mushaf markers.
 
 ## Screenshot set
 
