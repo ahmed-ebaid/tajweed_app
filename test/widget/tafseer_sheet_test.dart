@@ -82,8 +82,12 @@ class _FakeOfflineSyncService extends QuranOfflineSyncService {
       cachedSources;
 
   @override
-  Future<void> saveTafsirSources(List<Map<String, dynamic>> sources) async {
-    if (sources.isEmpty || sources.length < cachedSources.length) return;
+  Future<void> saveTafsirSources(
+    List<Map<String, dynamic>> sources, {
+    bool allowShrink = false,
+  }) async {
+    if (sources.isEmpty) return;
+    if (sources.length < cachedSources.length && !allowShrink) return;
     cachedSources = sources;
   }
 
@@ -92,10 +96,10 @@ class _FakeOfflineSyncService extends QuranOfflineSyncService {
     Duration timeout = const Duration(seconds: 15),
     bool forceRefresh = false,
   }) async {
-    if (cachedSources.isNotEmpty) return cachedSources;
+    if (cachedSources.isNotEmpty && !forceRefresh) return cachedSources;
     if (failSourceFetch) throw Exception('Offline');
     final fetched = await api!.fetchAvailableTafsirs();
-    await saveTafsirSources(fetched);
+    await saveTafsirSources(fetched, allowShrink: forceRefresh);
     return fetched;
   }
 }

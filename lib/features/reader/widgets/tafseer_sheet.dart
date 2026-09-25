@@ -184,7 +184,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
     return text;
   }
 
-  Future<void> _fetchSources() async {
+  Future<void> _fetchSources({bool forceRefresh = false}) async {
     final loadVersion = ++_sourcesLoadVersion;
     final selectedFallback = _selectedTafsirName.isEmpty
         ? <TafseerSourceOption>[]
@@ -210,6 +210,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
     try {
       final allSources = await _offlineSync.loadTafsirSources(
         timeout: _sourcesFetchTimeout,
+        forceRefresh: forceRefresh,
       );
       final sources = _buildSourceOptions(allSources);
       if (sources.isEmpty) {
@@ -560,7 +561,9 @@ class _TafseerSheetState extends State<TafseerSheet> {
           Expanded(child: Text(strings.text('sources_failed'))),
           TextButton(
             key: const ValueKey('tafseer-sources-retry'),
-            onPressed: _fetchSources,
+            // Retry means "go and ask again", so it must bypass the cached
+            // catalogue rather than re-serving the list that just failed.
+            onPressed: () => _fetchSources(forceRefresh: true),
             child: Text(strings.text('retry')),
           ),
         ],

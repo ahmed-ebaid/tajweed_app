@@ -66,6 +66,10 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// Per-request ceiling for reader network calls.
   static const Duration _networkCallTimeout = Duration(seconds: 15);
 
+  /// Ceiling for the connectivity platform channel, which gates the first
+  /// paint of a surah and has no inherent timeout of its own.
+  static const Duration _connectivityCheckTimeout = Duration(seconds: 2);
+
   final _api = QuranApiService();
   final _audio = AudioService();
   final _audioCache = AudioCacheService();
@@ -804,9 +808,17 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
+  /// Reports whether the device has no network interface at all.
+  ///
+  /// This runs on a platform channel, which has no inherent timeout, and it is
+  /// awaited before the first paint of a surah. A hung channel would therefore
+  /// strand the reader on its initial spinner, so the check is bounded and a
+  /// timeout is treated as "online" — the cached path works either way.
   Future<bool> _isDeviceOffline() async {
     try {
-      final connectivity = await Connectivity().checkConnectivity();
+      final connectivity = await Connectivity().checkConnectivity().timeout(
+        _connectivityCheckTimeout,
+      );
       return connectivity.every((result) => result == ConnectivityResult.none);
     } catch (_) {
       return false;
@@ -815,6 +827,10 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   Future<void> _loadSurah({bool allowFallback = true}) async {
     final loadVersion = ++_surahLoadVersion;
+    // Captured once. `_selectedSurah` is mutated synchronously by the surah
+    // picker, so re-reading it after an await can attribute this load's verses
+    // to whichever surah the user has since switched to.
+    final surahNumber = _selectedSurah;
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final isOffline = await _isDeviceOffline();
     if (!mounted || loadVersion != _surahLoadVersion) return;
@@ -832,9 +848,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _forceRefreshNextSurahLoad = false;
 
     try {
-      final cachedVerses = await _quranOfflineSync.getCachedSurah(
-        _selectedSurah,
-      );
+      final cachedVerses = await _quranOfflineSync.getCachedSurah(surahNumber);
       if (!mounted || loadVersion != _surahLoadVersion) return;
 
       if (cachedVerses != null && cachedVerses.isNotEmpty) {
@@ -842,7 +856,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         // metadata, juz markers and any refresh are optional extras and must
         // never hold the text behind a spinner.
         final cachedTajweed = await _quranOfflineSync.getCachedTajweedMap(
-          _selectedSurah,
+          surahNumber,
         );
         if (!mounted || loadVersion != _surahLoadVersion) return;
         _applySurahVerses(
@@ -861,12 +875,13 @@ class _ReaderScreenState extends State<ReaderScreen>
         unawaited(
           _loadSurahExtras(
             loadVersion: loadVersion,
-            surahNumber: _selectedSurah,
+            surahNumber: surahNumber,
             reciterId: reciterId,
             langCode: langCode,
             isOffline: isOffline,
             refreshVerses:
                 !isOffline && (needsLocalizedRefresh || forceRefresh),
+            refreshWasUserRequested: forceRefresh,
           ),
         );
         return;
@@ -875,20 +890,23 @@ class _ReaderScreenState extends State<ReaderScreen>
       // Nothing cached for this surah, so the network is the only source. This
       // is the one path allowed to block, and it is bounded on every hop.
       final allVerses = await _fetchAllVerses(
-        surahNumber: _selectedSurah,
+        surahNumber: surahNumber,
         langCode: langCode,
         reciterId: reciterId,
       );
       final tajweedMap = await _api
-          .fetchTajweedText(chapterNumber: _selectedSurah)
+          .fetchTajweedText(chapterNumber: surahNumber)
           .timeout(_networkCallTimeout);
+      // Checked before the write, not after: a superseded load must not race
+      // the current one for the same cache key, and stale-language verses must
+      // not overwrite a fresher copy.
+      if (!mounted || loadVersion != _surahLoadVersion) return;
       // Persist immediately so restart does not lose freshly loaded surah.
       await _quranOfflineSync.saveSurahCache(
-        surahNumber: _selectedSurah,
+        surahNumber: surahNumber,
         verses: allVerses,
         tajweedMap: tajweedMap,
       );
-      if (!mounted || loadVersion != _surahLoadVersion) return;
       _applySurahVerses(
         loadVersion: loadVersion,
         verses: allVerses,
@@ -898,22 +916,30 @@ class _ReaderScreenState extends State<ReaderScreen>
       unawaited(
         _loadSurahExtras(
           loadVersion: loadVersion,
-          surahNumber: _selectedSurah,
+          surahNumber: surahNumber,
           reciterId: reciterId,
           langCode: langCode,
           isOffline: isOffline,
           refreshVerses: false,
+          refreshWasUserRequested: false,
         ),
       );
     } catch (e) {
       if (kDebugMode) {
         print('❌ ERROR IN LOAD SURAH: $e');
       }
+      // The flag is cleared eagerly so it cannot leak into an unrelated load,
+      // but a failed load never served the refresh the user asked for. Re-arm
+      // it so the next open honours the request instead of silently dropping
+      // it and serving the stale-language copy from cache.
+      if (forceRefresh && loadVersion == _surahLoadVersion) {
+        _forceRefreshNextSurahLoad = true;
+      }
 
       final fallbackSurah = await _quranOfflineSync.getFirstCachedSurahNumber();
       if (allowFallback &&
           fallbackSurah != null &&
-          fallbackSurah != _selectedSurah) {
+          fallbackSurah != surahNumber) {
         final fallbackVerses = await _quranOfflineSync.getCachedSurah(
           fallbackSurah,
         );
@@ -1026,6 +1052,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     required String langCode,
     required bool isOffline,
     required bool refreshVerses,
+    required bool refreshWasUserRequested,
   }) async {
     // Cached audio URLs resolve synchronously, so they can be applied at once.
     final audioMap = _contentSync.getCachedRecitationMap(
@@ -1065,7 +1092,10 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     if (!mounted || loadVersion != _surahLoadVersion) return;
     try {
-      await _loadJuzBoundaries(useCacheOnly: isOffline);
+      await _loadJuzBoundaries(
+        useCacheOnly: isOffline,
+        loadVersion: loadVersion,
+      );
     } catch (_) {
       // Juz markers are decorative; they must not affect reading.
     }
@@ -1081,6 +1111,9 @@ class _ReaderScreenState extends State<ReaderScreen>
       final tajweedMap = await _api
           .fetchTajweedText(chapterNumber: surahNumber)
           .timeout(_networkCallTimeout);
+      // Checked before the write so a superseded refresh cannot overwrite a
+      // fresher copy of the same key with stale-language verses.
+      if (!mounted || loadVersion != _surahLoadVersion) return;
       await _quranOfflineSync.saveSurahCache(
         surahNumber: surahNumber,
         verses: verses,
@@ -1097,8 +1130,18 @@ class _ReaderScreenState extends State<ReaderScreen>
         langCode: langCode,
         preserveReadingPosition: true,
       );
-    } catch (_) {
-      // Refresh is best effort; the cached copy stays on screen.
+    } catch (e) {
+      // Unlike audio and juz markers, this refresh is the mechanism that
+      // replaces an Arabic-only or stale-language cache copy. Swallowing it
+      // silently leaves the user reading untranslated text with no signal, so
+      // the failure is logged and an explicitly requested refresh is re-armed
+      // for the next open rather than dropped.
+      if (kDebugMode) {
+        print('⚠️ Deferred verse refresh failed for surah $surahNumber: $e');
+      }
+      if (refreshWasUserRequested && loadVersion == _surahLoadVersion) {
+        _forceRefreshNextSurahLoad = true;
+      }
     }
   }
 
@@ -1146,7 +1189,16 @@ class _ReaderScreenState extends State<ReaderScreen>
     _loadSurah();
   }
 
-  Future<Map<int, int>> _loadJuzBoundaries({bool useCacheOnly = false}) async {
+  /// Computes juz markers for the currently selected surah.
+  ///
+  /// The post-await read of `_selectedSurah` is deliberate: boundaries are
+  /// always recomputed against whatever surah is on screen when the fetch
+  /// lands. `loadVersion` is still accepted so a superseded load stops before
+  /// writing state at all.
+  Future<Map<int, int>> _loadJuzBoundaries({
+    bool useCacheOnly = false,
+    int? loadVersion,
+  }) async {
     List<Map<String, dynamic>> juzs = const [];
     if (!useCacheOnly) {
       try {
@@ -1205,7 +1257,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     for (final list in rangesBySurah.values) {
       list.sort((a, b) => a.startAyah.compareTo(b.startAyah));
     }
-    if (mounted) {
+    if (mounted && (loadVersion == null || loadVersion == _surahLoadVersion)) {
       setState(() {
         _juzBoundaries = boundaries;
         _juzRangesBySurah = rangesBySurah;

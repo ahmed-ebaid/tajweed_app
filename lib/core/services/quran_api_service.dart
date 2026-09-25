@@ -117,6 +117,17 @@ class QuranApiService {
 
   static const _audioBaseUrl = 'https://verses.quran.com';
 
+  /// Audio files returned per API page; a short page ends the surah.
+  static const int _audioFilesPerPage = 50;
+
+  /// Ceiling on audio pages for one surah. Al-Baqarah, the longest at 286
+  /// ayahs, needs 6 pages, so this leaves headroom while bounding the loop.
+  static const int _maxAudioPagesPerSurah = 25;
+
+  /// Per-page ceiling. This client uses a queued interceptor, so a request
+  /// that never settles would block every later content call.
+  static const Duration _audioPageTimeout = Duration(seconds: 30);
+
   final Dio _contentDio;
 
   QuranApiService({
@@ -285,16 +296,18 @@ class QuranApiService {
     final map = <String, AyahAudioFile>{};
     int page = 1;
 
-    while (true) {
-      final response = await _contentDio.get(
-        '/recitations/$reciterId/by_chapter/$surahNumber',
-        queryParameters: {
-          'page': page,
-          'per_page': 50,
-          'fields': 'segments,duration,verse_key,url',
-        },
-        cancelToken: cancelToken,
-      );
+    while (page <= _maxAudioPagesPerSurah) {
+      final response = await _contentDio
+          .get(
+            '/recitations/$reciterId/by_chapter/$surahNumber',
+            queryParameters: {
+              'page': page,
+              'per_page': _audioFilesPerPage,
+              'fields': 'segments,duration,verse_key,url',
+            },
+            cancelToken: cancelToken,
+          )
+          .timeout(_audioPageTimeout);
       final files = response.data['audio_files'] as List<dynamic>? ?? [];
       for (final f in files) {
         final key = f['verse_key'] as String? ?? '';
@@ -315,7 +328,7 @@ class QuranApiService {
         }
       }
 
-      if (files.length < 50) break;
+      if (files.length < _audioFilesPerPage) break;
       page++;
     }
 

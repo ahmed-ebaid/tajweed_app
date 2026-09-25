@@ -194,7 +194,8 @@ class SettingsScreen extends StatelessWidget {
       ),
       builder: (_) => _AsyncPickerSheet<Map<String, dynamic>>(
         title: s.text('select_reciter'),
-        fetchItems: () => api.fetchAvailableReciters(),
+        fetchItems: ({bool forceRefresh = false}) =>
+            api.fetchAvailableReciters(),
         itemTitle: (r) {
           final id = r['id'] as int?;
           // Use localized name if available
@@ -228,8 +229,10 @@ class SettingsScreen extends StatelessWidget {
       ),
       builder: (_) => _AsyncPickerSheet<Map<String, dynamic>>(
         title: s.text('select_tafseer'),
-        fetchItems: () async {
-          final all = await offlineSync.loadTafsirSources();
+        fetchItems: ({bool forceRefresh = false}) async {
+          final all = await offlineSync.loadTafsirSources(
+            forceRefresh: forceRefresh,
+          );
           return TafseerProvider.sourcesForLanguage(all, langCode);
         },
         itemTitle: (t) {
@@ -1738,7 +1741,7 @@ class _AboutBullet extends StatelessWidget {
 /// Generic async picker bottom sheet — fetches items then displays a list.
 class _AsyncPickerSheet<T> extends StatefulWidget {
   final String title;
-  final Future<List<T>> Function() fetchItems;
+  final Future<List<T>> Function({bool forceRefresh}) fetchItems;
   final String Function(T) itemTitle;
   final bool Function(T) isSelected;
   final void Function(T) onSelect;
@@ -1766,10 +1769,10 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     if (mounted) setState(() => _loading = true);
     try {
-      final items = await widget.fetchItems();
+      final items = await widget.fetchItems(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _items = items;
@@ -1830,7 +1833,9 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
                           textAlign: TextAlign.center,
                         ),
                         TextButton(
-                          onPressed: _load,
+                          // Retry must re-hit the network rather than
+                          // re-serving the cached list that just failed.
+                          onPressed: () => _load(forceRefresh: true),
                           child: Text(
                             _SettingsStrings.of(context).text('retry'),
                           ),

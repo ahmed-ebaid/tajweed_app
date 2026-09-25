@@ -664,6 +664,33 @@ void main() {
     });
 
     test(
+      'a forced refresh lets a legitimately shorter catalogue through',
+      () async {
+        final api = _FakeQuranApiService()..tafsirSources = catalogue(4);
+        final service = QuranOfflineSyncService(api: api);
+        await service.loadTafsirSources();
+
+        // A source retired upstream must be able to leave the cache, or the
+        // dead entry stays selectable forever and fails on every use.
+        await service.saveTafsirSources(catalogue(1), allowShrink: true);
+
+        expect(await service.getCachedTafsirSources(), hasLength(1));
+      },
+    );
+
+    test('forceRefresh re-hits the network and replaces the cache', () async {
+      final api = _FakeQuranApiService()..tafsirSources = catalogue(4);
+      final service = QuranOfflineSyncService(api: api);
+      await service.loadTafsirSources();
+
+      api.tafsirSources = catalogue(2);
+      final sources = await service.loadTafsirSources(forceRefresh: true);
+
+      expect(sources, hasLength(2));
+      expect(await service.getCachedTafsirSources(), hasLength(2));
+    });
+
+    test(
       'a cold cache propagates the failure instead of returning empty',
       () async {
         final api = _FakeQuranApiService()..failTafsirSources = true;

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../data/mushaf_page_starts.dart';
@@ -125,6 +126,25 @@ class QuranOfflineSyncService {
   /// rather than re-fetched every time a picker opens.
   static const String _tafsirSourcesCacheKey = 'tafsir_sources';
 
+  /// When the catalogue was last written, used to let a genuinely shorter
+  /// upstream list eventually replace a longer cached one.
+  static const String _tafsirSourcesSavedAtKey = 'tafsir_sources_saved_at';
+
+  /// How long a cached catalogue is protected from shrinking.
+  static const Duration _tafsirSourcesShrinkWindow = Duration(days: 7);
+
+  /// Verses returned per API page; a short page means the surah is complete.
+  static const int _versesPerPage = 50;
+
+  /// Ceiling on verse pages for one surah. Al-Baqarah, the longest at 286
+  /// ayahs, needs 6 pages, so this leaves ample headroom while still making
+  /// the pagination loops terminate.
+  static const int _maxVersePagesPerSurah = 25;
+
+  /// Per-page ceiling. These loops share the API client's queued interceptor,
+  /// so one request that never settles would starve foreground reads.
+  static const Duration _pageFetchTimeout = Duration(seconds: 30);
+
   Box get _settingsBox => Hive.box(_settingsBoxKey);
 
   Box get _cacheBox => Hive.box(_cacheBoxKey);
@@ -237,13 +257,40 @@ class QuranOfflineSyncService {
         .toList(growable: false);
   }
 
-  /// Persists the tafsir source catalogue. A failed or truncated fetch must
-  /// never shrink what is already on disk, so shorter lists are ignored.
-  Future<void> saveTafsirSources(List<Map<String, dynamic>> sources) async {
+  /// Persists the tafsir source catalogue.
+  ///
+  /// A failed or truncated fetch must never shrink what is already on disk, so
+  /// a shorter list is normally ignored. That guard is not permanent: once the
+  /// cache is older than [_tafsirSourcesShrinkWindow] — or when the caller
+  /// explicitly forces a refresh — a shorter list wins, so a legitimately
+  /// retired upstream tafsir eventually disappears instead of staying
+  /// selectable and failing forever.
+  Future<void> saveTafsirSources(
+    List<Map<String, dynamic>> sources, {
+    bool allowShrink = false,
+  }) async {
     if (sources.isEmpty) return;
     final cached = await getCachedTafsirSources();
-    if (sources.length < cached.length) return;
+    if (sources.length < cached.length &&
+        !allowShrink &&
+        !_tafsirSourcesStale) {
+      return;
+    }
     await _cacheBox.put(_tafsirSourcesCacheKey, sources);
+    await _cacheBox.put(
+      _tafsirSourcesSavedAtKey,
+      DateTime.now().toIso8601String(),
+    );
+  }
+
+  /// Whether the cached catalogue is old enough that a shorter response is
+  /// more likely to be a genuine upstream change than a truncated fetch.
+  bool get _tafsirSourcesStale {
+    final raw = _cacheBox.get(_tafsirSourcesSavedAtKey);
+    if (raw is! String) return true;
+    final savedAt = DateTime.tryParse(raw);
+    if (savedAt == null) return true;
+    return DateTime.now().difference(savedAt) > _tafsirSourcesShrinkWindow;
   }
 
   /// Loads the tafsir source catalogue, preferring the cached copy so the
@@ -265,7 +312,10 @@ class QuranOfflineSyncService {
     }
 
     final sources = await _api.fetchAvailableTafsirs().timeout(timeout);
-    await saveTafsirSources(sources);
+    // A forced refresh is an explicit request for the live catalogue, so it is
+    // allowed to shrink the cache; otherwise a too-large cache could never be
+    // repaired, because the write — not the read — is what the guard blocks.
+    await saveTafsirSources(sources, allowShrink: forceRefresh);
     return sources;
   }
 
@@ -273,9 +323,12 @@ class QuranOfflineSyncService {
     try {
       final sources = await _api.fetchAvailableTafsirs().timeout(timeout);
       await saveTafsirSources(sources);
-    } catch (_) {
-      // The cached catalogue is already on screen; a failed refresh is silent
-      // by design and simply leaves the previous copy in place.
+    } catch (e) {
+      // The cached catalogue is already on screen, so this failure is not
+      // surfaced, but it is logged rather than fully swallowed.
+      if (kDebugMode) {
+        print('⚠️ Tafsir source revalidation failed: $e');
+      }
     }
   }
 
@@ -341,14 +394,12 @@ class QuranOfflineSyncService {
     if (verses == null || verses.isEmpty) {
       final fetchedVerses = <Map<String, dynamic>>[];
       var page = 1;
-      while (true) {
-        final pageVerses = await _api.fetchVerses(
-          surahNumber: surahNumber,
-          langCode: 'ar',
-          page: page,
-        );
+      while (page <= _maxVersePagesPerSurah) {
+        final pageVerses = await _api
+            .fetchVerses(surahNumber: surahNumber, langCode: 'ar', page: page)
+            .timeout(_pageFetchTimeout);
         fetchedVerses.addAll(pageVerses);
-        if (pageVerses.length < 50) break;
+        if (pageVerses.length < _versesPerPage) break;
         page++;
       }
       verses = fetchedVerses;
@@ -434,14 +485,12 @@ class QuranOfflineSyncService {
 
         final verses = <Map<String, dynamic>>[];
         int page = 1;
-        while (true) {
-          final chunk = await _api.fetchVerses(
-            surahNumber: surah,
-            langCode: 'ar',
-            page: page,
-          );
+        while (page <= _maxVersePagesPerSurah) {
+          final chunk = await _api
+              .fetchVerses(surahNumber: surah, langCode: 'ar', page: page)
+              .timeout(_pageFetchTimeout);
           verses.addAll(chunk);
-          if (chunk.length < 50) break;
+          if (chunk.length < _versesPerPage) break;
           page++;
         }
 
