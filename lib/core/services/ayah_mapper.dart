@@ -594,7 +594,12 @@ class AyahMapper {
 
   /// Letters that ن assimilates into (يرملون). م only assimilates into م.
   static const Set<int> _nunIdghamTargets = {
-    0x064A, 0x0631, 0x0645, 0x0644, 0x0648, 0x0646,
+    0x064A,
+    0x0631,
+    0x0645,
+    0x0644,
+    0x0648,
+    0x0646,
   };
 
   static bool _isArabicLetter(int cp) =>
@@ -669,7 +674,8 @@ class AyahMapper {
       scanned++;
     }
 
-    final isHarfi = letterCount == 1 &&
+    final isHarfi =
+        letterCount == 1 &&
         hasMaddah &&
         !hasHarakah &&
         _muqattaatFinalConsonant.containsKey(letterCp);
@@ -1044,9 +1050,7 @@ class AyahMapper {
               : _isNecessaryMaddClass(ruleKey)
               ? _resolveNecessaryMadd(arabicText, start, endIdx)
               : rule;
-          spans.add(
-            TajweedSpan(start: start, end: endIdx, rule: resolvedRule),
-          );
+          spans.add(TajweedSpan(start: start, end: endIdx, rule: resolvedRule));
           searchFrom = endIdx;
         }
       }
@@ -1266,6 +1270,7 @@ class AyahMapper {
     }
     return result;
   }
+
   static String _stripHtmlPreserveSpacing(String text) {
     return text.replaceAll(RegExp(r'<[^>]*>'), '');
   }

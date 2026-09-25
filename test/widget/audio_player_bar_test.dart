@@ -63,22 +63,25 @@ void main() {
   tearDown(() => fake.dispose());
 
   Future<void> pumpBar(WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: AudioPlayerBar(
-          audioService: fake,
-          label: 'Al-Fatihah 1:1',
-          onClose: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AudioPlayerBar(
+            audioService: fake,
+            label: 'Al-Fatihah 1:1',
+            onClose: () {},
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Slider slider(WidgetTester tester) =>
       tester.widget<Slider>(find.byType(Slider));
 
-  testWidgets('scrubbing seeks the player to the released position',
-      (tester) async {
+  testWidgets('scrubbing seeks the player to the released position', (
+    tester,
+  ) async {
     await pumpBar(tester);
     fake.durCtrl.add(const Duration(minutes: 2));
     fake.posCtrl.add(const Duration(seconds: 5));
@@ -111,8 +114,9 @@ void main() {
     expect(find.text('00:06'), findsNothing);
   });
 
-  testWidgets('releasing the thumb hands control back to the playhead',
-      (tester) async {
+  testWidgets('releasing the thumb hands control back to the playhead', (
+    tester,
+  ) async {
     await pumpBar(tester);
     fake.durCtrl.add(const Duration(minutes: 2));
     fake.posCtrl.add(const Duration(seconds: 5));

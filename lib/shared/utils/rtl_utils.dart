@@ -14,10 +14,7 @@ class RtlUtils {
     required String langCode,
     required Widget child,
   }) {
-    return Directionality(
-      textDirection: directionFor(langCode),
-      child: child,
-    );
+    return Directionality(textDirection: directionFor(langCode), child: child);
   }
 
   /// Arabic Quranic text is always RTL regardless of the app's UI language.

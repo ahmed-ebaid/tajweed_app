@@ -28,13 +28,45 @@ const _ikhfaColour = Color(0xFF8E4A75);
 final _lightIkhfa = Color.lerp(_ikhfaColour, Colors.white, 0.55)!;
 
 const _words = <Map<String, dynamic>>[
-    {'char_type_name': 'word', 'text_uthmani': '\u0642\u064e\u0627\u0644\u064e', 'text_uthmani_tajweed': '\u0642\u064e\u0627\u0644\u064e'},
-    {'char_type_name': 'word', 'text_uthmani': '\u0641\u064e\u0623\u0652\u062a\u0650', 'text_uthmani_tajweed': '\u0641\u064e\u0623\u06e1\u062a\u0650'},
-    {'char_type_name': 'word', 'text_uthmani': '\u0628\u0650\u0647\u0650\u06e6\u0653', 'text_uthmani_tajweed': '\u0628\u0650\u0647<rule class=madda_obligatory_monfasel>\u0650\u06e6\u0653</rule>'},
-    {'char_type_name': 'word', 'text_uthmani': '\u0625\u0650\u0646', 'text_uthmani_tajweed': '\u0625\u0650<rule class=ikhafa>\u0646</rule>'},
-    {'char_type_name': 'word', 'text_uthmani': '\u0643\u064f\u0646\u062a\u064e', 'text_uthmani_tajweed': '<rule class=ikhafa>\u0643</rule>\u064f<rule class=ikhafa>\u0646\u062a</rule>\u064e'},
-    {'char_type_name': 'word', 'text_uthmani': '\u0645\u0650\u0646\u064e', 'text_uthmani_tajweed': '\u0645\u0650\u0646\u064e'},
-    {'char_type_name': 'word', 'text_uthmani': '\u0671\u0644\u0635\u0651\u064e\u0640\u0670\u062f\u0650\u0642\u0650\u064a\u0646\u064e', 'text_uthmani_tajweed': '<rule class=ham_wasl>\u0671</rule><rule class=laam_shamsiyah>\u0644</rule>\u0635\u0651\u064e<rule class=madda_normal>\u0640\u0670</rule>\u062f\u0650\u0642<rule class=madda_permissible>\u0650\u064a</rule>\u0646\u064e'},
+  {
+    'char_type_name': 'word',
+    'text_uthmani': '\u0642\u064e\u0627\u0644\u064e',
+    'text_uthmani_tajweed': '\u0642\u064e\u0627\u0644\u064e',
+  },
+  {
+    'char_type_name': 'word',
+    'text_uthmani': '\u0641\u064e\u0623\u0652\u062a\u0650',
+    'text_uthmani_tajweed': '\u0641\u064e\u0623\u06e1\u062a\u0650',
+  },
+  {
+    'char_type_name': 'word',
+    'text_uthmani': '\u0628\u0650\u0647\u0650\u06e6\u0653',
+    'text_uthmani_tajweed':
+        '\u0628\u0650\u0647<rule class=madda_obligatory_monfasel>\u0650\u06e6\u0653</rule>',
+  },
+  {
+    'char_type_name': 'word',
+    'text_uthmani': '\u0625\u0650\u0646',
+    'text_uthmani_tajweed': '\u0625\u0650<rule class=ikhafa>\u0646</rule>',
+  },
+  {
+    'char_type_name': 'word',
+    'text_uthmani': '\u0643\u064f\u0646\u062a\u064e',
+    'text_uthmani_tajweed':
+        '<rule class=ikhafa>\u0643</rule>\u064f<rule class=ikhafa>\u0646\u062a</rule>\u064e',
+  },
+  {
+    'char_type_name': 'word',
+    'text_uthmani': '\u0645\u0650\u0646\u064e',
+    'text_uthmani_tajweed': '\u0645\u0650\u0646\u064e',
+  },
+  {
+    'char_type_name': 'word',
+    'text_uthmani':
+        '\u0671\u0644\u0635\u0651\u064e\u0640\u0670\u062f\u0650\u0642\u0650\u064a\u0646\u064e',
+    'text_uthmani_tajweed':
+        '<rule class=ham_wasl>\u0671</rule><rule class=laam_shamsiyah>\u0644</rule>\u0635\u0651\u064e<rule class=madda_normal>\u0640\u0670</rule>\u062f\u0650\u0642<rule class=madda_permissible>\u0650\u064a</rule>\u0646\u064e',
+  },
 ];
 
 const _labelFamily = 'Label';
@@ -76,7 +108,12 @@ enum _Variant { shipping, carrierOnly, lightTrigger }
 /// Emits the runs for one ikhfa span under the given policy.
 List<TextSpan> _ikhfaRuns(String text, _Variant v, TextStyle base) {
   if (v == _Variant.shipping) {
-    return [TextSpan(text: text, style: base.copyWith(color: _ikhfaColour))];
+    return [
+      TextSpan(
+        text: text,
+        style: base.copyWith(color: _ikhfaColour),
+      ),
+    ];
   }
   return [
     for (final c in _clusters(text))
@@ -103,7 +140,10 @@ TextSpan _build(Ayah ayah, _Variant v, TextStyle base, {int? from, int? to}) {
       if (span.start < cursor || span.end <= span.start) continue;
       if (cursor < span.start) {
         children.add(
-          TextSpan(text: word.arabic.substring(cursor, span.start), style: base),
+          TextSpan(
+            text: word.arabic.substring(cursor, span.start),
+            style: base,
+          ),
         );
       }
       final text = word.arabic.substring(span.start, span.end);
@@ -111,7 +151,10 @@ TextSpan _build(Ayah ayah, _Variant v, TextStyle base, {int? from, int? to}) {
         children.addAll(_ikhfaRuns(text, v, base));
       } else {
         children.add(
-          TextSpan(text: text, style: base.copyWith(color: span.rule.color)),
+          TextSpan(
+            text: text,
+            style: base.copyWith(color: span.rule.color),
+          ),
         );
       }
       cursor = span.end;
@@ -187,8 +230,10 @@ void main() {
       for (final w in ayah.words) {
         for (final s in w.spans) {
           if (s.rule != TajweedRule.ikhfa) continue;
-          debugPrint('IKHFA "${w.arabic}" [${s.start},${s.end}) = '
-              '"${w.arabic.substring(s.start, s.end)}"');
+          debugPrint(
+            'IKHFA "${w.arabic}" [${s.start},${s.end}) = '
+            '"${w.arabic.substring(s.start, s.end)}"',
+          );
         }
       }
 
@@ -214,19 +259,18 @@ void main() {
         final span = _build(ayah, variants[i], base);
         all.add(span);
         final img = await _render([span], [labels[i]]);
-        final bytes =
-            (await img.toByteData(format: ui.ImageByteFormat.png))!
-                .buffer
-                .asUint8List();
-        File('$_outputDir/${String.fromCharCode(65 + i)}.png')
-            .writeAsBytesSync(bytes);
+        final bytes = (await img.toByteData(
+          format: ui.ImageByteFormat.png,
+        ))!.buffer.asUint8List();
+        File(
+          '$_outputDir/${String.fromCharCode(65 + i)}.png',
+        ).writeAsBytesSync(bytes);
       }
 
       final sheet = await _render(all, labels);
-      final sheetBytes =
-          (await sheet.toByteData(format: ui.ImageByteFormat.png))!
-              .buffer
-              .asUint8List();
+      final sheetBytes = (await sheet.toByteData(
+        format: ui.ImageByteFormat.png,
+      ))!.buffer.asUint8List();
       File('$_outputDir/COMPARE.png').writeAsBytesSync(sheetBytes);
       debugPrint('Wrote $_outputDir/COMPARE.png');
 
@@ -251,10 +295,9 @@ void main() {
         lineHeight: 185,
         width: 560,
       );
-      final zoomBytes =
-          (await zoom.toByteData(format: ui.ImageByteFormat.png))!
-              .buffer
-              .asUint8List();
+      final zoomBytes = (await zoom.toByteData(
+        format: ui.ImageByteFormat.png,
+      ))!.buffer.asUint8List();
       File('$_outputDir/ZOOM.png').writeAsBytesSync(zoomBytes);
       debugPrint('Wrote $_outputDir/ZOOM.png');
     });

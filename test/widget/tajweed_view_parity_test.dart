@@ -22,7 +22,10 @@ void main() {
     ],
   });
 
-  Future<Set<int>> colorsFor(WidgetTester tester, {required bool compact}) async {
+  Future<Set<int>> colorsFor(
+    WidgetTester tester, {
+    required bool compact,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

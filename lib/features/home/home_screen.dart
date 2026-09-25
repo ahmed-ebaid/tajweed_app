@@ -38,16 +38,18 @@ class HomeScreen extends StatelessWidget {
                 progress: dailyLesson.progressForToday,
                 onTap: () {
                   context.read<ReaderNavigationProvider>().openSurahAyah(
-                        surah: lesson.surah,
-                        ayah: lesson.ayah,
-                      );
+                    surah: lesson.surah,
+                    ayah: lesson.ayah,
+                  );
                   onTabSwitch(1);
                 },
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(l10n.practice,
-                    style: Theme.of(context).textTheme.labelMedium),
+                child: Text(
+                  l10n.practice,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
               ),
               _QuickCards(l10n: l10n, onTabSwitch: onTabSwitch),
               const SizedBox(height: 24),
@@ -72,11 +74,12 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.greeting,
-              style: Theme.of(context).textTheme.bodyMedium),
+          Text(l10n.greeting, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 2),
-          Text(l10n.continueJourney,
-              style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            l10n.continueJourney,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           const Text(
             '﴿ وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا ﴾',
@@ -125,19 +128,23 @@ class _TodayLesson extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l10n.todaysLesson,
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF1D9E75),
-                    letterSpacing: 0.05)),
+            Text(
+              l10n.todaysLesson,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1D9E75),
+                letterSpacing: 0.05,
+              ),
+            ),
             const SizedBox(height: 4),
             Text(
               lessonTitle,
               style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF0F6E56)),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF0F6E56),
+              ),
             ),
             const SizedBox(height: 10),
             ClipRRect(
@@ -150,8 +157,10 @@ class _TodayLesson extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text('${(progress * 100).round()}% • $statusText',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF1D9E75))),
+            Text(
+              '${(progress * 100).round()}% • $statusText',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF1D9E75)),
+            ),
           ],
         ),
       ),
@@ -168,26 +177,29 @@ class _QuickCards extends StatelessWidget {
   Widget build(BuildContext context) {
     final cards = [
       _CardData(
-          icon: Icons.menu_book_rounded,
-          iconBg: const Color(0xFFE1F5EE),
-          iconColor: const Color(0xFF1D9E75),
-          title: l10n.readWithTajweed,
-          sub: l10n.get('colored_highlights'),
-          tab: 1),
+        icon: Icons.menu_book_rounded,
+        iconBg: const Color(0xFFE1F5EE),
+        iconColor: const Color(0xFF1D9E75),
+        title: l10n.readWithTajweed,
+        sub: l10n.get('colored_highlights'),
+        tab: 1,
+      ),
       _CardData(
-          icon: Icons.quiz_rounded,
-          iconBg: const Color(0xFFFAEEDA),
-          iconColor: const Color(0xFFB8860B),
-          title: l10n.ruleQuiz,
-          sub: l10n.get('test_knowledge'),
-          tab: 2),
+        icon: Icons.quiz_rounded,
+        iconBg: const Color(0xFFFAEEDA),
+        iconColor: const Color(0xFFB8860B),
+        title: l10n.ruleQuiz,
+        sub: l10n.get('test_knowledge'),
+        tab: 2,
+      ),
       _CardData(
-          icon: Icons.library_books_rounded,
-          iconBg: const Color(0xFFFAEEDA),
-          iconColor: const Color(0xFFB8860B),
-          title: l10n.rulesLibrary,
-          sub: l10n.get('all_tajweed_rules'),
-          tab: 3),
+        icon: Icons.library_books_rounded,
+        iconBg: const Color(0xFFFAEEDA),
+        iconColor: const Color(0xFFB8860B),
+        title: l10n.rulesLibrary,
+        sub: l10n.get('all_tajweed_rules'),
+        tab: 3,
+      ),
     ];
 
     return Padding(
@@ -199,7 +211,9 @@ class _QuickCards extends StatelessWidget {
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
         childAspectRatio: 1.3,
-        children: cards.map((c) => _QuickCard(data: c, onTabSwitch: onTabSwitch)).toList(),
+        children: cards
+            .map((c) => _QuickCard(data: c, onTabSwitch: onTabSwitch))
+            .toList(),
       ),
     );
   }
@@ -213,8 +227,12 @@ class _CardData {
   final String sub;
   final int tab;
   const _CardData({
-    required this.icon, required this.iconBg, required this.iconColor,
-    required this.title, required this.sub, required this.tab,
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+    required this.sub,
+    required this.tab,
   });
 }
 
@@ -232,29 +250,34 @@ class _QuickCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: Theme.of(context).dividerColor, width: 0.5),
+          border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 36, height: 36,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                  color: data.iconBg,
-                  borderRadius: BorderRadius.circular(8)),
+                color: data.iconBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Icon(data.icon, color: data.iconColor, size: 18),
             ),
             const Spacer(),
-            Text(data.title,
-                style: Theme.of(context).textTheme.labelMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              data.title,
+              style: Theme.of(context).textTheme.labelMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 2),
-            Text(data.sub,
-                style: Theme.of(context).textTheme.bodySmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              data.sub,
+              style: Theme.of(context).textTheme.bodySmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

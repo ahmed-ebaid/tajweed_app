@@ -331,7 +331,8 @@ void main() {
       expect(
         marker.style?.fontFamily,
         bodyFamily,
-        reason: 'U+${rune.toRadixString(16)} must keep the body typeface; a '
+        reason:
+            'U+${rune.toRadixString(16)} must keep the body typeface; a '
             'typeface change forces a separate shaping run and drops the sign '
             "back onto the preceding letter's harakah.",
       );

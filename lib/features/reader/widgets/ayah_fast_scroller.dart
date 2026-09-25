@@ -135,7 +135,8 @@ class _AyahFastScrollerState extends State<AyahFastScroller>
                 child: AnimatedBuilder(
                   animation: _animController,
                   builder: (context, child) {
-                    final hidden = !_isDragging && _animController.value <= 0.01;
+                    final hidden =
+                        !_isDragging && _animController.value <= 0.01;
                     return IgnorePointer(
                       ignoring: hidden,
                       child: FadeTransition(
@@ -174,7 +175,10 @@ class _AyahFastScrollerState extends State<AyahFastScroller>
                       if (_isDragging && _previewAyah != null)
                         Positioned(
                           right: 28,
-                          top: (_thumbTop(trackHeight) - 4).clamp(0.0, trackHeight - 48),
+                          top: (_thumbTop(trackHeight) - 4).clamp(
+                            0.0,
+                            trackHeight - 48,
+                          ),
                           child: Material(
                             color: const Color(0xFF1D9E75),
                             borderRadius: BorderRadius.circular(10),

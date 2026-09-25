@@ -4,11 +4,13 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 Future<void> main() async {
-  final dio = Dio(BaseOptions(
-    baseUrl: 'https://api.quran.com/api/v4',
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: 'https://api.quran.com/api/v4',
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 30),
+    ),
+  );
 
   final shortestByRule = <String, _ExampleHit>{};
 
@@ -165,8 +167,9 @@ const Map<String, Set<String>> _classNamesByRule = {
 
 Set<String> _extractRules(String html) {
   final rules = <String>{};
-  final matches = RegExp(r'<(?:rule|tajweed)\s+class="?([\w-]+)"?>')
-      .allMatches(html);
+  final matches = RegExp(
+    r'<(?:rule|tajweed)\s+class="?([\w-]+)"?>',
+  ).allMatches(html);
 
   for (final match in matches) {
     final className = (match.group(1) ?? '').trim();

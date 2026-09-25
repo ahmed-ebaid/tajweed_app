@@ -14,13 +14,14 @@ class TafseerProvider extends ChangeNotifier {
   /// Default tafsir IDs by language — Ibn Kathir (English), Tafsir Muyassar (Arabic) etc.
   static const Map<String, int> _defaultTafsirByLang = {
     'en': 169, // Ibn Kathir (Abridged)
-    'ar': 16,  // Tafsir Muyassar
+    'ar': 16, // Tafsir Muyassar
     'ur': 160, // Tafsir Ibn Kathir (Urdu)
-    'tr': 52,  // Diyanet İşleri (Turkish - uses translation as tafsir)
-    'fr': 31,  // Muhammad Hamidullah (French)
-    'id': 33,  // Indonesian Ministry of Religious Affairs
-    'de': 27,  // German
-    'es': 169, // Temporary fallback (English Ibn Kathir) until Spanish default is configured
+    'tr': 52, // Diyanet İşleri (Turkish - uses translation as tafsir)
+    'fr': 31, // Muhammad Hamidullah (French)
+    'id': 33, // Indonesian Ministry of Religious Affairs
+    'de': 27, // German
+    'es':
+        169, // Temporary fallback (English Ibn Kathir) until Spanish default is configured
   };
 
   static const Map<String, String> _apiLanguageByCode = {
@@ -184,18 +185,22 @@ class TafseerProvider extends ChangeNotifier {
   ) {
     final sourceList = sources.toList(growable: false);
     final targetLanguage = _apiLanguageByCode[langCode] ?? 'english';
-    final matching = sourceList.where((source) {
-      final language =
-          (source['language_name'] as String? ?? '').toLowerCase();
-      return language == targetLanguage;
-    }).toList(growable: false);
+    final matching = sourceList
+        .where((source) {
+          final language = (source['language_name'] as String? ?? '')
+              .toLowerCase();
+          return language == targetLanguage;
+        })
+        .toList(growable: false);
     if (matching.isNotEmpty) return matching;
 
-    return sourceList.where((source) {
-      final language =
-          (source['language_name'] as String? ?? '').toLowerCase();
-      return language == 'english';
-    }).toList(growable: false);
+    return sourceList
+        .where((source) {
+          final language = (source['language_name'] as String? ?? '')
+              .toLowerCase();
+          return language == 'english';
+        })
+        .toList(growable: false);
   }
 
   static String sourceDisplayName(
@@ -211,7 +216,8 @@ class TafseerProvider extends ChangeNotifier {
   /// Returns the localized display name for the selected tafsir.
   /// Uses the localized map first, then falls back to the persisted name.
   String get selectedTafsirName {
-    final localized = _localizedTafsirNames[_activeLangCode]?[_selectedTafsirId];
+    final localized =
+        _localizedTafsirNames[_activeLangCode]?[_selectedTafsirId];
     if (localized != null) return localized;
     return _selectedTafsirName;
   }
@@ -219,10 +225,18 @@ class TafseerProvider extends ChangeNotifier {
   TafseerProvider({String langCode = 'en'}) {
     final box = Hive.box(_boxKey);
     _activeLangCode = box.get(_tafsirLangKey, defaultValue: langCode) as String;
-    _selectedTafsirId = box.get(_tafsirIdKey,
-      defaultValue: _defaultTafsirByLang[_activeLangCode] ?? 169) as int;
-    _selectedTafsirName = box.get(_tafsirNameKey,
-      defaultValue: _defaultTafsirNames[_selectedTafsirId] ?? '') as String;
+    _selectedTafsirId =
+        box.get(
+              _tafsirIdKey,
+              defaultValue: _defaultTafsirByLang[_activeLangCode] ?? 169,
+            )
+            as int;
+    _selectedTafsirName =
+        box.get(
+              _tafsirNameKey,
+              defaultValue: _defaultTafsirNames[_selectedTafsirId] ?? '',
+            )
+            as String;
   }
 
   Future<void> setTafsir(int id, {String? name}) async {

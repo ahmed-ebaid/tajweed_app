@@ -75,7 +75,8 @@ class ReaderViewModel extends ChangeNotifier {
       _playingAyah = null;
     } else {
       _playingAyah = ayah.ayahNumber;
-      final url = ayah.audioUrl ??
+      final url =
+          ayah.audioUrl ??
           _api.audioUrl(
             reciterId: 7,
             surahNumber: ayah.surahNumber,
@@ -116,8 +117,7 @@ class ReaderViewModel extends ChangeNotifier {
     return null;
   }
 
-  void _cacheVerses(
-      int surah, String lang, List<Map<String, dynamic>> raw) {
+  void _cacheVerses(int surah, String lang, List<Map<String, dynamic>> raw) {
     try {
       final box = Hive.box(_cacheBox);
       box.put('${surah}_$lang', raw);

@@ -12,7 +12,7 @@ class QuizViewModel extends ChangeNotifier {
   bool _quizComplete = false;
 
   QuizViewModel({required List<QuizQuestion> questions})
-      : _questions = List.of(questions);
+    : _questions = List.of(questions);
 
   // ── Public getters ────────────────────────────────────────────────────────
 

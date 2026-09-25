@@ -23,7 +23,8 @@ class QuizProgressProvider extends ChangeNotifier {
 
   QuizLevel get recommendedLevel {
     for (final level in QuizLevel.values) {
-      if (isUnlocked(level) && bestPercentageFor(level) < QuizRepository.passPercentage) {
+      if (isUnlocked(level) &&
+          bestPercentageFor(level) < QuizRepository.passPercentage) {
         return level;
       }
     }
@@ -62,14 +63,13 @@ class QuizProgressProvider extends ChangeNotifier {
 
   void _load() {
     final box = Hive.box(_boxKey);
-    _highestUnlockedIndex = box.get(_highestUnlockedLevelKey, defaultValue: 0) as int;
+    _highestUnlockedIndex =
+        box.get(_highestUnlockedLevelKey, defaultValue: 0) as int;
     final rawMap = box.get(_bestPercentagesKey, defaultValue: <String, int>{});
     if (rawMap is Map) {
       _bestPercentages = rawMap.map(
-        (key, value) => MapEntry(
-          int.tryParse(key.toString()) ?? 0,
-          (value as num).toInt(),
-        ),
+        (key, value) =>
+            MapEntry(int.tryParse(key.toString()) ?? 0, (value as num).toInt()),
       );
     } else {
       _bestPercentages = const {};

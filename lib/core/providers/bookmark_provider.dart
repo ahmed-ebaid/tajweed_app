@@ -27,14 +27,14 @@ class Bookmark {
   bool get isPage => type == BookmarkType.page;
 
   Map<String, dynamic> toMap() => {
-        'type': type.name,
-        'surah': surah,
-        'ayah': ayah,
-        'pageNumber': pageNumber,
-        'label': label,
-        'scrollOffset': scrollOffset,
-        'timestamp': timestamp,
-      };
+    'type': type.name,
+    'surah': surah,
+    'ayah': ayah,
+    'pageNumber': pageNumber,
+    'label': label,
+    'scrollOffset': scrollOffset,
+    'timestamp': timestamp,
+  };
 
   factory Bookmark.fromMap(Map<dynamic, dynamic> map) {
     final rawType = map['type'] as String?;

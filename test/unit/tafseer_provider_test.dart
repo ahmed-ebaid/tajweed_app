@@ -4,10 +4,7 @@ import 'package:tajweed_practice/core/providers/tafseer_provider.dart';
 void main() {
   group('TafseerProvider.localizedTafsirName', () {
     test('returns localized names for known sources', () {
-      expect(
-        TafseerProvider.localizedTafsirName('ar', 16),
-        'التفسير الميسر',
-      );
+      expect(TafseerProvider.localizedTafsirName('ar', 16), 'التفسير الميسر');
       expect(
         TafseerProvider.localizedTafsirName('es', 169),
         'Ibn Kathir (Abreviado)',
@@ -24,16 +21,8 @@ void main() {
   group('TafseerProvider source presentation', () {
     final sources = <Map<String, dynamic>>[
       for (var id = 14; id < 20; id++)
-        {
-          'id': id,
-          'name': 'Arabic source $id',
-          'language_name': 'arabic',
-        },
-      {
-        'id': 169,
-        'name': 'English source',
-        'language_name': 'english',
-      },
+        {'id': id, 'name': 'Arabic source $id', 'language_name': 'arabic'},
+      {'id': 169, 'name': 'English source', 'language_name': 'english'},
     ];
 
     test('uses the same language filtering as Settings', () {

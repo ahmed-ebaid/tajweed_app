@@ -78,8 +78,11 @@ void main() {
     }
 
     final verses = _loadVersesFromJson(jsonPath);
-    expect(verses.length, 6236,
-        reason: 'Audit input should contain all 6236 ayahs.');
+    expect(
+      verses.length,
+      6236,
+      reason: 'Audit input should contain all 6236 ayahs.',
+    );
 
     final flagged = <String>[];
     for (final verse in verses) {
@@ -144,13 +147,17 @@ void main() {
       final expectedWords = entry.value;
       if (expectedWords is! List) continue;
 
-      expect(ayah.words.length, expectedWords.length,
-          reason:
-              'Word count mismatch for $verseKey against cpfair spans map.');
+      expect(
+        ayah.words.length,
+        expectedWords.length,
+        reason: 'Word count mismatch for $verseKey against cpfair spans map.',
+      );
 
-      for (int wi = 0;
-          wi < ayah.words.length && wi < expectedWords.length;
-          wi++) {
+      for (
+        int wi = 0;
+        wi < ayah.words.length && wi < expectedWords.length;
+        wi++
+      ) {
         final expected = expectedWords[wi];
         if (expected is! Map) continue;
 
@@ -174,8 +181,11 @@ void main() {
         }
 
         final expectedSpanCount = (expected['span_count'] as int?) ?? 0;
-        expect(ayah.words[wi].spans.length, expectedSpanCount,
-            reason: 'Span count mismatch for $verseKey word ${wi + 1}.');
+        expect(
+          ayah.words[wi].spans.length,
+          expectedSpanCount,
+          reason: 'Span count mismatch for $verseKey word ${wi + 1}.',
+        );
       }
     }
   });

@@ -14,10 +14,7 @@ class LanguageSelectorScreen extends StatelessWidget {
     final currentCode = localeProvider.locale.languageCode;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.selectLanguage),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(l10n.selectLanguage), centerTitle: true),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 12),
         itemCount: LocaleProvider.supportedLocales.length,
@@ -33,13 +30,11 @@ class LanguageSelectorScreen extends StatelessWidget {
             leading: _FlagCircle(code: code),
             title: Text(
               name,
-              textDirection:
-                  isRtl ? TextDirection.rtl : TextDirection.ltr,
+              textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
               textAlign: TextAlign.left,
               style: TextStyle(
                 fontSize: 16,
-                fontWeight:
-                    isSelected ? FontWeight.w500 : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
                 color: isSelected
                     ? Theme.of(context).colorScheme.primary
                     : null,
@@ -71,14 +66,22 @@ class LanguageSelectorScreen extends StatelessWidget {
   /// Returns the language name in English alongside the native name.
   String _nativeName(String code) {
     switch (code) {
-      case 'ar': return 'Arabic';
-      case 'ur': return 'Urdu';
-      case 'tr': return 'Turkish';
-      case 'fr': return 'French';
-      case 'id': return 'Indonesian';
-      case 'de': return 'German';
-      case 'es': return 'Spanish';
-      default:   return '';
+      case 'ar':
+        return 'Arabic';
+      case 'ur':
+        return 'Urdu';
+      case 'tr':
+        return 'Turkish';
+      case 'fr':
+        return 'French';
+      case 'id':
+        return 'Indonesian';
+      case 'de':
+        return 'German';
+      case 'es':
+        return 'Spanish';
+      default:
+        return '';
     }
   }
 }

@@ -22,7 +22,9 @@ void main() {
   }
 
   Future<void> pump(WidgetTester tester, Widget child) => tester.pumpWidget(
-    MaterialApp(home: Scaffold(body: Center(child: child))),
+    MaterialApp(
+      home: Scaffold(body: Center(child: child)),
+    ),
   );
 
   testWidgets('example words keep one typeface across every span', (

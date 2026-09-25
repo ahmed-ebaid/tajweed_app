@@ -8,7 +8,8 @@ const _baseUrl = 'https://api.quran.com/api/v4';
 void _printUsage() {
   print('Usage:');
   print(
-      '  dart run tool/fetch_quran_words_dump.dart --output <quran_words_full_6236.json>');
+    '  dart run tool/fetch_quran_words_dump.dart --output <quran_words_full_6236.json>',
+  );
 }
 
 Map<String, String> _parseArgs(List<String> args) {
@@ -25,10 +26,7 @@ Map<String, String> _parseArgs(List<String> args) {
   return map;
 }
 
-Future<List<Map<String, dynamic>>> _fetchSurahVerses(
-  Dio dio,
-  int surah,
-) async {
+Future<List<Map<String, dynamic>>> _fetchSurahVerses(Dio dio, int surah) async {
   final all = <Map<String, dynamic>>[];
   var page = 1;
 
@@ -57,13 +55,15 @@ Future<List<Map<String, dynamic>>> _fetchSurahVerses(
       // Keep only fields needed for audit and future troubleshooting.
       final words = (verse['words'] as List<dynamic>? ?? const [])
           .whereType<Map>()
-          .map((w) => {
-                'char_type_name': w['char_type_name'],
-                'text': w['text'],
-                'text_uthmani': w['text_uthmani'],
-                'text_uthmani_tajweed': w['text_uthmani_tajweed'],
-                'tajweed': w['tajweed'],
-              })
+          .map(
+            (w) => {
+              'char_type_name': w['char_type_name'],
+              'text': w['text'],
+              'text_uthmani': w['text_uthmani'],
+              'text_uthmani_tajweed': w['text_uthmani_tajweed'],
+              'tajweed': w['tajweed'],
+            },
+          )
           .toList();
 
       all.add({
@@ -95,11 +95,13 @@ Future<void> main(List<String> args) async {
     exit(2);
   }
 
-  final dio = Dio(BaseOptions(
-    baseUrl: _baseUrl,
-    connectTimeout: const Duration(seconds: 20),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 30),
+    ),
+  );
 
   final allVerses = <Map<String, dynamic>>[];
 
@@ -107,7 +109,8 @@ Future<void> main(List<String> args) async {
     final verses = await _fetchSurahVerses(dio, surah);
     allVerses.addAll(verses);
     print(
-        'Fetched surah $surah: ${verses.length} ayahs (total ${allVerses.length})');
+      'Fetched surah $surah: ${verses.length} ayahs (total ${allVerses.length})',
+    );
   }
 
   allVerses.sort((a, b) {

@@ -881,7 +881,8 @@ void main() {
       'words': [
         {
           'char_type_name': 'word',
-          'text_uthmani': '\u0627\u0644\u0636\u0651\u064e\u0627\u0653\u0644\u0651\u0650\u064a\u0646\u064e',
+          'text_uthmani':
+              '\u0627\u0644\u0636\u0651\u064e\u0627\u0653\u0644\u0651\u0650\u064a\u0646\u064e',
           'text_uthmani_tajweed':
               '<rule class=ham_wasl>\u0671</rule><rule class=laam_shamsiyah>\u0644</rule>\u0636\u0651'
               '<rule class=madda_necessary>\u064e\u0627</rule>\u0653\u0644\u0651'
@@ -925,8 +926,10 @@ void main() {
         'words': [
           {
             'char_type_name': 'word',
-            'text_uthmani': '\u0671\u0644\u0636\u0651\u064e\u0627\u0653\u0644\u0651\u0650\u064a\u0646\u064e',
-            'text_uthmani_tajweed': '<rule class=ham_wasl>\u0671</rule><rule class=laam_shamsiyah>\u0644</rule>\u0636\u0651<rule class=madda_necessary>\u064e\u0627</rule>\u0653\u0644\u0651<rule class=madda_permissible>\u0650\u064a</rule>\u0646\u064e',
+            'text_uthmani':
+                '\u0671\u0644\u0636\u0651\u064e\u0627\u0653\u0644\u0651\u0650\u064a\u0646\u064e',
+            'text_uthmani_tajweed':
+                '<rule class=ham_wasl>\u0671</rule><rule class=laam_shamsiyah>\u0644</rule>\u0636\u0651<rule class=madda_necessary>\u064e\u0627</rule>\u0653\u0644\u0651<rule class=madda_permissible>\u0650\u064a</rule>\u0646\u064e',
           },
         ],
       });
@@ -949,8 +952,10 @@ void main() {
         'words': [
           {
             'char_type_name': 'word',
-            'text_uthmani': '\u0621\u064e\u0627\u0653\u0644\u0652\u0640\u0654\u064e\u0640\u0670\u0646\u064e',
-            'text_uthmani_tajweed': '\u0621\u064e<rule class=madda_necessary>\u0627</rule>\u0653\u0644\u0652\u0640\u0654\u064e<rule class=madda_normal>\u0640\u0670</rule>\u0646\u064e',
+            'text_uthmani':
+                '\u0621\u064e\u0627\u0653\u0644\u0652\u0640\u0654\u064e\u0640\u0670\u0646\u064e',
+            'text_uthmani_tajweed':
+                '\u0621\u064e<rule class=madda_necessary>\u0627</rule>\u0653\u0644\u0652\u0640\u0654\u064e<rule class=madda_normal>\u0640\u0670</rule>\u0646\u064e',
           },
         ],
       });
@@ -974,7 +979,8 @@ void main() {
           {
             'char_type_name': 'word',
             'text_uthmani': '\u0627\u0644\u0653\u0645\u0653',
-            'text_uthmani_tajweed': '\u0627<rule class=madda_necessary>\u0644\u0653</rule><rule class=madda_necessary>\u0645\u0653</rule>',
+            'text_uthmani_tajweed':
+                '\u0627<rule class=madda_necessary>\u0644\u0653</rule><rule class=madda_necessary>\u0645\u0653</rule>',
           },
         ],
       });
@@ -998,7 +1004,8 @@ void main() {
           {
             'char_type_name': 'word',
             'text_uthmani': '\u0646\u0653\u200c\u06da',
-            'text_uthmani_tajweed': '<rule class=madda_necessary>\u0646\u0653</rule>\u200c\u06da',
+            'text_uthmani_tajweed':
+                '<rule class=madda_necessary>\u0646\u0653</rule>\u200c\u06da',
           },
         ],
       });
@@ -1088,8 +1095,9 @@ void main() {
       });
 
       final inn = ayah.words[0];
-      final innIkhfa =
-          inn.spans.where((s) => s.rule == TajweedRule.ikhfa).toList();
+      final innIkhfa = inn.spans
+          .where((s) => s.rule == TajweedRule.ikhfa)
+          .toList();
       expect(innIkhfa, hasLength(1));
       expect(
         inn.arabic.substring(innIkhfa[0].start, innIkhfa[0].end),
@@ -1098,10 +1106,9 @@ void main() {
       );
 
       final kunta = ayah.words[1];
-      final spans = kunta.spans
-          .where((s) => s.rule == TajweedRule.ikhfa)
-          .toList()
-        ..sort((a, b) => a.start.compareTo(b.start));
+      final spans =
+          kunta.spans.where((s) => s.rule == TajweedRule.ikhfa).toList()
+            ..sort((a, b) => a.start.compareTo(b.start));
 
       expect(
         spans,
@@ -1111,7 +1118,8 @@ void main() {
       expect(
         kunta.arabic.substring(spans[0].start, spans[0].end),
         '\u0643\u064F',
-        reason: 'trigger letter for the previous word\'s noon, with its harakah',
+        reason:
+            'trigger letter for the previous word\'s noon, with its harakah',
       );
       expect(
         kunta.arabic.substring(spans[1].start, spans[1].end),

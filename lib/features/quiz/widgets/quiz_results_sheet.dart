@@ -54,9 +54,7 @@ class QuizResultsSheet extends StatelessWidget {
 
             // Trophy / result icon
             Icon(
-              success
-                  ? Icons.emoji_events_rounded
-                  : Icons.refresh_rounded,
+              success ? Icons.emoji_events_rounded : Icons.refresh_rounded,
               size: 48,
               color: success
                   ? const Color(0xFFB8860B)
@@ -67,9 +65,9 @@ class QuizResultsSheet extends StatelessWidget {
             Text(
               headline,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: const Color(0xFF0F6E56),
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: const Color(0xFF0F6E56),
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -91,9 +89,9 @@ class QuizResultsSheet extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF888780),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF888780)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),

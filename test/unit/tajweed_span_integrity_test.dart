@@ -86,9 +86,7 @@ void main() {
 
     expect(_rulesOf(inna), contains(TajweedRule.ghunnah));
 
-    final ghunnah = inna.spans.firstWhere(
-      (s) => s.rule == TajweedRule.ghunnah,
-    );
+    final ghunnah = inna.spans.firstWhere((s) => s.rule == TajweedRule.ghunnah);
     final madd = inna.spans.firstWhere(
       (s) => s.rule == TajweedRule.maddMunfasil,
     );
@@ -123,10 +121,10 @@ void main() {
           0x0644, 0x0650, 0x0645, 0x0650, 0x064A, 0x0646, 0x064E,
         ]),
         '${_cp(const [0x0644, 0x0650, 0x0644, 0x0638, 0x0651, 0x064E])}'
-            '<rule class=madda_normal>${_cp(const [0x0640, 0x0670])}</rule>'
-            '${_cp(const [
-              0x0644, 0x0650, 0x0645, 0x0650, 0x064A, 0x0646, 0x064E, //
-            ])}',
+        '<rule class=madda_normal>${_cp(const [0x0640, 0x0670])}</rule>'
+        '${_cp(const [
+          0x0644, 0x0650, 0x0645, 0x0650, 0x064A, 0x0646, 0x064E, //
+        ])}',
       ),
       // 18:29 بِمَآءٍۢ — muttasil followed by a second rule after the maddah.
       'بِمَآءٍۢ': _word(
@@ -135,9 +133,9 @@ void main() {
           0x06E2,
         ]),
         '${_cp(const [0x0628, 0x0650, 0x0645])}'
-            '<rule class=madda_obligatory_mottasel>'
-            '${_cp(const [0x064E, 0x0627])}</rule>${_cp(const [0x0653])}'
-            '<rule class=ikhafa>${_cp(const [0x0621, 0x064D])}</rule>',
+        '<rule class=madda_obligatory_mottasel>'
+        '${_cp(const [0x064E, 0x0627])}</rule>${_cp(const [0x0653])}'
+        '<rule class=ikhafa>${_cp(const [0x0621, 0x064D])}</rule>',
       ),
     };
 
@@ -146,7 +144,8 @@ void main() {
         expect(
           AyahMapper.unmatchedRuleClasses(word),
           isEmpty,
-          reason: '$label has rule tags the parser could not place in the text.',
+          reason:
+              '$label has rule tags the parser could not place in the text.',
         );
       });
     });

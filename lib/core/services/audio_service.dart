@@ -35,9 +35,7 @@ class AudioService {
     try {
       await _player.stop();
       final source = ConcatenatingAudioSource(
-        children: urls
-            .map((u) => AudioSource.uri(Uri.parse(u)))
-            .toList(),
+        children: urls.map((u) => AudioSource.uri(Uri.parse(u))).toList(),
       );
       await _player.setAudioSource(source);
       unawaited(_player.play());
@@ -56,8 +54,7 @@ class AudioService {
   Future<void> resume() async => _player.play();
   Future<void> stop() async => _player.stop();
 
-  Future<void> seekTo(Duration position) async =>
-      _player.seek(position);
+  Future<void> seekTo(Duration position) async => _player.seek(position);
 
   /// Set playback speed (0.5 = slow, 1.0 = normal, 1.25 = fast).
   Future<void> setSpeed(double speed) async =>

@@ -4,11 +4,7 @@ class JumpAyahSheet extends StatefulWidget {
   final int maxAyah;
   final void Function(int) onJump;
 
-  const JumpAyahSheet({
-    super.key,
-    required this.maxAyah,
-    required this.onJump,
-  });
+  const JumpAyahSheet({super.key, required this.maxAyah, required this.onJump});
 
   @override
   State<JumpAyahSheet> createState() => _JumpAyahSheetState();

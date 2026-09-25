@@ -69,7 +69,8 @@ class _AudioPlayerBarState extends State<AudioPlayerBar> {
                     // Duration is unknown until the source loads; without it
                     // there is nothing meaningful to seek within.
                     final canSeek = dur.inMilliseconds > 0;
-                    final shownMs = _dragMs ??
+                    final shownMs =
+                        _dragMs ??
                         pos.inMilliseconds
                             .clamp(0, dur.inMilliseconds)
                             .toDouble();
@@ -82,14 +83,17 @@ class _AudioPlayerBarState extends State<AudioPlayerBar> {
                             data: SliderTheme.of(context).copyWith(
                               trackHeight: 3,
                               activeTrackColor: const Color(0xFF1D9E75),
-                              inactiveTrackColor:
-                                  Theme.of(context).colorScheme.surfaceVariant,
+                              inactiveTrackColor: Theme.of(
+                                context,
+                              ).colorScheme.surfaceVariant,
                               thumbColor: const Color(0xFF1D9E75),
                               overlayColor: const Color(0x291D9E75),
                               thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 6),
+                                enabledThumbRadius: 6,
+                              ),
                               overlayShape: const RoundSliderOverlayShape(
-                                  overlayRadius: 14),
+                                overlayRadius: 14,
+                              ),
                             ),
                             child: Slider(
                               value: canSeek ? shownMs : 0,
@@ -106,12 +110,14 @@ class _AudioPlayerBarState extends State<AudioPlayerBar> {
                         Row(
                           children: [
                             Text(
-                                _format(
-                                    Duration(milliseconds: shownMs.round())),
-                                style: Theme.of(context).textTheme.bodySmall),
+                              _format(Duration(milliseconds: shownMs.round())),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                             const Spacer(),
-                            Text(_format(dur),
-                                style: Theme.of(context).textTheme.bodySmall),
+                            Text(
+                              _format(dur),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ],
                         ),
                       ],
@@ -139,15 +145,21 @@ class _AudioPlayerBarState extends State<AudioPlayerBar> {
                 GestureDetector(
                   onTap: _cycleSpeed,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('${_speed}x',
-                        style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      '${_speed}x',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
 
