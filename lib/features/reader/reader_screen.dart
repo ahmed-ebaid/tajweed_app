@@ -848,6 +848,15 @@ class _ReaderScreenState extends State<ReaderScreen>
     _forceRefreshNextSurahLoad = false;
 
     try {
+      // Juz markers are real list items, not decoration drawn over the text.
+      // If they land after the first paint they insert widgets above the
+      // restored reading position, push it down, and the scroll restore then
+      // visibly animates it back. Seed them from cache before anything paints.
+      // This reads an already-open Hive box, never the network, so it cannot
+      // delay the text.
+      await _loadJuzBoundaries(useCacheOnly: true, loadVersion: loadVersion);
+      if (!mounted || loadVersion != _surahLoadVersion) return;
+
       final cachedVerses = await _quranOfflineSync.getCachedSurah(surahNumber);
       if (!mounted || loadVersion != _surahLoadVersion) return;
 
@@ -1091,13 +1100,20 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
 
     if (!mounted || loadVersion != _surahLoadVersion) return;
-    try {
-      await _loadJuzBoundaries(
-        useCacheOnly: isOffline,
-        loadVersion: loadVersion,
-      );
-    } catch (_) {
-      // Juz markers are decorative; they must not affect reading.
+    // _loadSurah already seeded the markers from cache before the first paint.
+    // Juz boundaries are immutable scripture structure, so re-fetching them
+    // here would rewrite the list — shifting layout under a reader who has
+    // already been scrolled to position — in exchange for nothing. The network
+    // is used only when there was no cached juz list to seed from.
+    if (!_hasCachedJuzList()) {
+      try {
+        await _loadJuzBoundaries(
+          useCacheOnly: isOffline,
+          loadVersion: loadVersion,
+        );
+      } catch (_) {
+        // Juz markers are decorative; they must not affect reading.
+      }
     }
 
     if (!refreshVerses) return;
@@ -1189,12 +1205,23 @@ class _ReaderScreenState extends State<ReaderScreen>
     _loadSurah();
   }
 
+  /// True when a juz list has already been cached, meaning the markers were
+  /// available to the first paint and do not need a network refresh.
+  bool _hasCachedJuzList() {
+    final cached = Hive.box('settings').get(_juzListCacheKey);
+    return cached is List && cached.isNotEmpty;
+  }
+
   /// Computes juz markers for the currently selected surah.
   ///
   /// The post-await read of `_selectedSurah` is deliberate: boundaries are
   /// always recomputed against whatever surah is on screen when the fetch
   /// lands. `loadVersion` is still accepted so a superseded load stops before
   /// writing state at all.
+  ///
+  /// With `useCacheOnly` the body reaches no await at all — it is a straight
+  /// read of an already-open Hive box — which is what makes it safe to call
+  /// before the first paint.
   Future<Map<int, int>> _loadJuzBoundaries({
     bool useCacheOnly = false,
     int? loadVersion,
