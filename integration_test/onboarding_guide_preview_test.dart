@@ -22,10 +22,7 @@ import 'package:tajweed_practice/core/providers/locale_provider.dart';
 import 'package:tajweed_practice/core/services/onboarding_service.dart';
 import 'package:tajweed_practice/features/onboarding/onboarding_screen.dart';
 
-const _locale = String.fromEnvironment(
-  'SCREENSHOT_LOCALE',
-  defaultValue: 'en',
-);
+const _locale = String.fromEnvironment('SCREENSHOT_LOCALE', defaultValue: 'en');
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +32,6 @@ void main() {
     for (final box in const ['settings', 'onboarding']) {
       if (!Hive.isBoxOpen(box)) await Hive.openBox(box);
     }
-
 
     await tester.pumpWidget(
       ChangeNotifierProvider<LocaleProvider>(

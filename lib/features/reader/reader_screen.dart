@@ -52,6 +52,24 @@ class _ReaderScreenState extends State<ReaderScreen>
   static const String _ayahContentModeKey = 'ayah_content_mode';
   static const String _juzListCacheKey = 'reader_juz_list';
 
+  /// Verses returned per API page; a short page means the surah is complete.
+  static const int _versesPerPage = 50;
+
+  /// Ceiling on verse pages for one surah. Al-Baqarah, the longest at 286
+  /// ayahs, needs 6 pages, so this leaves ample headroom while still making
+  /// the pagination loop terminate.
+  static const int _maxVersePagesPerSurah = 25;
+
+  /// Overall budget for pulling a full surah from the network.
+  static const Duration _verseFetchDeadline = Duration(seconds: 30);
+
+  /// Per-request ceiling for reader network calls.
+  static const Duration _networkCallTimeout = Duration(seconds: 15);
+
+  /// Ceiling for the connectivity platform channel, which gates the first
+  /// paint of a surah and has no inherent timeout of its own.
+  static const Duration _connectivityCheckTimeout = Duration(seconds: 2);
+
   final _api = QuranApiService();
   final _audio = AudioService();
   final _audioCache = AudioCacheService();
@@ -790,9 +808,17 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
+  /// Reports whether the device has no network interface at all.
+  ///
+  /// This runs on a platform channel, which has no inherent timeout, and it is
+  /// awaited before the first paint of a surah. A hung channel would therefore
+  /// strand the reader on its initial spinner, so the check is bounded and a
+  /// timeout is treated as "online" — the cached path works either way.
   Future<bool> _isDeviceOffline() async {
     try {
-      final connectivity = await Connectivity().checkConnectivity();
+      final connectivity = await Connectivity().checkConnectivity().timeout(
+        _connectivityCheckTimeout,
+      );
       return connectivity.every((result) => result == ConnectivityResult.none);
     } catch (_) {
       return false;
@@ -801,6 +827,10 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   Future<void> _loadSurah({bool allowFallback = true}) async {
     final loadVersion = ++_surahLoadVersion;
+    // Captured once. `_selectedSurah` is mutated synchronously by the surah
+    // picker, so re-reading it after an await can attribute this load's verses
+    // to whichever surah the user has since switched to.
+    final surahNumber = _selectedSurah;
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final isOffline = await _isDeviceOffline();
     if (!mounted || loadVersion != _surahLoadVersion) return;
@@ -814,126 +844,102 @@ class _ReaderScreenState extends State<ReaderScreen>
     });
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     _lastObservedReciterId = reciterId;
+    final forceRefresh = _forceRefreshNextSurahLoad;
+    _forceRefreshNextSurahLoad = false;
 
     try {
-      final cachedVerses = await _quranOfflineSync.getCachedSurah(
-        _selectedSurah,
-      );
-      final allVerses = <Map<String, dynamic>>[];
-      Map<String, String> tajweedMap = <String, String>{};
-      final forceRefresh = _forceRefreshNextSurahLoad;
-      final needsLocalizedRefresh = !_cacheHasTranslationForLanguage(
-        cachedVerses,
-        langCode,
-      );
+      final cachedVerses = await _quranOfflineSync.getCachedSurah(surahNumber);
+      if (!mounted || loadVersion != _surahLoadVersion) return;
 
-      if (cachedVerses != null &&
-          cachedVerses.isNotEmpty &&
-          (isOffline || (!needsLocalizedRefresh && !forceRefresh))) {
-        allVerses.addAll(cachedVerses);
-        tajweedMap = await _quranOfflineSync.getCachedTajweedMap(
-          _selectedSurah,
+      if (cachedVerses != null && cachedVerses.isNotEmpty) {
+        // Scripture that is already on disk is painted immediately. Audio
+        // metadata, juz markers and any refresh are optional extras and must
+        // never hold the text behind a spinner.
+        final cachedTajweed = await _quranOfflineSync.getCachedTajweedMap(
+          surahNumber,
         );
-      } else {
-        int page = 1;
-        while (true) {
-          final verses = await _api.fetchVerses(
-            surahNumber: _selectedSurah,
+        if (!mounted || loadVersion != _surahLoadVersion) return;
+        _applySurahVerses(
+          loadVersion: loadVersion,
+          verses: cachedVerses,
+          tajweedMap: cachedTajweed,
+          langCode: langCode,
+        );
+
+        // The cached copy may predate the reader's current language, in which
+        // case the translation is filled in later without blocking the Arabic.
+        final needsLocalizedRefresh = !_cacheHasTranslationForLanguage(
+          cachedVerses,
+          langCode,
+        );
+        unawaited(
+          _loadSurahExtras(
+            loadVersion: loadVersion,
+            surahNumber: surahNumber,
+            reciterId: reciterId,
             langCode: langCode,
-            reciterId: reciterId,
-            page: page,
-          );
-          allVerses.addAll(verses);
-          if (verses.length < 50) break;
-          page++;
-        }
-
-        tajweedMap = await _api.fetchTajweedText(chapterNumber: _selectedSurah);
-        // Persist immediately so restart does not lose freshly loaded surah.
-        await _quranOfflineSync.saveSurahCache(
-          surahNumber: _selectedSurah,
-          verses: allVerses,
-          tajweedMap: tajweedMap,
+            isOffline: isOffline,
+            refreshVerses:
+                !isOffline && (needsLocalizedRefresh || forceRefresh),
+            refreshWasUserRequested: forceRefresh,
+          ),
         );
+        return;
       }
 
-      Map<String, String> audioMap = _contentSync.getCachedRecitationMap(
+      // Nothing cached for this surah, so the network is the only source. This
+      // is the one path allowed to block, and it is bounded on every hop.
+      final allVerses = await _fetchAllVerses(
+        surahNumber: surahNumber,
+        langCode: langCode,
         reciterId: reciterId,
-        surahNumber: _selectedSurah,
       );
-      Map<String, List<AyahAudioWordTiming>> audioWordTimings = {};
-      try {
-        if (!isOffline) {
-          final audioFiles = await _api
-              .fetchAudioFilesWithTimings(
-                reciterId: reciterId,
-                surahNumber: _selectedSurah,
-              )
-              .timeout(const Duration(seconds: 15));
-          audioMap.addAll(
-            audioFiles.map((key, file) => MapEntry(key, file.url)),
-          );
-          audioWordTimings = audioFiles.map(
-            (key, file) => MapEntry(key, file.wordTimings),
-          );
-          await _contentSync.cacheRecitationMap(
-            reciterId: reciterId,
-            surahNumber: _selectedSurah,
-            audioUrls: audioMap,
-          );
-        }
-      } catch (_) {
-        // Audio URLs are optional when offline. Cached audio still works.
-      }
-
-      await _loadJuzBoundaries(useCacheOnly: isOffline);
-
-      if (kDebugMode) {
-        print('📻 AUDIO MAP KEYS: ${audioMap.keys.toList()}');
-        print('📻 AUDIO MAP SIZE: ${audioMap.length}');
-        if (audioMap.isNotEmpty) {
-          print('📻 FIRST ENTRY: ${audioMap.entries.first}');
-        } else {
-          print('❌ AUDIO MAP IS EMPTY!');
-        }
-      }
-
-      if (mounted && loadVersion == _surahLoadVersion) {
-        setState(() {
-          _loading = false;
-          _ayahs = AyahMapper.fromApiList(
-            allVerses,
-            tajweedMap: tajweedMap,
-            requestedLangCode: langCode,
-          );
-          _audioUrls = audioMap;
-          _audioWordTimings = audioWordTimings;
-          _activeWordIndex = -1;
-          _currentMushafPageIndex = 0;
-          _ayahKeys.clear();
-          for (final a in _ayahs) {
-            _ayahKeys[a.ayahNumber] = GlobalKey();
-          }
-        });
-        if (kDebugMode) {
-          print('📻 AFTER SETSTATE: _audioUrls.length=${_audioUrls.length}');
-        }
-        _refreshOfflineStatus();
-        // Defer position restore until widgets are rendered.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _restorePositionAfterSurahLoad();
-        });
-      }
-      _forceRefreshNextSurahLoad = false;
+      final tajweedMap = await _api
+          .fetchTajweedText(chapterNumber: surahNumber)
+          .timeout(_networkCallTimeout);
+      // Checked before the write, not after: a superseded load must not race
+      // the current one for the same cache key, and stale-language verses must
+      // not overwrite a fresher copy.
+      if (!mounted || loadVersion != _surahLoadVersion) return;
+      // Persist immediately so restart does not lose freshly loaded surah.
+      await _quranOfflineSync.saveSurahCache(
+        surahNumber: surahNumber,
+        verses: allVerses,
+        tajweedMap: tajweedMap,
+      );
+      _applySurahVerses(
+        loadVersion: loadVersion,
+        verses: allVerses,
+        tajweedMap: tajweedMap,
+        langCode: langCode,
+      );
+      unawaited(
+        _loadSurahExtras(
+          loadVersion: loadVersion,
+          surahNumber: surahNumber,
+          reciterId: reciterId,
+          langCode: langCode,
+          isOffline: isOffline,
+          refreshVerses: false,
+          refreshWasUserRequested: false,
+        ),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ ERROR IN LOAD SURAH: $e');
+      }
+      // The flag is cleared eagerly so it cannot leak into an unrelated load,
+      // but a failed load never served the refresh the user asked for. Re-arm
+      // it so the next open honours the request instead of silently dropping
+      // it and serving the stale-language copy from cache.
+      if (forceRefresh && loadVersion == _surahLoadVersion) {
+        _forceRefreshNextSurahLoad = true;
       }
 
       final fallbackSurah = await _quranOfflineSync.getFirstCachedSurahNumber();
       if (allowFallback &&
           fallbackSurah != null &&
-          fallbackSurah != _selectedSurah) {
+          fallbackSurah != surahNumber) {
         final fallbackVerses = await _quranOfflineSync.getCachedSurah(
           fallbackSurah,
         );
@@ -966,6 +972,175 @@ class _ReaderScreenState extends State<ReaderScreen>
           _audioUrls = {};
           _audioWordTimings = {};
         });
+      }
+    }
+  }
+
+  /// Applies surah text to the view. Kept separate from loading so cached
+  /// content can paint before any network work begins.
+  void _applySurahVerses({
+    required int loadVersion,
+    required List<Map<String, dynamic>> verses,
+    required Map<String, String> tajweedMap,
+    required String langCode,
+    bool preserveReadingPosition = false,
+  }) {
+    if (!mounted || loadVersion != _surahLoadVersion) return;
+    setState(() {
+      _loading = false;
+      _ayahs = AyahMapper.fromApiList(
+        verses,
+        tajweedMap: tajweedMap,
+        requestedLangCode: langCode,
+      );
+      _activeWordIndex = -1;
+      if (!preserveReadingPosition) {
+        _currentMushafPageIndex = 0;
+      }
+      _ayahKeys.clear();
+      for (final a in _ayahs) {
+        _ayahKeys[a.ayahNumber] = GlobalKey();
+      }
+    });
+    _refreshOfflineStatus();
+    if (preserveReadingPosition) return;
+    // Defer position restore until widgets are rendered.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restorePositionAfterSurahLoad();
+    });
+  }
+
+  /// Pulls every page of a surah with both a per-request timeout and an
+  /// overall deadline, so a stalled endpoint can never hang the reader.
+  Future<List<Map<String, dynamic>>> _fetchAllVerses({
+    required int surahNumber,
+    required String langCode,
+    required int reciterId,
+  }) async {
+    final deadline = DateTime.now().add(_verseFetchDeadline);
+    final allVerses = <Map<String, dynamic>>[];
+    for (var page = 1; page <= _maxVersePagesPerSurah; page++) {
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) {
+        throw TimeoutException(
+          'Timed out loading verses for surah $surahNumber',
+        );
+      }
+      final verses = await _api
+          .fetchVerses(
+            surahNumber: surahNumber,
+            langCode: langCode,
+            reciterId: reciterId,
+            page: page,
+          )
+          .timeout(
+            remaining < _networkCallTimeout ? remaining : _networkCallTimeout,
+          );
+      allVerses.addAll(verses);
+      if (verses.length < _versesPerPage) break;
+    }
+    return allVerses;
+  }
+
+  /// Loads everything that is not the scripture itself: audio URLs, juz
+  /// markers and an optional refresh. All of it runs after the text is on
+  /// screen and every failure is survivable.
+  Future<void> _loadSurahExtras({
+    required int loadVersion,
+    required int surahNumber,
+    required int reciterId,
+    required String langCode,
+    required bool isOffline,
+    required bool refreshVerses,
+    required bool refreshWasUserRequested,
+  }) async {
+    // Cached audio URLs resolve synchronously, so they can be applied at once.
+    final audioMap = _contentSync.getCachedRecitationMap(
+      reciterId: reciterId,
+      surahNumber: surahNumber,
+    );
+    if (!mounted || loadVersion != _surahLoadVersion) return;
+    if (audioMap.isNotEmpty) {
+      setState(() => _audioUrls = Map<String, String>.from(audioMap));
+    }
+
+    if (!isOffline) {
+      try {
+        final audioFiles = await _api
+            .fetchAudioFilesWithTimings(
+              reciterId: reciterId,
+              surahNumber: surahNumber,
+            )
+            .timeout(_networkCallTimeout);
+        audioMap.addAll(audioFiles.map((key, file) => MapEntry(key, file.url)));
+        await _contentSync.cacheRecitationMap(
+          reciterId: reciterId,
+          surahNumber: surahNumber,
+          audioUrls: audioMap,
+        );
+        if (!mounted || loadVersion != _surahLoadVersion) return;
+        setState(() {
+          _audioUrls = audioMap;
+          _audioWordTimings = audioFiles.map(
+            (key, file) => MapEntry(key, file.wordTimings),
+          );
+        });
+      } catch (_) {
+        // Audio URLs are optional. Previously cached audio still plays.
+      }
+    }
+
+    if (!mounted || loadVersion != _surahLoadVersion) return;
+    try {
+      await _loadJuzBoundaries(
+        useCacheOnly: isOffline,
+        loadVersion: loadVersion,
+      );
+    } catch (_) {
+      // Juz markers are decorative; they must not affect reading.
+    }
+
+    if (!refreshVerses) return;
+    if (!mounted || loadVersion != _surahLoadVersion) return;
+    try {
+      final verses = await _fetchAllVerses(
+        surahNumber: surahNumber,
+        langCode: langCode,
+        reciterId: reciterId,
+      );
+      final tajweedMap = await _api
+          .fetchTajweedText(chapterNumber: surahNumber)
+          .timeout(_networkCallTimeout);
+      // Checked before the write so a superseded refresh cannot overwrite a
+      // fresher copy of the same key with stale-language verses.
+      if (!mounted || loadVersion != _surahLoadVersion) return;
+      await _quranOfflineSync.saveSurahCache(
+        surahNumber: surahNumber,
+        verses: verses,
+        tajweedMap: tajweedMap,
+      );
+      if (!mounted || loadVersion != _surahLoadVersion) return;
+      // Applied in place only because the reader is currently showing a copy
+      // that lacks the requested translation, or the user asked to refresh.
+      // The reading position is preserved so the text does not jump.
+      _applySurahVerses(
+        loadVersion: loadVersion,
+        verses: verses,
+        tajweedMap: tajweedMap,
+        langCode: langCode,
+        preserveReadingPosition: true,
+      );
+    } catch (e) {
+      // Unlike audio and juz markers, this refresh is the mechanism that
+      // replaces an Arabic-only or stale-language cache copy. Swallowing it
+      // silently leaves the user reading untranslated text with no signal, so
+      // the failure is logged and an explicitly requested refresh is re-armed
+      // for the next open rather than dropped.
+      if (kDebugMode) {
+        print('⚠️ Deferred verse refresh failed for surah $surahNumber: $e');
+      }
+      if (refreshWasUserRequested && loadVersion == _surahLoadVersion) {
+        _forceRefreshNextSurahLoad = true;
       }
     }
   }
@@ -1014,7 +1189,16 @@ class _ReaderScreenState extends State<ReaderScreen>
     _loadSurah();
   }
 
-  Future<Map<int, int>> _loadJuzBoundaries({bool useCacheOnly = false}) async {
+  /// Computes juz markers for the currently selected surah.
+  ///
+  /// The post-await read of `_selectedSurah` is deliberate: boundaries are
+  /// always recomputed against whatever surah is on screen when the fetch
+  /// lands. `loadVersion` is still accepted so a superseded load stops before
+  /// writing state at all.
+  Future<Map<int, int>> _loadJuzBoundaries({
+    bool useCacheOnly = false,
+    int? loadVersion,
+  }) async {
     List<Map<String, dynamic>> juzs = const [];
     if (!useCacheOnly) {
       try {
@@ -1073,7 +1257,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     for (final list in rangesBySurah.values) {
       list.sort((a, b) => a.startAyah.compareTo(b.startAyah));
     }
-    if (mounted) {
+    if (mounted && (loadVersion == null || loadVersion == _surahLoadVersion)) {
       setState(() {
         _juzBoundaries = boundaries;
         _juzRangesBySurah = rangesBySurah;
@@ -1835,13 +2019,23 @@ class _ReaderScreenState extends State<ReaderScreen>
   Future<List<String>> _fetchCurrentSurahVerseKeysForTafseer() async {
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final keys = <String>[];
-    var page = 1;
-    while (true) {
-      final verses = await _api.fetchVerses(
-        surahNumber: _selectedSurah,
-        langCode: langCode,
-        page: page,
-      );
+    final deadline = DateTime.now().add(_verseFetchDeadline);
+    for (var page = 1; page <= _maxVersePagesPerSurah; page++) {
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) {
+        throw TimeoutException(
+          'Timed out loading verse keys for surah $_selectedSurah',
+        );
+      }
+      final verses = await _api
+          .fetchVerses(
+            surahNumber: _selectedSurah,
+            langCode: langCode,
+            page: page,
+          )
+          .timeout(
+            remaining < _networkCallTimeout ? remaining : _networkCallTimeout,
+          );
       if (verses.isEmpty) break;
 
       for (final v in verses) {
@@ -1849,8 +2043,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         if (key != null && key.isNotEmpty) keys.add(key);
       }
 
-      if (verses.length < 50) break;
-      page++;
+      if (verses.length < _versesPerPage) break;
     }
 
     final unique = keys.toSet().toList(growable: false)

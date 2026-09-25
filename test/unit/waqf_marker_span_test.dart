@@ -30,7 +30,6 @@ bool _bodyRunLacksVisibleBase(String text) {
       (cp >= 0x06EA && cp <= 0x06ED);
 }
 
-
 /// Collects body runs that open without a visible base *and* are not the
 /// harmless trailing-mark case.
 ///
@@ -47,7 +46,9 @@ List<String> _strandedBodyRuns(
   var afterWaqfMarker = false;
   for (final run in runs) {
     final isWaqfMarker = run.isMarker && run.markerRule == TajweedRule.waqf;
-    if (!run.isMarker && !afterWaqfMarker && _bodyRunLacksVisibleBase(run.text)) {
+    if (!run.isMarker &&
+        !afterWaqfMarker &&
+        _bodyRunLacksVisibleBase(run.text)) {
       offenders.add(run.text);
     }
     afterWaqfMarker = isWaqfMarker;
@@ -164,13 +165,18 @@ void main() {
 
     test('splitting drops only the waqf separator', () {
       final arabic = _rabbihimArabic();
-      final rebuilt = TajweedText.splitIntoStyledRuns(arabic)
-          .map((r) => r.text)
-          .join();
+      final rebuilt = TajweedText.splitIntoStyledRuns(
+        arabic,
+      ).map((r) => r.text).join();
 
       // Lossless apart from the one separator that D1 deliberately removes.
-      expect(rebuilt, arabic.replaceAll(' ${String.fromCharCode(_waqfSala)}',
-          String.fromCharCode(_waqfSala)));
+      expect(
+        rebuilt,
+        arabic.replaceAll(
+          ' ${String.fromCharCode(_waqfSala)}',
+          String.fromCharCode(_waqfSala),
+        ),
+      );
     });
 
     test('a waqf sitting directly on a letter still gets its colour', () {

@@ -25,51 +25,61 @@ class SpeechComparisonService {
         final similarity = _similarity(expected, spoken);
 
         if (similarity >= 0.7) {
-          matches.add(WordMatch(
-            expected: expected,
-            spoken: spoken,
-            status: similarity >= 0.9
-                ? WordStatus.correct
-                : WordStatus.partial,
-            similarity: similarity,
-          ));
+          matches.add(
+            WordMatch(
+              expected: expected,
+              spoken: spoken,
+              status: similarity >= 0.9
+                  ? WordStatus.correct
+                  : WordStatus.partial,
+              similarity: similarity,
+            ),
+          );
           spokenIdx++;
         } else {
           // Check if the next spoken word matches (user may have inserted extra)
           if (spokenIdx + 1 < spokenWords.length &&
               _similarity(expected, spokenWords[spokenIdx + 1]) >= 0.7) {
             spokenIdx++; // skip the extra word
-            matches.add(WordMatch(
-              expected: expected,
-              spoken: spokenWords[spokenIdx],
-              status: WordStatus.partial,
-              similarity: _similarity(expected, spokenWords[spokenIdx]),
-            ));
+            matches.add(
+              WordMatch(
+                expected: expected,
+                spoken: spokenWords[spokenIdx],
+                status: WordStatus.partial,
+                similarity: _similarity(expected, spokenWords[spokenIdx]),
+              ),
+            );
             spokenIdx++;
           } else {
-            matches.add(WordMatch(
-              expected: expected,
-              spoken: spoken,
-              status: WordStatus.missed,
-              similarity: similarity,
-            ));
+            matches.add(
+              WordMatch(
+                expected: expected,
+                spoken: spoken,
+                status: WordStatus.missed,
+                similarity: similarity,
+              ),
+            );
           }
         }
       } else {
         // User stopped early — remaining words are missing
-        matches.add(WordMatch(
-          expected: expected,
-          spoken: '',
-          status: WordStatus.missed,
-          similarity: 0.0,
-        ));
+        matches.add(
+          WordMatch(
+            expected: expected,
+            spoken: '',
+            status: WordStatus.missed,
+            similarity: 0.0,
+          ),
+        );
       }
     }
 
-    final correctCount =
-        matches.where((m) => m.status == WordStatus.correct).length;
-    final overallAccuracy =
-        matches.isEmpty ? 0.0 : correctCount / matches.length;
+    final correctCount = matches
+        .where((m) => m.status == WordStatus.correct)
+        .length;
+    final overallAccuracy = matches.isEmpty
+        ? 0.0
+        : correctCount / matches.length;
 
     return SpeechComparisonResult(
       wordMatches: matches,

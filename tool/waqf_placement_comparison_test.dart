@@ -199,10 +199,8 @@ String _withoutWaqf(String text) {
 /// the string that reached the renderer before commit `e26841d`.
 ///
 /// The mapper's replacement is 1:1, so undoing it is lossless.
-String _withZwnjSeparator(String text) => text.replaceAllMapped(
-  RegExp('\u0020(?=[\u06D6-\u06ED])'),
-  (_) => '\u200C',
-);
+String _withZwnjSeparator(String text) =>
+    text.replaceAllMapped(RegExp('\u0020(?=[\u06D6-\u06ED])'), (_) => '\u200C');
 
 /// Splits at waqf signs, leaving the separator (if any) with the body text.
 List<({String text, bool isWaqf})> _splitAtWaqf(String text) {
@@ -230,9 +228,8 @@ final List<_Variant> _variants = [
     summary:
         'Reference render used to isolate the waqf glyph by image difference. '
         'The sign is nonspacing, so deleting it shifts nothing else.',
-    build: (normalized) => _rich([
-      TextSpan(text: _withoutWaqf(normalized), style: _bodyStyle),
-    ]),
+    build: (normalized) =>
+        _rich([TextSpan(text: _withoutWaqf(normalized), style: _bodyStyle)]),
   ),
   _Variant(
     id: 'Z2-baseline-no-waqf-no-space',
@@ -271,9 +268,8 @@ final List<_Variant> _variants = [
     summary:
         'A single shaping run, so GPOS mark/mkmk can position the sign '
         'relative to the letter and its harakah. No separate colour.',
-    build: (normalized) => _rich([
-      TextSpan(text: normalized, style: _bodyStyle),
-    ]),
+    build: (normalized) =>
+        _rich([TextSpan(text: normalized, style: _bodyStyle)]),
   ),
   _Variant(
     id: 'B2-in-run-no-separator',
@@ -311,8 +307,9 @@ final List<_Variant> _variants = [
     summary:
         'The same pre-fix payload left in one shaping run. Isolates the ZWNJ '
         'itself from the run splitting.',
-    build: (normalized) =>
-        _rich([TextSpan(text: _withZwnjSeparator(normalized), style: _bodyStyle)]),
+    build: (normalized) => _rich([
+      TextSpan(text: _withZwnjSeparator(normalized), style: _bodyStyle),
+    ]),
   ),
   _Variant(
     id: 'C2-prefix-zwnj-colour-only',
@@ -401,10 +398,7 @@ final List<_Variant> _variants = [
             ),
           ]),
           _rich([
-            TextSpan(
-              text: _withoutWaqf(withoutSeparator),
-              style: _bodyStyle,
-            ),
+            TextSpan(text: _withoutWaqf(withoutSeparator), style: _bodyStyle),
           ]),
         ],
       );
@@ -468,11 +462,7 @@ Future<void> _loadFont(String family, [String? path]) async {
 /// [RenderRepaintBoundary.toImage] completes off the fake-async zone that
 /// `testWidgets` installs, so awaiting it directly deadlocks the test. It has
 /// to run through [WidgetTester.runAsync].
-Future<void> _writePng(
-  WidgetTester tester,
-  Key key,
-  String path,
-) async {
+Future<void> _writePng(WidgetTester tester, Key key, String path) async {
   final boundary =
       tester.renderObject(find.byKey(key)) as RenderRepaintBoundary;
   await tester.runAsync(() async {
@@ -567,7 +557,9 @@ void main() {
         'textUthmani': sample.textUthmani,
         'normalized': normalized,
         'normalizedCodePoints': normalized.codeUnits
-            .map((u) => 'U+${u.toRadixString(16).toUpperCase().padLeft(4, '0')}')
+            .map(
+              (u) => 'U+${u.toRadixString(16).toUpperCase().padLeft(4, '0')}',
+            )
             .toList(),
         'variants': <Map<String, dynamic>>[],
       };
@@ -628,9 +620,7 @@ void main() {
 
     File('$_outputDir/geometry.json')
       ..parent.createSync(recursive: true)
-      ..writeAsStringSync(
-        const JsonEncoder.withIndent('  ').convert(report),
-      );
+      ..writeAsStringSync(const JsonEncoder.withIndent('  ').convert(report));
 
     expect(Directory(_outputDir).listSync().length, greaterThan(1));
   });

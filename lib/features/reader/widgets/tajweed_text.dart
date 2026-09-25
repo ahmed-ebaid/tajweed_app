@@ -381,11 +381,7 @@ class TajweedText extends StatelessWidget {
 
     void flushPlainText() {
       if (plainText.isEmpty) return;
-      runs.add((
-        text: plainText.toString(),
-        markerRule: null,
-        isMarker: false,
-      ));
+      runs.add((text: plainText.toString(), markerRule: null, isMarker: false));
       plainText.clear();
     }
 
@@ -550,11 +546,8 @@ class TajweedText extends StatelessWidget {
     TextStyle style, {
     required TajweedRule? markerRule,
     bool isSajdah = false,
-  }) => _quranMarkerStyleFrom(
-    style,
-    markerRule: markerRule,
-    isSajdah: isSajdah,
-  );
+  }) =>
+      _quranMarkerStyleFrom(style, markerRule: markerRule, isSajdah: isSajdah);
 
   static TextStyle sajdahMarkerStyle(TextStyle style, {Color? color}) {
     final markerBase = style.copyWith(

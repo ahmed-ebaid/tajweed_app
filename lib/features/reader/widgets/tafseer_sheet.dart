@@ -123,6 +123,9 @@ class _TafseerSheetState extends State<TafseerSheet> {
   String? _error;
   String? _sourcesError;
   String? _selectionError;
+  int _sourcesLoadVersion = 0;
+
+  static const Duration _sourcesFetchTimeout = Duration(seconds: 15);
 
   @override
   void initState() {
@@ -181,7 +184,8 @@ class _TafseerSheetState extends State<TafseerSheet> {
     return text;
   }
 
-  Future<void> _fetchSources() async {
+  Future<void> _fetchSources({bool forceRefresh = false}) async {
+    final loadVersion = ++_sourcesLoadVersion;
     final selectedFallback = _selectedTafsirName.isEmpty
         ? <TafseerSourceOption>[]
         : [
@@ -195,50 +199,68 @@ class _TafseerSheetState extends State<TafseerSheet> {
     if (mounted) {
       setState(() {
         _sources = selectedFallback;
-        _sourcesLoading = selectedFallback.isEmpty;
+        // The single selected entry is a placeholder, not a result. Presenting
+        // it as a settled list is what made a failed fetch look like a
+        // complete catalogue of one.
+        _sourcesLoading = true;
         _sourcesError = null;
       });
     }
 
     try {
-      final allSources = await _api.fetchAvailableTafsirs();
-      final sources = TafseerSourceOption.fromApiList(
-        TafseerProvider.sourcesForLanguage(allSources, widget.languageCode),
-        displayNameForSource: (source) {
-          return TafseerProvider.sourceDisplayName(widget.languageCode, source);
-        },
+      final allSources = await _offlineSync.loadTafsirSources(
+        timeout: _sourcesFetchTimeout,
+        forceRefresh: forceRefresh,
       );
-      if (!sources.any((source) => source.id == _selectedTafsirId) &&
-          _selectedTafsirName.isNotEmpty) {
-        sources.add(
-          TafseerSourceOption(
-            id: _selectedTafsirId,
-            name: _selectedTafsirName,
-            displayName: _selectedTafsirName,
-            authorName: '',
-          ),
-        );
-        sources.sort(
-          (left, right) => left.displayName.toLowerCase().compareTo(
-            right.displayName.toLowerCase(),
-          ),
-        );
-      }
+      final sources = _buildSourceOptions(allSources);
       if (sources.isEmpty) {
         throw StateError('No Tafseer sources were returned.');
       }
-      if (!mounted) return;
+      if (!mounted || loadVersion != _sourcesLoadVersion) return;
       setState(() {
         _sources = sources;
         _sourcesLoading = false;
+        _sourcesError = null;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || loadVersion != _sourcesLoadVersion) return;
       setState(() {
-        _sourcesError = selectedFallback.isEmpty ? e.toString() : null;
+        // Always surface the failure. Keeping the selected entry lets the user
+        // carry on reading, but the list is explicitly flagged as incomplete
+        // rather than silently presented as the whole catalogue.
+        _sources = selectedFallback;
+        _sourcesError = e.toString();
         _sourcesLoading = false;
       });
     }
+  }
+
+  List<TafseerSourceOption> _buildSourceOptions(
+    List<Map<String, dynamic>> allSources,
+  ) {
+    final sources = TafseerSourceOption.fromApiList(
+      TafseerProvider.sourcesForLanguage(allSources, widget.languageCode),
+      displayNameForSource: (source) {
+        return TafseerProvider.sourceDisplayName(widget.languageCode, source);
+      },
+    );
+    if (!sources.any((source) => source.id == _selectedTafsirId) &&
+        _selectedTafsirName.isNotEmpty) {
+      sources.add(
+        TafseerSourceOption(
+          id: _selectedTafsirId,
+          name: _selectedTafsirName,
+          displayName: _selectedTafsirName,
+          authorName: '',
+        ),
+      );
+      sources.sort(
+        (left, right) => left.displayName.toLowerCase().compareTo(
+          right.displayName.toLowerCase(),
+        ),
+      );
+    }
+    return sources;
   }
 
   Future<void> _selectTafsir(int? tafsirId) async {
@@ -478,26 +500,15 @@ class _TafseerSheetState extends State<TafseerSheet> {
       );
     }
 
-    if (_sourcesError != null) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Row(
-          children: [
-            Expanded(child: Text(strings.text('sources_failed'))),
-            TextButton(
-              onPressed: _fetchSources,
-              child: Text(strings.text('retry')),
-            ),
-          ],
-        ),
-      );
+    if (_sourcesError != null && _sources.isEmpty) {
+      return _buildSourcesErrorRow(strings);
     }
 
     final hasSelectedSource = _sources.any(
       (source) => source.id == _selectedTafsirId,
     );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    final dropdown = Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, _sourcesError == null ? 12 : 4),
       child: DropdownButtonFormField<int>(
         key: ValueKey('tafseer-source-dropdown-$_selectedTafsirId'),
         initialValue: hasSelectedSource ? _selectedTafsirId : null,
@@ -529,6 +540,33 @@ class _TafseerSheetState extends State<TafseerSheet> {
             )
             .toList(growable: false),
         onChanged: _switching ? null : _selectTafsir,
+      ),
+    );
+
+    if (_sourcesError == null) return dropdown;
+
+    // The catalogue is incomplete: show what we have so reading can continue,
+    // but say so and offer a retry instead of passing it off as the full list.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [dropdown, _buildSourcesErrorRow(strings)],
+    );
+  }
+
+  Widget _buildSourcesErrorRow(_TafseerSheetStrings strings) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: [
+          Expanded(child: Text(strings.text('sources_failed'))),
+          TextButton(
+            key: const ValueKey('tafseer-sources-retry'),
+            // Retry means "go and ask again", so it must bypass the cached
+            // catalogue rather than re-serving the list that just failed.
+            onPressed: () => _fetchSources(forceRefresh: true),
+            child: Text(strings.text('retry')),
+          ),
+        ],
       ),
     );
   }
@@ -594,9 +632,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: SelectableText(
                   note,
-                  textDirection: isRtl
-                      ? TextDirection.rtl
-                      : TextDirection.ltr,
+                  textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     height: 1.7,
                     fontSize: 16,

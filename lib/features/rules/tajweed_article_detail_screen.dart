@@ -46,9 +46,9 @@ class _TajweedArticleDetailScreenState
   @override
   void initState() {
     super.initState();
-    _examples = RuleExampleReferences.referencesForArticle(widget.article.id)
-        .map(_ArticleExample.new)
-        .toList();
+    _examples = RuleExampleReferences.referencesForArticle(
+      widget.article.id,
+    ).map(_ArticleExample.new).toList();
     _audio.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         if (mounted) setState(() => _playingIndex = null);
@@ -77,9 +77,7 @@ class _TajweedArticleDetailScreenState
         reciterId: _articleReciterId,
       );
       final mapped = AyahMapper.fromApi(verse);
-      final normalizedUrl = QuranApiService.normalizeAudioUrl(
-        mapped.audioUrl,
-      );
+      final normalizedUrl = QuranApiService.normalizeAudioUrl(mapped.audioUrl);
       if (!mounted) return;
       setState(() {
         example.audioUrl = normalizedUrl;
@@ -333,10 +331,7 @@ class _TajweedArticleDetailScreenState
       spans.add(
         TextSpan(
           text: matchedWord,
-          style: baseStyle.copyWith(
-            fontWeight: FontWeight.w700,
-            color: accent,
-          ),
+          style: baseStyle.copyWith(fontWeight: FontWeight.w700, color: accent),
         ),
       );
       remaining = remaining.substring(earliestIndex + matchedWord.length);
@@ -355,9 +350,10 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(
-        context,
-      ).textTheme.titleMedium?.copyWith(color: accent, fontWeight: FontWeight.w700),
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        color: accent,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }

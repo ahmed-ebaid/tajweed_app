@@ -82,7 +82,6 @@ const Set<int> _waqfRunes = {
   0x06DC,
 };
 
-
 /// Collects body runs that open without a visible base *and* are not the
 /// harmless trailing-mark case.
 ///
@@ -99,7 +98,9 @@ List<String> _strandedBodyRuns(
   var afterWaqfMarker = false;
   for (final run in runs) {
     final isWaqfMarker = run.isMarker && run.markerRule == TajweedRule.waqf;
-    if (!run.isMarker && !afterWaqfMarker && _bodyRunLacksVisibleBase(run.text)) {
+    if (!run.isMarker &&
+        !afterWaqfMarker &&
+        _bodyRunLacksVisibleBase(run.text)) {
       offenders.add(run.text);
     }
     afterWaqfMarker = isWaqfMarker;
@@ -414,8 +415,9 @@ void main() {
 
         for (var i = 0; i < spans.length; i++) {
           spansChecked++;
-          final rendered =
-              _baseLetters(mapped.arabic.substring(spans[i].start, spans[i].end));
+          final rendered = _baseLetters(
+            mapped.arabic.substring(spans[i].start, spans[i].end),
+          );
           final source = _baseLetters(tags[i].text);
 
           if (rendered == source) {

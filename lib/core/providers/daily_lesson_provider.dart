@@ -16,10 +16,7 @@ class DailyLesson {
     DailyLesson(
       surah: 67,
       ayah: 12,
-      titles: {
-        'en': 'Ghunnah in Surah Al-Mulk',
-        'ar': 'غُنَّة في سورة الملك',
-      },
+      titles: {'en': 'Ghunnah in Surah Al-Mulk', 'ar': 'غُنَّة في سورة الملك'},
     ),
     DailyLesson(
       surah: 105,
@@ -40,26 +37,17 @@ class DailyLesson {
     DailyLesson(
       surah: 19,
       ayah: 61,
-      titles: {
-        'en': 'Qalqalah in Surah Maryam',
-        'ar': 'قلقلة في سورة مريم',
-      },
+      titles: {'en': 'Qalqalah in Surah Maryam', 'ar': 'قلقلة في سورة مريم'},
     ),
     DailyLesson(
       surah: 2,
       ayah: 21,
-      titles: {
-        'en': 'Ikhfa in Surah Al-Baqarah',
-        'ar': 'إخفاء في سورة البقرة',
-      },
+      titles: {'en': 'Ikhfa in Surah Al-Baqarah', 'ar': 'إخفاء في سورة البقرة'},
     ),
     DailyLesson(
       surah: 15,
       ayah: 87,
-      titles: {
-        'en': 'Idgham in Surah Al-Hijr',
-        'ar': 'إدغام في سورة الحجر',
-      },
+      titles: {'en': 'Idgham in Surah Al-Hijr', 'ar': 'إدغام في سورة الحجر'},
     ),
     DailyLesson(
       surah: 37,
@@ -162,7 +150,8 @@ class DailyLessonProvider extends ChangeNotifier {
   bool _ensureTodayState() {
     final lesson = todayLesson;
     final todayKey = _dateKeyFor(DateTime.now());
-    final needsReset = _storedDateKey != todayKey ||
+    final needsReset =
+        _storedDateKey != todayKey ||
         _storedSurah != lesson.surah ||
         _storedTargetAyah != lesson.ayah;
 

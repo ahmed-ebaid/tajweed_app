@@ -18,11 +18,7 @@ class QuranContentSyncService {
   static const _failureCountKey = 'qf_content_sync_failure_count';
   static const _lastErrorKey = 'qf_content_sync_last_error';
   static const _validationInterval = Duration(days: 7);
-  static const _supportedGroups = {
-    'translations',
-    'tafsirs',
-    'recitations',
-  };
+  static const _supportedGroups = {'translations', 'tafsirs', 'recitations'};
 
   final QuranApiService _api;
   final Box _cacheBox;
@@ -41,13 +37,13 @@ class QuranContentSyncService {
     DateTime Function()? now,
     Future<void> Function(int)? clearReciter,
     Duration Function(int)? backoffForAttempt,
-  })  : _api = api ?? QuranApiService(),
-        _cacheBox = cacheBox ?? Hive.box(_cacheBoxKey),
-        _audioBox = audioBox ?? Hive.box(_audioBoxKey),
-        _settingsBox = settingsBox ?? Hive.box(_settingsBoxKey),
-        _now = now ?? DateTime.now,
-        _clearReciter = clearReciter ?? AudioCacheService().clearReciter,
-        _backoffForAttempt = backoffForAttempt ?? _defaultBackoff;
+  }) : _api = api ?? QuranApiService(),
+       _cacheBox = cacheBox ?? Hive.box(_cacheBoxKey),
+       _audioBox = audioBox ?? Hive.box(_audioBoxKey),
+       _settingsBox = settingsBox ?? Hive.box(_settingsBoxKey),
+       _now = now ?? DateTime.now,
+       _clearReciter = clearReciter ?? AudioCacheService().clearReciter,
+       _backoffForAttempt = backoffForAttempt ?? _defaultBackoff;
 
   DateTime? get lastValidatedAt => _readDate(_lastValidatedAtKey);
 
@@ -66,13 +62,9 @@ class QuranContentSyncService {
     required int reciterId,
     required int surahNumber,
   }) {
-    final raw = _cacheBox.get(
-      'qf_recitation_${reciterId}_surah_$surahNumber',
-    );
+    final raw = _cacheBox.get('qf_recitation_${reciterId}_surah_$surahNumber');
     if (raw is! Map) return {};
-    return raw.map(
-      (key, value) => MapEntry(key.toString(), value.toString()),
-    );
+    return raw.map((key, value) => MapEntry(key.toString(), value.toString()));
   }
 
   Future<void> cacheRecitationMap({
@@ -117,10 +109,7 @@ class QuranContentSyncService {
 
   Future<void> _sync() async {
     final now = _now();
-    await _settingsBox.put(
-      _lastAttemptAtKey,
-      now.millisecondsSinceEpoch,
-    );
+    await _settingsBox.put(_lastAttemptAtKey, now.millisecondsSinceEpoch);
 
     try {
       final resources = _discoverResources();
@@ -216,9 +205,7 @@ class QuranContentSyncService {
       }
       nextPageUrl = page.hasMore ? page.nextPageUrl : null;
       if (page.hasMore && nextPageUrl == null) {
-        throw const FormatException(
-          'Content Sync omitted the next-page URL',
-        );
+        throw const FormatException('Content Sync omitted the next-page URL');
       }
       if (!page.hasMore) finalToken = page.nextSyncToken;
     } while (nextPageUrl != null);
@@ -257,10 +244,7 @@ class QuranContentSyncService {
         );
         return;
       case 'RESOURCE_DELETE':
-        await _deleteResource(
-          mutation.resourceGroup,
-          mutation.resourceId,
-        );
+        await _deleteResource(mutation.resourceGroup, mutation.resourceId);
         return;
       case 'ROW_CREATE':
       case 'ROW_UPDATE':
@@ -291,9 +275,7 @@ class QuranContentSyncService {
       case 'RESOURCE_UPDATE':
         return;
       default:
-        throw StateError(
-          'Unsupported Content Sync mutation: ${mutation.type}',
-        );
+        throw StateError('Unsupported Content Sync mutation: ${mutation.type}');
     }
   }
 
@@ -304,12 +286,7 @@ class QuranContentSyncService {
     required bool invalidateAudio,
   }) async {
     final normalized = records
-        .map(
-          (record) => {
-            ...record,
-            'resource_id': resourceId,
-          },
-        )
+        .map((record) => {...record, 'resource_id': resourceId})
         .toList(growable: false);
     final updates = _derivedUpdates(group, resourceId, normalized);
     updates[_resourceCacheKey(group, resourceId)] = normalized;
@@ -322,9 +299,7 @@ class QuranContentSyncService {
 
   Future<void> _deleteResource(String group, int resourceId) async {
     if (group == 'translations') {
-      await _cacheBox.putAll(
-        _translationUpdates(resourceId, const []),
-      );
+      await _cacheBox.putAll(_translationUpdates(resourceId, const []));
     } else {
       final prefix = group == 'tafsirs'
           ? 'tafsir_${resourceId}_surah_'
@@ -348,10 +323,7 @@ class QuranContentSyncService {
     Map<String, dynamic> data,
   ) async {
     final records = _readResource(group, resourceId);
-    final normalized = {
-      ...data,
-      'resource_id': resourceId,
-    };
+    final normalized = {...data, 'resource_id': resourceId};
     final targetKey = recordKey ?? _recordKey(normalized);
     if (targetKey == null || targetKey.isEmpty) {
       throw const FormatException('Content Sync row has no stable key');
@@ -407,18 +379,21 @@ class QuranContentSyncService {
     for (final key in _verseCacheKeys()) {
       final rawVerses = _cacheBox.get(key);
       if (rawVerses is! List) continue;
-      final verses = rawVerses.whereType<Map>().map((rawVerse) {
-        final verse = Map<String, dynamic>.from(rawVerse);
-        final translations = (verse['translations'] as List? ?? const [])
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .where((item) => item['resource_id'] != resourceId)
-            .toList();
-        final replacement = recordsByVerse[verse['verse_key']?.toString()];
-        if (replacement != null) translations.add(replacement);
-        verse['translations'] = translations;
-        return verse;
-      }).toList(growable: false);
+      final verses = rawVerses
+          .whereType<Map>()
+          .map((rawVerse) {
+            final verse = Map<String, dynamic>.from(rawVerse);
+            final translations = (verse['translations'] as List? ?? const [])
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .where((item) => item['resource_id'] != resourceId)
+                .toList();
+            final replacement = recordsByVerse[verse['verse_key']?.toString()];
+            if (replacement != null) translations.add(replacement);
+            verse['translations'] = translations;
+            return verse;
+          })
+          .toList(growable: false);
       updates[key] = verses;
     }
     return updates;
@@ -440,9 +415,8 @@ class QuranContentSyncService {
     final existingSurahs = _cacheBox.keys
         .whereType<String>()
         .map(
-          (key) => RegExp(
-            '^tafsir_${resourceId}_surah_(\\d+)\$',
-          ).firstMatch(key),
+          (key) =>
+              RegExp('^tafsir_${resourceId}_surah_(\\d+)\$').firstMatch(key),
         )
         .whereType<RegExpMatch>()
         .map((match) => int.parse(match.group(1)!));
@@ -504,20 +478,19 @@ class QuranContentSyncService {
     for (final key in _cacheBox.keys.whereType<String>()) {
       final tafsirMatch = RegExp(r'^tafsir_(\d+)_surah_\d+$').firstMatch(key);
       if (tafsirMatch != null) {
-        resources.add(
-          _Resource('tafsirs', int.parse(tafsirMatch.group(1)!)),
-        );
+        resources.add(_Resource('tafsirs', int.parse(tafsirMatch.group(1)!)));
       }
-      final rawMatch =
-          RegExp(r'^qf_resource_(translations|tafsirs|recitations)_(\d+)$')
-              .firstMatch(key);
+      final rawMatch = RegExp(
+        r'^qf_resource_(translations|tafsirs|recitations)_(\d+)$',
+      ).firstMatch(key);
       if (rawMatch != null) {
         resources.add(
           _Resource(rawMatch.group(1)!, int.parse(rawMatch.group(2)!)),
         );
       }
-      final recitationMatch =
-          RegExp(r'^qf_recitation_(\d+)_surah_\d+$').firstMatch(key);
+      final recitationMatch = RegExp(
+        r'^qf_recitation_(\d+)_surah_\d+$',
+      ).firstMatch(key);
       if (recitationMatch != null) {
         resources.add(
           _Resource('recitations', int.parse(recitationMatch.group(1)!)),
@@ -528,9 +501,7 @@ class QuranContentSyncService {
     for (final key in _audioBox.keys.whereType<String>()) {
       final match = RegExp(r'^(?:meta_)?r(\d+)_s\d+').firstMatch(key);
       if (match != null) {
-        resources.add(
-          _Resource('recitations', int.parse(match.group(1)!)),
-        );
+        resources.add(_Resource('recitations', int.parse(match.group(1)!)));
       }
     }
     return resources;
@@ -538,10 +509,10 @@ class QuranContentSyncService {
 
   Iterable<String> _verseCacheKeys() =>
       _cacheBox.keys.whereType<String>().where(
-            (key) =>
-                RegExp(r'^quran_(?:ar|tajweed)_surah_\d+$').hasMatch(key) ||
-                RegExp(r'^\d+_[a-z-]+$').hasMatch(key),
-          );
+        (key) =>
+            RegExp(r'^quran_(?:ar|tajweed)_surah_\d+$').hasMatch(key) ||
+            RegExp(r'^\d+_[a-z-]+$').hasMatch(key),
+      );
 
   List<Map<String, dynamic>> _readResource(String group, int resourceId) {
     final raw = _cacheBox.get(_resourceCacheKey(group, resourceId));
@@ -557,19 +528,20 @@ class QuranContentSyncService {
     for (final resource in resources) {
       grouped.putIfAbsent(resource.group, () => []).add(resource.id);
     }
-    return _supportedGroups.where(grouped.containsKey).map((group) {
-      final ids = grouped[group]!..sort();
-      return '$group:${ids.join(',')}';
-    }).join(';');
+    return _supportedGroups
+        .where(grouped.containsKey)
+        .map((group) {
+          final ids = grouped[group]!..sort();
+          return '$group:${ids.join(',')}';
+        })
+        .join(';');
   }
 
   bool _backoffElapsed() {
     final lastAttempt = _readDate(_lastAttemptAtKey);
     final failures = _settingsBox.get(_failureCountKey, defaultValue: 0) as int;
     if (lastAttempt == null || failures == 0) return true;
-    return !_now().isBefore(
-      lastAttempt.add(_backoffForAttempt(failures)),
-    );
+    return !_now().isBefore(lastAttempt.add(_backoffForAttempt(failures)));
   }
 
   Future<void> _markSuccess(DateTime now) async {

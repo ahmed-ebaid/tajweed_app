@@ -37,10 +37,14 @@ class StreakBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l10n.dayStreak,
-                    style: Theme.of(context).textTheme.bodySmall),
-                Text('$streakCount ${l10n.get('days')}',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  l10n.dayStreak,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                Text(
+                  '$streakCount ${l10n.get('days')}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ],
             ),
           ),
@@ -69,12 +73,17 @@ class _DayDot extends StatelessWidget {
   final bool done;
   final bool isToday;
 
-  const _DayDot({required this.letter, required this.done, required this.isToday});
+  const _DayDot({
+    required this.letter,
+    required this.done,
+    required this.isToday,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 26, height: 26,
+      width: 26,
+      height: 26,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: done
@@ -93,8 +102,8 @@ class _DayDot extends StatelessWidget {
           color: done
               ? Colors.white
               : isToday
-                  ? const Color(0xFF0F6E56)
-                  : Theme.of(context).textTheme.bodySmall?.color,
+              ? const Color(0xFF0F6E56)
+              : Theme.of(context).textTheme.bodySmall?.color,
         ),
       ),
     );

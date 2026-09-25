@@ -158,8 +158,7 @@ void main() {
         );
       }
 
-      final highlights =
-          RuleExampleReferences.articleHighlightWords[articleId];
+      final highlights = RuleExampleReferences.articleHighlightWords[articleId];
       if (highlights != null) {
         expect(
           highlights,

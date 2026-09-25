@@ -70,6 +70,11 @@ class NativePlayIntegrityClient implements PlayIntegrityClient {
     'com.ebaidllc.tajweed_practice/play_integrity',
   );
 
+  /// Play services can leave the platform call pending indefinitely. Because
+  /// attestation is queued ahead of every content request, an untimed call
+  /// here stalls the whole app, so it is bounded.
+  static const Duration _tokenTimeout = Duration(seconds: 20);
+
   const NativePlayIntegrityClient();
 
   @override
@@ -78,16 +83,22 @@ class NativePlayIntegrityClient implements PlayIntegrityClient {
     required int cloudProjectNumber,
   }) async {
     try {
-      final token = await _channel.invokeMethod<String>(
-        'requestIntegrityToken',
-        {'nonce': nonce, 'cloudProjectNumber': cloudProjectNumber},
-      );
+      final token = await _channel
+          .invokeMethod<String>('requestIntegrityToken', {
+            'nonce': nonce,
+            'cloudProjectNumber': cloudProjectNumber,
+          })
+          .timeout(_tokenTimeout);
       if (token == null || token.isEmpty) {
         throw const QuranAttestationException(
           'Google Play Integrity returned an empty token.',
         );
       }
       return token;
+    } on TimeoutException {
+      throw const QuranAttestationException(
+        'Google Play Integrity did not respond in time.',
+      );
     } on PlatformException catch (error) {
       throw QuranAttestationException(
         'Google Play Integrity is unavailable on this device: '

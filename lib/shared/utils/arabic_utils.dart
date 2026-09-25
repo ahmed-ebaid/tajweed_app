@@ -4,9 +4,34 @@ import 'package:characters/characters.dart';
 class ArabicUtils {
   /// The 28 Arabic letters used to identify tajweed trigger letters.
   static const arabicLetters = [
-    'ا', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز',
-    'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك',
-    'ل', 'م', 'ن', 'ه', 'و', 'ي',
+    'ا',
+    'ب',
+    'ت',
+    'ث',
+    'ج',
+    'ح',
+    'خ',
+    'د',
+    'ذ',
+    'ر',
+    'ز',
+    'س',
+    'ش',
+    'ص',
+    'ض',
+    'ط',
+    'ظ',
+    'ع',
+    'غ',
+    'ف',
+    'ق',
+    'ك',
+    'ل',
+    'م',
+    'ن',
+    'ه',
+    'و',
+    'ي',
   ];
 
   /// Qalqalah letters — echoing/bouncing sound.
@@ -23,8 +48,21 @@ class ArabicUtils {
 
   /// Ikhfa letters (15 letters).
   static const ikhfaLetters = [
-    'ص', 'ذ', 'ث', 'ك', 'ج', 'ش', 'ق', 'س', 'د', 'ط',
-    'ز', 'ف', 'ت', 'ض', 'ظ',
+    'ص',
+    'ذ',
+    'ث',
+    'ك',
+    'ج',
+    'ش',
+    'ق',
+    'س',
+    'د',
+    'ط',
+    'ز',
+    'ف',
+    'ت',
+    'ض',
+    'ظ',
   ];
 
   /// Removes all Arabic diacritics (tashkeel) from text.
@@ -56,8 +94,8 @@ class ArabicUtils {
   /// Wraps an Arabic number string in Arabic-Indic numerals.
   /// e.g. 1 → ١, 2 → ٢, etc.
   static String toArabicNumerals(int number) {
-    const western = ['0','1','2','3','4','5','6','7','8','9'];
-    const eastern = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    const western = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const eastern = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     return number.toString().characters.map((c) {
       final i = western.indexOf(c);
       return i >= 0 ? eastern[i] : c;

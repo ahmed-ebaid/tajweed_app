@@ -23,7 +23,9 @@ class StreakProvider extends ChangeNotifier {
     final box = Hive.box(_boxKey);
     _streakCount = box.get(_streakKey, defaultValue: 0) as int;
     final lastMs = box.get(_lastActivityKey) as int?;
-    _lastActivity = lastMs != null ? DateTime.fromMillisecondsSinceEpoch(lastMs) : null;
+    _lastActivity = lastMs != null
+        ? DateTime.fromMillisecondsSinceEpoch(lastMs)
+        : null;
     _weekDots = _buildWeekDots();
     _checkStreakReset();
   }
@@ -34,7 +36,11 @@ class StreakProvider extends ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
 
     if (_lastActivity != null) {
-      final last = DateTime(_lastActivity!.year, _lastActivity!.month, _lastActivity!.day);
+      final last = DateTime(
+        _lastActivity!.year,
+        _lastActivity!.month,
+        _lastActivity!.day,
+      );
       final diff = today.difference(last).inDays;
       if (diff == 0) return; // Already recorded today
       if (diff == 1) {
@@ -60,7 +66,11 @@ class StreakProvider extends ChangeNotifier {
     if (_lastActivity == null) return;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final last = DateTime(_lastActivity!.year, _lastActivity!.month, _lastActivity!.day);
+    final last = DateTime(
+      _lastActivity!.year,
+      _lastActivity!.month,
+      _lastActivity!.day,
+    );
     if (today.difference(last).inDays > 1) {
       _streakCount = 0;
       notifyListeners();
@@ -72,13 +82,14 @@ class StreakProvider extends ChangeNotifier {
     // Build Mon–Sun for the current week
     final monday = now.subtract(Duration(days: now.weekday - 1));
     final box = Hive.box(_boxKey);
-    final completed = (box.get(_completedDaysKey, defaultValue: <int>[]) as List)
-        .cast<int>()
-        .map((ms) {
-          final d = DateTime.fromMillisecondsSinceEpoch(ms);
-          return DateTime(d.year, d.month, d.day);
-        })
-        .toSet();
+    final completed =
+        (box.get(_completedDaysKey, defaultValue: <int>[]) as List)
+            .cast<int>()
+            .map((ms) {
+              final d = DateTime.fromMillisecondsSinceEpoch(ms);
+              return DateTime(d.year, d.month, d.day);
+            })
+            .toSet();
 
     return List.generate(7, (i) {
       final day = monday.add(Duration(days: i));
@@ -88,7 +99,8 @@ class StreakProvider extends ChangeNotifier {
 
   Future<void> _saveCompletedDay(DateTime day) async {
     final box = Hive.box(_boxKey);
-    final existing = (box.get(_completedDaysKey, defaultValue: <int>[]) as List).cast<int>();
+    final existing = (box.get(_completedDaysKey, defaultValue: <int>[]) as List)
+        .cast<int>();
     final dayMs = day.millisecondsSinceEpoch;
     if (!existing.contains(dayMs)) {
       existing.add(dayMs);

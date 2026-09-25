@@ -40,7 +40,8 @@ void main() {
     });
 
     test('decodes numeric and hex character references', () {
-      const html = '<p>&#1575;&#1604;&#1604;&#1607; &#x633;&#x644;&#x627;&#x645;</p>';
+      const html =
+          '<p>&#1575;&#1604;&#1604;&#1607; &#x633;&#x644;&#x627;&#x645;</p>';
 
       final result = TafseerTextSanitizer.stripHtml(html);
 
@@ -48,7 +49,8 @@ void main() {
     });
 
     test('decodes named entities without re-decoding escaped ampersands', () {
-      const html = '<p>Ibn&nbsp;Kathir &amp;lt;note&amp;gt; &quot;q&quot; &amp; more</p>';
+      const html =
+          '<p>Ibn&nbsp;Kathir &amp;lt;note&amp;gt; &quot;q&quot; &amp; more</p>';
 
       final result = TafseerTextSanitizer.stripHtml(html);
 

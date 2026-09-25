@@ -159,29 +159,32 @@ void main() {
     },
   );
 
-  test('every rule has a substantial description in all supported languages', () {
-    const langs = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de'];
-    for (final rule in TajweedRule.values) {
-      final def = RulesRepository.findByRule(rule)!;
-      for (final lang in langs) {
-        final text = def.description(lang);
-        expect(
-          text.trim().length,
-          greaterThanOrEqualTo(40),
-          reason: '${rule.name} / $lang is too short: "$text"',
-        );
+  test(
+    'every rule has a substantial description in all supported languages',
+    () {
+      const langs = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de'];
+      for (final rule in TajweedRule.values) {
+        final def = RulesRepository.findByRule(rule)!;
+        for (final lang in langs) {
+          final text = def.description(lang);
+          expect(
+            text.trim().length,
+            greaterThanOrEqualTo(40),
+            reason: '${rule.name} / $lang is too short: "$text"',
+          );
+        }
       }
-    }
-  });
+    },
+  );
 
   test('madd rules state which harakah must precede the madd letter', () {
-    const fatha = '\u0627\u0644\u0645\u0641\u062a\u0648\u062d \u0645\u0627 \u0642\u0628\u0644\u0647\u0627';
-    const damma = '\u0627\u0644\u0645\u0636\u0645\u0648\u0645 \u0645\u0627 \u0642\u0628\u0644\u0647\u0627';
-    const kasra = '\u0627\u0644\u0645\u0643\u0633\u0648\u0631 \u0645\u0627 \u0642\u0628\u0644\u0647\u0627';
-    for (final rule in [
-      TajweedRule.maddTabeei,
-      TajweedRule.maddAridLissukun,
-    ]) {
+    const fatha =
+        '\u0627\u0644\u0645\u0641\u062a\u0648\u062d \u0645\u0627 \u0642\u0628\u0644\u0647\u0627';
+    const damma =
+        '\u0627\u0644\u0645\u0636\u0645\u0648\u0645 \u0645\u0627 \u0642\u0628\u0644\u0647\u0627';
+    const kasra =
+        '\u0627\u0644\u0645\u0643\u0633\u0648\u0631 \u0645\u0627 \u0642\u0628\u0644\u0647\u0627';
+    for (final rule in [TajweedRule.maddTabeei, TajweedRule.maddAridLissukun]) {
       final text = RulesRepository.findByRule(rule)!.description('ar');
       for (final condition in [fatha, damma, kasra]) {
         expect(text, contains(condition), reason: rule.name);
@@ -190,7 +193,9 @@ void main() {
     // Madd lin is the contrast case: a sakin waw/ya preceded by a fatha.
     expect(
       RulesRepository.findByRule(TajweedRule.maddLin)!.description('ar'),
-      contains('\u0627\u0644\u0645\u0641\u062a\u0648\u062d \u0645\u0627 \u0642\u0628\u0644\u0647\u0627'),
+      contains(
+        '\u0627\u0644\u0645\u0641\u062a\u0648\u062d \u0645\u0627 \u0642\u0628\u0644\u0647\u0627',
+      ),
     );
   });
 

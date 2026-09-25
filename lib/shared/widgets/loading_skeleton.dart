@@ -9,8 +9,12 @@ class LoadingSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE0E0E0);
-    final highlightColor = isDark ? const Color(0xFF3A3A3C) : const Color(0xFFF5F5F5);
+    final baseColor = isDark
+        ? const Color(0xFF2C2C2E)
+        : const Color(0xFFE0E0E0);
+    final highlightColor = isDark
+        ? const Color(0xFF3A3A3C)
+        : const Color(0xFFF5F5F5);
 
     return Shimmer.fromColors(
       baseColor: baseColor,
@@ -95,7 +99,9 @@ class ShimmerLine extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
       baseColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE0E0E0),
-      highlightColor: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFF5F5F5),
+      highlightColor: isDark
+          ? const Color(0xFF3A3A3C)
+          : const Color(0xFFF5F5F5),
       child: Container(
         width: width,
         height: height,

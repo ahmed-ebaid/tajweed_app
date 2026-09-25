@@ -85,7 +85,8 @@ int _compareVerseKey(String a, String b) {
 void _printUsage() {
   print('Usage:');
   print(
-      '  dart run tool/end_token_audit.dart --input <quran_words.json> [--output <flagged.json>]');
+    '  dart run tool/end_token_audit.dart --input <quran_words.json> [--output <flagged.json>]',
+  );
   print('');
   print('Accepted input formats:');
   print('  1) [ { verse objects... } ]');

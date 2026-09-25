@@ -417,7 +417,6 @@ class QuizRepository {
     return range;
   }
 
-
   static Map<String, String> _explanationTemplate(
     TajweedRuleDefinition def,
     int variant,

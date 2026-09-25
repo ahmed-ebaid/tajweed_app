@@ -61,22 +61,32 @@ class OptionTile extends StatelessWidget {
               child: Text(
                 String.fromCharCode(65 + index), // A, B, C, D
                 style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(text,
-                  style: TextStyle(fontSize: 14, color: textColor)),
+              child: Text(
+                text,
+                style: TextStyle(fontSize: 14, color: textColor),
+              ),
             ),
             if (selectedIndex != null && index == correctIndex)
-              const Icon(Icons.check_circle_rounded,
-                  color: Color(0xFF1D9E75), size: 18),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF1D9E75),
+                size: 18,
+              ),
             if (selectedIndex != null &&
                 index == selectedIndex &&
                 index != correctIndex)
-              const Icon(Icons.cancel_rounded,
-                  color: Color(0xFFA32D2D), size: 18),
+              const Icon(
+                Icons.cancel_rounded,
+                color: Color(0xFFA32D2D),
+                size: 18,
+              ),
           ],
         ),
       ),
