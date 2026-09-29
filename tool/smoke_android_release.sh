@@ -2,13 +2,15 @@
 set -euo pipefail
 
 readonly PACKAGE_NAME="com.ebaidllc.tajweed_practice"
+readonly INSTALLED_MODE="$( [[ "${1:-}" == "--installed" ]] && echo 1 || echo 0 )"
 readonly APK="${1:-build/app/outputs/flutter-apk/app-release.apk}"
 readonly SERIAL="${ANDROID_SERIAL:-}"
 readonly TIMEOUT_SECONDS="${QURAN_SMOKE_TIMEOUT_SECONDS:-180}"
 ADB="${ADB:-adb}"
 
-if [[ ! -f "$APK" ]]; then
+if [[ "$INSTALLED_MODE" == "0" && ! -f "$APK" ]]; then
   echo "Release APK not found: $APK" >&2
+  echo "Use --installed to test a build installed from Google Play." >&2
   exit 2
 fi
 if ! "$ADB" get-state >/dev/null 2>&1; then
@@ -21,9 +23,17 @@ else
   ADB=("$ADB")
 fi
 
-# -r preserves app data and refuses a signing-certificate mismatch rather than
-# uninstalling the Play-installed app and risking user data.
-"${ADB[@]}" install -r "$APK"
+if [[ "$INSTALLED_MODE" == "0" ]]; then
+  # -r preserves app data and refuses a certificate mismatch rather than
+  # uninstalling the Play-installed app.
+  "${ADB[@]}" install -r "$APK"
+fi
+installed_package="$("${ADB[@]}" shell dumpsys package "$PACKAGE_NAME")"
+if [[ "$installed_package" != *"versionCode=73"* ||
+      "$installed_package" != *"versionName=1.1.9"* ]]; then
+  echo "Expected version 1.1.9 (73) is not installed from Play." >&2
+  exit 1
+fi
 "${ADB[@]}" logcat -c
 "${ADB[@]}" shell monkey -p "$PACKAGE_NAME" 1 >/dev/null
 

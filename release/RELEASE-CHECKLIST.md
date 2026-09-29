@@ -81,11 +81,12 @@ per release for both stores.
 - [ ] Build only through `release/build_android_release.sh appbundle`. This wrapper
       requires `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680` and refuses a
       different project number or an app bundle without upload signing config.
-- [ ] Install the exact release APK on a physical device with
-      `tool/smoke_android_release.sh`; open the Quran reader and confirm Arabic
-      text is visible. The script preserves installed app data and will not
-      uninstall an app if the signing certificate differs. For Play Integrity
-      recognition, validate the uploaded build installed from Google Play.
+- [ ] Install the release from the Internal testing track on a physical device,
+      then run `tool/smoke_android_release.sh --installed`; open the Quran reader
+      and confirm Arabic text is visible. Testing via Google Play preserves the
+      production app-signing identity needed by Play Integrity. The APK mode
+      refuses a signing-certificate mismatch and never uninstalls the installed
+      app.
 - [ ] Upload to the Play Console track and reuse the same localized release notes.
 - [ ] **Decide how it publishes, same as iOS.** Play has two independent
       controls, and neither is the App Store's `releaseType`:
