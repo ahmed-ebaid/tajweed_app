@@ -24,6 +24,9 @@ per release for both stores.
 ## iOS
 
 - [ ] `flutter build ipa --release`.
+- [ ] On a physical iPhone, start ayah audio, switch to another audio app and
+      back, then retry playback. An interrupted iOS audio session should stop
+      playback without replacing the app with an error screen.
 - [ ] Upload with `altool --upload-app`. It prints `-1005 "network connection was
       lost"` partway through on a normal, successful run — those are internal
       retries. Read to the end and look for `UPLOAD SUCCEEDED`.
@@ -133,4 +136,3 @@ per release for both stores.
       elsewhere describes apps predating Play App Signing, where the developer
       held the single key Google verified updates against. It does not apply
       here.)
-

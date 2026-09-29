@@ -1,9 +1,12 @@
 import 'dart:async' show unawaited;
 
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioService {
-  final AudioPlayer _player = AudioPlayer();
+  AudioService({AudioPlayer? player}) : _player = player ?? AudioPlayer();
+
+  final AudioPlayer _player;
 
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
   Stream<Duration?> get durationStream => _player.durationStream;
@@ -18,7 +21,7 @@ class AudioService {
     try {
       await _player.stop();
       await _player.setUrl(url);
-      unawaited(_player.play());
+      unawaited(_startPlayback());
     } catch (e) {
       // URL not reachable — stop gracefully
       await stop();
@@ -38,7 +41,7 @@ class AudioService {
         children: urls.map((u) => AudioSource.uri(Uri.parse(u))).toList(),
       );
       await _player.setAudioSource(source);
-      unawaited(_player.play());
+      unawaited(_startPlayback());
     } catch (_) {
       await stop();
     }
@@ -47,12 +50,39 @@ class AudioService {
   /// Play a locally recorded file.
   Future<void> playFile(String path) async {
     await _player.setFilePath(path);
-    unawaited(_player.play());
+    unawaited(_startPlayback());
   }
 
   Future<void> pause() async => _player.pause();
-  Future<void> resume() async => _player.play();
+  Future<void> resume() => _startPlayback();
   Future<void> stop() async => _player.stop();
+
+  Future<void> _startPlayback() async {
+    try {
+      await _player.play();
+    } catch (error, stack) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'audio playback',
+          context: ErrorDescription('while starting or playing audio'),
+        ),
+      );
+      try {
+        await _player.stop();
+      } catch (stopError, stopStack) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: stopError,
+            stack: stopStack,
+            library: 'audio playback',
+            context: ErrorDescription('while stopping failed audio playback'),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> seekTo(Duration position) async => _player.seek(position);
 
