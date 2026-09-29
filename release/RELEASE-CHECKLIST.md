@@ -78,7 +78,14 @@ per release for both stores.
 
 ## Android
 
-- [ ] `flutter build appbundle --release`, signed with the upload keystore.
+- [ ] Build only through `release/build_android_release.sh appbundle`. This wrapper
+      requires `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680` and refuses a
+      different project number or an app bundle without upload signing config.
+- [ ] Install the exact release APK on a physical device with
+      `tool/smoke_android_release.sh`; open the Quran reader and confirm Arabic
+      text is visible. The script preserves installed app data and will not
+      uninstall an app if the signing certificate differs. For Play Integrity
+      recognition, validate the uploaded build installed from Google Play.
 - [ ] Upload to the Play Console track and reuse the same localized release notes.
 - [ ] **Decide how it publishes, same as iOS.** Play has two independent
       controls, and neither is the App Store's `releaseType`:
@@ -98,8 +105,13 @@ per release for both stores.
       integrations changed. Play and the App Store point at these same URLs, so
       wording that names only one platform is a policy problem rather than a
       cosmetic one.
-- [ ] Install the release build on a real iOS device and a real Android device
-      and open Settings, the reader, and the onboarding guide before submitting.
+- [ ] Install the release build on a real iOS device and open Settings, the
+      reader, and the onboarding guide before submitting. On Android, the exact
+      release APK smoke test above replaces this general check.
+- [ ] After Android production rollout, check the production Worker logs for
+      `[ATTESTATION_FAIL_CLOSED]` in Cloudflare Observability or run
+      `cd backend/quran-proxy && npx wrangler tail --env production` during the
+      rollout. Production observability must remain enabled in `wrangler.jsonc`.
 
 ## Keys
 

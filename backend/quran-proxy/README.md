@@ -41,6 +41,7 @@ The deployments and credentials remain isolated:
 ## Routes
 
 - `GET /health`
+- `POST /v1/telemetry/attestation-failure` (strictly validated, non-sensitive mobile failure events)
 - `GET /oauth/callback` (reserved placeholder; user OAuth is not enabled)
 - `POST /v1/attest/challenge`
 - `POST /v1/attest/register`
@@ -88,3 +89,12 @@ npm test
 npm run deploy:dry-run
 npm run deploy:production:dry-run
 ```
+
+## Production attestation monitoring
+
+Production Worker observability is enabled in `wrangler.jsonc`. During and after
+an Android rollout, inspect Cloudflare Worker logs for
+`[ATTESTATION_FAIL_CLOSED]`. The same events can be streamed from this directory
+with `npx wrangler tail --env production`. The event contains only a fixed event
+code, platform, app version, and request ID; client-supplied error text is
+ignored. This is manual log monitoring and does not send push alerts.

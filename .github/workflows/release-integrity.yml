@@ -48,3 +48,26 @@ jobs:
       # a cached dump to turn them on in CI.
       - name: Verify sajdah first-word integrity from API
         run: node tool/check_sajdah_ayahs.js
+
+  android-release-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      # Compile a release-mode APK through the same guarded entry point used
+      # by release operators. The public GCP project number is a build input,
+      # not a credential.
+      - name: Build Android release APK with Play Integrity configured
+        env:
+          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: '312770688680'
+        run: release/build_android_release.sh apk

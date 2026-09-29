@@ -39,6 +39,7 @@ const MAX_QUERY_VALUE_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 128;
 const MAX_UPSTREAM_CONTENT_LENGTH = 10 * 1024 * 1024;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const MAX_TELEMETRY_BODY_LENGTH = 1024;
 
 const queryKeys = new Set([
   "audio",
@@ -333,6 +334,59 @@ async function handleAttestationRequest(
   return json(internalBody, internal.status, requestId);
 }
 
+async function handleAttestationFailureTelemetry(
+  request: Request,
+  requestId: string,
+): Promise<Response> {
+  if (request.method !== "POST") {
+    return json({error: "Method not allowed"}, 405, requestId, {
+      allow: "POST",
+    });
+  }
+  const contentLength = Number(request.headers.get("content-length"));
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > MAX_TELEMETRY_BODY_LENGTH
+  ) {
+    return json({error: "Request body is too large"}, 413, requestId);
+  }
+
+  let body: unknown;
+  try {
+    const text = await request.text();
+    if (text.length > MAX_TELEMETRY_BODY_LENGTH) {
+      return json({error: "Request body is too large"}, 413, requestId);
+    }
+    body = JSON.parse(text);
+  } catch {
+    return json({error: "Invalid JSON body"}, 400, requestId);
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return json({error: "Invalid telemetry event"}, 400, requestId);
+  }
+
+  const event = (body as Record<string, unknown>).event;
+  const platform = (body as Record<string, unknown>).platform;
+  const appVersion = (body as Record<string, unknown>).app_version;
+  if (
+    (event !== "attestation_failed" &&
+      event !== "missing_play_integrity_project_number") ||
+    (platform !== "android" && platform !== "ios" && platform !== "other") ||
+    typeof appVersion !== "string" ||
+    !/^\d+\.\d+\.\d+$/.test(appVersion)
+  ) {
+    return json({error: "Invalid telemetry event"}, 400, requestId);
+  }
+
+  console.warn(`[ATTESTATION_FAIL_CLOSED] ${JSON.stringify({
+    requestId,
+    event,
+    platform,
+    appVersion,
+  })}`);
+  return json({status: "accepted"}, 202, requestId);
+}
+
 export async function handleRequest(
   request: Request,
   env: Env,
@@ -341,6 +395,9 @@ export async function handleRequest(
   const requestId = requestIdFor(request);
   const url = new URL(request.url);
 
+  if (url.pathname === "/v1/telemetry/attestation-failure") {
+    return handleAttestationFailureTelemetry(request, requestId);
+  }
   if (url.pathname === "/health") {
     if (request.method !== "GET") {
       return json({error: "Method not allowed"}, 405, requestId, {

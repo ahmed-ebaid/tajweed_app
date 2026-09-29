@@ -45,6 +45,46 @@ afterEach(() => {
 });
 
 describe("Quran Foundation proxy", () => {
+  it("records a validated attestation failure without client details", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const response = await handleRequest(
+      new Request("https://proxy.example/v1/telemetry/attestation-failure", {
+        method: "POST",
+        headers: {"content-type": "application/json"},
+        body: JSON.stringify({
+          event: "missing_play_integrity_project_number",
+          platform: "android",
+          app_version: "1.1.9",
+          message: "must not be logged",
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(202);
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"missing_play_integrity_project_number"'),
+    );
+    expect(warning.mock.calls[0][0]).not.toContain("must not be logged");
+  });
+
+  it("rejects invalid attestation telemetry", async () => {
+    const response = await handleRequest(
+      new Request("https://proxy.example/v1/telemetry/attestation-failure", {
+        method: "POST",
+        headers: {"content-type": "application/json"},
+        body: JSON.stringify({
+          event: "arbitrary",
+          platform: "android",
+          app_version: "1.1.9",
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("serves health without credentials", async () => {
     const response = await handleRequest(
       new Request("https://proxy.example/health"),

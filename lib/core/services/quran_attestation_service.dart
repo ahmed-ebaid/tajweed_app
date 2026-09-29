@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../constants/app_version.dart';
+
 class QuranAttestationException implements Exception {
   final String message;
 
@@ -547,10 +549,44 @@ class QuranAttestationService {
       return '';
     }
 
-    final token = await provider.obtainToken();
-    _accessToken = token.value;
-    _accessTokenExpiresAt = DateTime.now().add(token.expiresIn);
-    return token.value;
+    try {
+      final token = await provider.obtainToken();
+      _accessToken = token.value;
+      _accessTokenExpiresAt = DateTime.now().add(token.expiresIn);
+      return token.value;
+    } on QuranAttestationException catch (error) {
+      final event =
+          error.message.contains('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER')
+          ? 'missing_play_integrity_project_number'
+          : 'attestation_failed';
+      unawaited(_reportAttestationFailure(event));
+      rethrow;
+    }
+  }
+
+  Future<void> _reportAttestationFailure(String event) async {
+    final platform = switch (AttestationPlatform.current()) {
+      AttestationPlatform.android => 'android',
+      AttestationPlatform.ios => 'ios',
+      AttestationPlatform.other => 'other',
+    };
+    try {
+      await Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 2),
+          receiveTimeout: const Duration(seconds: 2),
+          sendTimeout: const Duration(seconds: 2),
+          contentType: Headers.jsonContentType,
+        ),
+      ).postUri(
+        Uri.parse(
+          workerOrigin,
+        ).replace(path: '/v1/telemetry/attestation-failure'),
+        data: {'event': event, 'platform': platform, 'app_version': appVersion},
+      );
+    } catch (_) {
+      debugPrint('Attestation failure telemetry could not be delivered.');
+    }
   }
 
   bool _shouldBypassAttestation() {
