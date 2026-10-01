@@ -351,7 +351,11 @@ class _ReaderScreenState extends State<ReaderScreen>
     final bookmarks = context.read<BookmarkProvider>();
     _selectedSurah = bookmarks.lastReadSurah;
     _ayahModeAnchorAyah = bookmarks.lastReadAyah;
-    _scrollController = ScrollController(initialScrollOffset: 0.0);
+    // Positions are always restored explicitly (by ayah number or a captured
+    // offset). Letting PageStorage restore the previous offset whenever the
+    // list re-attaches after a surah load briefly showed the old surah's
+    // position before the explicit restore ran.
+    _scrollController = ScrollController(keepScrollOffset: false);
     if (kDebugMode) {
       print(
         '📱 initState: restored surah=$_selectedSurah, lastReadAyah=${bookmarks.lastReadAyah}',
@@ -2547,6 +2551,10 @@ class _ReaderScreenState extends State<ReaderScreen>
                   // explicit target the reload kept the previous surah's
                   // scroll offset, because the controller survives the swap.
                   final targetAyah = ayah ?? 1;
+                  ++_scrollToAyahRequestId;
+                  if (_scrollController.hasClients) {
+                    _scrollController.jumpTo(0.0);
+                  }
                   _pendingScrollAyah = targetAyah;
                   _pendingScrollOffset = 0.0;
                   unawaited(
