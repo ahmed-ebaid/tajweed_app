@@ -22,8 +22,9 @@ class TafseerSourceOption {
     required this.authorName,
   });
 
-  String get label =>
-      authorName.isEmpty ? displayName : '$displayName — $authorName';
+  /// Only the localized name is shown: the catalogue's author names are
+  /// English-only and would leak another language into the picker.
+  String get label => displayName;
 
   static List<TafseerSourceOption> fromApiList(
     Iterable<Map<String, dynamic>> sources, {
@@ -138,6 +139,12 @@ class _TafseerSheetState extends State<TafseerSheet> {
     _fetchSources();
   }
 
+  String get _selectedDisplayName => TafseerProvider.displayNameFor(
+    widget.languageCode,
+    _selectedTafsirId,
+    _selectedTafsirName,
+  );
+
   Future<void> _fetchTafseer() async {
     try {
       final text = await _loadTafseerText(_selectedTafsirId);
@@ -192,7 +199,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
             TafseerSourceOption(
               id: _selectedTafsirId,
               name: _selectedTafsirName,
-              displayName: _selectedTafsirName,
+              displayName: _selectedDisplayName,
               authorName: '',
             ),
           ];
@@ -250,7 +257,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
         TafseerSourceOption(
           id: _selectedTafsirId,
           name: _selectedTafsirName,
-          displayName: _selectedTafsirName,
+          displayName: _selectedDisplayName,
           authorName: '',
         ),
       );
@@ -314,8 +321,8 @@ class _TafseerSheetState extends State<TafseerSheet> {
 
     final localeCode = Localizations.localeOf(context).languageCode;
     final verseReference = _localizedVerseKey(widget.verseKey, localeCode);
-    final source = _selectedTafsirName.trim().isNotEmpty
-        ? _selectedTafsirName.trim()
+    final source = _selectedDisplayName.trim().isNotEmpty
+        ? _selectedDisplayName.trim()
         : '$_selectedTafsirId';
     final content = TafseerShareContent.build(
       heading: strings.text('share_heading', {'verseKey': verseReference}),
@@ -376,7 +383,7 @@ class _TafseerSheetState extends State<TafseerSheet> {
                   child: Text(
                     _selectedTafsirName.isNotEmpty
                         ? strings.text('title_with_source', {
-                            'source': _selectedTafsirName,
+                            'source': _selectedDisplayName,
                             'verseKey': _localizedVerseKey(
                               widget.verseKey,
                               localeCode,

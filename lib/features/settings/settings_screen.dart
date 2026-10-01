@@ -235,10 +235,7 @@ class SettingsScreen extends StatelessWidget {
           );
           return TafseerProvider.sourcesForLanguage(all, langCode);
         },
-        itemTitle: (t) {
-          final displayName = TafseerProvider.sourceDisplayName(langCode, t);
-          return '$displayName — ${t['author_name'] ?? ''}';
-        },
+        itemTitle: (t) => TafseerProvider.sourceDisplayName(langCode, t),
         isSelected: (t) =>
             (t['id'] as int?) ==
             context.read<TafseerProvider>().selectedTafsirId,

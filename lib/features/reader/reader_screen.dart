@@ -1470,6 +1470,12 @@ class _ReaderScreenState extends State<ReaderScreen>
       final ayah = _pendingScrollAyah!;
       _pendingScrollAyah = null;
       _setRestoreGuard(ayah, durationMs: 2200);
+      if (ayah <= _ayahs.first.ayahNumber) {
+        // The surah's first ayah sits below its header, so start at the very
+        // top rather than aligning the ayah itself to the viewport edge.
+        _restoreScrollOffset(0.0);
+        return;
+      }
       _scrollToAyah(ayah, maxAttempts: 20, alignment: 0.0, allowSeedJump: true);
       Future.delayed(const Duration(milliseconds: 650), () {
         if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
@@ -2537,17 +2543,22 @@ class _ReaderScreenState extends State<ReaderScreen>
                 onBeforeOpen: () => _hideMushafScrubberOverlay(),
                 onChanged: (surah, {ayah}) {
                   _selectedSurah = surah;
-                  if (ayah != null) {
-                    _pendingScrollAyah = ayah;
-                    _pendingScrollOffset = 0.0;
-                    unawaited(
-                      context.read<BookmarkProvider>().saveLastRead(
-                        surah,
-                        ayah,
-                        caller: '[surah-picker/juz-jump]',
-                      ),
-                    );
-                  }
+                  // A plain surah pick opens at its first ayah. Without an
+                  // explicit target the reload kept the previous surah's
+                  // scroll offset, because the controller survives the swap.
+                  final targetAyah = ayah ?? 1;
+                  _pendingScrollAyah = targetAyah;
+                  _pendingScrollOffset = 0.0;
+                  unawaited(
+                    context.read<BookmarkProvider>().saveLastRead(
+                      surah,
+                      targetAyah,
+                      scrollOffset: 0.0,
+                      caller: ayah == null
+                          ? '[surah-picker]'
+                          : '[surah-picker/juz-jump]',
+                    ),
+                  );
                   _stopAudio();
                   _loadSurah(allowFallback: false);
                 },
