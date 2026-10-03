@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/data/surah_names.dart';
 import '../../core/providers/daily_lesson_provider.dart';
+import '../../core/providers/bookmark_provider.dart';
 import '../../core/providers/reader_navigation_provider.dart';
-import '../../core/providers/streak_provider.dart';
-import '../../shared/widgets/streak_bar.dart';
 
 class HomeScreen extends StatelessWidget {
   final void Function(int index) onTabSwitch;
@@ -14,7 +14,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final streak = context.watch<StreakProvider>();
     final dailyLesson = context.watch<DailyLessonProvider>();
     final lesson = dailyLesson.todayLesson;
 
@@ -25,12 +24,10 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _Header(l10n: l10n),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: StreakBar(
-                  streakCount: streak.streakCount,
-                  weekDots: streak.weekDots,
-                ),
+              _ReadingCard(
+                l10n: l10n,
+                bookmarks: context.watch<BookmarkProvider>(),
+                onTap: () => onTabSwitch(1),
               ),
               _TodayLesson(
                 l10n: l10n,
@@ -69,26 +66,143 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       color: Theme.of(context).colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.greeting, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 2),
           Text(
-            l10n.continueJourney,
-            style: Theme.of(context).textTheme.titleLarge,
+            l10n.greeting,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '﴿ وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا ﴾',
-            style: TextStyle(
-              fontFamily: 'UthmanicHafs',
-              fontSize: 18,
-              color: Color(0xFF1D9E75),
+          Text(
+            l10n.get('home_moment'),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: Text(
+              '﴿ وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا ﴾',
+              style: TextStyle(
+                fontFamily: 'UthmanicHafs',
+                fontSize: 22,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              textDirection: TextDirection.rtl,
             ),
-            textDirection: TextDirection.rtl,
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              '${surahName(73, l10n.locale.languageCode)} · ${l10n.get('ayah')} 4',
+              key: const Key('home_verse_reference'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadingCard extends StatelessWidget {
+  final AppLocalizations l10n;
+  final BookmarkProvider bookmarks;
+  final VoidCallback onTap;
+
+  const _ReadingCard({
+    required this.l10n,
+    required this.bookmarks,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLastRead = bookmarks.hasLastRead;
+    return Container(
+      key: const Key('home_reading_card'),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF246F57), Color(0xFF104C3C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.get('home_reading'),
+            style: const TextStyle(
+              color: Color(0xFFE0F0E7),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            hasLastRead
+                ? surahName(bookmarks.lastReadSurah, l10n.locale.languageCode)
+                : l10n.get('home_begin'),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hasLastRead
+                ? '${l10n.get('ayah')} ${bookmarks.lastReadAyah}'
+                : l10n.get('home_intro'),
+            style: const TextStyle(
+              color: Color(0xFFE0F0E7),
+              fontSize: 16,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              key: const Key('home_continue_reading'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF5FAF3),
+                foregroundColor: const Color(0xFF174F3D),
+                padding: const EdgeInsets.all(20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              // Switch tabs only: let the reader keep its existing restore
+              // path, including the saved scroll offset and Mushaf mode.
+              onPressed: onTap,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.get(hasLastRead ? 'home_continue' : 'home_start'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_rounded, size: 20),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -115,53 +229,70 @@ class _TodayLesson extends StatelessWidget {
         ? l10n.get('complete')
         : l10n.get('not_quite');
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE1F5EE),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF9FE1CB), width: 0.5),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.todaysLesson,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1D9E75),
-                letterSpacing: 0.05,
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: Material(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Semantics(
+            button: true,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.todaysLesson,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.primary,
+                      letterSpacing: 0.05,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    lessonTitle,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  if (progress > 0) ...[
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation(scheme.primary),
+                        minHeight: 4,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${(progress * 100).round()}% • $statusText',
+                      style: TextStyle(fontSize: 11, color: scheme.primary),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      l10n.get('home_lesson_intro'),
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              lessonTitle,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0F6E56),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: const Color(0xFF9FE1CB),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF1D9E75)),
-                minHeight: 4,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${(progress * 100).round()}% • $statusText',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF1D9E75)),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -176,14 +307,6 @@ class _QuickCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cards = [
-      _CardData(
-        icon: Icons.menu_book_rounded,
-        iconBg: const Color(0xFFE1F5EE),
-        iconColor: const Color(0xFF1D9E75),
-        title: l10n.readWithTajweed,
-        sub: l10n.get('colored_highlights'),
-        tab: 1,
-      ),
       _CardData(
         icon: Icons.quiz_rounded,
         iconBg: const Color(0xFFFAEEDA),
@@ -204,16 +327,26 @@ class _QuickCards extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.3,
-        children: cards
-            .map((c) => _QuickCard(data: c, onTabSwitch: onTabSwitch))
-            .toList(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final singleColumn =
+              constraints.maxWidth < 340 ||
+              MediaQuery.textScalerOf(context).scale(16) > 22;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: cards
+                .map(
+                  (c) => SizedBox(
+                    width: singleColumn
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - 10) / 2,
+                    child: _QuickCard(data: c, onTabSwitch: onTabSwitch),
+                  ),
+                )
+                .toList(),
+          );
+        },
       ),
     );
   }
@@ -243,42 +376,55 @@ class _QuickCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onTabSwitch(data.tab),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: data.iconBg,
-                borderRadius: BorderRadius.circular(8),
+    return Semantics(
+      button: true,
+      child: Material(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => onTabSwitch(data.tab),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(context).dividerColor,
+                width: 0.5,
               ),
-              child: Icon(data.icon, color: data.iconColor, size: 18),
             ),
-            const Spacer(),
-            Text(
-              data.title,
-              style: Theme.of(context).textTheme.labelMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: data.iconBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(data.icon, color: data.iconColor, size: 18),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  data.title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  data.sub,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              data.sub,
-              style: Theme.of(context).textTheme.bodySmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
         ),
       ),
     );
