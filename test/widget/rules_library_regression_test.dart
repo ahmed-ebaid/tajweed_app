@@ -6,23 +6,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/constants/app_links.dart';
 import 'package:tajweed_practice/core/l10n/app_localizations.dart';
 import 'package:tajweed_practice/features/rules/rules_screen.dart';
+import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/tajweed_article_detail_screen.dart';
 import 'package:tajweed_practice/features/rules/tajweed_article_share_content.dart';
 import 'package:tajweed_practice/features/rules/tajweed_articles_repository.dart';
 
-Widget subject(Widget child, String language, TargetPlatform platform) =>
-    MaterialApp(
-      locale: Locale(language),
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(platform: platform),
-      home: child,
-    );
+Widget subject(
+  Widget child,
+  String language,
+  TargetPlatform platform, {
+  Brightness brightness = Brightness.light,
+}) => MaterialApp(
+  locale: Locale(language),
+  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: const [
+    AppLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  theme: ThemeData(platform: platform, brightness: brightness),
+  home: child,
+);
 
 void main() {
   const channel = MethodChannel('dev.fluttercommunity.plus/share');
@@ -44,57 +49,180 @@ void main() {
   });
 
   testWidgets(
-    'Madd al-Farq appears once under Madd, not fundamentals or More',
+    'Madd al-Farq is an expandable sorted row inside the shared Madd group',
     (tester) async {
-      tester.view.physicalSize = const Size(800, 1800);
       tester.view.devicePixelRatio = 1;
+      tester.view.viewInsets = FakeViewPadding.zero;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      for (final locale in AppLocalizations.supportedLocales) {
-        final language = locale.languageCode;
-        final l10n = AppLocalizations(locale);
-        final article = TajweedArticlesRepository.all.singleWhere(
-          (article) => article.id == 'madd_al_farq',
-        );
-        await tester.pumpWidget(
-          subject(
-            RulesScreen(
-              key: ValueKey(language),
-              languageCodeOverride: language,
+      addTearDown(tester.view.resetViewInsets);
+      for (final configuration in [
+        (const Size(390, 844), Brightness.light),
+        (const Size(390, 844), Brightness.dark),
+        (const Size(1024, 1366), Brightness.light),
+        (const Size(1024, 1366), Brightness.dark),
+      ]) {
+        tester.view.physicalSize = configuration.$1;
+        for (final locale in AppLocalizations.supportedLocales) {
+          final language = locale.languageCode;
+          final l10n = AppLocalizations(locale);
+          final article = TajweedArticlesRepository.all.singleWhere(
+            (article) => article.id == 'madd_al_farq',
+          );
+          await tester.pumpWidget(
+            subject(
+              RulesScreen(
+                key: ValueKey('$language-$configuration'),
+                languageCodeOverride: language,
+              ),
+              language,
+              TargetPlatform.iOS,
+              brightness: configuration.$2,
             ),
-            language,
-            TargetPlatform.iOS,
-          ),
-        );
-        await tester.pumpAndSettle();
-        final farq = find.widgetWithText(ListTile, article.title(language));
-        await tester.ensureVisible(farq);
-        expect(farq, findsOneWidget);
-        expect(
-          tester.getTopLeft(find.text(l10n.get('rules_category_madd'))).dy,
-          lessThan(tester.getTopLeft(farq).dy),
-        );
-        expect(find.text(l10n.get('rules_category_madd')), findsOneWidget);
-        await tester.tap(farq);
-        await tester.pumpAndSettle();
-        expect(find.byType(TajweedArticleDetailScreen), findsOneWidget);
-        expect(find.byIcon(CupertinoIcons.share), findsOneWidget);
-        await tester.tap(find.byType(BackButton));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text(l10n.get('rules_tab_more')));
-        await tester.pumpAndSettle();
-        expect(farq, findsNothing);
-        await tester.tap(find.text(l10n.get('rules_tab_tajweed')));
-        await tester.pumpAndSettle();
-        await tester.enterText(find.byType(TextField), article.title(language));
-        await tester.pumpAndSettle();
-        expect(farq, findsOneWidget);
-        expect(
-          find.text(l10n.get('rules_category_fundamentals')),
-          findsNothing,
-        );
-        expect(find.text(l10n.get('rules_category_madd')), findsOneWidget);
-        expect(tester.takeException(), isNull);
+          );
+          await tester.pumpAndSettle();
+          final farq = find.byKey(const ValueKey('madd_al_farq'));
+          final farqHeader = find
+              .descendant(of: farq, matching: find.byType(InkWell))
+              .first;
+          final maddGroup = find.byKey(const ValueKey('rules_category_madd'));
+          await tester.ensureVisible(farqHeader);
+          await tester.pumpAndSettle();
+          expect(farq, findsOneWidget);
+          expect(
+            find.descendant(of: maddGroup, matching: farq),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(of: farq, matching: find.byType(ListTile)),
+            findsNothing,
+          );
+          expect(
+            find.descendant(
+              of: farq,
+              matching: find.byIcon(Icons.menu_book_rounded),
+            ),
+            findsNothing,
+          );
+          expect(
+            find.descendant(of: farq, matching: find.byIcon(Icons.expand_more)),
+            findsOneWidget,
+          );
+          final maddRules = RulesRepository.all.where(
+            (definition) => definition.rule.name.startsWith('madd'),
+          );
+          final rows = [
+            (article.title(language), farq),
+            ...maddRules.map(
+              (definition) => (
+                definition.name(language),
+                find.byKey(ValueKey(definition.rule)),
+              ),
+            ),
+          ]..sort((a, b) => a.$1.compareTo(b.$1));
+          for (var index = 0; index < rows.length; index++) {
+            expect(
+              find.descendant(of: maddGroup, matching: rows[index].$2),
+              findsOneWidget,
+            );
+            if (index > 0) {
+              expect(
+                tester.getTopLeft(rows[index - 1].$2).dy,
+                lessThan(tester.getTopLeft(rows[index].$2).dy),
+              );
+            }
+          }
+          expect(
+            tester.getTopLeft(find.text(l10n.get('rules_category_madd'))).dy,
+            lessThan(tester.getTopLeft(farq).dy),
+          );
+          expect(find.text(l10n.get('rules_category_madd')), findsOneWidget);
+          final naturalMadd = RulesRepository.all.singleWhere(
+            (definition) => definition.rule.name == 'maddTabeei',
+          );
+          final naturalRow = find.byKey(ValueKey(naturalMadd.rule));
+          await tester.ensureVisible(farqHeader);
+          await tester.pumpAndSettle();
+          await tester.tap(farqHeader);
+          await tester.pumpAndSettle();
+          final naturalHeader = find
+              .descendant(of: naturalRow, matching: find.byType(InkWell))
+              .first;
+          await tester.ensureVisible(naturalHeader);
+          await tester.pumpAndSettle();
+          await tester.tap(naturalHeader);
+          await tester.pumpAndSettle();
+          expect(
+            find.descendant(of: farq, matching: find.byIcon(Icons.expand_more)),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: naturalRow,
+              matching: find.byIcon(Icons.expand_less),
+            ),
+            findsOneWidget,
+          );
+          await tester.ensureVisible(naturalHeader);
+          await tester.pumpAndSettle();
+          await tester.tap(naturalHeader);
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(farqHeader);
+          await tester.pumpAndSettle();
+          await tester.tap(farqHeader);
+          await tester.pumpAndSettle();
+          expect(find.byType(TajweedArticleDetailScreen), findsNothing);
+          expect(
+            find.descendant(of: farq, matching: find.byIcon(Icons.expand_less)),
+            findsOneWidget,
+          );
+          final details = find.descendant(
+            of: farq,
+            matching: find.widgetWithText(TextButton, l10n.get('full_details')),
+          );
+          await tester.ensureVisible(details);
+          await tester.pumpAndSettle();
+          await tester.tap(details);
+          await tester.pumpAndSettle();
+          expect(find.byType(TajweedArticleDetailScreen), findsOneWidget);
+          expect(find.byIcon(CupertinoIcons.share), findsOneWidget);
+          await tester.tap(find.byType(BackButton));
+          await tester.pumpAndSettle();
+          final naturalPill = find.text(naturalMadd.name(language)).first;
+          await tester.ensureVisible(naturalPill);
+          await tester.pumpAndSettle();
+          await tester.tap(naturalPill);
+          await tester.pumpAndSettle();
+          expect(farq, findsNothing);
+          expect(naturalRow, findsOneWidget);
+          await tester.ensureVisible(find.text(l10n.allRules));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(l10n.allRules));
+          await tester.pumpAndSettle();
+          expect(farq, findsOneWidget);
+          await tester.tap(find.text(l10n.get('rules_tab_more')));
+          await tester.pumpAndSettle();
+          expect(farq, findsNothing);
+          await tester.tap(find.text(l10n.get('rules_tab_tajweed')));
+          await tester.pumpAndSettle();
+          await tester.enterText(
+            find.byType(TextField),
+            article.title(language),
+          );
+          FocusManager.instance.primaryFocus?.unfocus();
+          await tester.pumpAndSettle();
+          expect(
+            tester.widget<TextField>(find.byType(TextField)).controller!.text,
+            article.title(language),
+          );
+          expect(farq, findsOneWidget, reason: '$language $configuration');
+          expect(
+            find.text(l10n.get('rules_category_fundamentals')),
+            findsNothing,
+          );
+          expect(find.text(l10n.get('rules_category_madd')), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
       }
     },
   );

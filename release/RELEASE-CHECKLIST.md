@@ -29,7 +29,9 @@ per release for both stores.
       regression fixtures also run in the normal CI test suite without the
       external corpus.
 - [ ] Run `test/widget/rules_library_regression_test.dart` for rules-library
-      changes. Madd al-Farq must appear once under Madd, remain searchable in
+      changes. Madd al-Farq must appear once as an expandable row sorted
+      inside the same group as all other Madd rules (not a separate article
+      card or section), remain searchable in
       all eight languages, and stay out of More Topics. Every article must
       have a working share action with localized content and a nonempty iPad
       popover anchor. Run `integration_test/rules_library_regression_test.dart`

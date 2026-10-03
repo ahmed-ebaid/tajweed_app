@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.12
-- **Build:** 84
+- **Build:** 85
 
 ## URLs
 
@@ -83,7 +83,8 @@ Fixes word-detail highlighting: only the letters and marks belonging to the
 selected Tajweed rule are colored, instead of the whole word. The detail
 sheet retains the same annotated word used by both reader layouts.
 
-Madd al-Farq is listed with the Madd rules, not under Core Recitation Rules.
+Madd al-Farq uses the same expandable row as the other Madd rules, sorted
+inside their shared group rather than shown as a separate article card.
 All educational article details, including Core Recitation Rules and More
 Topics, offer localized text sharing with a correctly anchored iPad share sheet.
 

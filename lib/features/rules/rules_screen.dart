@@ -74,6 +74,7 @@ class _RulesScreenState extends State<RulesScreen> {
 
   List<_RuleGroup> _grouped(
     List<TajweedRuleDefinition> rules,
+    List<TajweedArticle> maddArticles,
     String langCode,
   ) {
     final buckets = <String, List<TajweedRuleDefinition>>{};
@@ -85,9 +86,15 @@ class _RulesScreenState extends State<RulesScreen> {
     final ordered = <_RuleGroup>[];
     for (final key in _categoryOrder) {
       final list = buckets[key];
-      if (list == null || list.isEmpty) continue;
-      list.sort((a, b) => a.name(langCode).compareTo(b.name(langCode)));
-      ordered.add(_RuleGroup(title: key, rules: list));
+      final articles = key == 'rules_category_madd'
+          ? maddArticles
+          : <TajweedArticle>[];
+      if ((list == null || list.isEmpty) && articles.isEmpty) continue;
+      final definitions = list ?? <TajweedRuleDefinition>[];
+      definitions.sort((a, b) => a.name(langCode).compareTo(b.name(langCode)));
+      ordered.add(
+        _RuleGroup(title: key, rules: definitions, articles: articles),
+      );
     }
 
     // Keep any unexpected categories visible at the end.
@@ -178,36 +185,39 @@ class _RulesScreenState extends State<RulesScreen> {
     final l10n = AppLocalizations.of(context);
     final langCode = _languageCode;
     final rules = _filtered;
-    final groups = _grouped(rules, langCode);
-    final articleGroups = _groupedArticles(_filteredArticles, langCode);
+    final articles = _filteredArticles;
+    final groups = _grouped(
+      rules,
+      articles.where((a) => a.category == TajweedArticleCategory.madd).toList(),
+      langCode,
+    );
+    final articleGroups = _groupedArticles(
+      articles.where((a) => a.category != TajweedArticleCategory.madd).toList(),
+      langCode,
+    );
+    void openArticle(TajweedArticle article) => Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TajweedArticleDetailScreen(
+          article: article,
+          languageCode: langCode,
+        ),
+      ),
+    );
     Widget articleSection(_ArticleGroup group) => _ArticleGroupSection(
       group: group,
       languageCode: langCode,
       l10n: l10n,
-      onOpen: (article) => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => TajweedArticleDetailScreen(
-            article: article,
-            languageCode: langCode,
-          ),
-        ),
-      ),
+      onOpen: openArticle,
     );
-    final maddArticles = articleGroups
-        .where((group) => group.category == TajweedArticleCategory.madd)
-        .toList();
     final sections = <Widget>[
-      ...articleGroups
-          .where((group) => group.category != TajweedArticleCategory.madd)
-          .map(articleSection),
-      ...maddArticles.map(articleSection),
+      ...articleGroups.map(articleSection),
       ...groups.indexed.map((entry) {
         final index = entry.$1;
         final group = entry.$2;
         return _RuleGroupSection(
+          key: ValueKey(group.title),
           group: group,
-          showTitle:
-              group.title != 'rules_category_madd' || maddArticles.isEmpty,
+          onOpenArticle: openArticle,
           langCode: langCode,
           l10n: l10n,
           expandedIndex: _expandedIndex,
@@ -222,7 +232,10 @@ class _RulesScreenState extends State<RulesScreen> {
           ),
           baseFlatIndex: groups
               .take(index)
-              .fold<int>(0, (sum, item) => sum + item.rules.length),
+              .fold<int>(
+                0,
+                (sum, item) => sum + item.rules.length + item.articles.length,
+              ),
         );
       }),
     ];
@@ -572,6 +585,124 @@ class _Pill extends StatelessWidget {
   }
 }
 
+class _RuleCardHeader extends StatelessWidget {
+  final String title;
+  final String arabicTitle;
+  final Color color;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final VoidCallback onOpenDetail;
+
+  const _RuleCardHeader({
+    required this.title,
+    required this.arabicTitle,
+    required this.color,
+    required this.expanded,
+    required this.onToggle,
+    required this.onOpenDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onToggle,
+    onLongPress: onOpenDetail,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ),
+          Text(
+            arabicTitle,
+            style: const TextStyle(fontFamily: 'UthmanicHafs', fontSize: 15),
+            textDirection: TextDirection.rtl,
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            expanded ? Icons.expand_less : Icons.expand_more,
+            size: 18,
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ArticleRuleCard extends StatelessWidget {
+  final TajweedArticle article;
+  final String langCode;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final VoidCallback onOpenDetail;
+
+  const _ArticleRuleCard({
+    super.key,
+    required this.article,
+    required this.langCode,
+    required this.expanded,
+    required this.onToggle,
+    required this.onOpenDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      _RuleCardHeader(
+        title: article.title(langCode),
+        arabicTitle: article.title('ar'),
+        color: const Color(0xFF176B5B),
+        expanded: expanded,
+        onToggle: onToggle,
+        onOpenDetail: onOpenDetail,
+      ),
+      AnimatedCrossFade(
+        duration: const Duration(milliseconds: 200),
+        crossFadeState: expanded
+            ? CrossFadeState.showFirst
+            : CrossFadeState.showSecond,
+        firstChild: Container(
+          width: double.infinity,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                article.summary(langCode),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(height: 1.6),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onOpenDetail,
+                  icon: const Icon(Icons.open_in_new, size: 14),
+                  label: Text(AppLocalizations.of(context).get('full_details')),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF176B5B),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        secondChild: const SizedBox.shrink(),
+      ),
+    ],
+  );
+}
+
 class _RuleCard extends StatelessWidget {
   final TajweedRuleDefinition definition;
   final String langCode;
@@ -580,6 +711,7 @@ class _RuleCard extends StatelessWidget {
   final VoidCallback onOpenDetail;
 
   const _RuleCard({
+    super.key,
     required this.definition,
     required this.langCode,
     required this.expanded,
@@ -591,45 +723,13 @@ class _RuleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        InkWell(
-          onTap: onToggle,
-          onLongPress: onOpenDetail,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: definition.rule.color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    definition.name(langCode),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                Text(
-                  definition.rule.arabicName,
-                  style: const TextStyle(
-                    fontFamily: 'UthmanicHafs',
-                    fontSize: 15,
-                  ),
-                  textDirection: TextDirection.rtl,
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  expanded ? Icons.expand_less : Icons.expand_more,
-                  size: 18,
-                  color: Theme.of(context).textTheme.bodySmall?.color,
-                ),
-              ],
-            ),
-          ),
+        _RuleCardHeader(
+          title: definition.name(langCode),
+          arabicTitle: definition.rule.arabicName,
+          color: definition.rule.color,
+          expanded: expanded,
+          onToggle: onToggle,
+          onOpenDetail: onOpenDetail,
         ),
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 200),
@@ -712,13 +812,18 @@ class _RuleCard extends StatelessWidget {
 class _RuleGroup {
   final String title;
   final List<TajweedRuleDefinition> rules;
+  final List<TajweedArticle> articles;
 
-  const _RuleGroup({required this.title, required this.rules});
+  const _RuleGroup({
+    required this.title,
+    required this.rules,
+    this.articles = const [],
+  });
 }
 
 class _RuleGroupSection extends StatelessWidget {
   final _RuleGroup group;
-  final bool showTitle;
+  final ValueChanged<TajweedArticle> onOpenArticle;
   final String langCode;
   final int? expandedIndex;
   final int baseFlatIndex;
@@ -727,8 +832,9 @@ class _RuleGroupSection extends StatelessWidget {
   final AppLocalizations l10n;
 
   const _RuleGroupSection({
+    super.key,
     required this.group,
-    this.showTitle = true,
+    required this.onOpenArticle,
     required this.langCode,
     required this.expandedIndex,
     required this.baseFlatIndex,
@@ -739,31 +845,52 @@ class _RuleGroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showTitle)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-            child: Text(
-              l10n.get(group.title),
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-        ...List.generate(group.rules.length, (idx) {
-          final definition = group.rules[idx];
-          final flatIndex = baseFlatIndex + idx;
-          return _RuleCard(
+    final cards = <(String, Widget)>[
+      ...group.rules.indexed.map((entry) {
+        final definition = entry.$2;
+        final flatIndex = baseFlatIndex + entry.$1;
+        return (
+          definition.name(langCode),
+          _RuleCard(
+            key: ValueKey(definition.rule),
             definition: definition,
             langCode: langCode,
             expanded: expandedIndex == flatIndex,
             onToggle: () => onToggle(flatIndex),
             onOpenDetail: () => onOpenDetail(definition),
-          );
-        }),
+          ),
+        );
+      }),
+      ...group.articles.indexed.map((entry) {
+        final article = entry.$2;
+        final flatIndex = baseFlatIndex + group.rules.length + entry.$1;
+        return (
+          article.title(langCode),
+          _ArticleRuleCard(
+            key: ValueKey(article.id),
+            article: article,
+            langCode: langCode,
+            expanded: expandedIndex == flatIndex,
+            onToggle: () => onToggle(flatIndex),
+            onOpenDetail: () => onOpenArticle(article),
+          ),
+        );
+      }),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          child: Text(
+            l10n.get(group.title),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+        ...cards.map((entry) => entry.$2),
       ],
     );
   }
