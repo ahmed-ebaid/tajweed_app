@@ -216,6 +216,35 @@ class AyahMapper {
     return _langCodeFromResourceId(resourceId);
   }
 
+  static ({int start, int end}) _tanweenRange(
+    String text,
+    int start,
+    int end,
+    TajweedRule? rule,
+  ) {
+    if (rule != TajweedRule.ikhfa &&
+        rule != TajweedRule.iqlab &&
+        rule != TajweedRule.izhar &&
+        rule != TajweedRule.idghamWithGhunnah &&
+        rule != TajweedRule.idghamWithoutGhunnah) {
+      return (start: start, end: end);
+    }
+    // Upstream tags may include the supporting alif or letters before the
+    // tanween carrier. Colour only its base and marks, not those neighbours.
+    for (var i = start; i < end; i++) {
+      final cp = text.codeUnitAt(i);
+      if (cp < 0x064B || cp > 0x064D) continue;
+      var base = i - 1;
+      while (base >= start && _isArabicCombiningMark(text.codeUnitAt(base))) {
+        base--;
+      }
+      if (base >= start) {
+        return (start: base, end: _extendOverCombining(text, i + 1));
+      }
+    }
+    return (start: start, end: end);
+  }
+
   // Quran.com sometimes shifts word-level `text_uthmani_tajweed` into the next
   // token and places the last real word's tajweed on the `end` token.
   // Detect this by checking whether the end-token tajweed differs from its
@@ -865,6 +894,8 @@ class AyahMapper {
         continue;
       }
 
+      final annotatedEnd = endIdx;
+
       // Extend endIdx over any trailing Arabic combining / Quranic marks
       // (e.g. U+06ED ۭ small low meem, U+06E2 ۢ small high meem) that
       // belong to the same grapheme cluster but are absent from rule text.
@@ -883,7 +914,16 @@ class AyahMapper {
           ? _resolveNecessaryMadd(arabicText, idx, endIdx)
           : rule;
 
-      spans.add(TajweedSpan(start: idx, end: endIdx, rule: resolvedRule));
+      // A vowel absorbed by the grapheme extension may belong to a
+      // different rule; only narrow tanween inside the source tag.
+      final range = _tanweenRange(arabicText, idx, annotatedEnd, resolvedRule);
+      spans.add(
+        TajweedSpan(
+          start: range.start,
+          end: _extendOverCombining(arabicText, range.end),
+          rule: resolvedRule,
+        ),
+      );
       searchFrom = endIdx;
     }
 
@@ -1050,7 +1090,10 @@ class AyahMapper {
               : _isNecessaryMaddClass(ruleKey)
               ? _resolveNecessaryMadd(arabicText, start, endIdx)
               : rule;
-          spans.add(TajweedSpan(start: start, end: endIdx, rule: resolvedRule));
+          final range = _tanweenRange(arabicText, start, endIdx, resolvedRule);
+          spans.add(
+            TajweedSpan(start: range.start, end: range.end, rule: resolvedRule),
+          );
           searchFrom = endIdx;
         }
       }
@@ -1212,7 +1255,19 @@ class AyahMapper {
       );
       final rule = _ruleFromTajweedClass(className);
       if (text.isNotEmpty) {
-        segments.add(TajweedSegment(text: text, rule: rule));
+        final range = _tanweenRange(text, 0, text.length, rule);
+        if (range.start > 0) {
+          segments.add(TajweedSegment(text: text.substring(0, range.start)));
+        }
+        segments.add(
+          TajweedSegment(
+            text: text.substring(range.start, range.end),
+            rule: rule,
+          ),
+        );
+        if (range.end < text.length) {
+          segments.add(TajweedSegment(text: text.substring(range.end)));
+        }
       }
 
       cursor = match.end;

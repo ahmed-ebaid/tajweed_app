@@ -43,4 +43,87 @@ void main() {
       );
     });
   });
+
+  group('TafseerProvider Arabic catalogue', () {
+    const jalalayn = <String, dynamic>{
+      'id': 801,
+      'name': 'Arabic Jalalayn Tafseer',
+      'author_name': 'Jalal ad-Din al-Mahalli',
+      'language_name': 'arabic',
+    };
+    final arabicSeven = <Map<String, dynamic>>[
+      for (final id in [14, 15, 16, 90, 91, 93, 94])
+        {'id': id, 'name': 'Source $id', 'language_name': 'arabic'},
+    ];
+
+    const tanweer = <String, dynamic>{
+      'id': 802,
+      'name': 'Arabic Tanweer Tafseer',
+      'author_name': 'Muhammad al-Tahir ibn Ashur',
+      'language_name': 'arabic',
+    };
+
+    test(
+      'Arabic keeps every catalogue tafsir, Jalalayn and Tanweer included',
+      () {
+        final arabic = TafseerProvider.sourcesForLanguage([
+          ...arabicSeven,
+          jalalayn,
+          tanweer,
+        ], 'ar');
+        expect(arabic, hasLength(9));
+      },
+    );
+
+    test('Jalalayn and Tanweer get localized names despite unknown IDs', () {
+      expect(
+        TafseerProvider.sourceDisplayName('ar', jalalayn),
+        'تفسير الجلالين',
+      );
+      expect(
+        TafseerProvider.sourceDisplayName('ar', tanweer),
+        'التحرير والتنوير (ابن عاشور)',
+      );
+      expect(
+        TafseerProvider.sourceDisplayName('tr', jalalayn),
+        'Celâleyn Tefsiri',
+      );
+      expect(
+        TafseerProvider.displayNameFor('ar', 802, 'Arabic Tanweer Tafseer'),
+        'التحرير والتنوير (ابن عاشور)',
+      );
+    });
+
+    test('every Arabic entry has an Arabic name', () {
+      final arabicLetters = RegExp(r'^[\u0600-\u06FF\s()]+$');
+      for (final source in [...arabicSeven, jalalayn, tanweer]) {
+        expect(
+          TafseerProvider.sourceDisplayName('ar', source),
+          matches(arabicLetters),
+          reason: 'id ${source['id']}',
+        );
+      }
+    });
+
+    test(
+      'other locales get their own name, not the English catalogue name',
+      () {
+        expect(
+          TafseerProvider.sourceDisplayName('fr', {
+            'id': 900,
+            'name': 'Ibn Kathir (Abridged)',
+          }),
+          'Ibn Kathir (Abrégé)',
+        );
+      },
+    );
+
+    test('persisted English names are localized for the header', () {
+      expect(
+        TafseerProvider.displayNameFor('ar', 93, 'Al-Tafsir al-Wasit'),
+        'التفسير الوسيط (الطنطاوي)',
+      );
+      expect(TafseerProvider.displayNameFor('en', 999, 'Custom'), 'Custom');
+    });
+  });
 }

@@ -203,24 +203,162 @@ class TafseerProvider extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  /// Canonical works whose localized names already live in
+  /// [_localizedTafsirNames] under a representative ID.
+  static const Map<String, int> _canonicalWorkIds = {
+    'ibn_kathir_abridged': 169,
+    'ibn_kathir': 14,
+    'muyassar': 16,
+    'tabari': 15,
+    'qurtubi': 90,
+    'saadi': 91,
+    'wasit': 93,
+    'baghawi': 94,
+  };
+
+  /// Localized names for works the catalogue may serve under IDs that are not
+  /// hard-coded above (the production catalogue differs from prelive).
+  static const Map<String, Map<String, String>> _canonicalWorkNames = {
+    'jalalayn': {
+      'en': 'Tafsir al-Jalalayn',
+      'ar': 'تفسير الجلالين',
+      'ur': 'تفسیر جلالین',
+      'tr': 'Celâleyn Tefsiri',
+      'fr': 'Tafsir al-Jalalayn',
+      'id': 'Tafsir Jalalain',
+      'de': 'Tafsir al-Dschalalain',
+      'es': 'Tafsir al-Yalalayn',
+    },
+    'tanweer': {
+      'en': 'Al-Tahrir wa al-Tanwir (Ibn Ashur)',
+      'ar': 'التحرير والتنوير (ابن عاشور)',
+      'ur': 'التحریر والتنویر (ابن عاشور)',
+      'tr': 'et-Tahrîr ve\'t-Tenvîr (İbn Âşûr)',
+      'fr': 'Al-Tahrir wa al-Tanwir (Ibn Achour)',
+      'id': 'At-Tahrir wa at-Tanwir (Ibnu Asyur)',
+      'de': 'At-Tahrir wa at-Tanwir (Ibn Aschur)',
+      'es': 'Al-Tahrir wa al-Tanwir (Ibn Ashur)',
+    },
+    'maarif': {
+      'en': 'Ma\'arif al-Qur\'an',
+      'ar': 'معارف القرآن',
+      'ur': 'معارف القرآن',
+      'tr': 'Meâriful-Kur\'ân',
+      'fr': 'Ma\'arif al-Qur\'an',
+      'id': 'Ma\'ariful Qur\'an',
+      'de': 'Ma\'arif al-Qur\'an',
+      'es': 'Ma\'arif al-Qur\'an',
+    },
+    'tazkir': {
+      'en': 'Tazkirul Quran',
+      'ar': 'تذكير القرآن',
+      'ur': 'تذکیر القرآن',
+      'tr': 'Tezkîru\'l-Kur\'ân',
+      'fr': 'Tazkirul Quran',
+      'id': 'Tadzkirul Quran',
+      'de': 'Tazkirul Quran',
+      'es': 'Tazkirul Quran',
+    },
+    'fi_zilal': {
+      'en': 'Fi Zilal al-Quran',
+      'ar': 'في ظلال القرآن',
+      'ur': 'فی ظلال القرآن',
+      'tr': 'Fî Zılâli\'l-Kur\'ân',
+      'fr': 'Fi Zilal al-Quran',
+      'id': 'Fi Zhilalil Quran',
+      'de': 'Fi Zilal al-Quran',
+      'es': 'Fi Zilal al-Quran',
+    },
+    'bayan_ul_quran': {
+      'en': 'Bayan ul Quran',
+      'ar': 'بيان القرآن',
+      'ur': 'بیان القرآن',
+      'tr': 'Beyânü\'l-Kur\'ân',
+      'fr': 'Bayan ul Quran',
+      'id': 'Bayan ul Quran',
+      'de': 'Bayan ul Quran',
+      'es': 'Bayan ul Quran',
+    },
+  };
+
+  static final RegExp _arabicScript = RegExp(r'[\u0600-\u06FF]');
+
+  static String? _canonicalWorkKey(Iterable<String?> labels) {
+    final text = labels
+        .whereType<String>()
+        .join(' ')
+        .toLowerCase()
+        .replaceAll('’', '\'');
+    if (text.trim().isEmpty) return null;
+    bool has(List<String> needles) => needles.any(text.contains);
+
+    if (has(['ahsanul', 'zakaria', 'fathul'])) return null;
+    if (has(['jalal', 'جلال'])) return 'jalalayn';
+    if (has(['tanw', 'tahrir', 'ashur', 'ashour', 'تنوير', 'عاشور'])) {
+      return 'tanweer';
+    }
+    if (has(['muyassar', 'ميسر', 'میسر'])) return 'muyassar';
+    if (has(['tabari', 'طبري'])) return 'tabari';
+    if (has(['qurtubi', 'قرطبي'])) return 'qurtubi';
+    if (has(['sa\'di', 'saadi', 'saddi', 'سعدي'])) return 'saadi';
+    if (has(['wasit', 'waseet', 'tantawi', 'وسيط'])) return 'wasit';
+    if (has(['baghaw', 'بغوي'])) return 'baghawi';
+    if (has(['kathir', 'kaseer', 'كثير', 'کثیر'])) {
+      return text.contains('abridged') ? 'ibn_kathir_abridged' : 'ibn_kathir';
+    }
+    if (has(['ma\'arif', 'maarif'])) return 'maarif';
+    if (has(['tazkir'])) return 'tazkir';
+    if (has(['zilal', 'zalul'])) return 'fi_zilal';
+    if (has(['bayan ul quran', 'bayan-ul-quran'])) return 'bayan_ul_quran';
+    return null;
+  }
+
+  static String? _canonicalWorkName(String langCode, String? key) {
+    if (key == null) return null;
+    final id = _canonicalWorkIds[key];
+    if (id != null) return localizedTafsirName(langCode, id);
+    return _canonicalWorkNames[key]?[langCode];
+  }
+
+  /// Resolves the name a tafsir is shown under in [langCode], so the UI never
+  /// mixes the catalogue's English names into another language.
   static String sourceDisplayName(
     String langCode,
     Map<String, dynamic> source,
   ) {
     final id = source['id'] as int?;
+    final name = source['name']?.toString().trim() ?? '';
+    final translated = source['translated_name'];
+    final translatedName = translated is Map
+        ? translated['name']?.toString().trim()
+        : null;
+
+    final known =
+        localizedTafsirName(langCode, id) ??
+        _canonicalWorkName(
+          langCode,
+          _canonicalWorkKey([name, source['slug']?.toString(), translatedName]),
+        );
+    if (known != null) return known;
+
+    if ((langCode == 'ar' || langCode == 'ur') &&
+        translatedName != null &&
+        _arabicScript.hasMatch(translatedName)) {
+      return translatedName;
+    }
+    return name;
+  }
+
+  /// Localizes a persisted tafsir [name] for display in [langCode].
+  static String displayNameFor(String langCode, int id, String name) {
     return localizedTafsirName(langCode, id) ??
-        source['name']?.toString().trim() ??
-        '';
+        _canonicalWorkName(langCode, _canonicalWorkKey([name])) ??
+        name;
   }
 
   /// Returns the localized display name for the selected tafsir.
-  /// Uses the localized map first, then falls back to the persisted name.
-  String get selectedTafsirName {
-    final localized =
-        _localizedTafsirNames[_activeLangCode]?[_selectedTafsirId];
-    if (localized != null) return localized;
-    return _selectedTafsirName;
-  }
+  String get selectedTafsirName =>
+      displayNameFor(_activeLangCode, _selectedTafsirId, _selectedTafsirName);
 
   TafseerProvider({String langCode = 'en'}) {
     final box = Hive.box(_boxKey);

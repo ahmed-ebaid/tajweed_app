@@ -128,7 +128,7 @@ void main() {
     ]);
 
     expect(sources.map((source) => source.id), [15, 169]);
-    expect(sources.first.label, 'Al-Tabari — Al-Tabari');
+    expect(sources.first.label, 'Al-Tabari');
   });
 
   test('Tafseer share content includes attribution and the app link', () {
@@ -171,7 +171,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tafseer-source-dropdown-169')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tafsir al-Tabari — Al-Tabari').last);
+    await tester.tap(find.text('Tafsir al-Tabari').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Tabari commentary'), findsOneWidget);
@@ -202,7 +202,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tafseer-source-dropdown-169')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tafsir al-Tabari — Al-Tabari').last);
+    await tester.tap(find.text('Tafsir al-Tabari').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Initial commentary'), findsOneWidget);

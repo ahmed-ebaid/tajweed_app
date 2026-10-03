@@ -280,6 +280,7 @@ CI enforcement:
 - The Quran.Foundation Content API returns a `tajweed` character code per word
 - `QuranApiService.ruleFromCode()` maps codes → `TajweedRule` enum
 - `TajweedText` widget builds a `RichText` with `TextSpan` per letter, each colored by its rule
+- Tanween annotations highlight only the letter carrying the tanween and its marks, not a supporting alif or preceding letters included in the upstream tag.
 - Tapping a span opens `WordDetailSheet` explaining the rule in the current UI language
 
 ### Audio

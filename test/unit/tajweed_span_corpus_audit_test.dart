@@ -139,6 +139,27 @@ bool _isCombiningOrInvisible(int rune) =>
 String _baseLetters(String text) =>
     String.fromCharCodes(text.runes.where((r) => !_isCombiningOrInvisible(r)));
 
+String _expectedBaseLetters(String text, TajweedRule rule) {
+  const tanweenRules = {
+    TajweedRule.ikhfa,
+    TajweedRule.iqlab,
+    TajweedRule.izhar,
+    TajweedRule.idghamWithGhunnah,
+    TajweedRule.idghamWithoutGhunnah,
+  };
+  if (tanweenRules.contains(rule)) {
+    final tanween = RegExp('[\u064B-\u064D]').firstMatch(text);
+    if (tanween != null) {
+      final before = _baseLetters(text.substring(0, tanween.start));
+      if (before.isNotEmpty) return before.substring(before.length - 1);
+      // A combining hamza on tatweel (ـٔ) is the carrier, not the
+      // supporting alif. Neither tatweel nor its marks are base letters.
+      if (text.substring(0, tanween.start).contains('ـٔ')) return '';
+    }
+  }
+  return _baseLetters(text);
+}
+
 /// Top-level `<rule>` tags with any nested inner tags flattened away.
 ///
 /// Quran.com nests tags, wrapping a `custom-alef-maksora` tag inside a
@@ -418,7 +439,9 @@ void main() {
           final rendered = _baseLetters(
             mapped.arabic.substring(spans[i].start, spans[i].end),
           );
-          final source = _baseLetters(tags[i].text);
+          // Tanween tags can cover a supporting alif or preceding letters;
+          // the intended display extent is only the tanween carrier.
+          final source = _expectedBaseLetters(tags[i].text, spans[i].rule);
 
           if (rendered == source) {
             exactMatches++;
