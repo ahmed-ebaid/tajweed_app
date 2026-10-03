@@ -283,6 +283,11 @@ CI enforcement:
 - Tanween annotations highlight only the letter carrying the tanween and its marks, not a supporting alif or preceding letters included in the upstream tag.
 - Tapping a span opens `WordDetailSheet` explaining the rule in the current UI language
 
+### Home
+- A localized reading shortcut opens the Reader tab without changing the saved ayah, scroll offset, or reader mode.
+- New readers see “Start reading”; returning readers see their saved surah and ayah.
+- The daily lesson retains its targeted navigation and shows progress only after practice begins. The reading card takes priority over the lesson and streak.
+
 ### Audio
 - Reader playback uses selectable Quran.Foundation recitations and defaults to AbdulBasit Mujawwad
 - Tajweed rule examples use Mahmoud Khalil Al-Husary's Al-Muallim recitation

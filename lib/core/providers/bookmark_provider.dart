@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 enum BookmarkType { ayah, page }
@@ -70,6 +69,8 @@ class BookmarkProvider extends ChangeNotifier {
   int get lastReadAyah => _lastReadAyah;
   double get lastScrollOffset => _lastScrollOffset;
   List<Bookmark> get bookmarks => List.unmodifiable(_bookmarks);
+  bool get hasLastRead =>
+      Hive.isBoxOpen(_boxKey) && Hive.box(_boxKey).containsKey(_lastSurahKey);
 
   BookmarkProvider() {
     _load();
