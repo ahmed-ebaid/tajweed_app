@@ -100,7 +100,7 @@ class _Header extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              '${surahName(73, l10n.locale.languageCode)} · ${l10n.get('ayah')} 4',
+              '${surahName(73, l10n.locale.languageCode)} · ${l10n.get('ayah')} ${l10n.digits(4)}',
               key: const Key('home_verse_reference'),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -164,7 +164,7 @@ class _ReadingCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             hasLastRead
-                ? '${l10n.get('ayah')} ${bookmarks.lastReadAyah}'
+                ? '${l10n.get('ayah')} ${l10n.digits(bookmarks.lastReadAyah)}'
                 : l10n.get('home_intro'),
             style: const TextStyle(
               color: Color(0xFFE0F0E7),
@@ -276,7 +276,7 @@ class _TodayLesson extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${(progress * 100).round()}% • $statusText',
+                      '${l10n.percentage((progress * 100).round())} • $statusText',
                       style: TextStyle(fontSize: 11, color: scheme.primary),
                     ),
                   ] else ...[
