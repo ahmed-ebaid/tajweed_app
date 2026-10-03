@@ -151,6 +151,31 @@ void main() {
     expect(surahName(18, 'en'), 'Al-Kahf');
   });
 
+  test('Home digits and percentages follow the selected locale', () {
+    for (final lang in homeTranslations.keys) {
+      final l10n = AppLocalizations(Locale(lang));
+      final arabicDigits = lang == 'ar' || lang == 'ur';
+      expect(l10n.digits(45), arabicDigits ? '٤٥' : '45');
+      expect(l10n.percentage(100), arabicDigits ? '١٠٠٪' : '100%');
+      expect(l10n.percentage(50), arabicDigits ? '٥٠٪' : '50%');
+    }
+  });
+
+  testWidgets('completed Arabic lesson renders a localized percentage', (
+    tester,
+  ) async {
+    await tester.runAsync(
+      () => lesson.markReaderProgress(
+        surah: lesson.todayLesson.surah,
+        ayah: lesson.todayLesson.ayah,
+      ),
+    );
+    await tester.pumpWidget(subject(lang: 'ar'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('١٠٠٪'), findsOneWidget);
+    expect(find.textContaining('100%'), findsNothing);
+  });
+
   testWidgets('large text stays readable on narrow screens in every locale', (
     tester,
   ) async {
@@ -174,7 +199,8 @@ void main() {
     await tester.pumpWidget(subject(lang: 'ar'));
     await tester.pumpAndSettle();
     expect(find.text('الكهف'), findsOneWidget);
-    expect(find.text('المزمل · آية 4'), findsOneWidget);
+    expect(find.text('المزمل · آية ٤'), findsOneWidget);
+    expect(find.text('آية ٤٥'), findsOneWidget);
     expect(find.text('🔥'), findsNothing);
     expect(
       Directionality.of(

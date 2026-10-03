@@ -902,6 +902,25 @@ class AppLocalizations {
   }
 
   // Convenience getters
+  String digits(int value) {
+    final text = value.toString();
+    if (locale.languageCode != 'ar' && locale.languageCode != 'ur') {
+      return text;
+    }
+    const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+    return text.replaceAllMapped(
+      RegExp(r'[0-9]'),
+      (match) => arabicIndic[int.parse(match[0]!)],
+    );
+  }
+
+  String percentage(int value) {
+    final sign = locale.languageCode == 'ar' || locale.languageCode == 'ur'
+        ? '٪'
+        : '%';
+    return '${digits(value)}$sign';
+  }
+
   String get appName => get('app_name');
   String get greeting => get('greeting');
   String get continueJourney => get('continue_journey');
