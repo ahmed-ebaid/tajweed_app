@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.11
-- **Build:** 77
+- **Build:** 82
 
 ## URLs
 
@@ -74,9 +74,10 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Corrects Tajweed highlighting for tanween, including ikhfa. The highlight now
-stays on the letter carrying the tanween and its marks instead of including
-neighboring letters.
+A refreshed Home screen makes it easier to start or continue reading, with
+clearer text and surah names. Corrects tanween highlighting, including ikhfa,
+so neighboring letters are not highlighted. Home ayah numbers and lesson
+progress follow your selected language.
 
 This is an iOS-only release. Google Play remains on its existing 1.1.10 (76)
 submission; do not upload an Android build as part of this release.
@@ -87,7 +88,7 @@ Use clean device captures with no personal notifications, debug banners, or
 test data. Keep Quran text unchanged; marketing captions belong outside the app
 capture and must not obscure Quran content.
 
-1. **Home and progress** — “Build a consistent Quran practice”
+1. **Home** — “Reflect with the Quran”
 2. **Ayah reader** — “Read with clear Tajweed guidance”
 3. **Tafseer and translations** — “Read, reflect, and understand”
 4. **Mushaf view** — “A focused 604-page reading experience”
@@ -109,6 +110,17 @@ in `ios/Runner/Assets.xcassets/AppIcon.appiconset`.
 The reproducible simulator capture harness is
 `integration_test/app_store_screenshots_test.dart`. It uses local fixture data
 and does not bypass App Attest in production code.
+
+For a first-image-only refresh, pass `--dart-define=HOME_ASSETS_ONLY=true` to
+the capture harness and set `SCREENSHOT_OUTPUT_DIR` to the desired output
+directory. Capture all eight languages separately on iPhone and iPad, then
+replace only `01-home.png` in each localized screenshot set. Preserve the
+remaining images and their order.
+
+The build 82 refresh uses 1320×2868 iPhone captures and 2064×2752 iPad captures.
+The Spanish iPad set had an eleventh image, an identical duplicate of
+`08-settings.png`; the extra copy was backed up and removed to satisfy Apple's
+ten-image limit. All other existing screenshots are retained.
 
 ## App Review notes
 
