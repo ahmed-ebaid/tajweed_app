@@ -36,6 +36,7 @@ const _screenshotLanguageCode = String.fromEnvironment(
   defaultValue: 'en',
 );
 const _onboardingAssetsOnly = bool.fromEnvironment('ONBOARDING_ASSETS_ONLY');
+const _homeAssetsOnly = bool.fromEnvironment('HOME_ASSETS_ONLY');
 const _releaseListingAssetsOnly = bool.fromEnvironment(
   'RELEASE_LISTING_ASSETS_ONLY',
 );
@@ -148,7 +149,7 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('capture App Store screens', (tester) async {
-    if (_releaseListingAssetsOnly) {
+    if (_releaseListingAssetsOnly || _homeAssetsOnly) {
       await _captureLocalizedReleasePages(tester, binding);
       return;
     }
@@ -386,6 +387,15 @@ Future<void> _captureLocalizedReleasePages(
       ),
     );
     await _waitForUi(tester);
+
+    if (_homeAssetsOnly) {
+      expect(find.byKey(const Key('home_reading_card')), findsOneWidget);
+      expect(find.text('🔥'), findsNothing);
+      await _captureScreenshot(tester, binding, '$languageCode/01-home');
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      continue;
+    }
 
     await tester.tap(find.byIcon(Icons.library_books_outlined));
     await _waitForUi(tester);
