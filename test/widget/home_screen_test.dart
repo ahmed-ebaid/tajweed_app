@@ -43,31 +43,38 @@ void main() {
     await temp.delete(recursive: true);
   });
 
-  Widget subject({String lang = 'en', bool dark = false}) => MultiProvider(
-    providers: [
-      ChangeNotifierProvider.value(value: bookmarks),
-      ChangeNotifierProvider.value(value: navigation),
-      ChangeNotifierProvider.value(value: lesson),
-      ChangeNotifierProvider.value(value: streak),
-    ],
-    child: MaterialApp(
-      locale: Locale(lang),
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF246F57),
-          brightness: dark ? Brightness.dark : Brightness.light,
+  Widget subject({String lang = 'en', bool dark = false, double scale = 1}) =>
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: bookmarks),
+          ChangeNotifierProvider.value(value: navigation),
+          ChangeNotifierProvider.value(value: lesson),
+          ChangeNotifierProvider.value(value: streak),
+        ],
+        child: MaterialApp(
+          locale: Locale(lang),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF246F57),
+              brightness: dark ? Brightness.dark : Brightness.light,
+            ),
+          ),
+          home: HomeScreen(onTabSwitch: tabs.add),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
         ),
-      ),
-      home: HomeScreen(onTabSwitch: tabs.add),
-    ),
-  );
+      );
 
   testWidgets('new reader can start without changing saved position', (
     tester,
@@ -141,6 +148,22 @@ void main() {
     expect(surahName(18, 'ar'), 'الكهف');
     expect(surahName(18, 'ur'), 'الكهف');
     expect(surahName(18, 'en'), 'Al-Kahf');
+  });
+
+  testWidgets('large text stays readable on narrow screens in every locale', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    for (final lang in homeTranslations.keys) {
+      await tester.pumpWidget(subject(lang: lang, scale: 2));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text(AppLocalizations(Locale(lang)).ruleQuiz),
+        250,
+      );
+      expect(tester.takeException(), isNull, reason: lang);
+    }
   });
 
   testWidgets('Arabic reading card shows the name and no fire', (tester) async {

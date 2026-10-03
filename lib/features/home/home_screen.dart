@@ -71,7 +71,13 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.greeting, style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            l10n.greeting,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             l10n.get('home_moment'),
@@ -128,7 +134,11 @@ class _ReadingCard extends StatelessWidget {
         children: [
           Text(
             l10n.get('home_reading'),
-            style: const TextStyle(color: Color(0xFFB7DCCC), fontSize: 12),
+            style: const TextStyle(
+              color: Color(0xFFE0F0E7),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -145,7 +155,11 @@ class _ReadingCard extends StatelessWidget {
             hasLastRead
                 ? '${l10n.get('ayah')} ${bookmarks.lastReadAyah}'
                 : l10n.get('home_intro'),
-            style: const TextStyle(color: Color(0xFFC5E1D2), height: 1.4),
+            style: const TextStyle(
+              color: Color(0xFFE0F0E7),
+              fontSize: 16,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -168,6 +182,10 @@ class _ReadingCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       l10n.get(hasLastRead ? 'home_continue' : 'home_start'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const Icon(Icons.arrow_forward_rounded, size: 20),
@@ -298,16 +316,26 @@ class _QuickCards extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.3,
-        children: cards
-            .map((c) => _QuickCard(data: c, onTabSwitch: onTabSwitch))
-            .toList(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final singleColumn =
+              constraints.maxWidth < 340 ||
+              MediaQuery.textScalerOf(context).scale(16) > 22;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: cards
+                .map(
+                  (c) => SizedBox(
+                    width: singleColumn
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - 10) / 2,
+                    child: _QuickCard(data: c, onTabSwitch: onTabSwitch),
+                  ),
+                )
+                .toList(),
+          );
+        },
       ),
     );
   }
@@ -367,19 +395,21 @@ class _QuickCard extends StatelessWidget {
                   ),
                   child: Icon(data.icon, color: data.iconColor, size: 18),
                 ),
-                const Spacer(),
+                const SizedBox(height: 14),
                 Text(
                   data.title,
-                  style: Theme.of(context).textTheme.labelMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   data.sub,
-                  style: Theme.of(context).textTheme.bodySmall,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
