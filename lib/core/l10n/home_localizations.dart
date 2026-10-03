@@ -1,6 +1,6 @@
 const homeTranslations = <String, Map<String, String>>{
   'en': {
-    'home_moment': 'Pause with the Quran',
+    'home_moment': 'Reflect with the Quran',
     'home_continue': 'Continue reading',
     'home_start': 'Start reading',
     'home_reading': 'Your reading',
@@ -18,7 +18,7 @@ const homeTranslations = <String, Map<String, String>>{
     'home_lesson_intro': 'اقرأ مثالًا واستمع بتمعّن',
   },
   'ur': {
-    'home_moment': 'قرآن کے ساتھ کچھ دیر ٹھہریں',
+    'home_moment': 'قرآن کے ساتھ غور و فکر',
     'home_continue': 'پڑھنا جاری رکھیں',
     'home_start': 'پڑھنا شروع کریں',
     'home_reading': 'آپ کی تلاوت',
@@ -27,7 +27,7 @@ const homeTranslations = <String, Map<String, String>>{
     'home_lesson_intro': 'ایک مثال پڑھیں اور غور سے سنیں',
   },
   'tr': {
-    'home_moment': 'Kur’an ile bir mola',
+    'home_moment': 'Kur’an ile tefekkür',
     'home_continue': 'Okumaya devam et',
     'home_start': 'Okumaya başla',
     'home_reading': 'Okumanız',
@@ -36,7 +36,7 @@ const homeTranslations = <String, Map<String, String>>{
     'home_lesson_intro': 'Bir örnek okuyun ve dikkatle dinleyin',
   },
   'fr': {
-    'home_moment': 'Une pause avec le Coran',
+    'home_moment': 'Un temps de réflexion avec le Coran',
     'home_continue': 'Continuer la lecture',
     'home_start': 'Commencer la lecture',
     'home_reading': 'Votre lecture',
@@ -45,7 +45,7 @@ const homeTranslations = <String, Map<String, String>>{
     'home_lesson_intro': 'Lisez un exemple et écoutez attentivement',
   },
   'id': {
-    'home_moment': 'Berhenti sejenak bersama Al-Qur’an',
+    'home_moment': 'Renungkan Al-Qur’an',
     'home_continue': 'Lanjutkan membaca',
     'home_start': 'Mulai membaca',
     'home_reading': 'Bacaan Anda',
@@ -54,7 +54,7 @@ const homeTranslations = <String, Map<String, String>>{
     'home_lesson_intro': 'Baca contoh dan dengarkan dengan saksama',
   },
   'de': {
-    'home_moment': 'Innehalten mit dem Koran',
+    'home_moment': 'Mit dem Koran innehalten und nachdenken',
     'home_continue': 'Weiterlesen',
     'home_start': 'Lesen beginnen',
     'home_reading': 'Ihre Lektüre',
@@ -63,7 +63,7 @@ const homeTranslations = <String, Map<String, String>>{
     'home_lesson_intro': 'Lesen Sie ein Beispiel und hören Sie genau zu',
   },
   'es': {
-    'home_moment': 'Una pausa con el Corán',
+    'home_moment': 'Reflexiona con el Corán',
     'home_continue': 'Continuar leyendo',
     'home_start': 'Comenzar a leer',
     'home_reading': 'Tu lectura',
