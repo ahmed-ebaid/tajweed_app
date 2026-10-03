@@ -97,6 +97,17 @@ class _Header extends StatelessWidget {
               textDirection: TextDirection.rtl,
             ),
           ),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              '${surahName(73, l10n.locale.languageCode)} · ${l10n.get('ayah')} 4',
+              key: const Key('home_verse_reference'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         ],
       ),
     );

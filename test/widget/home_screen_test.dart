@@ -82,6 +82,7 @@ void main() {
     await tester.pumpWidget(subject());
     await tester.pumpAndSettle();
     expect(find.text('Start reading'), findsOneWidget);
+    expect(find.text('Al-Muzzammil · Ayah 4'), findsOneWidget);
     expect(find.textContaining('0%'), findsNothing);
     expect(find.textContaining('Not quite'), findsNothing);
     await tester.tap(find.byKey(const Key('home_continue_reading')));
@@ -173,6 +174,7 @@ void main() {
     await tester.pumpWidget(subject(lang: 'ar'));
     await tester.pumpAndSettle();
     expect(find.text('الكهف'), findsOneWidget);
+    expect(find.text('المزمل · آية 4'), findsOneWidget);
     expect(find.text('🔥'), findsNothing);
     expect(
       Directionality.of(
