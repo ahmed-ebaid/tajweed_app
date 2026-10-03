@@ -207,7 +207,7 @@ void main() {
               {
                 'char_type_name': 'word',
                 'text_uthmani_tajweed':
-                    'ب<rule class=$ruleClass>َء$vowel${mark}ا</rule>',
+                    'ب<rule class=$ruleClass>َء$vowel$markا</rule>',
               },
             ],
           }).words.single;
