@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.7
+# App Store listing — Tajweed 1.1.11
 
 ## App information
 
@@ -8,8 +8,8 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.3
-- **Build:** 65
+- **Version:** 1.1.11
+- **Build:** 77
 
 ## URLs
 
@@ -74,20 +74,12 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Localised copy for all eight App Store locales lives in the session file
-`whatsnew_117.py` (`WHATS_NEW` keyed by locale; `PLAY_NOTES` holds the
-condensed Google Play form). The English text is reproduced here.
+Corrects Tajweed highlighting for tanween, including ikhfa. The highlight now
+stays on the letter carrying the tanween and its marks instead of including
+neighboring letters.
 
-Tajweed 1.1.7 fixes the reader's loading delay and the Tafsir source list.
-
-- Surahs you have already opened now appear straight away. Audio timings and
-  page markers load in the background instead of holding up the text.
-- The Tafsir list shows every source again. If it cannot load, the app now says
-  so and offers Retry instead of quietly showing a single entry.
-- Corrected the sakta example in the rules library: it now uses Al-Qiyamah
-  75:27, where the pause mark stands on its own.
-- The prostration-mark question in the quiz now shows the verse it comes from,
-  An-Najm 53:62, with answer choices drawn from the mushaf markers.
+This is an iOS-only release. Google Play remains on its existing 1.1.10 (76)
+submission; do not upload an Android build as part of this release.
 
 ## Screenshot set
 
