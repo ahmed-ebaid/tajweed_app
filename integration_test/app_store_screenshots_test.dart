@@ -202,7 +202,10 @@ void main() {
       useSafeArea: true,
       builder: (_) => WordDetailSheet(
         rule: TajweedRule.maddTabeei,
-        word: 'ٱلرَّحْمَـٰنِ',
+        word: const TajweedWord(
+          arabic: 'ٱلرَّحْمَـٰنِ',
+          spans: [TajweedSpan(start: 9, end: 11, rule: TajweedRule.maddTabeei)],
+        ),
         ayah: Ayah(
           surahNumber: 1,
           ayahNumber: 1,

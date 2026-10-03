@@ -50,7 +50,7 @@ class TajweedText extends StatelessWidget {
   final TajweedRule? focusedRule;
   final bool strictFocusedRuleOnly;
   final Set<TajweedRule> suppressedRules;
-  final void Function(TajweedRule rule, String word, String? wordAudioUrl)?
+  final void Function(TajweedRule rule, TajweedWord word, String? wordAudioUrl)?
   onRuleTapped;
 
   const TajweedText({
@@ -247,7 +247,7 @@ class TajweedText extends StatelessWidget {
     final sorted = [...word.spans]..sort((a, b) => a.start.compareTo(b.start));
 
     for (final span in sorted) {
-      final start = graphemeMap.startClusterForCodeUnit(span.start);
+      final start = graphemeMap.startClusterForSpan(span, word.spans);
       final end = graphemeMap.endClusterForCodeUnit(span.end);
 
       if (end <= start || start < cursor) {
@@ -287,11 +287,7 @@ class TajweedText extends StatelessWidget {
           _buildGraphemeTextSpans(
             spanText,
             style,
-            onTap: () => onRuleTapped!(
-              rule,
-              _normalizeArabicText(word.arabic),
-              word.audioUrl,
-            ),
+            onTap: () => onRuleTapped!(rule, word, word.audioUrl),
           ),
         );
       } else {
@@ -466,7 +462,14 @@ class TajweedText extends StatelessWidget {
           _buildGraphemeTextSpans(
             text,
             style,
-            onTap: () => onRuleTapped!(rule, text, null),
+            onTap: () => onRuleTapped!(
+              rule,
+              TajweedWord(
+                arabic: text,
+                spans: [TajweedSpan(start: 0, end: text.length, rule: rule)],
+              ),
+              null,
+            ),
           ),
         );
         continue;
@@ -580,7 +583,7 @@ class TajweedText extends StatelessWidget {
     var cursor = 0;
 
     for (final span in sorted) {
-      final start = graphemeMap.startClusterForCodeUnit(span.start);
+      final start = graphemeMap.startClusterForSpan(span, word.spans);
       final end = graphemeMap.endClusterForCodeUnit(span.end);
       if (end <= start || start < cursor) continue;
 
@@ -760,6 +763,30 @@ class _GraphemeMap {
       }
     }
     return _clusters.length;
+  }
+
+  int startClusterForSpan(TajweedSpan span, List<TajweedSpan> spans) {
+    final start = startClusterForCodeUnit(span.start);
+    if (start == 0 || start == length) return start;
+    final cluster = _clusters[start];
+    if (!cluster.startsWith('\u0640') ||
+        !slice(start, endClusterForCodeUnit(span.end)).contains('\u0670')) {
+      return start;
+    }
+    // Attach a dagger-alif extension to its carrier, unless the carrier has
+    // its own rule (e.g. ghunnah in جَنَّـٰتٍ). Never swallow that annotation.
+    final carrierStart = _clusterCodeUnitStarts[start - 1];
+    final carrierEnd = _clusterCodeUnitStarts[start];
+    if (_clusters[start - 1].trim().isEmpty ||
+        spans.any(
+          (other) =>
+              other != span &&
+              other.start < carrierEnd &&
+              other.end > carrierStart,
+        )) {
+      return start;
+    }
+    return start - 1;
   }
 
   int endClusterForCodeUnit(int codeUnitOffset) {

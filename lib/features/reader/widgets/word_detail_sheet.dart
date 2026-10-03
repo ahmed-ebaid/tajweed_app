@@ -10,7 +10,7 @@ import '../../rules/widgets/rule_example_text.dart';
 
 class WordDetailSheet extends StatefulWidget {
   final TajweedRule rule;
-  final String word;
+  final TajweedWord word;
   final Ayah? ayah;
   final String? wordAudioUrl;
   final String? ayahAudioUrl;
@@ -52,12 +52,20 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Text(
-                  widget.word,
-                  style: TextStyle(
-                    fontFamily: 'UthmanicHafs',
-                    fontSize: 36,
-                    color: widget.rule.color,
+                child: Text.rich(
+                  key: const Key('word_detail_header'),
+                  TextSpan(
+                    children: TajweedText.buildStyledWordSpans(
+                      widget.word,
+                      baseStyle: TextStyle(
+                        fontFamily: 'UthmanicHafs',
+                        fontSize: 36,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      suppressedRules: TajweedRule.values
+                          .where((rule) => rule != widget.rule)
+                          .toSet(),
+                    ),
                   ),
                   textDirection: TextDirection.rtl,
                 ),

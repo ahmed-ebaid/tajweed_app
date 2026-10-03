@@ -2470,7 +2470,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _onWordTapped(
     TajweedRule rule,
-    String word,
+    TajweedWord word,
     Ayah ayah, {
     String? wordAudioUrl,
   }) {
@@ -5404,7 +5404,7 @@ class _AyahTile extends StatelessWidget {
   final bool isPlaying;
   final int activeWordIndex;
   final bool isBookmarked;
-  final void Function(TajweedRule, String, Ayah, {String? wordAudioUrl})
+  final void Function(TajweedRule, TajweedWord, Ayah, {String? wordAudioUrl})
   onWordTapped;
   final VoidCallback onDoubleTap;
   final VoidCallback onTafseerTap;
@@ -5692,7 +5692,7 @@ class _PageAyahLine extends StatelessWidget {
   final bool isPlaying;
   final int activeWordIndex;
   final double mushafFontSize;
-  final void Function(TajweedRule, String, Ayah, {String? wordAudioUrl})
+  final void Function(TajweedRule, TajweedWord, Ayah, {String? wordAudioUrl})
   onWordTapped;
   final VoidCallback onDoubleTap;
   final VoidCallback onBookmarkTap;

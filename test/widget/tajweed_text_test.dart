@@ -21,7 +21,7 @@ void main() {
 
   Widget buildSubject({
     bool highlightEnabled = true,
-    void Function(TajweedRule, String, String?)? onRuleTapped,
+    void Function(TajweedRule, TajweedWord, String?)? onRuleTapped,
   }) {
     return MaterialApp(
       home: Scaffold(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
@@ -199,6 +200,7 @@ List<({String ruleClass, String text})> _topLevelRuleTags(String html) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   // Guards against tajweed rules being silently discarded during parsing.
   //
   // `_parseRuleTagTajweed` locates each `<rule>` tag's text inside the word's
@@ -360,6 +362,62 @@ void main() {
           'they have been torn out of their grapheme cluster and the mark is '
           'drawn over the preceding harakah:\n${offenders.join('\n')}',
     );
+  });
+
+  test('dagger alif on tatweel colors its carrier, not the whole word', () {
+    final jsonPath = Platform.environment['QURAN_WORDS_JSON_PATH'];
+    if (jsonPath == null || jsonPath.isEmpty) {
+      markTestSkipped('Set QURAN_WORDS_JSON_PATH for the dagger-alif audit.');
+      return;
+    }
+    final verses = _loadVersesFromJson(jsonPath);
+    expect(verses, hasLength(6236));
+    var checked = 0;
+    for (final verse in verses) {
+      final ayah = AyahMapper.fromApi(verse);
+      for (final word in ayah.words) {
+        // Structural marker fonts are covered separately; this audit checks
+        // body-text coloring without requesting fonts from the network.
+        if (word.arabic.contains('\u06DE') || word.arabic.contains('\u06E9')) {
+          continue;
+        }
+        for (final span in word.spans) {
+          final annotated = word.arabic.substring(span.start, span.end);
+          if (!annotated.startsWith('ـ') || !annotated.contains('ٰ')) continue;
+          final carrier = word.arabic.substring(0, span.start).characters.last;
+          final carrierHasRule = word.spans.any(
+            (other) =>
+                other != span &&
+                other.start < span.start &&
+                other.end > span.start - carrier.length,
+          );
+          final styled = TextSpan(
+            children: TajweedText.buildStyledWordSpans(
+              word,
+              baseStyle: const TextStyle(color: Colors.black),
+              suppressedRules: TajweedRule.values
+                  .where((rule) => rule != span.rule)
+                  .toSet(),
+            ),
+          );
+          final colored = StringBuffer();
+          styled.visitChildren((child) {
+            if (child is TextSpan && child.style?.color == span.rule.color) {
+              colored.write(child.text ?? '');
+            }
+            return true;
+          });
+          expect(
+            colored.toString(),
+            contains(carrierHasRule ? annotated : '$carrier$annotated'),
+            reason: '${verse['verse_key']} ${word.arabic}',
+          );
+          expect(_baseLetters(styled.toPlainText()), _baseLetters(word.arabic));
+          checked++;
+        }
+      }
+    }
+    expect(checked, greaterThan(5000));
   });
 
   // Guards span *extent*, which the drop audit above cannot see.

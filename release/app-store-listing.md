@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.11
+# App Store listing — Tajweed 1.1.12
 
 ## App information
 
@@ -8,8 +8,8 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.11
-- **Build:** 82
+- **Version:** 1.1.12
+- **Build:** 83
 
 ## URLs
 
@@ -78,6 +78,10 @@ A refreshed Home screen makes it easier to start or continue reading, with
 clearer text and surah names. Corrects tanween highlighting, including ikhfa,
 so neighboring letters are not highlighted. Home ayah numbers and lesson
 progress follow your selected language.
+
+Fixes word-detail highlighting: only the letters and marks belonging to the
+selected Tajweed rule are colored, instead of the whole word. The detail
+sheet retains the same annotated word used by both reader layouts.
 
 This is an iOS-only release. Google Play remains on its existing 1.1.10 (76)
 submission; do not upload an Android build as part of this release.

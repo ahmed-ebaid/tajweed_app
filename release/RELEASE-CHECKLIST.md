@@ -20,6 +20,14 @@ per release for both stores.
 - [ ] Bump `appVersion` in `lib/core/constants/app_version.dart` to the marketing
       version. `flutter test test/unit/app_version_test.dart` proves the two agree.
 - [ ] `flutter test` and `flutter analyze` clean.
+- [ ] For Quran highlighting changes, run the full suite with
+      `QURAN_WORDS_JSON_PATH` pointing to the 6,236-ayah words dump. Run
+      `flutter test integration_test/word_detail_regression_test.dart -d <ios-device>`
+      on an iOS simulator or device. This verifies real taps in both reader
+      layouts, exact letter-level header colors, tanween, adjacent ghunnah,
+      all rule colors, and eight-language light/dark layouts. The small
+      regression fixtures also run in the normal CI test suite without the
+      external corpus.
 
 ## iOS
 
