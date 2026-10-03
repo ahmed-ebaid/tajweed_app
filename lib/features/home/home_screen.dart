@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/data/surah_names.dart';
 import '../../core/providers/daily_lesson_provider.dart';
 import '../../core/providers/bookmark_provider.dart';
 import '../../core/providers/reader_navigation_provider.dart';
-import '../../core/providers/streak_provider.dart';
-import '../../shared/widgets/streak_bar.dart';
 
 class HomeScreen extends StatelessWidget {
   final void Function(int index) onTabSwitch;
@@ -15,7 +14,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final streak = context.watch<StreakProvider>();
     final dailyLesson = context.watch<DailyLessonProvider>();
     final lesson = dailyLesson.todayLesson;
 
@@ -51,13 +49,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               _QuickCards(l10n: l10n, onTabSwitch: onTabSwitch),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: StreakBar(
-                  streakCount: streak.streakCount,
-                  weekDots: streak.weekDots,
-                ),
-              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -142,7 +133,7 @@ class _ReadingCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             hasLastRead
-                ? '${l10n.get('surah')} ${bookmarks.lastReadSurah}'
+                ? surahName(bookmarks.lastReadSurah, l10n.locale.languageCode)
                 : l10n.get('home_begin'),
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Colors.white,
@@ -164,7 +155,7 @@ class _ReadingCard extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFF5FAF3),
                 foregroundColor: const Color(0xFF174F3D),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -228,8 +219,8 @@ class _TodayLesson extends StatelessWidget {
                   Text(
                     l10n.todaysLesson,
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                       color: scheme.primary,
                       letterSpacing: 0.05,
                     ),
@@ -238,8 +229,8 @@ class _TodayLesson extends StatelessWidget {
                   Text(
                     lessonTitle,
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                       color: scheme.onSurface,
                     ),
                   ),
@@ -265,7 +256,7 @@ class _TodayLesson extends StatelessWidget {
                       l10n.get('home_lesson_intro'),
                       style: TextStyle(
                         color: scheme.onSurfaceVariant,
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                     ),
                   ],

@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:tajweed_practice/core/l10n/app_localizations.dart';
+import 'package:tajweed_practice/core/data/surah_names.dart';
 import 'package:tajweed_practice/core/l10n/home_localizations.dart';
 import 'package:tajweed_practice/core/providers/bookmark_provider.dart';
 import 'package:tajweed_practice/core/providers/daily_lesson_provider.dart';
@@ -90,7 +91,8 @@ void main() {
     );
     await tester.pumpWidget(subject());
     await tester.pumpAndSettle();
-    expect(find.text('Surah 18'), findsOneWidget);
+    expect(find.text('Al-Kahf'), findsOneWidget);
+    expect(find.text('🔥'), findsNothing);
     expect(find.text('Ayah 45'), findsOneWidget);
     await tester.tap(find.byKey(const Key('home_continue_reading')));
     expect(tabs, [1]);
@@ -127,5 +129,33 @@ void main() {
         expect(tester.takeException(), isNull, reason: '$lang dark=$dark');
       }
     }
+  });
+
+  test('all 114 surahs have offline names', () {
+    expect(arabicSurahNames, hasLength(114));
+    expect(transliteratedSurahNames, hasLength(114));
+    for (var id = 1; id <= 114; id++) {
+      expect(surahName(id, 'en'), isNotEmpty);
+      expect(surahName(id, 'ar'), isNotEmpty);
+    }
+    expect(surahName(18, 'ar'), 'الكهف');
+    expect(surahName(18, 'ur'), 'الكهف');
+    expect(surahName(18, 'en'), 'Al-Kahf');
+  });
+
+  testWidgets('Arabic reading card shows the name and no fire', (tester) async {
+    await tester.runAsync(
+      () => bookmarks.saveLastRead(18, 45, scrollOffset: 732.5),
+    );
+    await tester.pumpWidget(subject(lang: 'ar'));
+    await tester.pumpAndSettle();
+    expect(find.text('الكهف'), findsOneWidget);
+    expect(find.text('🔥'), findsNothing);
+    expect(
+      Directionality.of(
+        tester.element(find.byKey(const Key('home_reading_card'))),
+      ),
+      TextDirection.rtl,
+    );
   });
 }

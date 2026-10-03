@@ -286,7 +286,7 @@ CI enforcement:
 ### Home
 - A localized reading shortcut opens the Reader tab without changing the saved ayah, scroll offset, or reader mode.
 - New readers see “Start reading”; returning readers see their saved surah and ayah.
-- The daily lesson retains its targeted navigation and shows progress only after practice begins. The reading card takes priority over the lesson and streak.
+- The daily lesson retains its targeted navigation and shows progress only after practice begins. Home shows surah names and omits the fire/streak widget.
 
 ### Audio
 - Reader playback uses selectable Quran.Foundation recitations and defaults to AbdulBasit Mujawwad
