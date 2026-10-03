@@ -1,4 +1,4 @@
-enum TajweedArticleCategory { fundamentals, miscellaneous }
+enum TajweedArticleCategory { fundamentals, madd, miscellaneous }
 
 class TajweedArticle {
   final String id;

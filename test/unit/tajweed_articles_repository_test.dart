@@ -20,7 +20,17 @@ void main() {
 
     expect(
       fundamentals.map((article) => article.id),
-      containsAll(['tafkhim', 'tarqiq', 'madd_al_farq', 'waqf_ibtida']),
+      containsAll(['tafkhim', 'tarqiq', 'waqf_ibtida']),
+    );
+    expect(
+      fundamentals.map((article) => article.id),
+      isNot(contains('madd_al_farq')),
+    );
+    expect(
+      TajweedArticlesRepository.all
+          .singleWhere((article) => article.id == 'madd_al_farq')
+          .category,
+      TajweedArticleCategory.madd,
     );
     expect(
       miscellaneous.map((article) => article.id),
@@ -173,7 +183,7 @@ void main() {
     final article = TajweedArticlesRepository.all.firstWhere(
       (candidate) => candidate.id == 'madd_al_farq',
     );
-    expect(article.category, TajweedArticleCategory.fundamentals);
+    expect(article.category, TajweedArticleCategory.madd);
 
     final refs = RuleExampleReferences.referencesForArticle('madd_al_farq');
     expect(refs, hasLength(3));

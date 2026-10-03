@@ -28,6 +28,13 @@ per release for both stores.
       all rule colors, and eight-language light/dark layouts. The small
       regression fixtures also run in the normal CI test suite without the
       external corpus.
+- [ ] Run `test/widget/rules_library_regression_test.dart` for rules-library
+      changes. Madd al-Farq must appear once under Madd, remain searchable in
+      all eight languages, and stay out of More Topics. Every article must
+      have a working share action with localized content and a nonempty iPad
+      popover anchor. Run `integration_test/rules_library_regression_test.dart`
+      on iOS as well; this exercises navigation and the mocked platform share
+      contract, not an external share destination.
 
 ## iOS
 

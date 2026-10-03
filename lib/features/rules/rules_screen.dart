@@ -46,13 +46,13 @@ class _RulesScreenState extends State<RulesScreen> {
 
   List<TajweedArticle> get _filteredArticles {
     if (_filter != null) return const [];
-    final category = _selectedTab == _RulesLibraryTab.rules
-        ? TajweedArticleCategory.fundamentals
-        : TajweedArticleCategory.miscellaneous;
-    return TajweedArticlesRepository.search(
-      _search,
-      _languageCode,
-    ).where((article) => article.category == category).toList();
+    return TajweedArticlesRepository.search(_search, _languageCode)
+        .where(
+          (article) => _selectedTab == _RulesLibraryTab.rules
+              ? article.category != TajweedArticleCategory.miscellaneous
+              : article.category == TajweedArticleCategory.miscellaneous,
+        )
+        .toList();
   }
 
   List<_ArticleGroup> _groupedArticles(
@@ -180,27 +180,34 @@ class _RulesScreenState extends State<RulesScreen> {
     final rules = _filtered;
     final groups = _grouped(rules, langCode);
     final articleGroups = _groupedArticles(_filteredArticles, langCode);
-    final sections = <Widget>[
-      ...articleGroups.map(
-        (group) => _ArticleGroupSection(
-          group: group,
-          languageCode: langCode,
-          l10n: l10n,
-          onOpen: (article) => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => TajweedArticleDetailScreen(
-                article: article,
-                languageCode: langCode,
-              ),
-            ),
+    Widget articleSection(_ArticleGroup group) => _ArticleGroupSection(
+      group: group,
+      languageCode: langCode,
+      l10n: l10n,
+      onOpen: (article) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TajweedArticleDetailScreen(
+            article: article,
+            languageCode: langCode,
           ),
         ),
       ),
+    );
+    final maddArticles = articleGroups
+        .where((group) => group.category == TajweedArticleCategory.madd)
+        .toList();
+    final sections = <Widget>[
+      ...articleGroups
+          .where((group) => group.category != TajweedArticleCategory.madd)
+          .map(articleSection),
+      ...maddArticles.map(articleSection),
       ...groups.indexed.map((entry) {
         final index = entry.$1;
         final group = entry.$2;
         return _RuleGroupSection(
           group: group,
+          showTitle:
+              group.title != 'rules_category_madd' || maddArticles.isEmpty,
           langCode: langCode,
           l10n: l10n,
           expandedIndex: _expandedIndex,
@@ -444,9 +451,11 @@ class _ArticleGroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryKey = group.category == TajweedArticleCategory.fundamentals
-        ? 'rules_category_fundamentals'
-        : 'rules_category_miscellaneous';
+    final categoryKey = switch (group.category) {
+      TajweedArticleCategory.fundamentals => 'rules_category_fundamentals',
+      TajweedArticleCategory.madd => 'rules_category_madd',
+      TajweedArticleCategory.miscellaneous => 'rules_category_miscellaneous',
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +495,7 @@ class _ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = article.category == TajweedArticleCategory.fundamentals
+    final color = article.category != TajweedArticleCategory.miscellaneous
         ? const Color(0xFF176B5B)
         : const Color(0xFF6A4C93);
 
@@ -497,7 +506,7 @@ class _ArticleCard extends StatelessWidget {
         backgroundColor: color.withValues(alpha: 0.12),
         foregroundColor: color,
         child: Icon(
-          article.category == TajweedArticleCategory.fundamentals
+          article.category != TajweedArticleCategory.miscellaneous
               ? Icons.menu_book_rounded
               : Icons.auto_stories_rounded,
           size: 20,
@@ -709,6 +718,7 @@ class _RuleGroup {
 
 class _RuleGroupSection extends StatelessWidget {
   final _RuleGroup group;
+  final bool showTitle;
   final String langCode;
   final int? expandedIndex;
   final int baseFlatIndex;
@@ -718,6 +728,7 @@ class _RuleGroupSection extends StatelessWidget {
 
   const _RuleGroupSection({
     required this.group,
+    this.showTitle = true,
     required this.langCode,
     required this.expandedIndex,
     required this.baseFlatIndex,
@@ -731,16 +742,17 @@ class _RuleGroupSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-          child: Text(
-            l10n.get(group.title),
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.primary,
+        if (showTitle)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+            child: Text(
+              l10n.get(group.title),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
-        ),
         ...List.generate(group.rules.length, (idx) {
           final definition = group.rules[idx];
           final flatIndex = baseFlatIndex + idx;

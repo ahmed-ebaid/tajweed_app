@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/l10n/app_localizations.dart';
 import '../../core/providers/locale_provider.dart';
@@ -9,6 +11,7 @@ import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_api_service.dart';
 import 'rule_example_references.dart';
 import 'tajweed_article.dart';
+import 'tajweed_article_share_content.dart';
 
 class TajweedArticleDetailScreen extends StatefulWidget {
   final TajweedArticle article;
@@ -38,6 +41,7 @@ class _TajweedArticleDetailScreenState
     extends State<TajweedArticleDetailScreen> {
   final AudioService _audio = AudioService();
   final QuranApiService _api = QuranApiService();
+  final GlobalKey _shareButtonKey = GlobalKey();
   int? _playingIndex;
   late final List<_ArticleExample> _examples;
 
@@ -115,6 +119,33 @@ class _TajweedArticleDetailScreenState
     super.dispose();
   }
 
+  Future<void> _shareArticle() async {
+    final box =
+        _shareButtonKey.currentContext!.findRenderObject()! as RenderBox;
+    final origin = box.localToGlobal(Offset.zero) & box.size;
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: TajweedArticleShareContent.build(
+            widget.article,
+            widget.languageCode,
+          ),
+          subject: widget.article.title(widget.languageCode),
+          sharePositionOrigin: origin,
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Tajweed article share failed: $error\n$stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).get('share_failed')),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -130,12 +161,26 @@ class _TajweedArticleDetailScreenState
       article.id,
       languageCode: languageCode,
     );
-    final accent = article.category == TajweedArticleCategory.fundamentals
+    final accent = article.category != TajweedArticleCategory.miscellaneous
         ? const Color(0xFF176B5B)
         : const Color(0xFF6A4C93);
 
     return Scaffold(
-      appBar: AppBar(title: Text(article.title(languageCode))),
+      appBar: AppBar(
+        title: Text(article.title(languageCode)),
+        actions: [
+          IconButton(
+            key: _shareButtonKey,
+            tooltip: l10n.get('share_rule'),
+            onPressed: _shareArticle,
+            icon: Icon(
+              Theme.of(context).platform == TargetPlatform.iOS
+                  ? CupertinoIcons.share
+                  : Icons.share_rounded,
+            ),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(

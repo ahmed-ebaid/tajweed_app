@@ -161,7 +161,7 @@ class TajweedArticlesRepository {
     ),
     TajweedArticle(
       id: 'madd_al_farq',
-      category: TajweedArticleCategory.fundamentals,
+      category: TajweedArticleCategory.madd,
       titles: {
         'en': 'Madd al-Farq',
         'ar': 'مد الفرق',

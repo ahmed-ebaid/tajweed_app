@@ -9,7 +9,7 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.12
-- **Build:** 83
+- **Build:** 84
 
 ## URLs
 
@@ -82,6 +82,10 @@ progress follow your selected language.
 Fixes word-detail highlighting: only the letters and marks belonging to the
 selected Tajweed rule are colored, instead of the whole word. The detail
 sheet retains the same annotated word used by both reader layouts.
+
+Madd al-Farq is listed with the Madd rules, not under Core Recitation Rules.
+All educational article details, including Core Recitation Rules and More
+Topics, offer localized text sharing with a correctly anchored iPad share sheet.
 
 This is an iOS-only release. Google Play remains on its existing 1.1.10 (76)
 submission; do not upload an Android build as part of this release.
