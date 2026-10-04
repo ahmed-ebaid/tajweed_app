@@ -158,6 +158,148 @@ void main() {
     }
   });
 
+  for (final fixture in [
+    (
+      name: 'Hud 11:58 Idgham with Ghunnah',
+      verseKey: '11:58',
+      html: 'بِرَحۡمَ<rule class=idgham_ghunnah>ةٍ</rule>',
+      rule: TajweedRule.idghamWithGhunnah,
+      expected: 'ةٍ',
+      expectedWord: 'بِرَحۡمَةٍ',
+      continuation: 'مِّنَّا',
+      continuationHtml:
+          '<rule class=idgham_ghunnah>م</rule>ِّ'
+          '<rule class=ghunnah>نّ</rule>َا',
+    ),
+    (
+      name: 'Hud 11:61 Madd Tabeei beside Ikhafa',
+      verseKey: '11:61',
+      html:
+          'صَ<rule class=madda_normal>ـٰ</rule>'
+          'لِ<rule class=ikhafa>حًا‌ۚ</rule>',
+      rule: TajweedRule.maddTabeei,
+      expected: 'صَـٰ',
+      expectedWord: 'صَـٰلِحًاۚ',
+      continuation: null,
+      continuationHtml: null,
+    ),
+  ]) {
+    testWidgets(
+      '${fixture.name} keeps the selected highlight precise after a real tap',
+      (tester) async {
+        final fixtureAyah = AyahMapper.fromApi({
+          'verse_key': fixture.verseKey,
+          'words': [
+            {'char_type_name': 'word', 'text_uthmani_tajweed': fixture.html},
+          ],
+        });
+        final contextAyah = AyahMapper.fromApi({
+          'verse_key': fixture.verseKey,
+          'words': [
+            {'char_type_name': 'word', 'text_uthmani_tajweed': fixture.html},
+            if (fixture.continuationHtml case final continuationHtml?)
+              {
+                'char_type_name': 'word',
+                'text_uthmani_tajweed': continuationHtml,
+              },
+          ],
+        });
+        for (final compact in [false, true]) {
+          for (final dark in [false, true]) {
+            await tester.pumpWidget(
+              subject(
+                Builder(
+                  builder: (context) => TajweedText(
+                    ayah: fixtureAyah,
+                    compactFlow: compact,
+                    onRuleTapped: (rule, tappedWord, _) {
+                      showModalBottomSheet<void>(
+                        context: context,
+                        builder: (_) => WordDetailSheet(
+                          rule: rule,
+                          word: tappedWord,
+                          ayah: contextAyah,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                dark: dark,
+              ),
+            );
+            await tester.pumpAndSettle();
+
+            final richFinder = find
+                .descendant(
+                  of: find.byType(TajweedText),
+                  matching: find.byType(RichText),
+                )
+                .first;
+            final paragraph = tester.renderObject<RenderParagraph>(richFinder);
+            final colored = coloredText(paragraph.text, fixture.rule.color);
+            expect(colored, fixture.expected, reason: fixture.name);
+            final start = paragraph.text.toPlainText().indexOf(colored);
+            expect(start, isNonNegative, reason: fixture.name);
+            final boxes = paragraph.getBoxesForSelection(
+              TextSelection(
+                baseOffset: start,
+                extentOffset: start + colored.length,
+              ),
+            );
+            expect(boxes, isNotEmpty, reason: fixture.name);
+            await tester.tapAt(
+              paragraph.localToGlobal(boxes.first.toRect().center),
+            );
+            await tester.pumpAndSettle();
+
+            final header = tester.widget<RichText>(
+              find
+                  .descendant(
+                    of: find.byKey(const Key('word_detail_header')),
+                    matching: find.byType(RichText),
+                  )
+                  .first,
+            );
+            expect(
+              coloredText(header.text, fixture.rule.color),
+              fixture.expected,
+              reason: '${fixture.name}, compact=$compact, dark=$dark',
+            );
+            expect(
+              header.text.toPlainText(),
+              fixture.expectedWord,
+              reason: fixture.name,
+            );
+            if (fixture.continuation case final continuation?) {
+              final contextTajweed = find.descendant(
+                of: find.byType(WordDetailSheet),
+                matching: find.byType(TajweedText),
+              );
+              final contextRich = find.descendant(
+                of: contextTajweed.first,
+                matching: find.byType(RichText),
+              );
+              final contextText = tester.widget<RichText>(contextRich.first);
+              expect(
+                contextText.text.toPlainText(),
+                contains(continuation),
+                reason: '${fixture.name} keeps the cross-word rule context',
+              );
+              expect(
+                coloredText(contextText.text, fixture.rule.color),
+                contains('ةٍم'),
+                reason: '${fixture.name} highlights both sides of Idgham',
+              );
+            }
+            expect(tester.takeException(), isNull, reason: fixture.name);
+            Navigator.of(tester.element(find.byType(WordDetailSheet))).pop();
+            await tester.pumpAndSettle();
+          }
+        }
+      },
+    );
+  }
+
   testWidgets('every rule preserves neutral letters and other annotations', (
     tester,
   ) async {

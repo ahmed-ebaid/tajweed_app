@@ -25,9 +25,12 @@ per release for both stores.
       `flutter test integration_test/word_detail_regression_test.dart -d <ios-device>`
       on an iOS simulator or device. This verifies real taps in both reader
       layouts, exact letter-level header colors, tanween, adjacent ghunnah,
-      all rule colors, and eight-language light/dark layouts. The small
-      regression fixtures also run in the normal CI test suite without the
-      external corpus.
+      all rule colors, and eight-language light/dark layouts. It also pins the
+      exact word-detail selections shown in Hud 11:58 (Idgham with Ghunnah on
+      بِرَحۡمَةٍ, retaining the following مِّنَّا in the ayah context) and Hud
+      11:61 (Madd Tabeei on صَـٰلِحًا beside Ikhafa), in both reader layouts and
+      light/dark themes. These deterministic fixtures run in the normal CI
+      suite and in its dedicated word-detail gate without the external corpus.
 - [ ] Run `test/widget/rules_library_regression_test.dart` for rules-library
       changes. Madd al-Farq must appear once as an expandable row sorted
       inside the same group as all other Madd rules (not a separate article

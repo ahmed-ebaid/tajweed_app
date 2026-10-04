@@ -43,6 +43,11 @@ jobs:
       - name: Run test suite
         run: flutter test
 
+      # Keep the selected-word sheet scenarios from the release screenshots as
+      # an explicit gate, even if the broader suite is later narrowed.
+      - name: Verify word detail sheet regressions
+        run: flutter test test/widget/word_detail_sheet_test.dart
+
       # The span audits sweep all 6236 ayahs and need a words dump that is too
       # large to commit, so they skip themselves when this is unset. Point it at
       # a cached dump to turn them on in CI.
