@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.12
+# App Store listing — Tajweed 1.1.13
 
 ## App information
 
@@ -8,8 +8,8 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.12
-- **Build:** 85
+- **Version:** 1.1.13
+- **Build:** 86
 
 ## URLs
 
@@ -82,6 +82,10 @@ progress follow your selected language.
 Fixes word-detail highlighting: only the letters and marks belonging to the
 selected Tajweed rule are colored, instead of the whole word. The detail
 sheet retains the same annotated word used by both reader layouts.
+
+When a Tajweed rule spans adjacent words, the word-detail header now shows the
+complete linked phrase and highlights the rule on each side. This includes
+cross-word Idgham, Ikhfa, Iqlab, and Madd Munfasil.
 
 Madd al-Farq uses the same expandable row as the other Madd rules, sorted
 inside their shared group rather than shown as a separate article card.

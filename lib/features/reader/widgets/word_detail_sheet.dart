@@ -8,6 +8,105 @@ import '../../rules/rules_repository.dart';
 import 'tajweed_text.dart';
 import '../../rules/widgets/rule_example_text.dart';
 
+const _tanweenRules = {
+  TajweedRule.idghamWithGhunnah,
+  TajweedRule.idghamWithoutGhunnah,
+  TajweedRule.ikhfa,
+  TajweedRule.iqlab,
+  TajweedRule.izhar,
+};
+
+bool _isWordBoundaryFormattingRune(int rune) =>
+    rune == 0x0020 ||
+    rune == 0x0640 ||
+    rune == 0x0670 ||
+    rune == 0x0653 ||
+    rune == 0x200C ||
+    (rune >= 0x064B && rune <= 0x065F) ||
+    (rune >= 0x06D6 && rune <= 0x06ED);
+
+bool _onlyWordBoundaryFormatting(String text) =>
+    text.runes.every(_isWordBoundaryFormattingRune);
+
+bool _hasRuleAtWordEdge(
+  TajweedWord word,
+  TajweedRule rule, {
+  required bool leading,
+}) => word.spans.any((span) {
+  if (span.rule != rule) return false;
+  final remainder = leading
+      ? word.arabic.substring(0, span.start)
+      : word.arabic.substring(span.end);
+  if (leading) return _onlyWordBoundaryFormatting(remainder);
+  final spanText = word.arabic.substring(span.start, span.end);
+  final hasTanween = spanText.runes.any(
+    (rune) => rune >= 0x064B && rune <= 0x064D,
+  );
+  return remainder.runes.every(
+    (rune) =>
+        _isWordBoundaryFormattingRune(rune) ||
+        (_tanweenRules.contains(rule) &&
+            hasTanween &&
+            (rune == 0x0627 || rune == 0x0649)),
+  );
+});
+
+bool _startsWithHamza(TajweedWord word) {
+  for (final rune in word.arabic.runes) {
+    if (_isWordBoundaryFormattingRune(rune)) continue;
+    return const {0x0621, 0x0623, 0x0625, 0x0624, 0x0626}.contains(rune);
+  }
+  return false;
+}
+
+bool _spansWordBoundary(
+  TajweedWord previous,
+  TajweedWord next,
+  TajweedRule rule,
+) {
+  if (!_hasRuleAtWordEdge(previous, rule, leading: false)) return false;
+  if (_hasRuleAtWordEdge(next, rule, leading: true)) return true;
+  return rule == TajweedRule.maddMunfasil && _startsWithHamza(next);
+}
+
+List<TajweedWord> _wordDetailContext(
+  Ayah? ayah,
+  TajweedWord selectedWord,
+  TajweedRule rule,
+) {
+  if (ayah == null || ayah.words.length < 2) return [selectedWord];
+  var selectedIndex = ayah.words.indexWhere(
+    (word) => identical(word, selectedWord),
+  );
+  if (selectedIndex < 0) {
+    selectedIndex = ayah.words.indexWhere(
+      (word) =>
+          word.arabic == selectedWord.arabic &&
+          word.spans.length == selectedWord.spans.length &&
+          Iterable<int>.generate(word.spans.length).every((index) {
+            final left = word.spans[index];
+            final right = selectedWord.spans[index];
+            return left.start == right.start &&
+                left.end == right.end &&
+                left.rule == right.rule;
+          }),
+    );
+  }
+  if (selectedIndex < 0) return [selectedWord];
+
+  var first = selectedIndex;
+  while (first > 0 &&
+      _spansWordBoundary(ayah.words[first - 1], ayah.words[first], rule)) {
+    first--;
+  }
+  var last = selectedIndex;
+  while (last < ayah.words.length - 1 &&
+      _spansWordBoundary(ayah.words[last], ayah.words[last + 1], rule)) {
+    last++;
+  }
+  return ayah.words.sublist(first, last + 1);
+}
+
 class WordDetailSheet extends StatefulWidget {
   final TajweedRule rule;
   final TajweedWord word;
@@ -54,19 +153,7 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
               Center(
                 child: Text.rich(
                   key: const Key('word_detail_header'),
-                  TextSpan(
-                    children: TajweedText.buildStyledWordSpans(
-                      widget.word,
-                      baseStyle: TextStyle(
-                        fontFamily: 'UthmanicHafs',
-                        fontSize: 36,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      suppressedRules: TajweedRule.values
-                          .where((rule) => rule != widget.rule)
-                          .toSet(),
-                    ),
-                  ),
+                  TextSpan(children: _buildWordHeader(context)),
                   textDirection: TextDirection.rtl,
                 ),
               ),
@@ -199,5 +286,27 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
         ),
       ),
     );
+  }
+
+  List<InlineSpan> _buildWordHeader(BuildContext context) {
+    final baseStyle = TextStyle(
+      fontFamily: 'UthmanicHafs',
+      fontSize: 36,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+    final suppressedRules = TajweedRule.values
+        .where((rule) => rule != widget.rule)
+        .toSet();
+    final words = _wordDetailContext(widget.ayah, widget.word, widget.rule);
+    return [
+      for (var index = 0; index < words.length; index++) ...[
+        if (index > 0) TextSpan(text: ' ', style: baseStyle),
+        ...TajweedText.buildStyledWordSpans(
+          words[index],
+          baseStyle: baseStyle,
+          suppressedRules: suppressedRules,
+        ),
+      ],
+    ];
   }
 }

@@ -165,7 +165,9 @@ void main() {
       html: 'بِرَحۡمَ<rule class=idgham_ghunnah>ةٍ</rule>',
       rule: TajweedRule.idghamWithGhunnah,
       expected: 'ةٍ',
-      expectedWord: 'بِرَحۡمَةٍ',
+      expectedWord: 'بِرَحۡمَةٍ مِّنَّا',
+      expectedHeaderColor: 'ةٍمِّ',
+      otherRule: null,
       continuation: 'مِّنَّا',
       continuationHtml:
           '<rule class=idgham_ghunnah>م</rule>ِّ'
@@ -180,6 +182,8 @@ void main() {
       rule: TajweedRule.maddTabeei,
       expected: 'صَـٰ',
       expectedWord: 'صَـٰلِحًاۚ',
+      expectedHeaderColor: 'صَـٰ',
+      otherRule: TajweedRule.ikhfa,
       continuation: null,
       continuationHtml: null,
     ),
@@ -262,9 +266,16 @@ void main() {
             );
             expect(
               coloredText(header.text, fixture.rule.color),
-              fixture.expected,
+              fixture.expectedHeaderColor,
               reason: '${fixture.name}, compact=$compact, dark=$dark',
             );
+            if (fixture.otherRule case final otherRule?) {
+              expect(
+                coloredText(header.text, otherRule.color),
+                isEmpty,
+                reason: '${fixture.name} keeps the adjacent rule neutral',
+              );
+            }
             expect(
               header.text.toPlainText(),
               fixture.expectedWord,
@@ -299,6 +310,172 @@ void main() {
       },
     );
   }
+
+  testWidgets('every Quran cross-word rule opens the complete rule context', (
+    tester,
+  ) async {
+    final fixtures = [
+      (
+        name: 'idgham with ghunnah',
+        rule: TajweedRule.idghamWithGhunnah,
+        left: 'هُ<rule class=idgham_ghunnah>دًى</rule>',
+        right: '<rule class=idgham_ghunnah>م</rule>ِّن',
+        selectableIndices: [0, 1],
+      ),
+      (
+        name: 'idgham without ghunnah',
+        rule: TajweedRule.idghamWithoutGhunnah,
+        left: 'هُ<rule class=idgham_wo_ghunnah>دًى</rule>',
+        right: '<rule class=idgham_wo_ghunnah>ل</rule>ِّلۡمُتَّقِينَ',
+        selectableIndices: [0, 1],
+      ),
+      (
+        name: 'idgham shafawi',
+        rule: TajweedRule.idghamShafawi,
+        left: 'قُلُوبِه<rule class=idgham_shafawi>ِم</rule>',
+        right: '<rule class=idgham_shafawi>م</rule>َّرَ',
+        selectableIndices: [0, 1],
+      ),
+      (
+        name: 'ikhfa',
+        rule: TajweedRule.ikhfa,
+        left: 'مِ<rule class=ikhfa>ن</rule>',
+        right: '<rule class=ikhfa>ق</rule>َ',
+        selectableIndices: [0, 1],
+      ),
+      (
+        name: 'ikhfa shafawi',
+        rule: TajweedRule.ikhfaShafawi,
+        left: 'ه<rule class=ikhafa_shafawi>ُم</rule>',
+        right: '<rule class=ikhafa_shafawi>ب</rule>ِمُؤْمِنِينَ',
+        selectableIndices: [0, 1],
+      ),
+      (
+        name: 'iqlab',
+        rule: TajweedRule.iqlab,
+        left: 'أَبَد<rule class=iqlab>َۢا</rule>',
+        right: '<rule class=iqlab>ب</rule>ِمَا',
+        selectableIndices: [0, 1],
+      ),
+      (
+        name: 'madd munfasil',
+        rule: TajweedRule.maddMunfasil,
+        left: 'بِم<rule class=madda_obligatory_monfasel>َآ</rule>',
+        right: 'أُ<rule class=ikhafa>نز</rule>ِلَ',
+        selectableIndices: [0],
+      ),
+    ];
+
+    for (final fixture in fixtures) {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '2:4',
+        'words': [
+          {'char_type_name': 'word', 'text_uthmani_tajweed': fixture.left},
+          {'char_type_name': 'word', 'text_uthmani_tajweed': fixture.right},
+        ],
+      });
+      for (final selectedIndex in fixture.selectableIndices) {
+        final selectedWord = ayah.words[selectedIndex];
+        final expectedFullContext = ayah.words
+            .map((word) => word.arabic)
+            .join(' ');
+        await tester.pumpWidget(
+          subject(
+            Builder(
+              builder: (context) => TajweedText(
+                ayah: ayah,
+                onRuleTapped: (rule, word, _) {
+                  showModalBottomSheet<void>(
+                    context: context,
+                    builder: (_) =>
+                        WordDetailSheet(rule: rule, word: word, ayah: ayah),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final selectedStyle = TextSpan(
+          children: TajweedText.buildStyledWordSpans(
+            selectedWord,
+            baseStyle: const TextStyle(color: Colors.black),
+            suppressedRules: TajweedRule.values
+                .where((rule) => rule != fixture.rule)
+                .toSet(),
+          ),
+        );
+        final tapText = coloredText(selectedStyle, fixture.rule.color);
+        expect(tapText, isNotEmpty, reason: fixture.name);
+        final localStart = selectedWord.arabic.indexOf(tapText);
+        expect(localStart, isNonNegative, reason: fixture.name);
+        final precedingText = ayah.words
+            .take(selectedIndex)
+            .map((word) => word.arabic)
+            .join(' ');
+        final start = precedingText.isEmpty
+            ? localStart
+            : precedingText.length + 1 + localStart;
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find
+              .descendant(
+                of: find.byType(TajweedText),
+                matching: find.byType(RichText),
+              )
+              .first,
+        );
+        final boxes = paragraph.getBoxesForSelection(
+          TextSelection(
+            baseOffset: start,
+            extentOffset: start + tapText.length,
+          ),
+        );
+        expect(boxes, isNotEmpty, reason: fixture.name);
+        await tester.tapAt(
+          paragraph.localToGlobal(boxes.first.toRect().center),
+        );
+        await tester.pumpAndSettle();
+
+        final header = tester.widget<RichText>(
+          find
+              .descendant(
+                of: find.byKey(const Key('word_detail_header')),
+                matching: find.byType(RichText),
+              )
+              .first,
+        );
+        expect(
+          header.text.toPlainText(),
+          expectedFullContext,
+          reason:
+              '${fixture.name}, selected word $selectedIndex; '
+              'spans=${ayah.words.map((word) => word.spans.map((s) => '${s.start}:${s.end}:${s.rule}').toList()).toList()}',
+        );
+        final coloredHeader = coloredText(header.text, fixture.rule.color);
+        for (final word in ayah.words.where(
+          (word) => word.spans.any((span) => span.rule == fixture.rule),
+        )) {
+          final wordStyle = TextSpan(
+            children: TajweedText.buildStyledWordSpans(
+              word,
+              baseStyle: const TextStyle(color: Colors.black),
+              suppressedRules: TajweedRule.values
+                  .where((rule) => rule != fixture.rule)
+                  .toSet(),
+            ),
+          );
+          expect(
+            coloredHeader,
+            contains(coloredText(wordStyle, fixture.rule.color)),
+            reason: '${fixture.name} must color each annotated side',
+          );
+        }
+        Navigator.of(tester.element(find.byType(WordDetailSheet))).pop();
+        await tester.pumpAndSettle();
+      }
+    }
+  });
 
   testWidgets('every rule preserves neutral letters and other annotations', (
     tester,

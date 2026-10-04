@@ -29,8 +29,11 @@ per release for both stores.
       exact word-detail selections shown in Hud 11:58 (Idgham with Ghunnah on
       بِرَحۡمَةٍ, retaining the following مِّنَّا in the ayah context) and Hud
       11:61 (Madd Tabeei on صَـٰلِحًا beside Ikhafa), in both reader layouts and
-      light/dark themes. These deterministic fixtures run in the normal CI
-      suite and in its dedicated word-detail gate without the external corpus.
+      light/dark themes. Cross-word header tests cover Idgham with and without
+      Ghunnah, Idgham Shafawi, Ikhfa (including Shafawi), Iqlab, and Madd
+      Munfasil; selecting either annotated side must show the full phrase.
+      These deterministic fixtures run in the normal CI suite and in its
+      dedicated word-detail gate without the external corpus.
 - [ ] Run `test/widget/rules_library_regression_test.dart` for rules-library
       changes. Madd al-Farq must appear once as an expandable row sorted
       inside the same group as all other Madd rules (not a separate article
