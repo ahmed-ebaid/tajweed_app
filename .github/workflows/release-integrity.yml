@@ -48,6 +48,9 @@ jobs:
       - name: Verify word detail sheet regressions
         run: flutter test test/widget/word_detail_sheet_test.dart
 
+      - name: Verify Mushaf night mode and localized controls
+        run: flutter test test/widget/mushaf_theme_localization_test.dart test/widget/mushaf_opening_page_layout_test.dart
+
       # The span audits sweep all 6236 ayahs and need a words dump that is too
       # large to commit, so they skip themselves when this is unset. Point it at
       # a cached dump to turn them on in CI.

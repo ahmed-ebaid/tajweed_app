@@ -43,6 +43,14 @@ per release for both stores.
       popover anchor. Run `integration_test/rules_library_regression_test.dart`
       on iOS as well; this exercises navigation and the mocked platform share
       contract, not an external share destination.
+- [ ] Run `test/widget/mushaf_theme_localization_test.dart` for reader changes.
+      The Mushaf palette title and description must follow all eight app
+      languages, with Arabic/Urdu RTL layout and localized Juz/page numbers.
+      Printed-line and flowing-text pages must follow night mode, including
+      live system-theme changes, in portrait/landscape with Tajweed colors on
+      and off. Neutral text must retain at least 4.5:1 contrast; headers,
+      basmala, page borders and controls must also use the dark palette.
+      These fixtures run in the full CI suite and a dedicated Mushaf gate.
 
 ## iOS
 

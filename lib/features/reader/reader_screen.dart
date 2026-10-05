@@ -2613,12 +2613,12 @@ class _ReaderScreenState extends State<ReaderScreen>
             if (_viewMode == _ReaderViewMode.page)
               IconButton(
                 icon: const Icon(Icons.palette_outlined, size: 22),
-                tooltip: 'Tajweed colors',
+                tooltip: AppLocalizations.of(context).get('tajweed_colors'),
                 onPressed: _showMushafTajweedPalette,
               ),
             IconButton(
               icon: const Icon(Icons.settings_outlined, size: 22),
-              tooltip: 'Settings',
+              tooltip: AppLocalizations.of(context).settings,
               onPressed: () => Navigator.of(
                 context,
               ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
@@ -3148,7 +3148,6 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _showMushafTajweedPalette() {
     _hideMushafScrubberOverlay();
-    final langCode = Localizations.localeOf(context).languageCode;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -3156,35 +3155,12 @@ class _ReaderScreenState extends State<ReaderScreen>
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SwitchListTile(
-                      title: const Text(
-                        'Tajweed colors',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: const Text(
-                        'Show the same rule colors used in ayah view',
-                      ),
-                      value: _tajweedEnabled,
-                      onChanged: (value) {
-                        setState(() => _tajweedEnabled = value);
-                        setSheetState(() {});
-                      },
-                    ),
-                    const Divider(height: 1),
-                    TajweedLegend(
-                      rules: TajweedRule.values,
-                      langCode: langCode,
-                    ),
-                  ],
-                ),
-              ),
+            return MushafTajweedPalette(
+              enabled: _tajweedEnabled,
+              onChanged: (value) {
+                setState(() => _tajweedEnabled = value);
+                setSheetState(() {});
+              },
             );
           },
         );
@@ -3245,6 +3221,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Widget _buildMushafScrubber() {
+    final colors = _MushafColors.of(context);
     final previewPage =
         _mushafScrubberPreviewPage ?? (_currentMushafPageIndex + 1);
     final l10n = AppLocalizations.of(context);
@@ -3265,9 +3242,9 @@ class _ReaderScreenState extends State<ReaderScreen>
             minimum: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFCF3).withValues(alpha: 0.99),
+                color: colors.paper.withValues(alpha: 0.99),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF5F9584), width: 1.2),
+                border: Border.all(color: colors.border, width: 1.2),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x22000000),
@@ -3284,10 +3261,10 @@ class _ReaderScreenState extends State<ReaderScreen>
                     children: [
                       Text(
                         '${l10n.get('page')} $previewPageText',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF0A4B39),
+                          color: colors.accent,
                         ),
                       ),
                       const Spacer(),
@@ -3296,10 +3273,10 @@ class _ReaderScreenState extends State<ReaderScreen>
                           previewSurahName,
                           textAlign: TextAlign.end,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'UthmanicHafs',
                             fontSize: 20,
-                            color: Color(0xFF123F32),
+                            color: colors.accent,
                           ),
                         ),
                       ),
@@ -3323,8 +3300,8 @@ class _ReaderScreenState extends State<ReaderScreen>
                         max: 604,
                         divisions: 603,
                         label: previewPageText,
-                        activeColor: const Color(0xFF0B6B50),
-                        inactiveColor: const Color(0xFFA9C4BA),
+                        activeColor: colors.accent,
+                        inactiveColor: colors.border,
                         onChangeStart: (_) {
                           _mushafScrubberHideTimer?.cancel();
                           setState(() {
@@ -3444,6 +3421,64 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 }
 
+class MushafTajweedPalette extends StatelessWidget {
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  const MushafTajweedPalette({
+    super.key,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SwitchListTile(
+              title: Text(
+                l10n.get('tajweed_colors'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(l10n.get('tajweed_colors_description')),
+              value: enabled,
+              onChanged: onChanged,
+            ),
+            const Divider(height: 1),
+            TajweedLegend(
+              rules: TajweedRule.values,
+              langCode: l10n.locale.languageCode,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MushafColors {
+  final bool isDark;
+  final ColorScheme scheme;
+
+  _MushafColors.of(BuildContext context)
+    : isDark = Theme.of(context).brightness == Brightness.dark,
+      scheme = Theme.of(context).colorScheme;
+
+  Color get paper => isDark ? scheme.surface : const Color(0xFFFFFCF3);
+  Color get ink => isDark ? scheme.onSurface : const Color(0xFF050807);
+  Color get accent => isDark ? scheme.primary : const Color(0xFF0B5C45);
+  Color get border => isDark ? scheme.outline : const Color(0xFF5F9584);
+  Color get header =>
+      isDark ? scheme.surfaceContainerHigh : const Color(0xFFDDECE6);
+  Color get gold => isDark ? const Color(0xFFE2BD6B) : const Color(0xFF8B6B2A);
+}
+
 class _MushafPageAnchor {
   final int pageNumber;
   final int surah;
@@ -3526,16 +3561,16 @@ class _ZoomableMushafPageState extends State<_ZoomableMushafPage> {
             left: 8,
             child: Semantics(
               button: true,
-              label: 'Reset page zoom',
+              label: AppLocalizations.of(context).get('reset_page_zoom'),
               child: Material(
-                color: const Color(0xE6FFFCF3),
+                color: _MushafColors.of(context).paper,
                 shape: const CircleBorder(),
                 elevation: 2,
                 child: IconButton(
-                  tooltip: 'Reset zoom',
+                  tooltip: AppLocalizations.of(context).get('reset_page_zoom'),
                   onPressed: _resetZoom,
                   icon: const Icon(Icons.zoom_out_map),
-                  color: const Color(0xFF0B5C45),
+                  color: _MushafColors.of(context).accent,
                 ),
               ),
             ),
@@ -3605,9 +3640,9 @@ class _MushafPageFrame extends StatelessWidget {
                         ? EdgeInsets.zero
                         : const EdgeInsets.symmetric(horizontal: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFCF3),
+                      color: _MushafColors.of(context).paper,
                       border: Border.all(
-                        color: const Color(0xFF5F9584),
+                        color: _MushafColors.of(context).border,
                         width: isLandscape ? 1.0 : 1.4,
                       ),
                     ),
@@ -3622,10 +3657,10 @@ class _MushafPageFrame extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
                     child: Text(
                       localizedPageNumber,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'UthmanicHafs',
                         fontSize: 16,
-                        color: Color(0xFF0B5C45),
+                        color: _MushafColors.of(context).accent,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -3669,13 +3704,14 @@ class MushafPageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final firstAyah = ayahs.first;
     final languageCode = Localizations.localeOf(context).languageCode;
+    final l10n = AppLocalizations(Locale(languageCode));
     return _MushafPageFrame(
       isLandscape: isLandscape,
       juzLabel: firstAyah.juzNumber == null
           ? ''
-          : 'الجزء ${firstAyah.juzNumber}',
+          : '${l10n.get('juz')} ${l10n.digits(firstAyah.juzNumber!)}',
       surahName: surahNameFor(firstAyah.surahNumber),
-      localizedPageNumber: pageNumber.toString(),
+      localizedPageNumber: l10n.digits(pageNumber),
       isBookmarked: false,
       onZoomChanged: (_) {},
       childBuilder: (scrollEnabled) => _MushafTextPage(
@@ -3719,6 +3755,8 @@ class _MushafTextPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations(Locale(languageCode));
+    final colors = _MushafColors.of(context);
     return FutureBuilder<List<Ayah>>(
       future: pageFuture,
       builder: (context, snapshot) {
@@ -3740,12 +3778,12 @@ class _MushafTextPage extends StatelessWidget {
                     color: Color(0xFF27866A),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    'Unable to load this Quran page',
+                  Text(
+                    l10n.get('quran_page_unavailable'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF245B4B),
+                      color: colors.accent,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -3753,7 +3791,7 @@ class _MushafTextPage extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onRetry,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
+                    label: Text(l10n.get('retry')),
                   ),
                 ],
               ),
@@ -3779,12 +3817,12 @@ class _MushafTextPage extends StatelessWidget {
                     color: Color(0xFF27866A),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    'Quran text is unavailable for this page',
+                  Text(
+                    l10n.get('quran_page_text_unavailable'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF245B4B),
+                      color: colors.accent,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -3792,7 +3830,7 @@ class _MushafTextPage extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onRetry,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
+                    label: Text(l10n.get('retry')),
                   ),
                 ],
               ),
@@ -3822,7 +3860,7 @@ class _MushafTextPage extends StatelessWidget {
                 .every((word) => word.lineNumber != null);
 
         return Semantics(
-          label: 'Quran page $pageNumber',
+          label: '${l10n.get('quran_page')} ${l10n.digits(pageNumber)}',
           child: LayoutBuilder(
             builder: (context, constraints) {
               final horizontalInset = 16.0;
@@ -3838,7 +3876,7 @@ class _MushafTextPage extends StatelessWidget {
                 fontSize: fontSize,
                 height: heightFactor,
                 leadingDistribution: TextLeadingDistribution.even,
-                color: const Color(0xFF050807),
+                color: colors.ink,
                 fontWeight: FontWeight.w700,
               );
 
@@ -3870,6 +3908,7 @@ class _MushafTextPage extends StatelessWidget {
                           children: [
                             if (hasPrintedLineLayout)
                               _buildPrintedPage(
+                                context,
                                 ayahs,
                                 style: textStyle,
                                 horizontalInset: horizontalInset,
@@ -3901,6 +3940,7 @@ class _MushafTextPage extends StatelessWidget {
                                     isLandscape: isLandscape,
                                   ),
                                 _buildFlowText(
+                                  context,
                                   section,
                                   style: textStyle,
                                   horizontalInset: horizontalInset,
@@ -3922,6 +3962,7 @@ class _MushafTextPage extends StatelessWidget {
   }
 
   Widget _buildFlowText(
+    BuildContext context,
     List<Ayah> ayahs, {
     required TextStyle style,
     required double horizontalInset,
@@ -3933,6 +3974,7 @@ class _MushafTextPage extends StatelessWidget {
         .every((word) => word.lineNumber != null);
     if (hasPrintedLineLayout && ayahs.any((ayah) => ayah.words.isNotEmpty)) {
       return _buildPrintedLines(
+        context,
         ayahs,
         style: style,
         horizontalInset: horizontalInset,
@@ -4001,7 +4043,7 @@ class _MushafTextPage extends StatelessWidget {
         TextSpan(
           text: ayahMarker,
           style: scaledStyle.copyWith(
-            color: const Color(0xFF8B6B2A),
+            color: _MushafColors.of(context).gold,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -4016,6 +4058,7 @@ class _MushafTextPage extends StatelessWidget {
   }
 
   Widget _buildPrintedPage(
+    BuildContext context,
     List<Ayah> ayahs, {
     required TextStyle style,
     required double horizontalInset,
@@ -4029,7 +4072,11 @@ class _MushafTextPage extends StatelessWidget {
     var scaledStyle = style.copyWith(
       fontSize: (style.fontSize ?? 18) * textScale,
     );
-    var collectedLines = _collectPrintedLineContents(ayahs, scaledStyle);
+    var collectedLines = _collectPrintedLineContents(
+      context,
+      ayahs,
+      scaledStyle,
+    );
     if (useUniformLineSizing && availableLineWidth > 0) {
       var widestLine = 0.0;
       for (final line in collectedLines) {
@@ -4050,7 +4097,11 @@ class _MushafTextPage extends StatelessWidget {
         scaledStyle = scaledStyle.copyWith(
           fontSize: (scaledStyle.fontSize ?? 18) * (safeLineWidth / widestLine),
         );
-        collectedLines = _collectPrintedLineContents(ayahs, scaledStyle);
+        collectedLines = _collectPrintedLineContents(
+          context,
+          ayahs,
+          scaledStyle,
+        );
       }
     }
     final slotHeight =
@@ -4152,6 +4203,7 @@ class _MushafTextPage extends StatelessWidget {
   }
 
   Widget _buildPrintedLines(
+    BuildContext context,
     List<Ayah> ayahs, {
     required TextStyle style,
     required double horizontalInset,
@@ -4160,7 +4212,11 @@ class _MushafTextPage extends StatelessWidget {
     final scaledStyle = style.copyWith(
       fontSize: (style.fontSize ?? 18) * textScale,
     );
-    final orderedLines = _collectPrintedLineContents(ayahs, scaledStyle);
+    final orderedLines = _collectPrintedLineContents(
+      context,
+      ayahs,
+      scaledStyle,
+    );
     final lineSpans = [
       for (final line in orderedLines)
         TextSpan(
@@ -4185,6 +4241,7 @@ class _MushafTextPage extends StatelessWidget {
   }
 
   List<_MushafPrintedLineContent> _collectPrintedLineContents(
+    BuildContext context,
     List<Ayah> ayahs,
     TextStyle scaledStyle,
   ) {
@@ -4231,7 +4288,7 @@ class _MushafTextPage extends StatelessWidget {
       final markerLineNumber = ayah.endLineNumber ?? lastWordLineNumber;
       if (markerLineNumber != null) {
         final markerStyle = scaledStyle.copyWith(
-          color: const Color(0xFF8B6B2A),
+          color: _MushafColors.of(context).gold,
           fontWeight: FontWeight.w700,
         );
         final line = lines.putIfAbsent(
@@ -4396,9 +4453,14 @@ class _MushafSurahOpener extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFE5EFE9),
+              color: _MushafColors.of(context).isDark
+                  ? _MushafColors.of(context).header
+                  : const Color(0xFFE5EFE9),
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: const Color(0xFF0B5C45), width: 1.2),
+              border: Border.all(
+                color: _MushafColors.of(context).accent,
+                width: 1.2,
+              ),
             ),
             child: Row(
               children: [
@@ -4412,7 +4474,9 @@ class _MushafSurahOpener extends StatelessWidget {
                       fontFamily: 'AmiriQuran',
                       fontSize: isLandscape ? 20 : 23,
                       height: 1.2,
-                      color: const Color(0xFF083F31),
+                      color: _MushafColors.of(context).isDark
+                          ? _MushafColors.of(context).accent
+                          : const Color(0xFF083F31),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -4432,7 +4496,7 @@ class _MushafSurahOpener extends StatelessWidget {
                   fontFamily: 'AmiriQuran',
                   fontSize: isLandscape ? 22 : 26,
                   height: 1.5,
-                  color: const Color(0xFF050807),
+                  color: _MushafColors.of(context).ink,
                 ),
               ),
             ),
@@ -4453,7 +4517,7 @@ class _MushafSurahOrnament extends StatelessWidget {
       transform: Matrix4.rotationZ(math.pi / 4),
       decoration: BoxDecoration(
         color: const Color(0xFFB8860B),
-        border: Border.all(color: const Color(0xFF0B5C45), width: 1),
+        border: Border.all(color: _MushafColors.of(context).accent, width: 1),
       ),
     );
   }
@@ -4476,9 +4540,14 @@ class _MushafSurahHeaderLine extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFFE5EFE9),
+          color: _MushafColors.of(context).isDark
+              ? _MushafColors.of(context).header
+              : const Color(0xFFE5EFE9),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: const Color(0xFF0B5C45), width: 1.2),
+          border: Border.all(
+            color: _MushafColors.of(context).accent,
+            width: 1.2,
+          ),
         ),
         child: Row(
           children: [
@@ -4494,7 +4563,9 @@ class _MushafSurahHeaderLine extends StatelessWidget {
                     fontFamily: 'AmiriQuran',
                     fontSize: fontSize,
                     height: 1.15,
-                    color: const Color(0xFF083F31),
+                    color: _MushafColors.of(context).isDark
+                        ? _MushafColors.of(context).accent
+                        : const Color(0xFF083F31),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -4528,7 +4599,7 @@ class _MushafBasmalaLine extends StatelessWidget {
             fontFamily: 'AmiriQuran',
             fontSize: fontSize,
             height: 1.2,
-            color: const Color(0xFF050807),
+            color: _MushafColors.of(context).ink,
           ),
         ),
       ),
@@ -4710,8 +4781,8 @@ class _MushafBorderMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFF0B5C45);
-    const fill = Color(0xFFDDECE6);
+    final accent = _MushafColors.of(context).accent;
+    final fill = _MushafColors.of(context).header;
     return Tooltip(
       message: marker.label,
       triggerMode: TooltipTriggerMode.tap,
@@ -4733,7 +4804,7 @@ class _MushafBorderMarker extends StatelessWidget {
           ),
           child: Text(
             marker.symbol,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'UthmanicHafs',
               fontSize: 11,
               height: 1,
@@ -4762,18 +4833,20 @@ class _MushafHeaderChip extends StatelessWidget {
       alignment: alignment,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFDDECE6),
+        color: _MushafColors.of(context).header,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF5F9584), width: 1.2),
+        border: Border.all(color: _MushafColors.of(context).border, width: 1.2),
       ),
       child: Text(
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'UthmanicHafs',
           fontSize: 20,
-          color: Color(0xFF0A4B39),
+          color: _MushafColors.of(context).isDark
+              ? _MushafColors.of(context).accent
+              : const Color(0xFF0A4B39),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -5311,18 +5384,28 @@ class _QuranPageBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _MushafColors.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 4, 2, 4),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
         child: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFFFCF7EB), Color(0xFFF3EBDD), Color(0xFFFFFBF2)],
+              colors: colors.isDark
+                  ? [colors.paper, colors.header, colors.paper]
+                  : const [
+                      Color(0xFFFCF7EB),
+                      Color(0xFFF3EBDD),
+                      Color(0xFFFFFBF2),
+                    ],
             ),
-            border: Border.all(color: const Color(0xFF4D8674), width: 1.4),
+            border: Border.all(
+              color: colors.isDark ? colors.border : const Color(0xFF4D8674),
+              width: 1.4,
+            ),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x12000000),
@@ -5334,7 +5417,7 @@ class _QuranPageBackground extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(
-                child: CustomPaint(painter: _QuranPagePatternPainter()),
+                child: CustomPaint(painter: _QuranPagePatternPainter(colors)),
               ),
               child,
             ],
@@ -5346,10 +5429,15 @@ class _QuranPageBackground extends StatelessWidget {
 }
 
 class _QuranPagePatternPainter extends CustomPainter {
+  final _MushafColors colors;
+
+  _QuranPagePatternPainter(this.colors);
+
   @override
   void paint(Canvas canvas, Size size) {
     final sideFill = Paint()
-      ..color = const Color(0xFFD8CBB5).withValues(alpha: 0.76);
+      ..color = (colors.isDark ? colors.header : const Color(0xFFD8CBB5))
+          .withValues(alpha: 0.76);
     canvas.drawRect(Rect.fromLTWH(0, 0, 18, size.height), sideFill);
     canvas.drawRect(
       Rect.fromLTWH(size.width - 18, 0, 18, size.height),
@@ -5357,14 +5445,16 @@ class _QuranPagePatternPainter extends CustomPainter {
     );
 
     final motifPaint = Paint()
-      ..color = const Color(0xFF176C53).withValues(alpha: 0.64);
+      ..color = (colors.isDark ? colors.accent : const Color(0xFF176C53))
+          .withValues(alpha: 0.64);
     for (double y = 16; y < size.height - 16; y += 20) {
       canvas.drawCircle(const Offset(9, 0) + Offset(0, y), 3.0, motifPaint);
       canvas.drawCircle(Offset(size.width - 9, y), 3.0, motifPaint);
     }
 
     final frame = Paint()
-      ..color = const Color(0xFF3C7965).withValues(alpha: 0.84)
+      ..color = (colors.isDark ? colors.border : const Color(0xFF3C7965))
+          .withValues(alpha: 0.84)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.1;
 
@@ -5377,7 +5467,8 @@ class _QuranPagePatternPainter extends CustomPainter {
     );
 
     final inner = Paint()
-      ..color = const Color(0xFF9D8D70).withValues(alpha: 0.58)
+      ..color = (colors.isDark ? colors.gold : const Color(0xFF9D8D70))
+          .withValues(alpha: 0.58)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     canvas.drawRRect(
@@ -5390,7 +5481,9 @@ class _QuranPagePatternPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _QuranPagePatternPainter oldDelegate) =>
+      oldDelegate.colors.isDark != colors.isDark ||
+      oldDelegate.colors.scheme != colors.scheme;
 }
 
 // ─── Ayah Tile (redesigned) ──────────────────────────────────────────────────

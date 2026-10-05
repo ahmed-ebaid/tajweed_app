@@ -1,1 +1,1 @@
-export 'reader_screen.dart' show MushafPageContent;
+export 'reader_screen.dart' show MushafPageContent, MushafTajweedPalette;

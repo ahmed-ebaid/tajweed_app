@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.13
+# App Store listing — Tajweed 1.1.14
 
 ## App information
 
@@ -8,8 +8,8 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.13
-- **Build:** 86
+- **Version:** 1.1.14
+- **Build:** 87
 
 ## URLs
 
@@ -73,6 +73,12 @@ the Quran.com ecosystem. Tajweed Practice is independently operated by Ebaid LLC
 and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
+
+Mushaf view now follows night mode, including its page background, text,
+headers, and reading controls. The Tajweed color controls and related Mushaf
+messages follow the selected app language, including Arabic.
+
+## Previous improvements retained
 
 A refreshed Home screen makes it easier to start or continue reading, with
 clearer text and surah names. Corrects tanween highlighting, including ikhfa,
