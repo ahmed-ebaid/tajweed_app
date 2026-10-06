@@ -6,7 +6,13 @@ Generated assets for the Play Console listing of `com.ebaidllc.tajweed_practice`
 | --- | --- | --- |
 | `play-icon-512.png` | 512×512, 32-bit PNG, alpha allowed, ≤1024 KB | 512×512, 44 KB |
 | `play-feature-graphic-1024x500.png` | 1024×500, JPEG or 24-bit PNG, **no alpha** | 1024×500, no alpha, 58 KB |
-| `screenshots/*.png` | 2–8 per device type, 320–3840 px, **no alpha**, longest side ≤ 2× shortest | 8 files, 1080×1920 (1.78:1) |
+| `screenshots/*.png` | 2–8 per device type, 320–3840 px, **no alpha**, longest side ≤ 2× shortest | 8 English files, 1080×1920 (1.78:1) |
+| `screenshots/{ar,ur,tr,fr,id,de,es}/01-home.png` | Same phone screenshot requirements | Localized refreshed Home, 1080×1920 RGB |
+
+For 1.1.15 (88), replace only the first phone screenshot in each listing
+language. Keep the remaining seven images and their order unchanged. The
+Android binary starts on internal testing; production remains 1.1.10 (76).
+Store listing image changes are separate from the binary track.
 
 ## Regenerating
 
@@ -44,6 +50,12 @@ Captures land in `build/play-screenshots/` as 32-bit PNGs. Play rejects alpha
 on screenshots, so they are flattened to 24-bit RGB when copied here. The
 `08-settings` and `10-languages` captures are deliberately omitted — Play caps
 phone screenshots at 8 and those two are the weakest sells.
+
+For a Home-only refresh in all eight languages, use the same capture command
+with `--dart-define=HOME_ASSETS_ONLY=true` instead of `SCREENSHOT_LOCALE`.
+Convert the results to RGB without resizing. Let `flutter drive` run its
+dependency preparation: `--no-pub` after a release build can leave the Android
+integration-test plugin unregistered.
 
 ## Not generated here
 
