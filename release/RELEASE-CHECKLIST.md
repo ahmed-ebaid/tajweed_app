@@ -112,6 +112,14 @@ per release for both stores.
 
 ## Android
 
+- [ ] Run `flutter test test/widget/reader_load_failure_test.dart`.
+      Verse-load failures must distinguish connection, timeout, verification,
+      server and unknown failures without exposing raw exceptions or tokens.
+      Verify localized retry controls and a copyable diagnostic reference.
+      For regional failures, collect that reference, installed version code,
+      Play certification status and Wi-Fi/mobile-data comparison from an
+      affected device; a successful local reinstall is not a regional check.
+
 - [ ] Build only through `release/build_android_release.sh appbundle`. This wrapper
       requires `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680` and refuses a
       different project number or an app bundle without upload signing config.
