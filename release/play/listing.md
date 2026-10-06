@@ -114,7 +114,7 @@ deliberately avoids claiming it.
 Captions are optional on Play and are not overlaid on the uploaded images. Use
 these if promotional variants are produced later:
 
-1. Home and progress — "Build a consistent Quran practice"
+1. Refreshed Home — "Reflect with the Quran"
 2. Ayah reader — "Read with clear Tajweed guidance"
 3. Interactive word guidance — "Tap highlighted text to learn the rule"
 4. Mushaf view — "A focused 604-page reading experience"
@@ -126,12 +126,17 @@ these if promotional variants are produced later:
 ## Release notes (max 500)
 
 ```
-• Surahs you have already opened now appear straight away
-• Audio timings and page markers load in the background instead of holding up the text
-• The Tafsir list shows every source again, and offers Retry when it cannot load
-• Corrected the sakta example in the rules library to Al-Qiyamah 75:27
-• The sajdah quiz question now shows its verse, An-Najm 53:62
+• Refreshed Home with clearer reading actions, surah names, and localized numbers
+• Mushaf night mode and localized Tajweed controls
+• More precise Tajweed colors and complete cross-word rule examples
+• Improved Madd al-Farq organization and localized article sharing
+• Corrected stray markup in Quran text
 ```
 
-358 characters, within Play's 500 limit. The full-length App Store wording for
-all eight locales is in the session file `whatsnew_117.py`.
+Release **1.1.15 (88)** includes all updates since Android 1.1.10 (76).
+Localized release notes cover all eight listing languages and stay within
+Play's 500-character limit (`release-notes-1.1.15.json`). The first phone screenshot in each language shows
+the refreshed Home; the other seven screenshots remain unchanged.
+Start with internal testing; do not promote the binary to production until
+Play-installed testers verify Quran loading, the new Home, Mushaf night mode,
+and the As-Sajdah 32:3 markup correction.

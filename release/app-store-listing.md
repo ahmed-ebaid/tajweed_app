@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.14
+# App Store listing — Tajweed 1.1.15
 
 ## App information
 
@@ -8,8 +8,8 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.14
-- **Build:** 87
+- **Version:** 1.1.15
+- **Build:** 88
 
 ## URLs
 
@@ -74,11 +74,15 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
+Corrects malformed upstream markup in Quran text so stray symbols no longer
+appear while reading As-Sajdah 32:3. Preserves Tajweed colors and checks the
+complete Quran corpus for markup artifacts.
+
+## Previous improvements retained
+
 Mushaf view now follows night mode, including its page background, text,
 headers, and reading controls. The Tajweed color controls and related Mushaf
 messages follow the selected app language, including Arabic.
-
-## Previous improvements retained
 
 A refreshed Home screen makes it easier to start or continue reading, with
 clearer text and surah names. Corrects tanween highlighting, including ikhfa,
@@ -98,8 +102,8 @@ inside their shared group rather than shown as a separate article card.
 All educational article details, including Core Recitation Rules and More
 Topics, offer localized text sharing with a correctly anchored iPad share sheet.
 
-This is an iOS-only release. Google Play remains on its existing 1.1.10 (76)
-submission; do not upload an Android build as part of this release.
+The Android 1.1.15 (88) release also includes all improvements since its
+previous production version, 1.1.10 (76). See `play/listing.md`.
 
 ## Screenshot set
 
