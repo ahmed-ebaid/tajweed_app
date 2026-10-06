@@ -201,6 +201,58 @@ List<({String ruleClass, String text})> _topLevelRuleTags(String html) {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('no verse-level fallback exposes Quran markup artifacts', () {
+    final jsonPath = Platform.environment['QURAN_TAJWEED_JSON_PATH'];
+    if (jsonPath == null || jsonPath.isEmpty) {
+      markTestSkipped('Set QURAN_TAJWEED_JSON_PATH for the fallback audit.');
+      return;
+    }
+
+    final verses = _loadVersesFromJson(jsonPath);
+    expect(verses, hasLength(6236));
+    for (final verse in verses) {
+      final segments = AyahMapper.parseTajweedHtml(
+        verse['text_uthmani_tajweed'] as String,
+      );
+      final text = segments.map((segment) => segment.text).join();
+      expect(text, isNotEmpty, reason: '${verse['verse_key']}');
+      expect(
+        text,
+        isNot(matches(RegExp(r'[<>&;a-zA-Z]'))),
+        reason: '${verse['verse_key']}',
+      );
+    }
+  });
+
+  test('no ayah exposes markup artifacts in mapped Quran text', () {
+    final jsonPath = Platform.environment['QURAN_WORDS_JSON_PATH'];
+    if (jsonPath == null || jsonPath.isEmpty) {
+      markTestSkipped('Set QURAN_WORDS_JSON_PATH for the markup audit.');
+      return;
+    }
+
+    final verses = _loadVersesFromJson(jsonPath);
+    expect(verses, hasLength(6236));
+    final artifacts = RegExp(r'[<>&;a-zA-Z]');
+    for (final verse in verses) {
+      final ayah = AyahMapper.fromApi(verse);
+      final key = verse['verse_key'];
+      expect(ayah.arabic, isNot(matches(artifacts)), reason: '$key verse');
+      for (final word in ayah.words) {
+        expect(word.arabic, isNot(matches(artifacts)), reason: '$key word');
+        for (final span in word.spans) {
+          expect(span.start, greaterThanOrEqualTo(0), reason: '$key');
+          expect(
+            span.end,
+            lessThanOrEqualTo(word.arabic.length),
+            reason: '$key',
+          );
+          expect(span.end, greaterThan(span.start), reason: '$key');
+        }
+      }
+    }
+  });
+
   // Guards against tajweed rules being silently discarded during parsing.
   //
   // `_parseRuleTagTajweed` locates each `<rule>` tag's text inside the word's

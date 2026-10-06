@@ -3,6 +3,67 @@ import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
 
 void main() {
+  test('removes the upstream escaped delimiter in As-Sajdah 32:3', () {
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '32:3',
+      'page_number': 415,
+      'text_uthmani': 'ٱفْتَرَىٰهُ ۚ',
+      'words': [
+        <dynamic, dynamic>{
+          'char_type_name': 'word',
+          'text_uthmani': 'ٱفْتَرَىٰهُ ۚ',
+          'text_uthmani_tajweed':
+              '<rule class=ham_wasl>ٱ</rule>فۡتَرَ&gt;ٮٰهُ\u200cۚ',
+        },
+      ],
+    });
+
+    expect(ayah.words.single.arabic, 'ٱفۡتَرَٮٰهُ ۚ');
+    final silent = ayah.words.single.spans.singleWhere(
+      (span) => span.rule == TajweedRule.hamzatWasl,
+    );
+    expect(ayah.words.single.arabic.substring(silent.start, silent.end), 'ٱ');
+  });
+
+  test('removes stray delimiters from verse-level Tajweed fallback', () {
+    final segments = AyahMapper.parseTajweedHtml(
+      'أَمْ يَقُولُونَ <tajweed class=ham_wasl>ٱ</tajweed>'
+      'فْتَرَ>ٮٰ</tajweed>هُ\u200cۚ',
+    );
+
+    expect(
+      segments.map((segment) => segment.text).join(),
+      'أَمْ يَقُولُونَ ٱفْتَرَٮٰهُ ۚ',
+    );
+    expect(
+      segments.singleWhere((segment) => segment.rule != null).rule,
+      TajweedRule.hamzatWasl,
+    );
+  });
+
+  test('delimiter removal keeps subsequent rule offsets aligned', () {
+    for (final delimiter in ['&gt;', '&lt;', '>', '<']) {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '1:1',
+        'text_uthmani': 'بَ$delimiterقْ',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani_tajweed': 'بَ$delimiter<rule class=qalaqah>قْ</rule>',
+          },
+        ],
+      });
+
+      expect(ayah.arabic, 'بَقْ');
+      final word = ayah.words.single;
+      expect(word.arabic, 'بَقْ');
+      final span = word.spans.singleWhere(
+        (span) => span.rule == TajweedRule.qalqalah,
+      );
+      expect(word.arabic.substring(span.start, span.end), 'قْ');
+    }
+  });
+
   test(
     'canonicalizes shaddah before short vowels across multiple patterns',
     () {
