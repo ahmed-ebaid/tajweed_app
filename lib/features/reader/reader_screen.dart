@@ -31,7 +31,6 @@ import '../reader/widgets/single_page_scroll_physics.dart';
 import '../reader/widgets/tajweed_text.dart';
 import '../reader/widgets/tafseer_sheet.dart';
 import '../reader/widgets/word_detail_sheet.dart';
-import 'widgets/reader_load_failure.dart';
 import '../rules/rule_detail_screen.dart';
 import '../rules/rules_repository.dart';
 import '../settings/settings_screen.dart';
@@ -90,7 +89,6 @@ class _ReaderScreenState extends State<ReaderScreen>
   _ReaderViewMode _viewMode = _ReaderViewMode.ayah;
   List<Ayah> _ayahs = [];
   bool _loading = true;
-  ReaderLoadFailure? _loadFailure;
   List<Map<String, dynamic>> _allSurahs = [];
   Map<String, String> _audioUrls = {};
   Map<String, List<AyahAudioWordTiming>> _audioWordTimings = {};
@@ -842,7 +840,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     if (!mounted || loadVersion != _surahLoadVersion) return;
     setState(() {
       _loading = true;
-      _loadFailure = null;
       _ayahs = [];
       _audioUrls = {};
       _audioWordTimings = {};
@@ -941,8 +938,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         ),
       );
     } catch (e) {
-      final failure = ReaderLoadFailure.fromError(e);
-      debugPrint('Quran verse load failed: ${failure.reference}');
       if (kDebugMode) {
         print('❌ ERROR IN LOAD SURAH: $e');
       }
@@ -987,7 +982,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         setState(() {
           _loading = false;
           _ayahs = const [];
-          _loadFailure = failure;
           _audioUrls = {};
           _audioWordTimings = {};
         });
@@ -2643,12 +2637,7 @@ class _ReaderScreenState extends State<ReaderScreen>
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _ayahs.isEmpty
-                  ? ReaderLoadFailureView(
-                      failure:
-                          _loadFailure ??
-                          const ReaderLoadFailure(ReaderFailureKind.unknown),
-                      onRetry: _loadSurah,
-                    )
+                  ? _EmptyState(onRetry: _loadSurah)
                   : (_viewMode == _ReaderViewMode.page
                         ? _buildMushafPageView()
                         : _buildAyahList(langCode, pageMode: false)),
@@ -6032,5 +6021,33 @@ class _BookmarksSheet extends StatelessWidget {
   static String _formatDate(int ms) {
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
     return '${d.day}/${d.month}/${d.year}';
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _EmptyState({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 40,
+            color: Color(0xFF888780),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Could not load verses',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
   }
 }

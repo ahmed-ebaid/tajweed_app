@@ -51,9 +51,6 @@ jobs:
       - name: Verify Mushaf night mode and localized controls
         run: flutter test test/widget/mushaf_theme_localization_test.dart test/widget/mushaf_opening_page_layout_test.dart
 
-      - name: Verify localized reader failure diagnostics
-        run: flutter test test/widget/reader_load_failure_test.dart
-
       # The span audits sweep all 6236 ayahs and need a words dump that is too
       # large to commit, so they skip themselves when this is unset. Point it at
       # a cached dump to turn them on in CI.
