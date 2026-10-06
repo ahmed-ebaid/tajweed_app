@@ -16,6 +16,12 @@ class _PronouncedLetterPosition {
 /// Maps raw Quran.com API v4 JSON responses into typed [Ayah] models
 /// with word-level tajweed annotations.
 class AyahMapper {
+  static final RegExp _htmlTagPattern = RegExp(r'<[^>]*>');
+  // Upstream 32:3 contains a stray > (escaped in word data). These are
+  // markup delimiters, not Quran text; decoding them would still show junk.
+  static final RegExp _strayMarkupDelimiterPattern = RegExp(
+    r'&(?:gt|lt);|[<>]',
+  );
   static final RegExp _shaddaBeforeShortVowelPattern = RegExp(
     '\u0651([\u064B-\u0650])',
   );
@@ -1327,18 +1333,19 @@ class AyahMapper {
   }
 
   static String _stripHtmlPreserveSpacing(String text) {
-    return text.replaceAll(RegExp(r'<[^>]*>'), '');
+    return text
+        .replaceAll(_htmlTagPattern, '')
+        .replaceAll(_strayMarkupDelimiterPattern, '');
   }
 
-  // Keep Quran text intact. Only normalize combining-mark order so short
-  // vowels are stored before shaddah, which prevents misplaced harakat in
-  // some font/rendering stacks while preserving the exact verse text.
+  // Preserve Quran glyphs while removing markup artifacts and storing short
+  // vowels before shaddah to prevent misplaced harakat in some font stacks.
   static String _normalizeArabicText(
     String text, {
     bool forceRubElHizb = false,
     bool forceSajdahGlyph = false,
   }) {
-    final reordered = text
+    final reordered = _stripHtmlPreserveSpacing(text)
         .replaceAllMapped(_shaddaBeforeShortVowelPattern, (match) {
           return '${match.group(1)}\u0651';
         })

@@ -21,7 +21,12 @@ per release for both stores.
       version. `flutter test test/unit/app_version_test.dart` proves the two agree.
 - [ ] `flutter test` and `flutter analyze` clean.
 - [ ] For Quran highlighting changes, run the full suite with
-      `QURAN_WORDS_JSON_PATH` pointing to the 6,236-ayah words dump. Run
+      `QURAN_WORDS_JSON_PATH` pointing to the 6,236-ayah words dump and
+      `QURAN_TAJWEED_JSON_PATH` pointing to the full
+      `/quran/verses/uthmani_tajweed` response. The corpus markup audits ensure
+      no HTML entities or stray delimiters appear in words or verse fallbacks.
+      Check As-Sajdah 32:3 with Tajweed colors on and off; its upstream malformed
+      markup must not appear in either reader layout. Run
       `flutter test integration_test/word_detail_regression_test.dart -d <ios-device>`
       on an iOS simulator or device. This verifies real taps in both reader
       layouts, exact letter-level header colors, tanween, adjacent ghunnah,

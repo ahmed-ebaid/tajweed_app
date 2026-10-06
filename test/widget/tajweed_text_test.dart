@@ -1,9 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
+import 'package:tajweed_practice/core/services/ayah_mapper.dart';
 import 'package:tajweed_practice/features/reader/widgets/tajweed_text.dart';
 
 void main() {
+  testWidgets('As-Sajdah markup never reaches highlighted or plain text', (
+    tester,
+  ) async {
+    for (final useWords in [true, false]) {
+      final ayah = AyahMapper.fromApi(
+        {
+          'verse_key': '32:3',
+          'page_number': 415,
+          'text_uthmani': 'ٱفْتَرَىٰهُ ۚ',
+          if (useWords)
+            'words': [
+              {
+                'char_type_name': 'word',
+                'text_uthmani': 'ٱفْتَرَىٰهُ ۚ',
+                'text_uthmani_tajweed':
+                    '<rule class=ham_wasl>ٱ</rule>فۡتَرَ&gt;ٮٰهُ\u200cۚ',
+              },
+            ],
+        },
+        tajweedHtml:
+            '<tajweed class=ham_wasl>ٱ</tajweed>فْتَرَ>ٮٰ</tajweed>هُ\u200cۚ',
+      );
+      for (final highlightEnabled in useWords ? [true, false] : [true]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: TajweedText(ayah: ayah, highlightEnabled: highlightEnabled),
+            ),
+          ),
+        );
+        final rendered = tester
+            .widget<RichText>(
+              find.descendant(
+                of: find.byType(TajweedText),
+                matching: find.byType(RichText),
+              ),
+            )
+            .text
+            .toPlainText();
+        expect(rendered, isNot(matches(RegExp(r'[<>&;a-zA-Z]'))));
+        expect(rendered, contains('ف'));
+        expect(rendered, contains('ه'));
+      }
+    }
+  });
+
   const testAyah = Ayah(
     surahNumber: 67,
     ayahNumber: 1,
