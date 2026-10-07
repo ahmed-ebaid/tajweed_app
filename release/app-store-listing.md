@@ -9,8 +9,21 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.16
-- **Build:** 89
+- **Build:** 91
 - **Release stage:** App Store Connect / TestFlight only; not submitted for review.
+- **TestFlight status:** Build 91 uploaded and Apple-validated; available to the
+  internal Tajweed Testers group.
+- **Build 91 changes:** Remove duplicate Arabic rule subtitles, align tip
+  bullets to the first text baseline, and restore canonical rounded-zero marks
+  where upstream Tajweed-tagged words substitute sukoon on silent letters.
+  Full-corpus regression checks cover all 6,236 ayahs and preserve all other
+  word characters and highlight offsets. These fixes were not in build 90.
+- **Build 90 changes:** Render standalone rounded-zero and sukoon marks with
+  the bundled Quran font and a neutral carrier in rule guidance and quiz
+  explanations. This rendering fix is not included in uploaded build 89.
+  Silent-letter highlights now use a distinct blue-cyan palette color rather
+  than gray, shared by examples, reader highlights, and the legend. Rule examples
+  default to the bundled Quran font.
 
 ## URLs
 

@@ -370,11 +370,56 @@ class AyahMapper {
     }
 
     return TajweedWord(
-      arabic: textForDisplay,
+      arabic: _restoreRoundedZeros(
+        textForDisplay,
+        w['text_uthmani'] as String? ?? '',
+        spans,
+      ),
       spans: spans,
       audioUrl: w['audio_url'] as String?,
       lineNumber: w['line_number'] as int?,
     );
+  }
+
+  static String _restoreRoundedZeros(
+    String text,
+    String uthmani,
+    List<TajweedSpan> spans,
+  ) {
+    if (!uthmani.contains('\u06DF')) return text;
+    final letters = <int>[];
+    final markedLetters = <int>{};
+    for (final cp in uthmani.codeUnits) {
+      if (_isArabicLetter(cp) && cp != _tatweelCp) {
+        letters.add(cp);
+      } else if (cp == 0x06DF && letters.isNotEmpty) {
+        markedLetters.add(letters.length - 1);
+      }
+    }
+    final displayLetters = text.codeUnits
+        .where((cp) => _isArabicLetter(cp) && cp != _tatweelCp)
+        .toList();
+    if (letters.length != displayLetters.length) return text;
+    for (var i = 0; i < letters.length; i++) {
+      if (letters[i] != displayLetters[i]) return text;
+    }
+
+    // The tagged corpus sometimes substitutes sukoon for a canonical rounded
+    // zero. Replace only an existing mark on a verified silent-letter span;
+    // equal-length replacement keeps all parsed highlight offsets intact.
+    final units = text.codeUnits.toList();
+    var letterIndex = -1;
+    for (var i = 0; i < units.length; i++) {
+      final cp = units[i];
+      if (_isArabicLetter(cp) && cp != _tatweelCp) {
+        letterIndex++;
+      } else if ((cp == 0x06E1 || cp == 0x0652) &&
+          markedLetters.contains(letterIndex) &&
+          _isCoveredByRule(spans, i, TajweedRule.silent)) {
+        units[i] = 0x06DF;
+      }
+    }
+    return String.fromCharCodes(units);
   }
 
   static List<TajweedWord> _applyMaddSilahRules(List<TajweedWord> words) {

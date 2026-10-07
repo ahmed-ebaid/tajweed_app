@@ -10,6 +10,7 @@ import 'tajweed_article.dart';
 import 'tajweed_article_detail_screen.dart';
 import 'tajweed_articles_repository.dart';
 import 'widgets/rule_example_text.dart';
+import 'widgets/rule_guidance_text.dart';
 
 enum _RulesLibraryTab { rules, more }
 
@@ -742,7 +743,7 @@ class _RuleCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                RuleGuidanceText(
                   definition.description(langCode),
                   style: Theme.of(
                     context,

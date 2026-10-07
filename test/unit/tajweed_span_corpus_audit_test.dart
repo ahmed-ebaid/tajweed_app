@@ -201,6 +201,59 @@ List<({String ruleClass, String text})> _topLevelRuleTags(String html) {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('rounded-zero restoration preserves all other Quran text and spans', () {
+    final jsonPath = Platform.environment['QURAN_WORDS_JSON_PATH'];
+    if (jsonPath == null || jsonPath.isEmpty) {
+      markTestSkipped('Set QURAN_WORDS_JSON_PATH for the rounded-zero audit.');
+      return;
+    }
+    final verses = _loadVersesFromJson(jsonPath);
+    expect(verses, hasLength(6236));
+    var restored = 0;
+    for (final verse in verses) {
+      final mapped = AyahMapper.fromApi(verse);
+      final baselineVerse = Map<String, dynamic>.from(verse);
+      baselineVerse['words'] = (verse['words'] as List).map((raw) {
+        final word = _asStringDynamicMap(raw);
+        final uthmani = word['text_uthmani'] as String?;
+        if (uthmani != null) {
+          word['text_uthmani'] = uthmani.replaceAll('\u06DF', '');
+        }
+        return word;
+      }).toList();
+      final baseline = AyahMapper.fromApi(baselineVerse);
+      final key = verse['verse_key'];
+      expect(mapped.words.length, baseline.words.length, reason: '$key');
+      expect(mapped.arabic, baseline.arabic, reason: '$key verse text');
+      for (var w = 0; w < mapped.words.length; w++) {
+        final word = mapped.words[w];
+        final old = baseline.words[w];
+        expect(word.arabic.length, old.arabic.length, reason: '$key word $w');
+        expect(
+          word.spans.map((s) => (s.start, s.end, s.rule)).toList(),
+          old.spans.map((s) => (s.start, s.end, s.rule)).toList(),
+          reason: '$key word $w highlights',
+        );
+        for (var i = 0; i < word.arabic.length; i++) {
+          if (word.arabic.codeUnitAt(i) == old.arabic.codeUnitAt(i)) continue;
+          restored++;
+          expect(old.arabic.codeUnitAt(i), anyOf(0x06E1, 0x0652));
+          expect(word.arabic.codeUnitAt(i), 0x06DF);
+          expect(
+            word.spans.any(
+              (s) => s.rule == TajweedRule.silent && s.start <= i && s.end > i,
+            ),
+            isTrue,
+            reason: '$key word $w changed outside a silent-letter span',
+          );
+        }
+      }
+    }
+    expect(restored, greaterThan(0));
+    // ignore: avoid_print
+    print('Rounded-zero audit: $restored marks restored across 6236 ayahs.');
+  });
+
   test('no verse-level fallback exposes Quran markup artifacts', () {
     final jsonPath = Platform.environment['QURAN_TAJWEED_JSON_PATH'];
     if (jsonPath == null || jsonPath.isEmpty) {

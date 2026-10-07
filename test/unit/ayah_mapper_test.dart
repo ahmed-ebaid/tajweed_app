@@ -3,6 +3,49 @@ import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
 
 void main() {
+  test('restores canonical rounded zero without changing highlight offsets', () {
+    for (final sukoon in ['ۡ', 'ْ']) {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '2:5',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': 'أُو۟لَـٰٓئِكَ',
+            'text_uthmani_tajweed':
+                'أُ<rule class=slnt>و$sukoon</rule>لَ<rule class=madda_obligatory_mottasel>ـٰٓ</rule>ئِكَ',
+          },
+        ],
+      });
+      final word = ayah.words.single;
+      expect(word.arabic, 'أُو۟لَـٰٓئِكَ');
+      final silent = word.spans.singleWhere(
+        (span) => span.rule == TajweedRule.silent,
+      );
+      expect(word.arabic.substring(silent.start, silent.end), 'و۟');
+    }
+  });
+
+  test('does not invent rounded zeros or replace ordinary sukoon', () {
+    for (final fixture in [
+      ('أُولَـٰٓئِكَ', 'أُ<rule class=slnt>وۡ</rule>لَـٰٓئِكَ'),
+      ('أُو۟لَـٰٓئِكَ', 'أُوۡلَـٰٓئِكَ'),
+      ('أُو۟لَـٰٓئِكَ', 'بُ<rule class=slnt>وۡ</rule>لَـٰٓئِكَ'),
+    ]) {
+      final ayah = AyahMapper.fromApi({
+        'verse_key': '2:5',
+        'words': [
+          {
+            'char_type_name': 'word',
+            'text_uthmani': fixture.$1,
+            'text_uthmani_tajweed': fixture.$2,
+          },
+        ],
+      });
+      expect(ayah.words.single.arabic, contains('وۡ'));
+      expect(ayah.words.single.arabic, isNot(contains('۟')));
+    }
+  });
+
   test('removes the upstream escaped delimiter in As-Sajdah 32:3', () {
     final ayah = AyahMapper.fromApi({
       'verse_key': '32:3',

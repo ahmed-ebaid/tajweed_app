@@ -92,7 +92,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.laamShamsiyah:
         return const Color(0xFF7A6E00);
       case TajweedRule.silent:
-        return const Color(0xFF606060);
+        return const Color(0xFF006B8F);
     }
   }
 

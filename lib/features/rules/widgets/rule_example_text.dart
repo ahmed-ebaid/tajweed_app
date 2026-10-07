@@ -25,7 +25,7 @@ class RuleExampleText extends StatelessWidget {
     required this.text,
     required this.exampleIndex,
     required this.fontSize,
-    this.fontFamily = 'UthmanicHafs',
+    this.fontFamily = 'AmiriQuran',
     this.fontWeight = FontWeight.normal,
     this.baseColor,
   });

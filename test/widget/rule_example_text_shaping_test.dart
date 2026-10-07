@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/widgets/rule_example_text.dart';
 
@@ -87,6 +88,44 @@ void main() {
           word,
           reason: '${definition.rule.name}[$i] lost characters when split',
         );
+      }
+    }
+  });
+
+  testWidgets('silent examples color only the marked letter in both themes', (
+    tester,
+  ) async {
+    final definition = RulesRepository.findByRule(TajweedRule.silent)!;
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      for (var i = 0; i < definition.exampleArabic.length; i++) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(brightness: brightness),
+            home: Scaffold(
+              body: RuleExampleText(
+                rule: definition.rule,
+                text: definition.exampleArabic[i],
+                exampleIndex: i,
+                fontSize: 28,
+              ),
+            ),
+          ),
+        );
+        final spans = spansOf(tester);
+        final highlighted = spans.where(
+          (span) => span.style!.color == TajweedRule.silent.color,
+        );
+        expect(
+          highlighted.map((span) => span.text).join(),
+          i == 0 ? 'و۟' : 'ا۟',
+        );
+        final color = highlighted.single.style!.color!;
+        expect(color.b, greaterThan(color.r));
+        expect(color.g, greaterThan(color.r));
+        for (final span in spans) {
+          expect(span.style!.fontFamily, 'AmiriQuran');
+        }
+        expect(tester.takeException(), isNull);
       }
     }
   });

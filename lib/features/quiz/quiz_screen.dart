@@ -8,6 +8,7 @@ import '../../core/models/tajweed_models.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/quiz_progress_provider.dart';
 import '../../core/providers/streak_provider.dart';
+import '../rules/widgets/rule_guidance_text.dart';
 import 'quiz_repository.dart';
 import 'widgets/quiz_card.dart';
 import 'widgets/quiz_results_sheet.dart';
@@ -622,7 +623,7 @@ class _FeedbackBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                RuleGuidanceText(
                   explanation,
                   style: TextStyle(
                     fontSize: 13,

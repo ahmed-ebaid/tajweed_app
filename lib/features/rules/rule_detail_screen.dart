@@ -15,6 +15,7 @@ import 'waqf_symbols.dart' as waqf;
 import 'package:just_audio/just_audio.dart';
 import 'package:share_plus/share_plus.dart';
 import 'widgets/rule_example_text.dart';
+import 'widgets/rule_guidance_text.dart';
 
 /// Full-screen detail view for a single tajweed rule.
 /// Shows the Arabic name, description, example words with color coding,
@@ -393,7 +394,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
               const SizedBox(height: 24),
 
               // ── Description ─────────────────────────────────────────────
-              Text(
+              RuleGuidanceText(
                 def.description(langCode),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   fontSize: 18,
@@ -634,28 +635,33 @@ class _RuleHeader extends StatelessWidget {
             ),
             textDirection: TextDirection.rtl,
           ),
-          const SizedBox(height: 8),
-          // Translated name with color dot
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: rule.color,
-                  shape: BoxShape.circle,
+          if (name != rule.arabicName) ...[
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: rule.color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                name,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(color: rule.color),
-              ),
-            ],
-          ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: rule.color,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -969,12 +975,20 @@ class _PronunciationSection extends StatelessWidget {
           (tip) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Icon(Icons.circle, size: 6, color: rule.color),
+                Text(
+                  '•',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 17,
+                    height: 1.6,
+                    color: rule.color,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                  child: RuleGuidanceText(
                     tip,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontSize: 17,
