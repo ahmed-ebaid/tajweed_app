@@ -42,7 +42,7 @@ class RuleExampleHighlight {
     TajweedRule.hamzatWasl: ['ٱ', 'ٱ', 'ٱ'],
     TajweedRule.hamzatQat: ['أ', 'إ', 'أ'],
     TajweedRule.laamShamsiyah: ['ل', 'ل'],
-    TajweedRule.silent: ['و', 'ٰ'],
+    TajweedRule.silent: ['و۟', 'ا۟'],
   };
 
   /// The fragment that demonstrates [rule] inside `exampleArabic[exampleIndex]`.

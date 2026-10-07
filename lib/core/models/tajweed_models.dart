@@ -215,7 +215,7 @@ extension TajweedRuleExtension on TajweedRule {
       case TajweedRule.laamShamsiyah:
         return 'لَام شَمْسِيَّة';
       case TajweedRule.silent:
-        return 'حَرْف سَاكِن';
+        return 'حَرْف زَائِد لَا يُنْطَق';
     }
   }
 }

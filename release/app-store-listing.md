@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.15
+# App Store listing — Tajweed 1.1.16
 
 ## App information
 
@@ -8,8 +8,9 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.15
-- **Build:** 88
+- **Version:** 1.1.16
+- **Build:** 89
+- **Release stage:** App Store Connect / TestFlight only; not submitted for review.
 
 ## URLs
 
@@ -74,9 +75,10 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Corrects malformed upstream markup in Quran text so stray symbols no longer
-appear while reading As-Sajdah 32:3. Preserves Tajweed colors and checks the
-complete Quran corpus for markup artifacts.
+Corrects silent-letter quiz examples and explains the difference between
+the rounded-zero sign and sukoon. Expands Hamzat al-Wasl guidance with
+starting-vowel examples, completes Spanish rule explanations and tips,
+and improves rule-label layout on narrow screens.
 
 ## Previous improvements retained
 

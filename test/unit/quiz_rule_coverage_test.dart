@@ -46,6 +46,34 @@ void main() {
     );
   });
 
+  test(
+    'each quiz level retains every rule after duplicate examples are removed',
+    () {
+      for (final level in QuizRepository.levels) {
+        final questions = QuizRepository.randomizedUnique(level: level.level);
+        final questionRules = questions
+            .map((question) => question.rule)
+            .toSet();
+
+        expect(
+          questionRules,
+          level.rules.toSet(),
+          reason: '${level.level.name} lost a rule after deduplication',
+        );
+        expect(
+          questions
+              .map(
+                (question) =>
+                    '${question.arabicText}|${question.options[question.correctIndex]['en']}',
+              )
+              .toSet(),
+          hasLength(questions.length),
+          reason: '${level.level.name} contains duplicate quiz prompts',
+        );
+      }
+    },
+  );
+
   test('the four madd lazim types are each quizzed separately', () {
     final lazim = TajweedRule.values
         .where((r) => r.name.startsWith('maddLazim'))

@@ -1011,18 +1011,7 @@ class _PronunciationSection extends StatelessWidget {
       return _tipsForGerman(rule);
     }
     if (langCode == 'es') {
-      if (rule == TajweedRule.hamzatWasl) {
-        return [
-          'Pronuncia hamzat wasl solamente al comenzar',
-          'Omítela al unir la palabra con la palabra anterior',
-        ];
-      }
-      if (rule == TajweedRule.hamzatQat) {
-        return [
-          'Pronuncia hamzat al-qat tanto al comenzar como al enlazar',
-          'Al inicio de una palabra se escribe encima o debajo del alif',
-        ];
-      }
+      return _tipsForSpanish(rule);
     }
 
     switch (rule) {
@@ -1168,9 +1157,10 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.hamzatWasl:
         return [
-          'A connecting hamza that is only pronounced at the start of speech',
-          'When continuing from a previous word, it is dropped',
-          'Found at the start of "Al-" and certain verb forms',
+          'Hamzat al-wasl is pronounced when beginning with a word and omitted when joining from a preceding word',
+          'Begin the definite article ال with fatḥah: ٱلْحَمْدُ (al-ḥamdu)',
+          'Begin most nouns and verb forms with kasrah: ٱهْدِنَا (ihdinā), ٱسْتَغْفِرُوا (istaghfirū)',
+          'A triliteral imperative begins with ḍammah if the third letter of its present-tense form has an original ḍammah (ٱدْخُلُوا from يَدْخُلُ); otherwise, use kasrah (ٱضْرِبُوا from يَضْرِبُ)',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1186,8 +1176,166 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.silent:
         return [
-          'Some letters in the Quran are written but not pronounced',
-          'These are specific orthographic features of the Uthmani script',
+          'An extra Uthmani-script letter is written but not pronounced',
+          'The rounded zero (۟) marks this extra letter; ordinary sukoon, shaped like a small head of ha (ۡ), marks a consonant that is pronounced without a vowel',
+        ];
+    }
+  }
+
+  List<String> _tipsForSpanish(TajweedRule rule) {
+    switch (rule) {
+      case TajweedRule.ghunnah:
+        return [
+          'Mantén la resonancia nasal durante 2 tiempos',
+          'El sonido sale por la cavidad nasal al pronunciar nun o mim con shadda',
+        ];
+      case TajweedRule.qalqalah:
+        return [
+          'Añade un ligero rebote a ق ط ب ج د cuando llevan sukún',
+          'El rebote es menor en medio de palabra y mayor al detenerse al final',
+        ];
+      case TajweedRule.maddTabeei:
+        return [
+          'Alarga exactamente 2 tiempos: alif tras fatha, waw tras damma o ya tras kasra',
+          'No debe seguirle hamza ni sukún',
+        ];
+      case TajweedRule.maddMuttasil:
+        return [
+          'La hamza aparece después de la letra de madd dentro de la misma palabra',
+          'Prolonga 4–5 tiempos',
+        ];
+      case TajweedRule.maddMunfasil:
+        return [
+          'La letra de madd termina una palabra y la hamza comienza la siguiente',
+          'Prolonga 2–5 tiempos según la lectura que sigas',
+        ];
+      case TajweedRule.maddSilahSughra:
+        return [
+          'Alarga la ha pronominal durante 2 tiempos',
+          'Aparece entre dos letras vocalizadas y no va seguida de hamza',
+        ];
+      case TajweedRule.maddSilahKubra:
+        return [
+          'Alarga la ha pronominal durante 4–5 tiempos',
+          'Aparece entre dos letras vocalizadas antes de una hamza',
+        ];
+      case TajweedRule.ikhfa:
+        return [
+          'Oculta el sonido de la nun: no lo pronuncies claramente ni lo asimiles por completo',
+          'Acompáñalo con gunna durante 2 tiempos y prepara la boca para la letra siguiente',
+        ];
+      case TajweedRule.iqlab:
+        return [
+          'Convierte la nun en un sonido de mim antes de ب',
+          'Oculta la mim con gunna durante 2 tiempos; busca el pequeño م en el mushaf',
+        ];
+      case TajweedRule.izhar:
+        return [
+          'Pronuncia la nun claramente ante una letra gutural',
+          'No añadas gunna; las letras guturales son ء ه ع ح غ خ',
+        ];
+      case TajweedRule.idghamWithGhunnah:
+        return [
+          'Asimila la nun a la letra siguiente',
+          'Mantén la gunna durante 2 tiempos ante ي ن م و',
+        ];
+      case TajweedRule.idghamWithoutGhunnah:
+        return [
+          'Asimila por completo la nun a ل o ر',
+          'No añadas gunna: el sonido de la nun desaparece',
+        ];
+      case TajweedRule.shaddah:
+        return [
+          'Duplica la consonante: pronuncia una primera parte en sukún y luego la vocalizada',
+          'Si la letra es nun o mim, aplica gunna',
+        ];
+      case TajweedRule.waqf:
+        return [
+          'Los signos de waqf indican dónde hacer una pausa durante la recitación',
+          'Respeta el tipo de signo: obligatorio, permitido o prohibido',
+        ];
+      case TajweedRule.sajdah:
+        return [
+          'El signo ۩ indica un lugar de postración durante la recitación',
+          'Al recitar ese versículo, realiza la postración según la práctica que sigas',
+        ];
+      case TajweedRule.maddAridLissukun:
+        return [
+          'El sukún aparece solo porque te detienes en la letra siguiente',
+          'Al parar, prolonga 2, 4 o 6 tiempos y mantén la misma medida; al continuar, queda el madd natural de 2 tiempos',
+          'Si la waw o la ya en sukún va precedida de fatha, es madd lin, no madd arid',
+        ];
+      case TajweedRule.maddLin:
+        return [
+          'La letra lin es waw o ya en sukún precedida de fatha: خَوْف, بَيْت',
+          'Alarga 2, 4 o 6 tiempos solo si te detienes en la letra siguiente',
+          'Al continuar sin pausa, no se alarga',
+        ];
+      case TajweedRule.maddLazimKalimiMuthaqqal:
+        return [
+          'Prolonga 6 tiempos completos',
+          'Una letra de madd va seguida de una letra con shadda en la misma palabra',
+          'Ejemplo: ٱلضَّآلِّينَ al final de Al-Fatiha',
+        ];
+      case TajweedRule.maddLazimKalimiMukhaffaf:
+        return [
+          'Prolonga 6 tiempos completos',
+          'Una letra de madd va seguida de una letra con sukún original en la misma palabra',
+          'Solo aparece en dos lugares del Corán: 10:51 y 10:91',
+        ];
+      case TajweedRule.maddLazimHarfiMuthaqqal:
+        return [
+          'Prolonga 6 tiempos completos',
+          'Solo aparece en letras aisladas al comienzo de algunas suras',
+          'La letra deletreada se asimila a la siguiente: la ل de الٓمٓ',
+        ];
+      case TajweedRule.maddLazimHarfiMukhaffaf:
+        return [
+          'Prolonga 6 tiempos completos',
+          'Solo aparece en letras aisladas al comienzo de algunas suras',
+          'No hay asimilación posterior: la س de يسٓ y la ص de صٓ',
+        ];
+      case TajweedRule.idghamShafawi:
+        return [
+          'Asimila una mim en sukún a la mim que le sigue',
+          'Acompaña la fusión con gunna durante 2 tiempos',
+          'Cierra suavemente los labios y deja resonar el sonido nasal',
+        ];
+      case TajweedRule.idghamMutajanisayn:
+        return [
+          'Asimila por completo la primera letra en sukún a la segunda',
+          'Ambas comparten el punto de articulación, pero tienen atributos distintos',
+          'Ejemplos: ت en ط o ذ en ظ',
+        ];
+      case TajweedRule.ikhfaShafawi:
+        return [
+          'Oculta la mim en sukún antes de ب',
+          'Aproxima los labios sin cerrarlos con fuerza',
+          'Acompaña la pronunciación con gunna durante 2 tiempos',
+        ];
+      case TajweedRule.hamzatWasl:
+        return [
+          'Se pronuncia al comenzar una palabra y se omite al enlazarla con la anterior',
+          'El artículo ال comienza con fatha: ٱلْحَمْدُ',
+          'La mayoría de los nombres y formas verbales comienzan con kasra: ٱهْدِنَا, ٱسْتَغْفِرُوا',
+          'El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدْخُلُوا, يَدْخُلُ); en caso contrario, kasra (ٱضْرِبُوا, يَضْرِبُ)',
+        ];
+      case TajweedRule.hamzatQat:
+        return [
+          'Pronuncia la hamza tanto al comenzar como al enlazar la palabra',
+          'Al principio de palabra, aparece sobre o debajo del alif',
+          'No omitas su sonido al enlazar palabras',
+        ];
+      case TajweedRule.laamShamsiyah:
+        return [
+          'La lam de ال no se pronuncia ante una letra solar: se asimila a ella',
+          'La letra solar siguiente lleva shadda',
+          'Letras solares: ت ث د ذ ر ز س ش ص ض ط ظ ل ن',
+        ];
+      case TajweedRule.silent:
+        return [
+          'La letra adicional del rasm uthmani se escribe, pero no se pronuncia',
+          'El cero redondo (۟) la marca; no lo confundas con el sukún ordinario (ۡ), que señala una consonante pronunciada sin vocal',
         ];
     }
   }
@@ -1330,9 +1478,10 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.hamzatWasl:
         return [
-          'همزة الوصل تُنطق في الابتداء فقط',
-          'وتسقط في حال الوصل بما قبلها',
-          'توجد في أل التعريف وبعض صيغ الأفعال',
+          'تُنطق همزة الوصل عند البدء بالكلمة، وتسقط في الوصل بما قبلها',
+          'تُفتح همزة «الـ» التعريف عند البدء: ٱلْحَمْدُ (الْحَمْدُ)',
+          'تُكسر في أكثر الأسماء وصيغ الأفعال: ٱهْدِنَا، ٱسْتَغْفِرُوا',
+          'يُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدْخُلُوا، يَدْخُلُ)، وإلا يُكسر (ٱضْرِبُوا، يَضْرِبُ)',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1348,8 +1497,8 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.silent:
         return [
-          'بعض الحروف تُكتب في الرسم العثماني ولا تُنطق',
-          'وهذا من خصائص الرسم القرآني',
+          'حرف زائد في رسم المصحف يُكتب ولا يُنطق',
+          'يدل عليه الصفر المستدير (۟)، ولا تخلطه بالسكون ذي رأس الحاء الصغيرة (ۡ)، فهو لحرف يُنطق بلا حركة',
         ];
     }
   }
@@ -1476,8 +1625,10 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.hamzatWasl:
         return [
-          'ہمزۂ وصل ابتدا میں پڑھا جاتا ہے',
-          'وصل کی حالت میں ساقط ہو جاتا ہے',
+          'ہمزۂ وصل لفظ کے آغاز میں پڑھی جاتی ہے اور وصل میں ساقط ہو جاتی ہے',
+          '«ال» کی ہمزہ پر زبر آتی ہے: ٱلْحَمْدُ',
+          'اکثر دوسرے اسماء اور افعال کی ہمزہ پر زیر آتی ہے: ٱهْدِنَا، ٱسْتَغْفِرُوا',
+          'ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر بھی پیش آتی ہے: ٱدْخُلُوا، يَدْخُلُ؛ ورنہ زیر: ٱضْرِبُوا، يَضْرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1492,7 +1643,7 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.silent:
         return [
           'بعض حروف لکھے جاتے ہیں مگر پڑھے نہیں جاتے',
-          'یہ رسمِ عثمانی کی خصوصیت ہے',
+          'صفرِ مستدیر (۟) زائد غیر ملفوظ حرف کی علامت ہے؛ عام سکون، جو چھوٹے سرِ حاء جیسا ہوتا ہے (ۡ)، پڑھے جانے والے بے حرکت حرف پر آتا ہے',
         ];
     }
   }
@@ -1615,7 +1766,12 @@ class _PronunciationSection extends StatelessWidget {
           'Dudakları yaklaştırıp ghunna yapın',
         ];
       case TajweedRule.hamzatWasl:
-        return ['Hemze-i vasl sadece başlangıçta okunur', 'Vasl halinde düşer'];
+        return [
+          'Hemze-i vasl kelimeye başlanırken okunur, vasl halinde düşer',
+          'ال takısı fetha ile başlar: ٱلْحَمْدُ',
+          'Diğer isim ve fiillerin çoğu kesra ile başlar: ٱهْدِنَا, ٱسْتَغْفِرُوا',
+          'Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme ile başlanır: ٱدْخُلُوا, يَدْخُلُ; değilse kesra: ٱضْرِبُوا, يَضْرِبُ',
+        ];
       case TajweedRule.hamzatQat:
         return [
           'Hemze-i kat başlangıçta ve bağlantıda okunur',
@@ -1629,7 +1785,7 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.silent:
         return [
           'Bazı harfler yazılır ama okunmaz',
-          'Bu Uthmani yazımın özelliğidir',
+          'Yuvarlak sıfır (۟) okunmayan ek harfi gösterir; küçük ha başına benzeyen normal sükûn (ۡ) ise okunan, harekesiz ünsüzü belirtir',
         ];
     }
   }
@@ -1765,8 +1921,10 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.hamzatWasl:
         return [
-          'Hamzat wasl se prononce au début seulement',
-          'Elle tombe en liaison',
+          'La hamza de liaison se prononce au début d’un mot et tombe en liaison',
+          'L’article ال commence par une fatḥa : ٱلْحَمْدُ',
+          'La plupart des autres noms et verbes commencent par une kasra : ٱهْدِنَا, ٱسْتَغْفِرُوا',
+          'À l’impératif trilittère, on commence par une ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale : ٱدْخُلُوا, يَدْخُلُ ; sinon, par une kasra : ٱضْرِبُوا, يَضْرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1780,8 +1938,8 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.silent:
         return [
-          'Certaines lettres sont écrites mais non prononcées',
-          'C est une particularité du rasm uthmani',
+          'Une lettre ajoutée au rasm est écrite mais non prononcée',
+          'Le zéro rond (۟) marque cette lettre ; le soukoun ordinaire, en forme de petite tête de ha (ۡ), marque une consonne prononcée sans voyelle',
         ];
     }
   }
@@ -1908,8 +2066,10 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.hamzatWasl:
         return [
-          'Hamzat wasl dibaca saat memulai',
-          'Saat washal, hamzah tidak dibaca',
+          'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung',
+          'ال dibaca dengan fathah: ٱلْحَمْدُ',
+          'Kebanyakan kata benda dan kata kerja lain dibaca dengan kasrah: ٱهْدِنَا, ٱسْتَغْفِرُوا',
+          'Fi’il amr tsulatsi dimulai dengan dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli: ٱدْخُلُوا, يَدْخُلُ; jika tidak, dengan kasrah: ٱضْرِبُوا, يَضْرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1924,7 +2084,7 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.silent:
         return [
           'Sebagian huruf ditulis tetapi tidak dilafalkan',
-          'Ini ciri khusus rasm Utsmani',
+          'Sifr mustadir (۟) menandai huruf tambahan yang tidak dibaca; sukun biasa berbentuk kepala ha kecil (ۡ) menandai konsonan yang tetap dilafalkan tanpa vokal',
         ];
     }
   }
@@ -2060,8 +2220,10 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.hamzatWasl:
         return [
-          'Hamzat Wasl wird nur am Satzanfang gesprochen',
-          'In der Verbindung fällt sie weg',
+          'Die Hamzat al-Wasl wird am Wortanfang gesprochen und beim Verbinden ausgelassen',
+          'Der bestimmte Artikel ال beginnt mit Fatha: ٱلْحَمْدُ',
+          'Die meisten anderen Nomen und Verben beginnen mit Kasra: ٱهْدِنَا, ٱسْتَغْفِرُوا',
+          'Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat: ٱدْخُلُوا, يَدْخُلُ; sonst mit Kasra: ٱضْرِبُوا, يَضْرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -2075,8 +2237,8 @@ class _PronunciationSection extends StatelessWidget {
         ];
       case TajweedRule.silent:
         return [
-          'Manche Buchstaben sind geschrieben, aber stumm',
-          'Das ist eine Besonderheit der uthmanischen Schrift',
+          'Ein zusätzlicher Buchstabe im uthmanischen Schriftbild wird geschrieben, aber nicht gesprochen',
+          'Das runde Nullzeichen (۟) markiert ihn; das gewöhnliche Sukūn in Form eines kleinen Ha-Kopfes (ۡ) markiert einen gesprochenen Konsonanten ohne Vokal',
         ];
     }
   }

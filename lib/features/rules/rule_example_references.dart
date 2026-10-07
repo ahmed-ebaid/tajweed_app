@@ -36,7 +36,7 @@ class RuleExampleReferences {
     TajweedRule.hamzatWasl: '052001',
     TajweedRule.hamzatQat: '001005',
     TajweedRule.laamShamsiyah: '052001',
-    TajweedRule.silent: '020028',
+    TajweedRule.silent: '002005',
   };
 
   // Multiple verified per-example audio references for standalone articles,

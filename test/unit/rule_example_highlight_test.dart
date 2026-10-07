@@ -21,6 +21,7 @@ const _ya = '\u064A';
 const _alifMaqsura = '\u0649';
 const _maddah = '\u0653';
 const _sukoon = '\u0652';
+const _roundedZero = '\u06DF';
 
 void main() {
   group('rule example highlights', () {
@@ -57,6 +58,25 @@ void main() {
           expect(range!.start, greaterThanOrEqualTo(0));
           expect(range.end, lessThanOrEqualTo(word.length));
         }
+      }
+    });
+
+    test('silent-rule examples highlight the rounded-zero marked letters', () {
+      final definition = RulesRepository.findByRule(TajweedRule.silent)!;
+      const expectedHighlights = ['و\u06DF', 'ا\u06DF'];
+
+      expect(definition.exampleArabic, ['أُو۟لَـٰٓئِكَ', 'كَفَرُوا۟']);
+      for (var i = 0; i < expectedHighlights.length; i++) {
+        final range = RuleExampleHighlight.rangeIn(
+          TajweedRule.silent,
+          definition.exampleArabic[i],
+          i,
+        )!;
+        expect(
+          definition.exampleArabic[i].substring(range.start, range.end),
+          expectedHighlights[i],
+        );
+        expect(expectedHighlights[i], contains(_roundedZero));
       }
     });
 

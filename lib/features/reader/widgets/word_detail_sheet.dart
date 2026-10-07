@@ -169,19 +169,23 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    definition?.name(langCode) ?? widget.rule.arabicName,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const Spacer(),
-                  Text(
-                    widget.rule.arabicName,
-                    style: TextStyle(
-                      fontFamily: 'UthmanicHafs',
-                      fontSize: 16,
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                  Expanded(
+                    child: Text(
+                      definition?.name(langCode) ?? widget.rule.arabicName,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    textDirection: TextDirection.rtl,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      widget.rule.arabicName,
+                      style: TextStyle(
+                        fontFamily: 'UthmanicHafs',
+                        fontSize: 16,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ),
+                      textDirection: TextDirection.rtl,
+                    ),
                   ),
                 ],
               ),

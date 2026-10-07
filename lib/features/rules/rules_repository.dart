@@ -1,7 +1,7 @@
 import '../../core/models/tajweed_models.dart';
 
 /// Static database of all tajweed rule definitions.
-/// Descriptions are available in all 7 supported languages.
+/// Names and descriptions are available in all 8 supported languages.
 /// Used by the rules library screen and word-detail sheets.
 class RulesRepository {
   static const List<TajweedRuleDefinition> all = [
@@ -15,6 +15,7 @@ class RulesRepository {
         'fr': 'Ghounna',
         'id': 'Ghunnah',
         'de': 'Ghunna',
+        'es': 'Gunna',
       },
       descriptions: {
         'en':
@@ -31,6 +32,8 @@ class RulesRepository {
             'Suara dengung yang keluar dari rongga hidung saat mengucapkan nun atau mim bertasydid. Ukuran: 2 harakat.',
         'de':
             'Ein nasaler Klang aus der Nasenhöhle bei Nun oder Mim mit Shaddah. Dauer: 2 Zählzeiten.',
+        'es':
+            'Resonancia nasal que se produce al pronunciar una nun o una mim con shadda. Duración: 2 tiempos.',
       },
       exampleArabic: ['إِنَّ', 'ثُمَّ', 'مِنَّا'],
       triggerLetters: ['ن', 'م'],
@@ -45,6 +48,7 @@ class RulesRepository {
         'fr': 'Qalqala',
         'id': 'Qalqalah',
         'de': 'Qalqala',
+        'es': 'Qalqala',
       },
       descriptions: {
         'en':
@@ -61,6 +65,8 @@ class RulesRepository {
             'Suara memantul/bergema pada huruf ق ط ب ج د ketika bersukun atau berada di akhir kata.',
         'de':
             'Ein hallender/vibrierender Laut bei den Buchstaben ق ط ب ج د mit Sukoon oder am Wortende.',
+        'es':
+            'Rebote sonoro de las letras ق ط ب ج د cuando llevan sukún o se encuentran al final de palabra: menor en medio de palabra y mayor al detenerse al final.',
       },
       exampleArabic: ['قَدْ', 'يَبْسُطُ', 'تَجْرِى'],
       triggerLetters: ['ق', 'ط', 'ب', 'ج', 'د'],
@@ -75,6 +81,7 @@ class RulesRepository {
         'fr': 'Madd Tabii',
         'id': 'Mad Thabi\'i',
         'de': 'Madd Tabii',
+        'es': 'Madd natural (Tabi‘i)',
       },
       descriptions: {
         'en':
@@ -91,6 +98,8 @@ class RulesRepository {
             'Pemanjangan alami huruf mad selama tepat 2 harakat: alif setelah fathah, wau setelah dhammah, atau ya setelah kasrah, tanpa diikuti hamzah maupun sukun.',
         'de':
             'Natürliche Dehnung eines Madd-Buchstabens um genau 2 Zählzeiten: Alif nach Fatha, Waw nach Damma oder Ya nach Kasra, ohne folgendes Hamza und ohne Sukun.',
+        'es':
+            'Alargamiento natural de una letra de madd durante exactamente 2 tiempos: alif después de fatha, waw después de damma o ya después de kasra, sin hamza ni sukún posterior.',
       },
       exampleArabic: ['قَالَ', 'يَقُولُ', 'قِيلَ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -105,6 +114,7 @@ class RulesRepository {
         'fr': 'Madd Muttasil',
         'id': 'Mad Wajib Muttasil',
         'de': 'Madd Muttasil',
+        'es': 'Madd conectado (Muttasil)',
       },
       descriptions: {
         'en':
@@ -121,6 +131,8 @@ class RulesRepository {
             'Mad wajib muttasil: huruf mad diikuti hamzah dalam satu kata. Ukuran: 4–5 harakat.',
         'de':
             'Obligatorisches verbundenes Madd: Madd-Buchstabe gefolgt von Hamza im selben Wort. Dauer: 4–5 Zählzeiten.',
+        'es':
+            'Madd obligatorio conectado: una letra de madd seguida de hamza en la misma palabra. Duración: 4–5 tiempos.',
       },
       exampleArabic: ['جَاءَ', 'سَاءَ', 'شَاءَ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -135,6 +147,7 @@ class RulesRepository {
         'fr': 'Madd Munfasil',
         'id': 'Mad Jaiz Munfasil',
         'de': 'Madd Munfasil',
+        'es': 'Madd separado (Munfasil)',
       },
       descriptions: {
         'en':
@@ -151,6 +164,8 @@ class RulesRepository {
             'Mad jaiz munfasil: huruf mad di akhir kata diikuti hamzah di awal kata berikutnya. Ukuran: 2–5 harakat.',
         'de':
             'Erlaubtes getrenntes Madd: Madd-Buchstabe am Wortende gefolgt von Hamza am Anfang des nächsten Wortes. Dauer: 2–5 Zählzeiten.',
+        'es':
+            'Madd permitido separado: una letra de madd al final de una palabra seguida de hamza al comienzo de la siguiente. Duración: 2–5 tiempos, según la lectura.',
       },
       exampleArabic: ['فِي أَنفُسِكُمْ', 'قَالُوا آمَنَّا', 'بِمَا أُنزِلَ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -165,6 +180,7 @@ class RulesRepository {
         'fr': 'Madd Silah Sughra',
         'id': 'Mad Silah Sughra',
         'de': 'Madd Silah Sughra',
+        'es': 'Madd Silah menor (Sughra)',
       },
       descriptions: {
         'en':
@@ -181,6 +197,8 @@ class RulesRepository {
             'Pemanjangan ha dhamir di antara dua huruf berharakat bila tidak diikuti hamzah. Panjang: 2 harakat.',
         'de':
             'Verlängerung des Pronomen-Ha zwischen zwei vokalisierten Buchstaben, wenn kein Hamza folgt. Dauer: 2 Zählzeiten.',
+        'es':
+            'Alargamiento menor de la ha pronominal entre dos letras vocalizadas cuando no va seguida de hamza. Duración: 2 tiempos.',
       },
       exampleArabic: ['بِهِۦ عِلْمٌ', 'إِنَّهُۥ كَانَ'],
       triggerLetters: ['ه'],
@@ -195,6 +213,7 @@ class RulesRepository {
         'fr': 'Madd Silah Kubra',
         'id': 'Mad Silah Kubra',
         'de': 'Madd Silah Kubra',
+        'es': 'Madd Silah mayor (Kubra)',
       },
       descriptions: {
         'en':
@@ -211,6 +230,8 @@ class RulesRepository {
             'Pemanjangan ha dhamir di antara dua huruf berharakat bila diikuti hamzah. Panjang: 4–5 harakat.',
         'de':
             'Verlängerung des Pronomen-Ha zwischen zwei vokalisierten Buchstaben, wenn ein Hamza folgt. Dauer: 4–5 Zählzeiten.',
+        'es':
+            'Alargamiento mayor de la ha pronominal entre dos letras vocalizadas cuando va seguida de hamza. Duración: 4–5 tiempos.',
       },
       exampleArabic: ['بِهِۦٓ إِلَّا', 'لَهُۥٓ أَجْرٌ'],
       triggerLetters: ['ه'],
@@ -225,6 +246,7 @@ class RulesRepository {
         'fr': 'Idgham avec Ghounna',
         'id': 'Idgham Bighunnah',
         'de': 'Idgham mit Ghunna',
+        'es': 'Idgham con gunna',
       },
       descriptions: {
         'en':
@@ -241,6 +263,8 @@ class RulesRepository {
             'Memasukkan nun sukun atau tanwin ke dalam salah satu huruf ي ن م و dengan dengung.',
         'de':
             'Verschmelzung von Noon Sakinah oder Tanween in einen der Buchstaben ي ن م و mit Nasalklang.',
+        'es':
+            'La nun en sukún o el tanwin se asimilan a una de las letras ي ن م و con nasalización (gunna) durante 2 tiempos.',
       },
       exampleArabic: ['مِن يَّقُولُ', 'مِن نِّعْمَةٍ'],
       triggerLetters: ['ي', 'ن', 'م', 'و'],
@@ -255,6 +279,7 @@ class RulesRepository {
         'fr': 'Idgham sans Ghounna',
         'id': 'Idgham Bilaghunnah',
         'de': 'Idgham ohne Ghunna',
+        'es': 'Idgham sin gunna',
       },
       descriptions: {
         'en':
@@ -270,6 +295,8 @@ class RulesRepository {
             'Memasukkan nun sukun atau tanwin ke dalam huruf ل atau ر tanpa dengung.',
         'de':
             'Verschmelzung von Noon Sakinah oder Tanween in ل oder ر ohne Nasalklang.',
+        'es':
+            'La nun en sukún o el tanwin se asimilan a ل o ر sin nasalización; el sonido de la nun desaparece.',
       },
       exampleArabic: ['مِن رَّبِّكَ', 'هُدًى لِّلْمُتَّقِينَ'],
       triggerLetters: ['ل', 'ر'],
@@ -284,6 +311,7 @@ class RulesRepository {
         'fr': 'Ikhfa',
         'id': 'Ikhfa',
         'de': 'Ikhfa',
+        'es': 'Ikhfa',
       },
       descriptions: {
         'en':
@@ -300,6 +328,8 @@ class RulesRepository {
             'Menyamarkan nun sukun atau tanwin ketika bertemu salah satu dari lima belas huruf: ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Nun tidak dibaca jelas dan tidak pula diidghamkan, disertai ghunnah 2 harakat sementara mulut bersiap ke huruf berikutnya.',
         'de':
             'Verbergen des Nun sakinah oder Tanwin vor den fünfzehn Buchstaben ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك. Das Nun wird weder klar ausgesprochen noch vollständig assimiliert: die Zunge berührt ihren üblichen Punkt nicht, und eine Ghunna wird 2 Zählzeiten gehalten.',
+        'es':
+            'Se oculta la nun en sukún o el tanwin ante estas quince letras ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك: no se pronuncia claramente ni se asimila por completo; se mantiene la gunna durante 2 tiempos.',
       },
       exampleArabic: ['مِن كُلِّ', 'عَنكَبُوتٌ', 'أَنتُمْ'],
       triggerLetters: [
@@ -330,6 +360,7 @@ class RulesRepository {
         'fr': 'Iqlab',
         'id': 'Iqlab',
         'de': 'Iqlab',
+        'es': 'Iqlab',
       },
       descriptions: {
         'en':
@@ -345,6 +376,8 @@ class RulesRepository {
             'Mengubah nun sukun atau tanwin menjadi suara mim di hadapan huruf ب disertai dengung.',
         'de':
             'Verwandlung von Noon Sakinah oder Tanween in einen Meem-Laut vor dem Buchstaben ب mit Ghunna.',
+        'es':
+            'La nun en sukún o el tanwin se convierten en un sonido de mim antes de ب, con gunna; el pequeño م del mushaf indica esta regla.',
       },
       exampleArabic: ['مِنْ بَعْدِ', 'سَمِيعٌ بَصِيرٌ'],
       triggerLetters: ['ب'],
@@ -359,6 +392,7 @@ class RulesRepository {
         'fr': 'Izhar Halqi',
         'id': 'Izhar Halqi',
         'de': 'Izhar Halqi',
+        'es': 'Izhar gutural (Halqi)',
       },
       descriptions: {
         'en':
@@ -375,6 +409,8 @@ class RulesRepository {
             'Pengucapan nun sukun atau tanwin secara jelas dan terang di hadapan 6 huruf halq tanpa dengung.',
         'de':
             'Klare, deutliche Aussprache von Noon Sakinah oder Tanween vor den sechs Kehlbuchstaben ohne Ghunna.',
+        'es':
+            'Pronunciación clara de la nun en sukún o del tanwin ante las seis letras guturales (ء ه ع ح غ خ), sin gunna.',
       },
       exampleArabic: ['مَنْ آمَنَ', 'عَلِيمٌ حَكِيمٌ'],
       triggerLetters: ['ء', 'ه', 'ع', 'ح', 'غ', 'خ'],
@@ -389,6 +425,7 @@ class RulesRepository {
         'fr': 'Shadda',
         'id': 'Tasydid',
         'de': 'Schadda',
+        'es': 'Shadda (consonante doble)',
       },
       descriptions: {
         'en':
@@ -400,6 +437,8 @@ class RulesRepository {
         'fr': 'Signe qui indique le redoublement de la consonne.',
         'id': 'Tanda untuk menggandakan pelafalan huruf.',
         'de': 'Zeichen zur Verdopplung eines Buchstabens in der Aussprache.',
+        'es':
+            'La shadda indica que la consonante se pronuncia doble, como dos letras fusionadas.',
       },
       exampleArabic: ['إِيَّاكَ', 'الرَّحْمَٰنِ', 'ثُمَّ'],
       triggerLetters: [],
@@ -414,6 +453,7 @@ class RulesRepository {
         'fr': 'Waqf',
         'id': 'Waqaf',
         'de': 'Waqf',
+        'es': 'Waqf (signos de pausa)',
       },
       descriptions: {
         'en':
@@ -427,6 +467,8 @@ class RulesRepository {
         'id':
             'Tanda waqaf yang menunjukkan tempat berhenti atau menyambung bacaan.',
         'de': 'Pausenzeichen, die Stellen für Halt oder Weiterlesen anzeigen.',
+        'es':
+            'Los signos de waqf indican dónde detenerse, continuar o evitar una pausa durante la recitación.',
       },
       exampleArabic: ['ۘ', 'ۙ', 'ۚ', 'ۗ', 'ۖ', 'ۛ', 'ۜ'],
       triggerLetters: [],
@@ -441,6 +483,7 @@ class RulesRepository {
         'fr': 'Signe de Sajdah',
         'id': 'Tanda Sajdah',
         'de': 'Sajdah-Zeichen',
+        'es': 'Signo de sajdah',
       },
       descriptions: {
         'en': 'The prostration sign (۩) marks verses of sajdah in recitation.',
@@ -450,6 +493,8 @@ class RulesRepository {
         'fr': 'Le signe de sajdah (۩) indique les versets de prosternation.',
         'id': 'Tanda sajdah (۩) menandai ayat-ayat sajdah tilawah.',
         'de': 'Das Sajdah-Zeichen (۩) markiert Verse der Niederwerfung.',
+        'es':
+            'El signo de sajdah (۩) marca los versículos de postración durante la recitación.',
       },
       exampleArabic: ['فَاسْجُدُوا لِلَّهِ وَاعْبُدُوا ۩'],
       triggerLetters: [],
@@ -464,6 +509,7 @@ class RulesRepository {
         'fr': 'Madd Lazim Kalimi Muthaqqal',
         'id': 'Mad Lazim Kilmi Mutsaqqal',
         'de': 'Madd Lazim Kalimi Muthaqqal',
+        'es': 'Madd lazim kalimi muthaqqal',
       },
       descriptions: {
         'en':
@@ -480,6 +526,8 @@ class RulesRepository {
             'Dalam satu kata, huruf mad diikuti huruf bertasydid. Dibaca 6 harakat. Contoh: ٱلضَّآلِّينَ.',
         'de':
             'Innerhalb eines Wortes folgt der Madd-Buchstabe ein Buchstabe mit Schadda. 6 Zählzeiten. Beispiel: ٱلضَّآلِّينَ.',
+        'es':
+            'En una palabra, una letra de madd va seguida de una letra con shadda. Se prolonga 6 tiempos. Ejemplo: ٱلضَّآلِّينَ.',
       },
       exampleArabic: ['ٱلضَّآلِّينَ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -494,6 +542,7 @@ class RulesRepository {
         'fr': 'Madd Lazim Kalimi Mukhaffaf',
         'id': 'Mad Lazim Kilmi Mukhaffaf',
         'de': 'Madd Lazim Kalimi Mukhaffaf',
+        'es': 'Madd lazim kalimi mukhaffaf',
       },
       descriptions: {
         'en':
@@ -510,6 +559,8 @@ class RulesRepository {
             'Dalam satu kata, huruf mad diikuti huruf bersukun asli. Dibaca 6 harakat. Hanya dua tempat: Yunus 51 dan 91.',
         'de':
             'Innerhalb eines Wortes folgt dem Madd-Buchstaben ein Buchstabe mit Sukoon. 6 Zählzeiten. Nur zweimal im Koran: 10:51 und 10:91.',
+        'es':
+            'En una palabra, una letra de madd va seguida de una letra con sukún original; se prolonga 6 tiempos. Solo aparece dos veces en el Corán: 10:51 y 10:91.',
       },
       exampleArabic: ['ءَآلْـَٔـٰنَ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -524,6 +575,7 @@ class RulesRepository {
         'fr': 'Madd Lazim Harfi Muthaqqal',
         'id': 'Mad Lazim Harfi Mutsaqqal',
         'de': 'Madd Lazim Harfi Muthaqqal',
+        'es': 'Madd lazim harfi muthaqqal',
       },
       descriptions: {
         'en':
@@ -540,6 +592,8 @@ class RulesRepository {
             'Pada huruf muqatha’ah, akhir nama huruf diidghamkan ke huruf berikutnya. 6 harakat. Contoh: lam pada الٓمٓ.',
         'de':
             'Bei den Einzelbuchstaben am Surenanfang verschmilzt der Endlaut mit dem nächsten Buchstaben. 6 Zählzeiten. Beispiel: das ل in الٓمٓ.',
+        'es':
+            'En las letras aisladas al comienzo de algunas suras, el final de una letra deletreada se asimila a la siguiente. Se prolonga 6 tiempos. Ejemplo: la ل de الٓمٓ.',
       },
       exampleArabic: ['الٓمٓ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -554,6 +608,7 @@ class RulesRepository {
         'fr': 'Madd Lazim Harfi Mukhaffaf',
         'id': 'Mad Lazim Harfi Mukhaffaf',
         'de': 'Madd Lazim Harfi Mukhaffaf',
+        'es': 'Madd lazim harfi mukhaffaf',
       },
       descriptions: {
         'en':
@@ -570,6 +625,8 @@ class RulesRepository {
             'Pada huruf muqatha’ah, akhir nama huruf bersukun tanpa idgham. 6 harakat. Contoh: sin pada يسٓ.',
         'de':
             'Bei den Einzelbuchstaben endet der Buchstabe auf Sukoon ohne Verschmelzung. 6 Zählzeiten. Beispiel: das س in يسٓ.',
+        'es':
+            'En las letras aisladas al comienzo de algunas suras, la letra termina en sukún sin asimilación. Se prolonga 6 tiempos. Ejemplo: la س de يسٓ.',
       },
       exampleArabic: ['يسٓ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -584,6 +641,7 @@ class RulesRepository {
         'fr': 'Madd Arid Lissoukoun',
         'id': 'Mad Arid Lissukun',
         'de': 'Madd Arid Lissukun',
+        'es': 'Madd arid lis-sukún',
       },
       descriptions: {
         'en':
@@ -600,6 +658,8 @@ class RulesRepository {
             'Huruf mad (alif setelah fathah, wau setelah dhammah, atau ya setelah kasrah) diikuti huruf yang menjadi sukun hanya karena diwaqafkan. Saat berhenti: 2, 4, atau 6 harakat dengan ukuran yang konsisten; bila diteruskan kembali menjadi mad thabi\'i 2 harakat.',
         'de':
             'Ein Madd-Buchstabe (Alif nach Fatha, Waw nach Damma oder Ya nach Kasra), gefolgt von einem Buchstaben, der nur durch das Anhalten sakin wird. Beim Anhalten 2, 4 oder 6 Zählzeiten in gleichbleibender Länge; beim Weiterlesen wird daraus ein natürliches Madd von 2 Zählzeiten.',
+        'es':
+            'Una letra de madd (alif tras fatha, waw tras damma o ya tras kasra) seguida de una letra que solo queda en sukún al detenerse. Al parar, se prolonga 2, 4 o 6 tiempos manteniendo la misma medida; al continuar vuelve a 2 tiempos.',
       },
       exampleArabic: ['يَعْمَهُونَ', 'نَسْتَعِينُ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -614,6 +674,7 @@ class RulesRepository {
         'fr': 'Madd Lin',
         'id': 'Mad Lin',
         'de': 'Madd Lin',
+        'es': 'Madd lin',
       },
       descriptions: {
         'en':
@@ -630,6 +691,8 @@ class RulesRepository {
             'Huruf lin — wau atau ya bersukun yang didahului fathah, sehingga harakat sebelumnya tidak sejenis dengannya — diikuti huruf yang diwaqafkan. Saat berhenti: 2, 4, atau 6 harakat; tidak ada pemanjangan sama sekali bila diteruskan.',
         'de':
             'Ein Lin-Buchstabe — Waw oder Ya mit Sukun und einem vorangehenden Fatha, das nicht zu ihm passt — gefolgt von einem Buchstaben, auf dem angehalten wird. Beim Anhalten 2, 4 oder 6 Zählzeiten; beim Weiterlesen keine Dehnung.',
+        'es':
+            'Una letra lin — waw o ya con sukún precedida de fatha — va seguida de una letra en la que se hace pausa. Al detenerse se prolonga 2, 4 o 6 tiempos; al continuar no se alarga.',
       },
       exampleArabic: ['قُرَيْشٍ', 'خَوْفٍ'],
       triggerLetters: ['و', 'ي'],
@@ -644,6 +707,7 @@ class RulesRepository {
         'fr': 'Idgham Shafawi',
         'id': 'Idgham Syafawi',
         'de': 'Idgham Shafawi',
+        'es': 'Idgham labial (Shafawi)',
       },
       descriptions: {
         'en':
@@ -660,6 +724,8 @@ class RulesRepository {
             'Mim sukun bertemu mim berikutnya: keduanya melebur menjadi satu mim bertasydid, dibaca dengan bibir terkatup ringan dan ghunnah 2 harakat.',
         'de':
             'Auf ein Meem sakinah folgt ein weiteres Meem: beide verschmelzen zu einem einzigen verdoppelten Meem, mit leicht geschlossenen Lippen und einer Ghunna von 2 Zählzeiten.',
+        'es':
+            'Cuando una mim en sukún va seguida de otra mim, ambas se fusionan en una sola mim con shadda, pronunciada con los labios suavemente cerrados y gunna durante 2 tiempos.',
       },
       exampleArabic: ['لَكُم مَّا'],
       triggerLetters: ['م'],
@@ -674,6 +740,7 @@ class RulesRepository {
         'fr': 'Idgham Mutajanisayn',
         'id': 'Idgham Mutajanisain',
         'de': 'Idgham Mutajanisayn',
+        'es': 'Idgham de letras homorgánicas (Mutajanisayn)',
       },
       descriptions: {
         'en':
@@ -690,6 +757,8 @@ class RulesRepository {
             'Dua huruf yang sama makhrajnya tetapi berbeda sifatnya: huruf pertama yang sukun melebur sepenuhnya ke huruf kedua. Pasangan yang umum: ت ke د, د ke ت, ت ke ط, ط ke ت, ث ke ذ, ذ ke ظ, dan ب ke م.',
         'de':
             'Zwei Buchstaben teilen denselben Artikulationspunkt, unterscheiden sich aber in den Eigenschaften: der erste, sakin, geht vollständig im zweiten auf. Häufige Paare: ت in د, د in ت, ت in ط, ط in ت, ث in ذ, ذ in ظ und ب in م.',
+        'es':
+            'Dos letras comparten el mismo punto de articulación, pero difieren en sus atributos; la primera, en sukún, se asimila completamente a la segunda. Pares comunes: ت en د, د en ت, ت en ط, ط en ت, ث en ذ, ذ en ظ y ب en م.',
       },
       exampleArabic: ['قَد تَّبَيَّنَ'],
       triggerLetters: [],
@@ -704,6 +773,7 @@ class RulesRepository {
         'fr': 'Ikhfa Shafawi',
         'id': 'Ikhfa Syafawi',
         'de': 'Ikhfa Shafawi',
+        'es': 'Ikhfa labial (Shafawi)',
       },
       descriptions: {
         'en': 'Concealment of meem sakinah before the letter ba with ghunnah.',
@@ -714,6 +784,8 @@ class RulesRepository {
         'fr': 'Dissimulation du meem sakinah devant la lettre ب avec ghounna.',
         'id': 'Mim sukun disamarkan sebelum huruf ba dengan dengung.',
         'de': 'Verbergen von Meem Sakinah vor dem Buchstaben ب mit Ghunna.',
+        'es':
+            'La mim en sukún se oculta antes de la letra ب con gunna de 2 tiempos y los labios suavemente aproximados.',
       },
       exampleArabic: ['تَرْمِيهِم بِحِجَارَةٍ'],
       triggerLetters: ['ب'],
@@ -732,17 +804,21 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'A connecting hamza that is pronounced at the start of recitation and dropped in continuous reading.',
-        'ar': 'همزة تُنطق في ابتداء الكلام وتسقط في حال الوصل.',
-        'ur': 'یہ ہمزہ ابتداء میں پڑھا جاتا ہے اور وصل میں ساقط ہو جاتا ہے۔',
-        'tr': 'Başlangıçta okunan, vasl halinde düşen bağlayıcı hemzedir.',
+            'A connecting hamza pronounced when beginning a word and omitted in connected reading. When beginning, the definite article ال takes fatḥah (ٱلْحَمْدُ); most nouns and verb forms take kasrah (ٱهْدِنَا, ٱسْتَغْفِرُوا). A triliteral imperative takes ḍammah when the third letter of its present-tense form has an original ḍammah (ٱدْخُلُوا from يَدْخُلُ); otherwise it takes kasrah (ٱضْرِبُوا from يَضْرِبُ).',
+        'ar':
+            'همزة الوصل تُنطق عند البدء بالكلمة وتسقط في الوصل. تُفتح همزة «الـ» التعريف (ٱلْحَمْدُ)، وتُكسر في أكثر الأسماء وصيغ الأفعال (ٱهْدِنَا، ٱسْتَغْفِرُوا). ويُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدْخُلُوا من يَدْخُلُ)، وإلا يُكسر (ٱضْرِبُوا من يَضْرِبُ).',
+        'ur':
+            'ہمزۂ وصل ابتدا میں پڑھی جاتی اور وصل میں ساقط ہو جاتی ہے۔ ابتدا میں «ال» کی ہمزہ پر زبر آتی ہے (ٱلْحَمْدُ)، اکثر دوسرے اسماء اور افعال پر زیر (ٱهْدِنَا، ٱسْتَغْفِرُوا)۔ ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر پیش آتی ہے (ٱدْخُلُوا، مضارع: يَدْخُلُ)، ورنہ زیر (ٱضْرِبُوا، مضارع: يَضْرِبُ)۔',
+        'tr':
+            'Hemze-i vasl kelimeye başlanırken okunur, önceki kelimeye bağlanırken düşer. ال takısı fetha (ٱلْحَمْدُ), isim ve fiil kalıplarının çoğu kesra ile başlar (ٱهْدِنَا, ٱسْتَغْفِرُوا). Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme (ٱدْخُلُوا; يَدْخُلُ), değilse kesra (ٱضْرِبُوا; يَضْرِبُ) okunur.',
         'fr':
-            'Hamza de liaison prononcée en début de lecture et élidée en continuation.',
-        'id': 'Hamzah sambung: dibaca saat memulai, gugur saat washal.',
+            'La hamza de liaison se prononce au début d’un mot et tombe en liaison. L’article ال commence par la fatḥa (ٱلْحَمْدُ) ; la plupart des noms et formes verbales par la kasra (ٱهْدِنَا, ٱسْتَغْفِرُوا). À l’impératif trilittère, on prend la ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale (ٱدْخُلُوا, يَدْخُلُ), sinon la kasra (ٱضْرِبُوا, يَضْرِبُ).',
+        'id':
+            'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung. ال dimulai dengan fathah (ٱلْحَمْدُ); kebanyakan kata benda dan bentuk kata kerja dengan kasrah (ٱهْدِنَا, ٱسْتَغْفِرُوا). Fi’il amr tsulatsi memakai dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli (ٱدْخُلُوا, يَدْخُلُ), selain itu memakai kasrah (ٱضْرِبُوا, يَضْرِبُ).',
         'de':
-            'Verbindungs-Hamza: am Anfang gesprochen, beim Verbinden ausgelassen.',
+            'Die Hamzat al-Wasl wird am Wortanfang gesprochen und beim Verbinden ausgelassen. Der bestimmte Artikel ال beginnt mit Fatha (ٱلْحَمْدُ); die meisten Nomen und Verbformen mit Kasra (ٱهْدِنَا, ٱسْتَغْفِرُوا). Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat (ٱدْخُلُوا, يَدْخُلُ), sonst mit Kasra (ٱضْرِبُوا, يَضْرِبُ).',
         'es':
-            'Hamza de enlace que se pronuncia al comenzar y se omite al unir la palabra con la anterior.',
+            'La hamza de enlace se pronuncia al comenzar una palabra y se omite al enlazarla con la anterior. El artículo ال comienza con fatha (ٱلْحَمْدُ); la mayoría de los nombres y formas verbales, con kasra (ٱهْدِنَا, ٱسْتَغْفِرُوا). El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدْخُلُوا, يَدْخُلُ); en caso contrario, kasra (ٱضْرِبُوا, يَضْرِبُ).',
       },
       exampleArabic: ['ٱهْدِنَا', 'ٱلْحَمْدُ', 'ٱسْتَغْفِرُوا'],
       triggerLetters: [],
@@ -790,6 +866,7 @@ class RulesRepository {
         'fr': 'Lam Shamsiyah',
         'id': 'Lam Syamsiyah',
         'de': 'Laam Shamsiyah',
+        'es': 'Lam solar (Shamsiyah)',
       },
       descriptions: {
         'en':
@@ -806,6 +883,8 @@ class RulesRepository {
             'Bila "al-" diikuti salah satu dari empat belas huruf syamsiyah ت ث د ذ ر ز س ش ص ض ط ظ ل ن, lam sama sekali tidak dibaca: ia melebur ke huruf itu sehingga huruf tersebut bertasydid. Pada huruf qamariyah, lam dibaca jelas.',
         'de':
             'Folgt auf "al-" einer der vierzehn Sonnenbuchstaben ت ث د ذ ر ز س ش ص ض ط ظ ل ن, wird das Lam gar nicht ausgesprochen: es geht in diesen Buchstaben auf, der dann ein Schadda trägt. Bei den Mondbuchstaben wird das Lam dagegen klar gesprochen.',
+        'es':
+            'Cuando ال va seguido de una de las catorce letras solares ت ث د ذ ر ز س ش ص ض ط ظ ل ن, la lam no se pronuncia: se asimila a la letra siguiente, que lleva shadda. Ante letras lunares, la lam sí se pronuncia claramente.',
       },
       exampleArabic: ['الشَّمْسِ', 'النَّاسِ'],
       triggerLetters: [
@@ -828,26 +907,34 @@ class RulesRepository {
     TajweedRuleDefinition(
       rule: TajweedRule.silent,
       names: {
-        'en': 'Silent Letter',
-        'ar': 'حَرْف سَاكِن',
-        'ur': 'خاموش حرف',
-        'tr': 'Sessiz Harf',
-        'fr': 'Lettre Muette',
-        'id': 'Huruf Diam',
-        'de': 'Stummer Buchstabe',
+        'en': 'Extra Unpronounced Letter',
+        'ar': 'حَرْف زَائِد لَا يُنْطَق',
+        'ur': 'زائد غیر ملفوظ حرف',
+        'tr': 'Okunmayan Ek Harf',
+        'fr': 'Lettre ajoutée non prononcée',
+        'id': 'Huruf Tambahan yang Tidak Dibaca',
+        'de': 'Zusätzlicher, stummer Buchstabe',
+        'es': 'Letra adicional no pronunciada',
       },
       descriptions: {
         'en':
-            'A script letter that is written in Uthmani script but not pronounced in recitation.',
-        'ar': 'حرف يُكتب في الرسم العثماني ولا يُنطق في التلاوة.',
-        'ur': 'ایسا حرف جو لکھا جاتا ہے مگر تلاوت میں ادا نہیں کیا جاتا۔',
-        'tr': 'Mushaf yazısında bulunan ancak tilavette okunmayan harf.',
-        'fr': 'Lettre écrite dans le rasm uthmani mais non prononcée.',
-        'id': 'Huruf dalam rasm Utsmani yang ditulis tetapi tidak dilafalkan.',
+            'An extra letter in the Uthmani script that is written but not pronounced, often marked with the rounded zero (۟). This is not an ordinary sukoon (ۡ), which marks a pronounced consonant without a vowel.',
+        'ar':
+            'حرف زائد يُكتب في رسم المصحف ولا يُنطق، وتدل عليه غالبًا علامة الصفر المستدير فوقه (۟). ولا تخلطها بعلامة السكون المعتادة، وهي رأس حاء صغيرة (ۡ)، التي تدل على حرف منطوق بلا حركة.',
+        'ur':
+            'رسمِ عثمانی میں زائد لکھا جانے والا مگر تلاوت میں نہ پڑھا جانے والا حرف، جس پر عموماً صفرِ مستدیر (۟) ہوتا ہے۔ یہ عام سکون (ۡ) نہیں؛ عام سکون ایسے ادا ہونے والے حرف کو ظاہر کرتا ہے جس پر کوئی حرکت نہ ہو۔',
+        'tr':
+            'Uthmani yazımda yazıldığı hâlde okunmayan ek harf; çoğunlukla üzerindeki yuvarlak sıfır (۟) ile gösterilir. Bu, harekesiz okunan bir ünsüzü belirten normal sükûn (ۡ) değildir.',
+        'fr':
+            'Lettre ajoutée au rasm uthmani, écrite mais non prononcée, souvent marquée par un petit zéro rond (۟). Ce signe se distingue du soukoun ordinaire (ۡ), qui indique une consonne prononcée sans voyelle.',
+        'id':
+            'Huruf tambahan dalam rasm Utsmani yang ditulis tetapi tidak dibaca, biasanya ditandai sifr mustadir (۟). Ini berbeda dari sukun biasa (ۡ), yang menandai konsonan yang tetap dilafalkan tanpa vokal.',
         'de':
-            'Ein im uthmanischen Schriftbild geschriebener, aber nicht ausgesprochener Buchstabe.',
+            'Ein zusätzlicher Buchstabe im uthmanischen Schriftbild, der geschrieben, aber nicht gesprochen wird und oft mit dem runden Nullzeichen (۟) markiert ist. Das unterscheidet sich vom gewöhnlichen Sukūn (ۡ), das einen gesprochenen Konsonanten ohne Vokal kennzeichnet.',
+        'es':
+            'Una letra adicional del rasm uthmani que se escribe pero no se pronuncia, normalmente marcada con el cero redondo (۟). No es un sukún ordinario (ۡ), que señala una consonante pronunciada sin vocal.',
       },
-      exampleArabic: ['أُولَٰئِكَ', 'هَٰذَا'],
+      exampleArabic: ['أُو۟لَـٰٓئِكَ', 'كَفَرُوا۟'],
       triggerLetters: [],
     ),
   ];

@@ -429,7 +429,7 @@ class QuizRepository {
     final fr = def.descriptions['fr'] ?? '';
     final id = def.descriptions['id'] ?? '';
     final de = def.descriptions['de'] ?? '';
-    final es = def.descriptions['es'];
+    final es = def.descriptions['es'] ?? '';
 
     if (variant.isEven) {
       final explanations = {
@@ -440,25 +440,24 @@ class QuizRepository {
         'fr': '${def.names['fr']}: $fr',
         'id': '${def.names['id']}: $id',
         'de': '${def.names['de']}: $de',
+        'es': '${def.names['es']}: $es',
       };
-      if (es != null) {
-        explanations['es'] = '${def.names['es'] ?? def.names['en']}: $es';
-      }
       return explanations;
     }
 
+    String withTriggerLetters(String label, String separator, String text) =>
+        letters.isEmpty ? text : '$label$letters$separator$text';
+
     final explanations = {
-      'en': 'Trigger letters: $letters. $en',
-      'ar': 'حروف السبب: $letters. $ar',
-      'ur': 'حروفِ سبب: $letters۔ $ur',
-      'tr': 'Tetikleyici harfler: $letters. $tr',
-      'fr': 'Lettres déclencheuses: $letters. $fr',
-      'id': 'Huruf pemicu: $letters. $id',
-      'de': 'Auslöser-Buchstaben: $letters. $de',
+      'en': withTriggerLetters('Trigger letters: ', '. ', en),
+      'ar': withTriggerLetters('حروف السبب: ', '. ', ar),
+      'ur': withTriggerLetters('حروفِ سبب: ', '۔ ', ur),
+      'tr': withTriggerLetters('Tetikleyici harfler: ', '. ', tr),
+      'fr': withTriggerLetters('Lettres déclencheuses : ', '. ', fr),
+      'id': withTriggerLetters('Huruf pemicu: ', '. ', id),
+      'de': withTriggerLetters('Auslöser-Buchstaben: ', '. ', de),
+      'es': withTriggerLetters('Letras clave: ', '. ', es),
     };
-    if (es != null) {
-      explanations['es'] = 'Letras clave: $letters. $es';
-    }
     return explanations;
   }
 }

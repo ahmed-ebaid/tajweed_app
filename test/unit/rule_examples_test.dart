@@ -84,6 +84,58 @@ void main() {
     }
   });
 
+  test(
+    'hamzat al-wasl explains how to choose its starting vowel in Arabic',
+    () {
+      final description = RulesRepository.findByRule(
+        TajweedRule.hamzatWasl,
+      )!.description('ar');
+
+      expect(description, contains('عند البدء'));
+      expect(description, contains('تُفتح'));
+      expect(description, contains('تُكسر'));
+      expect(description, contains('يُضم'));
+      expect(description, contains('ٱلْحَمْدُ'));
+      expect(description, contains('ٱهْدِنَا'));
+      expect(description, contains('ٱدْخُلُوا'));
+      expect(description, contains('ٱضْرِبُوا'));
+      expect(description, contains('من مضارعه'));
+      expect(description, isNot(contains('ثالثه مضمومًا')));
+    },
+  );
+
+  test(
+    'silent-letter rule distinguishes rounded zero from ordinary sukoon',
+    () {
+      const languageCodes = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
+      final definition = RulesRepository.findByRule(TajweedRule.silent)!;
+
+      expect(TajweedRule.silent.arabicName, 'حَرْف زَائِد لَا يُنْطَق');
+      expect(TajweedRule.silent.arabicName, isNot('حَرْف سَاكِن'));
+      expect(definition.description('ar'), contains('الصفر المستدير'));
+      expect(definition.description('ar'), contains('۟'));
+      expect(definition.description('ar'), contains('ۡ'));
+
+      for (final languageCode in languageCodes) {
+        expect(
+          definition.names[languageCode],
+          isNotEmpty,
+          reason: 'Missing $languageCode name for ${definition.rule.name}',
+        );
+        expect(
+          definition.descriptions[languageCode],
+          contains('۟'),
+          reason: 'Missing rounded-zero explanation for $languageCode',
+        );
+        expect(
+          definition.descriptions[languageCode],
+          contains('ۡ'),
+          reason: 'Missing ordinary-sukoon distinction for $languageCode',
+        );
+      }
+    },
+  );
+
   test('waqf uses an ayah with a clear obligatory-stop marker', () {
     final ref = RuleExampleReferences.referenceFor(TajweedRule.waqf);
 
@@ -162,10 +214,15 @@ void main() {
   test(
     'every rule has a substantial description in all supported languages',
     () {
-      const langs = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de'];
+      const langs = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
       for (final rule in TajweedRule.values) {
         final def = RulesRepository.findByRule(rule)!;
         for (final lang in langs) {
+          expect(
+            def.names[lang]?.trim(),
+            isNotEmpty,
+            reason: '${rule.name} has no $lang name',
+          );
           final text = def.description(lang);
           expect(
             text.trim().length,
