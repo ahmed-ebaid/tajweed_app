@@ -240,7 +240,7 @@ class TajweedText extends StatelessWidget {
   ) {
     final result = <InlineSpan>[];
     final text = _normalizeForCurrentAyah(word.arabic);
-    final graphemeMap = _GraphemeMap.fromText(text);
+    final graphemeMap = _GraphemeMap.fromText(text, spans: word.spans);
     int cursor = 0;
 
     // Sort spans by start position
@@ -259,12 +259,28 @@ class TajweedText extends StatelessWidget {
       // Uncolored text before this span
       if (cursor < start) {
         final beforeText = graphemeMap.slice(cursor, start);
+        final tanweenOnly =
+            span.start < text.length &&
+            text.codeUnitAt(span.start) >= 0x064B &&
+            text.codeUnitAt(span.start) <= 0x064D;
+        final carrierLength = tanweenOnly && onRuleTapped != null
+            ? beforeText.characters.last.length
+            : 0;
         result.addAll(
           _buildGraphemeTextSpans(
-            beforeText,
+            beforeText.substring(0, beforeText.length - carrierLength),
             _baseWordStyle(baseColor, isActiveWord: isActiveWord),
           ),
         );
+        if (carrierLength > 0) {
+          result.addAll(
+            _buildGraphemeTextSpans(
+              beforeText.substring(beforeText.length - carrierLength),
+              _baseWordStyle(baseColor, isActiveWord: isActiveWord),
+              onTap: () => onRuleTapped!(span.rule, word, word.audioUrl),
+            ),
+          );
+        }
       }
 
       // Colored span
@@ -578,7 +594,7 @@ class TajweedText extends StatelessWidget {
   }) {
     final result = <InlineSpan>[];
     final text = _normalizeArabicText(word.arabic);
-    final graphemeMap = _GraphemeMap.fromText(text);
+    final graphemeMap = _GraphemeMap.fromText(text, spans: word.spans);
     final sorted = [...word.spans]..sort((a, b) => a.start.compareTo(b.start));
     var cursor = 0;
 
@@ -704,7 +720,10 @@ class _GraphemeMap {
 
   _GraphemeMap._(this._clusters, this._clusterCodeUnitStarts);
 
-  factory _GraphemeMap.fromText(String text) {
+  factory _GraphemeMap.fromText(
+    String text, {
+    List<TajweedSpan> spans = const [],
+  }) {
     final rawClusters = text.characters.toList(growable: false);
     final clusters = <String>[];
     for (final cluster in rawClusters) {
@@ -714,13 +733,45 @@ class _GraphemeMap {
       }
       clusters.add(cluster);
     }
+    // Tanween is intentionally colored separately from its carrier. Keep all
+    // other graphemes intact, including ordinary vowels and Quranic marks.
+    final tanweenStarts = spans
+        .where(
+          (span) =>
+              span.start >= 0 &&
+              span.start < text.length &&
+              text.codeUnitAt(span.start) >= 0x064B &&
+              text.codeUnitAt(span.start) <= 0x064D,
+        )
+        .map((span) => span.start)
+        .toSet();
+    var position = 0;
+    final splitClusters = <String>[];
+    for (final cluster in clusters) {
+      final boundaries =
+          tanweenStarts
+              .where(
+                (start) =>
+                    start > position && start < position + cluster.length,
+              )
+              .map((start) => start - position)
+              .toList()
+            ..sort();
+      var cursor = 0;
+      for (final boundary in boundaries) {
+        splitClusters.add(cluster.substring(cursor, boundary));
+        cursor = boundary;
+      }
+      splitClusters.add(cluster.substring(cursor));
+      position += cluster.length;
+    }
     final starts = <int>[0];
     var offset = 0;
-    for (final cluster in clusters) {
+    for (final cluster in splitClusters) {
       offset += cluster.length;
       starts.add(offset);
     }
-    return _GraphemeMap._(clusters, starts);
+    return _GraphemeMap._(splitClusters, starts);
   }
 
   static bool _isStandaloneArabicMarkCluster(String cluster) {

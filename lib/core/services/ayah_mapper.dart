@@ -236,17 +236,11 @@ class AyahMapper {
       return (start: start, end: end);
     }
     // Upstream tags may include the supporting alif or letters before the
-    // tanween carrier. Colour only its base and marks, not those neighbours.
+    // tanween carrier. The rule governs the tanween, not its carrier letter.
     for (var i = start; i < end; i++) {
       final cp = text.codeUnitAt(i);
       if (cp < 0x064B || cp > 0x064D) continue;
-      var base = i - 1;
-      while (base >= start && _isArabicCombiningMark(text.codeUnitAt(base))) {
-        base--;
-      }
-      if (base >= start) {
-        return (start: base, end: _extendOverCombining(text, i + 1));
-      }
+      return (start: i, end: _extendOverCombining(text, i + 1));
     }
     return (start: start, end: end);
   }

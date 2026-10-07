@@ -9,10 +9,14 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.16
-- **Build:** 92
+- **Build:** 93
 - **Release stage:** App Store Connect / TestFlight only; not submitted for review.
-- **TestFlight status:** Build 92 uploaded and Apple-validated; available to the
+- **TestFlight status:** Build 93 uploaded and Apple-validated; available to the
   internal Tajweed Testers group.
+- **Build 93 highlighting fix:** Noon/tanween rules color the tanween marks
+  separately from the neutral carrier letter. Following trigger letters retain
+  their annotations. Pixel-geometry and reader/detail interaction regressions
+  cover As-Sajdah 32:15 and other tanween cases. These fixes were not in build 92.
 - **Build 92 sharing fix:** Explanatory rounded-zero and sukoon symbols are shown
   on illustrative letters (و۟ and بۡ), rather than as unattached combining marks,
   in guidance and text shares. Quran quotations retain their source characters.

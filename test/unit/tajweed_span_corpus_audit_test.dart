@@ -101,6 +101,7 @@ List<String> _strandedBodyRuns(
     final isWaqfMarker = run.isMarker && run.markerRule == TajweedRule.waqf;
     if (!run.isMarker &&
         !afterWaqfMarker &&
+        !RegExp(r'^[ًٌٍ]').hasMatch(run.text) &&
         _bodyRunLacksVisibleBase(run.text)) {
       offenders.add(run.text);
     }
@@ -151,8 +152,7 @@ String _expectedBaseLetters(String text, TajweedRule rule) {
   if (tanweenRules.contains(rule)) {
     final tanween = RegExp('[\u064B-\u064D]').firstMatch(text);
     if (tanween != null) {
-      final before = _baseLetters(text.substring(0, tanween.start));
-      if (before.isNotEmpty) return before.substring(before.length - 1);
+      return '';
       // A combining hamza on tatweel (ـٔ) is the carrier, not the
       // supporting alif. Neither tatweel nor its marks are base letters.
       if (text.substring(0, tanween.start).contains('ـٔ')) return '';

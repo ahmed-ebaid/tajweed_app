@@ -164,9 +164,9 @@ void main() {
       verseKey: '11:58',
       html: 'بِرَحۡمَ<rule class=idgham_ghunnah>ةٍ</rule>',
       rule: TajweedRule.idghamWithGhunnah,
-      expected: 'ةٍ',
+      expected: 'ٍ',
       expectedWord: 'بِرَحۡمَةٍ مِّنَّا',
-      expectedHeaderColor: 'ةٍمِّ',
+      expectedHeaderColor: 'ٍمِّ',
       otherRule: null,
       continuation: 'مِّنَّا',
       continuationHtml:
@@ -246,7 +246,11 @@ void main() {
             expect(start, isNonNegative, reason: fixture.name);
             final boxes = paragraph.getBoxesForSelection(
               TextSelection(
-                baseOffset: start,
+                baseOffset:
+                    colored.runes.first >= 0x064B &&
+                        colored.runes.first <= 0x064D
+                    ? start - 1
+                    : start,
                 extentOffset: start + colored.length,
               ),
             );
@@ -298,7 +302,7 @@ void main() {
               );
               expect(
                 coloredText(contextText.text, fixture.rule.color),
-                contains('ةٍم'),
+                contains('ٍم'),
                 reason: '${fixture.name} highlights both sides of Idgham',
               );
             }
@@ -315,6 +319,13 @@ void main() {
     tester,
   ) async {
     final fixtures = [
+      (
+        name: 'As-Sajdah 32:15 tanween into waw',
+        rule: TajweedRule.idghamWithGhunnah,
+        left: 'سُجَّ<rule class=idgham_ghunnah>دًا</rule>',
+        right: '<rule class=idgham_ghunnah>و</rule>َسَبَّحُوا',
+        selectableIndices: [0, 1],
+      ),
       (
         name: 'idgham with ghunnah',
         rule: TajweedRule.idghamWithGhunnah,
@@ -427,7 +438,10 @@ void main() {
         );
         final boxes = paragraph.getBoxesForSelection(
           TextSelection(
-            baseOffset: start,
+            baseOffset:
+                tapText.runes.first >= 0x064B && tapText.runes.first <= 0x064D
+                ? start - 1
+                : start,
             extentOffset: start + tapText.length,
           ),
         );
@@ -514,12 +528,12 @@ void main() {
       (
         html: 'صَعِي<rule class=ikhafa>دًا</rule>',
         rule: TajweedRule.ikhfa,
-        expected: 'دً',
+        expected: 'ً',
       ),
       (
         html: 'ش<rule class=idgham_ghunnah>َىۡءٍ</rule>',
         rule: TajweedRule.idghamWithGhunnah,
-        expected: 'ءٍ',
+        expected: 'ٍ',
       ),
     ]) {
       final word = AyahMapper.fromApi({
