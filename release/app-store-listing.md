@@ -10,7 +10,11 @@
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.16
 - **Build:** 93
-- **Release stage:** App Store Connect / TestFlight only; not submitted for review.
+- **Release stage:** Submitted for App Store review; waiting for review.
+- **Release setting:** Automatic release after approval.
+- **Submission:** 437b2731-efd5-4b13-9fce-6884fced3141
+- **Store assets:** All 160 inherited screenshots verified unchanged; What's New
+  updated in all eight store languages.
 - **TestFlight status:** Build 93 uploaded and Apple-validated; available to the
   internal Tajweed Testers group.
 - **Build 93 highlighting fix:** Noon/tanween rules color the tanween marks
@@ -96,10 +100,11 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Corrects silent-letter quiz examples and explains the difference between
-the rounded-zero sign and sukoon. Expands Hamzat al-Wasl guidance with
-starting-vowel examples, completes Spanish rule explanations and tips,
-and improves rule-label layout on narrow screens.
+Improved Tajweed learning guidance: corrected silent-letter examples and
+clarified rounded-zero signs versus sukoon. Expanded Hamzat al-Wasl
+starting-vowel explanations and completed Spanish rule guidance. More precise
+tanween highlights in Quran text, clearer shared explanations, and improved
+rule layouts on smaller screens.
 
 ## Previous improvements retained
 
