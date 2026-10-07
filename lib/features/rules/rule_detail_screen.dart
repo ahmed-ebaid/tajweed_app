@@ -16,6 +16,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:share_plus/share_plus.dart';
 import 'widgets/rule_example_text.dart';
 import 'widgets/rule_guidance_text.dart';
+import '../../shared/utils/share_text.dart';
 
 /// Full-screen detail view for a single tajweed rule.
 /// Shows the Arabic name, description, example words with color coding,
@@ -237,7 +238,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
 
     final localizedName = def.name(langCode).trim();
     final arabicName = def.rule.arabicName.trim();
-    final description = def.description(langCode).trim();
+    final description = ShareText.guidance(def.description(langCode).trim());
     final examples = def.exampleArabic
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
@@ -264,7 +265,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
       }
     }
 
-    final quranText = shareAyah?.arabic.trim();
+    final quranText = shareAyah?.plainArabicText().trim();
     final ref = shareAyah == null
         ? _exampleReference()
         : (surah: shareAyah.surahNumber, ayah: shareAyah.ayahNumber);
@@ -321,7 +322,9 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
       lines
         ..add('')
         ..add('${l10n.get('how_to_pronounce')}:')
-        ..addAll(pronunciationTips.map((tip) => '- $tip'));
+        ..addAll(
+          pronunciationTips.map((tip) => '- ${ShareText.guidance(tip)}\n'),
+        );
     }
 
     lines

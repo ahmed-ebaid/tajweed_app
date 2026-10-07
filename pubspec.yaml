@@ -1,7 +1,7 @@
 name: tajweed_practice
 description: A multilingual Quran tajweed practice application
 publish_to: none
-version: 1.1.16+91
+version: 1.1.16+92
 
 environment:
   sdk: ">=3.12.0 <4.0.0"

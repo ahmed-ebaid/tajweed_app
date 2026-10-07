@@ -43,7 +43,7 @@ void main() {
         final symbols = children.where(
           (child) => child.style?.fontFamily == 'AmiriQuran',
         );
-        expect(symbols.map((child) => child.text), ['ـ۟', 'ـۡ']);
+        expect(symbols.map((child) => child.text), ['و۟', 'بۡ']);
         expect(symbols.first.style!.color, TajweedRule.silent.color);
         expect(symbols.last.style!.color, isNull);
         for (final symbol in symbols) {
@@ -52,7 +52,7 @@ void main() {
         }
         expect(
           span.toPlainText(includeSemanticsLabels: false),
-          description.replaceAll('(۟)', '(ـ۟)').replaceAll('(ۡ)', '(ـۡ)'),
+          description.replaceAll('(۟)', '(و۟)').replaceAll('(ۡ)', '(بۡ)'),
         );
         expect(text.semanticsLabel, description);
         expect(tester.takeException(), isNull);

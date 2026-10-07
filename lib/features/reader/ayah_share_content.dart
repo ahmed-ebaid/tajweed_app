@@ -1,4 +1,5 @@
 import '../../core/constants/app_links.dart';
+import '../../shared/utils/share_text.dart';
 
 abstract final class AyahShareContent {
   static String build({
@@ -11,7 +12,7 @@ abstract final class AyahShareContent {
       if (arabicText.isNotEmpty) '',
       if (arabicText.isNotEmpty) arabicText,
       if (translation.isNotEmpty) '',
-      if (translation.isNotEmpty) translation,
+      if (translation.isNotEmpty) ShareText.guidance(translation),
       '',
       AppLinks.productName,
       AppLinks.appStore,

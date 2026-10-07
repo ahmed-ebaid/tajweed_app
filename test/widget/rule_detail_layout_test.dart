@@ -39,6 +39,17 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final definition = RulesRepository.findByRule(TajweedRule.silent)!;
+    final shares = <MethodCall>[];
+    const shareChannel = MethodChannel('dev.fluttercommunity.plus/share');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(shareChannel, (call) async {
+          shares.add(call);
+          return 'success';
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(shareChannel, null);
+    });
     for (final language in ['ar', 'es', 'ur', 'en']) {
       final locale = LocaleProvider(deviceLocales: () => [Locale(language)]);
       await tester.pumpWidget(
@@ -85,6 +96,19 @@ void main() {
             box.localToGlobal(Offset.zero).dy +
             box.getDryBaseline(box.constraints, TextBaseline.alphabetic)!;
         expect(baseline(bulletBox), closeTo(baseline(textBox), 0.1));
+      }
+      await tester.tap(
+        find.byTooltip(AppLocalizations(locale.locale).get('share_rule')),
+      );
+      await tester.pumpAndSettle();
+      final payload = shares.last.arguments as Map;
+      final sharedText = payload['text'] as String;
+      expect(sharedText, contains('(و۟)'));
+      expect(sharedText, contains('(بۡ)'));
+      expect(sharedText, isNot(contains('(۟)')));
+      expect(sharedText, isNot(contains('(ۡ)')));
+      for (final example in definition.exampleArabic) {
+        expect(sharedText, contains(example));
       }
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();

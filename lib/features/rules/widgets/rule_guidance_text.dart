@@ -21,7 +21,7 @@ class RuleGuidanceText extends StatelessWidget {
       spans.add(
         TextSpan(
           // Combining marks need a carrier and a font with Quranic glyphs.
-          text: 'ـ${match.group(1)}',
+          text: match.group(1) == '۟' ? 'و۟' : 'بۡ',
           style: TextStyle(
             fontFamily: 'AmiriQuran',
             fontWeight: FontWeight.normal,

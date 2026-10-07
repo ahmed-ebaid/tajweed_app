@@ -7,6 +7,7 @@ import '../../../core/providers/tafseer_provider.dart';
 import '../../../core/services/quran_api_service.dart';
 import '../../../core/services/quran_offline_sync_service.dart';
 import '../../../shared/utils/arabic_utils.dart';
+import '../../../shared/utils/share_text.dart';
 import '../tafseer_text_sanitizer.dart';
 
 class TafseerSourceOption {
@@ -73,7 +74,7 @@ class TafseerShareContent {
       heading,
       sourceLine,
       '',
-      tafseerText.trim(),
+      ShareText.guidance(tafseerText.trim()),
       '',
       appName,
       AppLinks.appStore,
