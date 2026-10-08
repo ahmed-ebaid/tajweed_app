@@ -154,7 +154,11 @@ void main() {
       final bytes = (await image.toByteData(
         format: ui.ImageByteFormat.rawRgba,
       ))!.buffer.asUint8List();
-      final alpha = [for (var i = 3; i < bytes.length; i += 4) bytes[i]];
+      // Colored runs can rasterize with different edge alpha on Linux.
+      // Compare occupied pixels, not antialiasing intensity.
+      final alpha = [
+        for (var i = 3; i < bytes.length; i += 4) bytes[i] > 0 ? 1 : 0,
+      ];
       image.dispose();
       picture.dispose();
       painter.dispose();
