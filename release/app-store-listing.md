@@ -8,20 +8,21 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.17 (TestFlight candidate); 1.1.16 remains live.
+- **Version:** 1.1.17 (submitted for review); 1.1.16 remains live until approval.
 - **Build:** 93 (live App Store version) / 94 (internal TestFlight).
-- **Release stage:** Build 93 is live on the App Store; build 94 is
-  TestFlight-only and is not submitted for review.
+- **Release stage:** 1.1.17 (94) submitted to Apple, verified
+  `WAITING_FOR_REVIEW`. Build 93 remains live until approval.
 - **Release setting:** Automatic release after approval.
-- **Submission:** 437b2731-efd5-4b13-9fce-6884fced3141
+- **Submission:** 4ece26fa-df40-4f2f-b590-b720a4e702c0
+- **App Store version ID:** 36636462-e787-4e73-8e93-3f5906d4b61c
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
 - **TestFlight status:** 1.1.17 (94) uploaded, Apple-validated (`VALID`), and
   available to the internal Tajweed Testers group (`IN_BETA_TESTING`).
   What to Test notes are verified in all eight languages.
 - **TestFlight build ID:** 5a4f04c6-0054-4843-82df-687ef3c9ef9f
-- **Public release:** 1.1.16 (93) remains `READY_FOR_SALE`; its build attachment
-  was verified unchanged after TestFlight setup. No 1.1.17 review submission.
+- **Public release:** 1.1.16 (93) remains `READY_FOR_SALE`. Version 1.1.17's
+  build attachment is verified as build 94; automatic release follows approval.
 - **Build train:** Apple closed 1.1.16 to new builds after release, so build 94
   uses 1.1.17. The initial 1.1.16 (94) upload was rejected with error 90186.
 - **Build 94 mark clarity:** Hamzat al-Wasl examples and tips use the Quranic
@@ -124,11 +125,11 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Improved Tajweed learning guidance: corrected silent-letter examples and
-clarified rounded-zero signs versus sukoon. Expanded Hamzat al-Wasl
-starting-vowel explanations and completed Spanish rule guidance. More precise
-tanween highlights in Quran text, clearer shared explanations, and improved
-rule layouts on smaller screens.
+Clearer Tajweed examples with larger text, improved hamza visibility, and
+spacing that adapts to text size. Improved rule layouts and explanations in
+all eight languages. Corrected Quranic sukoon in Hamzat al-Wasl teaching
+examples and more readable shared guidance. Fixed reading-position jumps
+when changing surahs in ayah-by-ayah mode.
 
 ## Previous improvements retained
 
