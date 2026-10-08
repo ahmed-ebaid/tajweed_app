@@ -478,7 +478,7 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
                       _playing ? l10n.get('stop') : l10n.hearPronunciation,
                       style: const TextStyle(
                         fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.normal,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -702,7 +702,10 @@ class _ExampleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = rule.color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: MediaQuery.textScalerOf(context).scale(16),
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
@@ -1175,9 +1178,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'Hamzat al-wasl is pronounced when beginning with a word and omitted when joining from a preceding word',
-          'Begin the definite article ال with fatḥah: ٱلْحَمْدُ (al-ḥamdu)',
-          'Begin most nouns and verb forms with kasrah: ٱهْدِنَا (ihdinā), ٱسْتَغْفِرُوا (istaghfirū)',
-          'A triliteral imperative begins with ḍammah if the third letter of its present-tense form has an original ḍammah (ٱدْخُلُوا from يَدْخُلُ); otherwise, use kasrah (ٱضْرِبُوا from يَضْرِبُ)',
+          'Begin the definite article ال with fatḥah: ٱلۡحَمۡدُ (al-ḥamdu)',
+          'Begin most nouns and verb forms with kasrah: ٱهۡدِنَا (ihdinā), ٱسۡتَغۡفِرُوا (istaghfirū)',
+          'A triliteral imperative begins with ḍammah if the third letter of its present-tense form has an original ḍammah (ٱدۡخُلُوا from يَدۡخُلُ); otherwise, use kasrah (ٱضۡرِبُوا from يَضۡرِبُ)',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1333,9 +1336,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'Se pronuncia al comenzar una palabra y se omite al enlazarla con la anterior',
-          'El artículo ال comienza con fatha: ٱلْحَمْدُ',
-          'La mayoría de los nombres y formas verbales comienzan con kasra: ٱهْدِنَا, ٱسْتَغْفِرُوا',
-          'El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدْخُلُوا, يَدْخُلُ); en caso contrario, kasra (ٱضْرِبُوا, يَضْرِبُ)',
+          'El artículo ال comienza con fatha: ٱلۡحَمۡدُ',
+          'La mayoría de los nombres y formas verbales comienzan con kasra: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
+          'El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدۡخُلُوا, يَدۡخُلُ); en caso contrario, kasra (ٱضۡرِبُوا, يَضۡرِبُ)',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1496,9 +1499,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'تُنطق همزة الوصل عند البدء بالكلمة، وتسقط في الوصل بما قبلها',
-          'تُفتح همزة «الـ» التعريف عند البدء: ٱلْحَمْدُ (الْحَمْدُ)',
-          'تُكسر في أكثر الأسماء وصيغ الأفعال: ٱهْدِنَا، ٱسْتَغْفِرُوا',
-          'يُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدْخُلُوا، يَدْخُلُ)، وإلا يُكسر (ٱضْرِبُوا، يَضْرِبُ)',
+          'تُفتح همزة «الـ» التعريف عند البدء: ٱلۡحَمۡدُ (الۡحَمۡدُ)',
+          'تُكسر في أكثر الأسماء وصيغ الأفعال: ٱهۡدِنَا، ٱسۡتَغۡفِرُوا',
+          'يُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدۡخُلُوا، يَدۡخُلُ)، وإلا يُكسر (ٱضۡرِبُوا، يَضۡرِبُ)',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1643,9 +1646,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'ہمزۂ وصل لفظ کے آغاز میں پڑھی جاتی ہے اور وصل میں ساقط ہو جاتی ہے',
-          '«ال» کی ہمزہ پر زبر آتی ہے: ٱلْحَمْدُ',
-          'اکثر دوسرے اسماء اور افعال کی ہمزہ پر زیر آتی ہے: ٱهْدِنَا، ٱسْتَغْفِرُوا',
-          'ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر بھی پیش آتی ہے: ٱدْخُلُوا، يَدْخُلُ؛ ورنہ زیر: ٱضْرِبُوا، يَضْرِبُ',
+          '«ال» کی ہمزہ پر زبر آتی ہے: ٱلۡحَمۡدُ',
+          'اکثر دوسرے اسماء اور افعال کی ہمزہ پر زیر آتی ہے: ٱهۡدِنَا، ٱسۡتَغۡفِرُوا',
+          'ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر بھی پیش آتی ہے: ٱدۡخُلُوا، يَدۡخُلُ؛ ورنہ زیر: ٱضۡرِبُوا، يَضۡرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1785,9 +1788,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'Hemze-i vasl kelimeye başlanırken okunur, vasl halinde düşer',
-          'ال takısı fetha ile başlar: ٱلْحَمْدُ',
-          'Diğer isim ve fiillerin çoğu kesra ile başlar: ٱهْدِنَا, ٱسْتَغْفِرُوا',
-          'Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme ile başlanır: ٱدْخُلُوا, يَدْخُلُ; değilse kesra: ٱضْرِبُوا, يَضْرِبُ',
+          'ال takısı fetha ile başlar: ٱلۡحَمۡدُ',
+          'Diğer isim ve fiillerin çoğu kesra ile başlar: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
+          'Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme ile başlanır: ٱدۡخُلُوا, يَدۡخُلُ; değilse kesra: ٱضۡرِبُوا, يَضۡرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1939,9 +1942,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'La hamza de liaison se prononce au début d’un mot et tombe en liaison',
-          'L’article ال commence par une fatḥa : ٱلْحَمْدُ',
-          'La plupart des autres noms et verbes commencent par une kasra : ٱهْدِنَا, ٱسْتَغْفِرُوا',
-          'À l’impératif trilittère, on commence par une ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale : ٱدْخُلُوا, يَدْخُلُ ; sinon, par une kasra : ٱضْرِبُوا, يَضْرِبُ',
+          'L’article ال commence par une fatḥa : ٱلۡحَمۡدُ',
+          'La plupart des autres noms et verbes commencent par une kasra : ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
+          'À l’impératif trilittère, on commence par une ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale : ٱدۡخُلُوا, يَدۡخُلُ ; sinon, par une kasra : ٱضۡرِبُوا, يَضۡرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -2084,9 +2087,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung',
-          'ال dibaca dengan fathah: ٱلْحَمْدُ',
-          'Kebanyakan kata benda dan kata kerja lain dibaca dengan kasrah: ٱهْدِنَا, ٱسْتَغْفِرُوا',
-          'Fi’il amr tsulatsi dimulai dengan dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli: ٱدْخُلُوا, يَدْخُلُ; jika tidak, dengan kasrah: ٱضْرِبُوا, يَضْرِبُ',
+          'ال dibaca dengan fathah: ٱلۡحَمۡدُ',
+          'Kebanyakan kata benda dan kata kerja lain dibaca dengan kasrah: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
+          'Fi’il amr tsulatsi dimulai dengan dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli: ٱدۡخُلُوا, يَدۡخُلُ; jika tidak, dengan kasrah: ٱضۡرِبُوا, يَضۡرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -2238,9 +2241,9 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.hamzatWasl:
         return [
           'Die Hamzat al-Wasl wird am Wortanfang gesprochen und beim Verbinden ausgelassen',
-          'Der bestimmte Artikel ال beginnt mit Fatha: ٱلْحَمْدُ',
-          'Die meisten anderen Nomen und Verben beginnen mit Kasra: ٱهْدِنَا, ٱسْتَغْفِرُوا',
-          'Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat: ٱدْخُلُوا, يَدْخُلُ; sonst mit Kasra: ٱضْرِبُوا, يَضْرِبُ',
+          'Der bestimmte Artikel ال beginnt mit Fatha: ٱلۡحَمۡدُ',
+          'Die meisten anderen Nomen und Verben beginnen mit Kasra: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
+          'Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat: ٱدۡخُلُوا, يَدۡخُلُ; sonst mit Kasra: ٱضۡرِبُوا, يَضۡرِبُ',
         ];
       case TajweedRule.hamzatQat:
         return [

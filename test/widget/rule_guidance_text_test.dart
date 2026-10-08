@@ -1,20 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tajweed_practice/core/constants/arabic_shaping.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/widgets/rule_guidance_text.dart';
 
 void main() {
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    final loader = FontLoader('AmiriQuran')
-      ..addFont(rootBundle.load('assets/fonts/AmiriQuran.ttf'));
-    await loader.load();
-  });
-
-  testWidgets('standalone Quran marks use a carrier and the bundled font', (
+  testWidgets('prose omits unreadable mark glyphs in every language', (
     tester,
   ) async {
     final definition = RulesRepository.findByRule(TajweedRule.silent)!;
@@ -38,37 +29,32 @@ void main() {
           ),
         );
         final text = tester.widget<Text>(find.byType(Text));
-        final span = text.textSpan! as TextSpan;
-        final children = span.children!.cast<TextSpan>();
-        final symbols = children.where(
-          (child) => child.style?.fontFamily == 'AmiriQuran',
-        );
-        expect(symbols.map((child) => child.text), ['و۟', 'بۡ']);
-        expect(symbols.first.style!.color, TajweedRule.silent.color);
-        expect(symbols.last.style!.color, isNull);
-        for (final symbol in symbols) {
-          expect(symbol.style!.fontFeatures, arabicShapingFeatures);
-          expect(symbol.style!.fontWeight, FontWeight.normal);
-        }
+        expect(text.textSpan, isNull);
         expect(
-          span.toPlainText(includeSemanticsLabels: false),
-          description.replaceAll('(۟)', '(و۟)').replaceAll('(ۡ)', '(بۡ)'),
+          text.data,
+          description.replaceAll(RegExp(r'\s*\((?:و۟|بۡ|۟|ۡ)\)'), ''),
         );
-        expect(text.semanticsLabel, description);
+        expect(text.data, isNot(contains('۟')));
+        expect(text.data, isNot(contains('ۡ')));
+        expect(text.data, isNotEmpty);
         expect(tester.takeException(), isNull);
       }
     }
   });
 
-  testWidgets('ordinary guidance and marked words remain unchanged', (
-    tester,
-  ) async {
-    const guidance = 'أُو۟لَـٰٓئِكَ كَفَرُوا۟ بۡ — ordinary guidance';
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: RuleGuidanceText(guidance))),
-    );
-    final text = tester.widget<Text>(find.byType(Text));
-    expect(text.data, guidance);
-    expect(text.textSpan, isNull);
-  });
+  testWidgets(
+    'Quranic words keep their marks while prose annotations are removed',
+    (tester) async {
+      const quran = 'أُو۟لَـٰٓئِكَ كَفَرُوا۟';
+      const guidance = '$quran (۟) (بۡ) — ordinary guidance';
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: RuleGuidanceText(guidance))),
+      );
+      final text = tester.widget<Text>(find.byType(Text));
+      expect(text.data, '$quran — ordinary guidance');
+      expect(text.data, contains('أُو۟لَـٰٓئِكَ'));
+      expect(text.data, contains('كَفَرُوا۟'));
+      expect(text.textSpan, isNull);
+    },
+  );
 }

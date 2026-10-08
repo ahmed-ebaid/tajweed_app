@@ -63,6 +63,12 @@ class RuleExampleHighlight {
     if (fragment == null || fragment.isEmpty) return null;
     final start = arabic.indexOf(fragment);
     if (start < 0) return null;
-    return (start: start, end: start + fragment.length);
+    var end = start + fragment.length;
+    while ((rule == TajweedRule.hamzatQat || rule == TajweedRule.hamzatWasl) &&
+        end < arabic.length &&
+        RegExp(r'[\u064B-\u065F\u0670\u06DF-\u06E4]').hasMatch(arabic[end])) {
+      end++;
+    }
+    return (start: start, end: end);
   }
 }

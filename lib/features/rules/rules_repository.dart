@@ -804,23 +804,23 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'A connecting hamza pronounced when beginning a word and omitted in connected reading. When beginning, the definite article ال takes fatḥah (ٱلْحَمْدُ); most nouns and verb forms take kasrah (ٱهْدِنَا, ٱسْتَغْفِرُوا). A triliteral imperative takes ḍammah when the third letter of its present-tense form has an original ḍammah (ٱدْخُلُوا from يَدْخُلُ); otherwise it takes kasrah (ٱضْرِبُوا from يَضْرِبُ).',
+            'A connecting hamza pronounced when beginning a word and omitted in connected reading. When beginning, the definite article ال takes fatḥah (ٱلۡحَمۡدُ); most nouns and verb forms take kasrah (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). A triliteral imperative takes ḍammah when the third letter of its present-tense form has an original ḍammah (ٱدۡخُلُوا from يَدۡخُلُ); otherwise it takes kasrah (ٱضۡرِبُوا from يَضۡرِبُ).',
         'ar':
-            'همزة الوصل تُنطق عند البدء بالكلمة وتسقط في الوصل. تُفتح همزة «الـ» التعريف (ٱلْحَمْدُ)، وتُكسر في أكثر الأسماء وصيغ الأفعال (ٱهْدِنَا، ٱسْتَغْفِرُوا). ويُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدْخُلُوا من يَدْخُلُ)، وإلا يُكسر (ٱضْرِبُوا من يَضْرِبُ).',
+            'همزة الوصل تُنطق عند البدء بالكلمة وتسقط في الوصل. تُفتح همزة «الـ» التعريف (ٱلۡحَمۡدُ)، وتُكسر في أكثر الأسماء وصيغ الأفعال (ٱهۡدِنَا، ٱسۡتَغۡفِرُوا). ويُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدۡخُلُوا من يَدۡخُلُ)، وإلا يُكسر (ٱضۡرِبُوا من يَضۡرِبُ).',
         'ur':
-            'ہمزۂ وصل ابتدا میں پڑھی جاتی اور وصل میں ساقط ہو جاتی ہے۔ ابتدا میں «ال» کی ہمزہ پر زبر آتی ہے (ٱلْحَمْدُ)، اکثر دوسرے اسماء اور افعال پر زیر (ٱهْدِنَا، ٱسْتَغْفِرُوا)۔ ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر پیش آتی ہے (ٱدْخُلُوا، مضارع: يَدْخُلُ)، ورنہ زیر (ٱضْرِبُوا، مضارع: يَضْرِبُ)۔',
+            'ہمزۂ وصل ابتدا میں پڑھی جاتی اور وصل میں ساقط ہو جاتی ہے۔ ابتدا میں «ال» کی ہمزہ پر زبر آتی ہے (ٱلۡحَمۡدُ)، اکثر دوسرے اسماء اور افعال پر زیر (ٱهۡدِنَا، ٱسۡتَغۡفِرُوا)۔ ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر پیش آتی ہے (ٱدۡخُلُوا، مضارع: يَدۡخُلُ)، ورنہ زیر (ٱضۡرِبُوا، مضارع: يَضۡرِبُ)۔',
         'tr':
-            'Hemze-i vasl kelimeye başlanırken okunur, önceki kelimeye bağlanırken düşer. ال takısı fetha (ٱلْحَمْدُ), isim ve fiil kalıplarının çoğu kesra ile başlar (ٱهْدِنَا, ٱسْتَغْفِرُوا). Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme (ٱدْخُلُوا; يَدْخُلُ), değilse kesra (ٱضْرِبُوا; يَضْرِبُ) okunur.',
+            'Hemze-i vasl kelimeye başlanırken okunur, önceki kelimeye bağlanırken düşer. ال takısı fetha (ٱلۡحَمۡدُ), isim ve fiil kalıplarının çoğu kesra ile başlar (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme (ٱدۡخُلُوا; يَدۡخُلُ), değilse kesra (ٱضۡرِبُوا; يَضۡرِبُ) okunur.',
         'fr':
-            'La hamza de liaison se prononce au début d’un mot et tombe en liaison. L’article ال commence par la fatḥa (ٱلْحَمْدُ) ; la plupart des noms et formes verbales par la kasra (ٱهْدِنَا, ٱسْتَغْفِرُوا). À l’impératif trilittère, on prend la ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale (ٱدْخُلُوا, يَدْخُلُ), sinon la kasra (ٱضْرِبُوا, يَضْرِبُ).',
+            'La hamza de liaison se prononce au début d’un mot et tombe en liaison. L’article ال commence par la fatḥa (ٱلۡحَمۡدُ) ; la plupart des noms et formes verbales par la kasra (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). À l’impératif trilittère, on prend la ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale (ٱدۡخُلُوا, يَدۡخُلُ), sinon la kasra (ٱضۡرِبُوا, يَضۡرِبُ).',
         'id':
-            'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung. ال dimulai dengan fathah (ٱلْحَمْدُ); kebanyakan kata benda dan bentuk kata kerja dengan kasrah (ٱهْدِنَا, ٱسْتَغْفِرُوا). Fi’il amr tsulatsi memakai dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli (ٱدْخُلُوا, يَدْخُلُ), selain itu memakai kasrah (ٱضْرِبُوا, يَضْرِبُ).',
+            'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung. ال dimulai dengan fathah (ٱلۡحَمۡدُ); kebanyakan kata benda dan bentuk kata kerja dengan kasrah (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). Fi’il amr tsulatsi memakai dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli (ٱدۡخُلُوا, يَدۡخُلُ), selain itu memakai kasrah (ٱضۡرِبُوا, يَضۡرِبُ).',
         'de':
-            'Die Hamzat al-Wasl wird am Wortanfang gesprochen und beim Verbinden ausgelassen. Der bestimmte Artikel ال beginnt mit Fatha (ٱلْحَمْدُ); die meisten Nomen und Verbformen mit Kasra (ٱهْدِنَا, ٱسْتَغْفِرُوا). Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat (ٱدْخُلُوا, يَدْخُلُ), sonst mit Kasra (ٱضْرِبُوا, يَضْرِبُ).',
+            'Die Hamzat al-Wasl wird am Wortanfang gesprochen und beim Verbinden ausgelassen. Der bestimmte Artikel ال beginnt mit Fatha (ٱلۡحَمۡدُ); die meisten Nomen und Verbformen mit Kasra (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat (ٱدۡخُلُوا, يَدۡخُلُ), sonst mit Kasra (ٱضۡرِبُوا, يَضۡرِبُ).',
         'es':
-            'La hamza de enlace se pronuncia al comenzar una palabra y se omite al enlazarla con la anterior. El artículo ال comienza con fatha (ٱلْحَمْدُ); la mayoría de los nombres y formas verbales, con kasra (ٱهْدِنَا, ٱسْتَغْفِرُوا). El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدْخُلُوا, يَدْخُلُ); en caso contrario, kasra (ٱضْرِبُوا, يَضْرِبُ).',
+            'La hamza de enlace se pronuncia al comenzar una palabra y se omite al enlazarla con la anterior. El artículo ال comienza con fatha (ٱلۡحَمۡدُ); la mayoría de los nombres y formas verbales, con kasra (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدۡخُلُوا, يَدۡخُلُ); en caso contrario, kasra (ٱضۡرِبُوا, يَضۡرِبُ).',
       },
-      exampleArabic: ['ٱهْدِنَا', 'ٱلْحَمْدُ', 'ٱسْتَغْفِرُوا'],
+      exampleArabic: ['ٱهۡدِنَا', 'ٱلۡحَمۡدُ', 'ٱسۡتَغۡفِرُوا'],
       triggerLetters: [],
     ),
     TajweedRuleDefinition(

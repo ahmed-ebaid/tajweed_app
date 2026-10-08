@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.16
+# App Store listing — Tajweed 1.1.17
 
 ## App information
 
@@ -8,15 +8,39 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.16
-- **Build:** 93
-- **Release stage:** Submitted for App Store review; waiting for review.
+- **Version:** 1.1.17 (TestFlight candidate); 1.1.16 remains live.
+- **Build:** 93 (live App Store version) / 94 (internal TestFlight).
+- **Release stage:** Build 93 is live on the App Store; build 94 is
+  TestFlight-only and is not submitted for review.
 - **Release setting:** Automatic release after approval.
 - **Submission:** 437b2731-efd5-4b13-9fce-6884fced3141
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
-- **TestFlight status:** Build 93 uploaded and Apple-validated; available to the
-  internal Tajweed Testers group.
+- **TestFlight status:** 1.1.17 (94) uploaded, Apple-validated (`VALID`), and
+  available to the internal Tajweed Testers group (`IN_BETA_TESTING`).
+  What to Test notes are verified in all eight languages.
+- **TestFlight build ID:** 5a4f04c6-0054-4843-82df-687ef3c9ef9f
+- **Public release:** 1.1.16 (93) remains `READY_FOR_SALE`; its build attachment
+  was verified unchanged after TestFlight setup. No 1.1.17 review submission.
+- **Build train:** Apple closed 1.1.16 to new builds after release, so build 94
+  uses 1.1.17. The initial 1.1.16 (94) upload was rejected with error 90186.
+- **Build 94 mark clarity:** Hamzat al-Wasl examples and tips use the Quranic
+  small-head sukoon (ۡ), not ordinary Arabic sukoon or rounded zero. Explanatory
+  prose and shares omit tiny standalone mark glyphs; Quran text and marked
+  examples remain unchanged.
+- **Build 94 example layout:** Larger library and word-detail examples, stronger
+  neutral-letter contrast, and extra line height protect hamza and Quran marks.
+  Hamza highlights include their attached vowels without changing Arabic joining.
+  These shared widgets apply to all eight localizations.
+- **Build 94 stop signs:** Standalone stop-sign chips reuse the readable display
+  symbols from the detailed Waqf table; Quran quotations keep their original
+  combining signs. Library titles wrap, and duplicate Arabic subtitles are omitted.
+- **Build 94 regressions:** 388 tests passed with both full-corpus fixtures
+  supplied. Only the intentionally disabled manual example-discovery utility
+  is skipped; no regression check is skipped.
+- **Build 94 reader navigation:** Surah changes clear old content before async
+  connectivity checks. Scroll restores and retries are scoped to their original
+  load and scroll request, with old restore guards cancelled on navigation.
 - **Build 93 highlighting fix:** Noon/tanween rules color the tanween marks
   separately from the neutral carrier letter. Following trigger letters retain
   their annotations. Pixel-geometry and reader/detail interaction regressions

@@ -12,6 +12,7 @@ import 'package:tajweed_practice/core/providers/locale_provider.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
 import 'package:tajweed_practice/features/reader/widgets/tajweed_text.dart';
 import 'package:tajweed_practice/features/reader/widgets/word_detail_sheet.dart';
+import 'package:tajweed_practice/features/rules/widgets/rule_guidance_text.dart';
 
 String coloredText(InlineSpan root, Color color) {
   final result = StringBuffer();
@@ -630,7 +631,7 @@ void main() {
         await tester.pumpWidget(
           subject(
             WordDetailSheet(
-              rule: TajweedRule.maddTabeei,
+              rule: TajweedRule.silent,
               word: ayah.words.single,
               ayah: ayah,
             ),
@@ -643,6 +644,16 @@ void main() {
           isNull,
           reason: '${language.languageCode}, dark=$dark',
         );
+        final guidance = find.byType(RuleGuidanceText);
+        expect(guidance, findsOneWidget);
+        final prose = tester
+            .widget<Text>(
+              find.descendant(of: guidance, matching: find.byType(Text)),
+            )
+            .data!;
+        for (final symbol in ['(۟)', '(ۡ)', '(و۟)', '(بۡ)']) {
+          expect(prose, isNot(contains(symbol)));
+        }
       }
     }
   });

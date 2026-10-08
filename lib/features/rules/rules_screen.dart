@@ -618,12 +618,21 @@ class _RuleCardHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-          ),
-          Text(
-            arabicTitle,
-            style: const TextStyle(fontFamily: 'UthmanicHafs', fontSize: 15),
-            textDirection: TextDirection.rtl,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                if (title != arabicTitle)
+                  Text(
+                    arabicTitle,
+                    style: const TextStyle(
+                      fontFamily: 'UthmanicHafs',
+                      fontSize: 15,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
+              ],
+            ),
           ),
           const SizedBox(width: 8),
           Icon(
@@ -761,9 +770,9 @@ class _RuleCard extends StatelessWidget {
                           (entry) => Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: definition.rule == TajweedRule.waqf
-                                  ? 10
-                                  : 6,
+                              vertical: MediaQuery.textScalerOf(
+                                context,
+                              ).scale(16),
                             ),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.surface,
@@ -775,7 +784,7 @@ class _RuleCard extends StatelessWidget {
                               exampleIndex: entry.key,
                               fontSize: definition.rule == TajweedRule.waqf
                                   ? 30
-                                  : 20,
+                                  : 28,
                               fontWeight: definition.rule == TajweedRule.waqf
                                   ? FontWeight.w700
                                   : FontWeight.normal,

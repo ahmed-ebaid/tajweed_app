@@ -1,6 +1,5 @@
 abstract final class ShareText {
-  /// Use illustrative letters because receiving apps choose their own font.
-  /// Never apply this to Quran quotations; those must retain their source text.
+  /// Removes combining-mark notation from prose; Quran quotations stay intact.
   static String guidance(String text) =>
-      text.replaceAll('(۟)', '(و۟)').replaceAll('(ۡ)', '(بۡ)');
+      text.replaceAll(RegExp(r'\s*\((?:و۟|بۡ|۟|ۡ)\)'), '');
 }

@@ -95,14 +95,54 @@ void main() {
       expect(description, contains('تُفتح'));
       expect(description, contains('تُكسر'));
       expect(description, contains('يُضم'));
-      expect(description, contains('ٱلْحَمْدُ'));
-      expect(description, contains('ٱهْدِنَا'));
-      expect(description, contains('ٱدْخُلُوا'));
-      expect(description, contains('ٱضْرِبُوا'));
+      expect(description, contains('ٱلۡحَمۡدُ'));
+      expect(description, contains('ٱهۡدِنَا'));
+      expect(description, contains('ٱدۡخُلُوا'));
+      expect(description, contains('ٱضۡرِبُوا'));
       expect(description, contains('من مضارعه'));
       expect(description, isNot(contains('ثالثه مضمومًا')));
     },
   );
+
+  test('Hamzat al-Wasl examples use small-head sukoon, never rounded zero', () {
+    const languageCodes = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
+    const quranicSukoon = '\u06E1';
+    const ordinaryArabicSukoon = '\u0652';
+    const roundedZero = '\u06DF';
+    const markedExamples = [
+      'ٱهۡدِنَا',
+      'ٱلۡحَمۡدُ',
+      'ٱسۡتَغۡفِرُوا',
+      'ٱدۡخُلُوا',
+      'يَدۡخُلُ',
+      'ٱضۡرِبُوا',
+      'يَضۡرِبُ',
+    ];
+    final definition = RulesRepository.findByRule(TajweedRule.hamzatWasl)!;
+
+    expect(definition.exampleArabic, [
+      'ٱهۡدِنَا',
+      'ٱلۡحَمۡدُ',
+      'ٱسۡتَغۡفِرُوا',
+    ]);
+    for (final example in definition.exampleArabic) {
+      expect(example, contains(quranicSukoon));
+      expect(example, isNot(contains(ordinaryArabicSukoon)));
+      expect(example, isNot(contains(roundedZero)));
+    }
+    for (final languageCode in languageCodes) {
+      final description = definition.description(languageCode);
+      for (final example in markedExamples) {
+        expect(
+          description,
+          contains(example),
+          reason: '$languageCode is missing $example',
+        );
+      }
+      expect(description, isNot(contains(ordinaryArabicSukoon)));
+      expect(description, isNot(contains(roundedZero)));
+    }
+  });
 
   test(
     'silent-letter rule distinguishes rounded zero from ordinary sukoon',

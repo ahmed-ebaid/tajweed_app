@@ -5,22 +5,28 @@ import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/shared/utils/share_text.dart';
 
 void main() {
-  test('shared guidance has readable marked letters in all languages', () {
-    final rule = RulesRepository.findByRule(TajweedRule.silent)!;
-    for (final language in ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es']) {
-      final original = rule.description(language);
-      final result = ShareText.guidance(original);
-      expect(result, contains('(و۟)'));
-      expect(result, contains('(بۡ)'));
-      expect(result, isNot(contains('(۟)')));
-      expect(result, isNot(contains('(ۡ)')));
-      expect(ShareText.guidance(result), result);
-      expect(
-        result.replaceAll('(و۟)', '(۟)').replaceAll('(بۡ)', '(ۡ)'),
-        original,
-      );
-    }
-  });
+  test(
+    'shared guidance removes unreadable marks but keeps their explanation',
+    () {
+      final rule = RulesRepository.findByRule(TajweedRule.silent)!;
+      for (final language in ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es']) {
+        final original = rule.description(language);
+        final result = ShareText.guidance(original);
+        expect(result, isNot(contains('۟')));
+        expect(result, isNot(contains('ۡ')));
+        expect(result, isNot(contains('(۟)')));
+        expect(result, isNot(contains('(ۡ)')));
+        expect(result, isNot(contains('(و۟)')));
+        expect(result, isNot(contains('(بۡ)')));
+        expect(
+          result,
+          original.replaceAll(RegExp(r'\s*\((?:و۟|بۡ|۟|ۡ)\)'), ''),
+        );
+        expect(ShareText.guidance(result), result);
+        expect(result, isNotEmpty);
+      }
+    },
+  );
 
   test('Quran share text retains every character and mark exactly', () {
     const quran = 'أُو۟لَـٰٓئِكَ عَلَىٰ هُدًى مِّن رَّبِّهِمْ ۖ';
@@ -30,7 +36,9 @@ void main() {
       translation: 'Rounded zero (۟), ordinary sukoon (ۡ).',
     );
     expect(result, contains('\n$quran\n'));
-    expect(result, contains('Rounded zero (و۟), ordinary sukoon (بۡ).'));
+    expect(result, contains('Rounded zero, ordinary sukoon.'));
+    expect(result, isNot(contains('(و۟)')));
+    expect(result, isNot(contains('(بۡ)')));
     expect(ShareText.guidance(quran), quran);
   });
 }

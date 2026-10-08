@@ -7,6 +7,7 @@ import '../../../core/providers/locale_provider.dart';
 import '../../rules/rules_repository.dart';
 import 'tajweed_text.dart';
 import '../../rules/widgets/rule_example_text.dart';
+import '../../rules/widgets/rule_guidance_text.dart';
 
 const _tanweenRules = {
   TajweedRule.idghamWithGhunnah,
@@ -224,7 +225,7 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                 const SizedBox(height: 16),
               ],
               if (definition != null)
-                Text(
+                RuleGuidanceText(
                   definition.description(langCode),
                   style: Theme.of(
                     context,
@@ -246,9 +247,11 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                       .entries
                       .map(
                         (entry) => Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 8,
+                            vertical: MediaQuery.textScalerOf(
+                              context,
+                            ).scale(16),
                           ),
                           decoration: BoxDecoration(
                             color: widget.rule.color.withValues(alpha: 0.08),
@@ -262,7 +265,7 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                             rule: widget.rule,
                             text: entry.value,
                             exampleIndex: entry.key,
-                            fontSize: 20,
+                            fontSize: 28,
                           ),
                         ),
                       )

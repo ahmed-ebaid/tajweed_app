@@ -10,12 +10,14 @@ import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/tajweed_article_detail_screen.dart';
 import 'package:tajweed_practice/features/rules/tajweed_article_share_content.dart';
 import 'package:tajweed_practice/features/rules/tajweed_articles_repository.dart';
+import 'package:tajweed_practice/features/rules/widgets/rule_example_text.dart';
 
 Widget subject(
   Widget child,
   String language,
   TargetPlatform platform, {
   Brightness brightness = Brightness.light,
+  double textScale = 1,
 }) => MaterialApp(
   locale: Locale(language),
   supportedLocales: AppLocalizations.supportedLocales,
@@ -26,6 +28,12 @@ Widget subject(
     GlobalCupertinoLocalizations.delegate,
   ],
   theme: ThemeData(platform: platform, brightness: brightness),
+  builder: (context, child) => MediaQuery(
+    data: MediaQuery.of(
+      context,
+    ).copyWith(textScaler: TextScaler.linear(textScale)),
+    child: child!,
+  ),
   home: child,
 );
 
@@ -47,6 +55,71 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
   });
+
+  testWidgets(
+    'expanded examples fit all library languages at large text size',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 900);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      for (final locale in AppLocalizations.supportedLocales) {
+        await tester.pumpWidget(
+          subject(
+            RulesScreen(
+              key: ValueKey('examples-${locale.languageCode}'),
+              languageCodeOverride: locale.languageCode,
+            ),
+            locale.languageCode,
+            TargetPlatform.iOS,
+            textScale: 1.6,
+          ),
+        );
+        await tester.pumpAndSettle();
+        for (final definition in RulesRepository.all) {
+          await tester.enterText(
+            find.byType(TextField).first,
+            definition.name(locale.languageCode),
+          );
+          await tester.pumpAndSettle();
+          final row = find.byKey(ValueKey(definition.rule));
+          final list = tester.widget<ListView>(find.byType(ListView).last);
+          final scrollable = find.descendant(
+            of: find.byWidget(list),
+            matching: find.byType(Scrollable),
+          );
+          tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+          await tester.pumpAndSettle();
+          await tester.scrollUntilVisible(row, 150, scrollable: scrollable);
+          final header = find
+              .descendant(of: row, matching: find.byType(InkWell))
+              .first;
+          await tester.ensureVisible(header);
+          await tester.pumpAndSettle();
+          await tester.tap(header);
+          await tester.pumpAndSettle();
+          final examples = find.descendant(
+            of: row,
+            matching: find.byType(RuleExampleText),
+          );
+          final label = '${locale.languageCode}/${definition.rule.name}';
+          expect(examples, findsNWidgets(definition.exampleArabic.length));
+          for (final element in examples.evaluate()) {
+            final widget = element.widget as RuleExampleText;
+            expect(widget.fontSize, greaterThanOrEqualTo(28), reason: label);
+            final text = find.descendant(
+              of: find.byWidget(widget),
+              matching: find.byType(Text),
+            );
+            final rect = tester.getRect(text);
+            expect(rect.left, greaterThanOrEqualTo(0), reason: label);
+            expect(rect.right, lessThanOrEqualTo(320), reason: label);
+          }
+          expect(tester.takeException(), isNull, reason: label);
+        }
+      }
+    },
+  );
 
   testWidgets(
     'Madd al-Farq is an expandable sorted row inside the shared Madd group',

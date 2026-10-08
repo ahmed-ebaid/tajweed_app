@@ -12,6 +12,7 @@ import 'package:tajweed_practice/core/providers/locale_provider.dart';
 import 'package:tajweed_practice/features/rules/rule_detail_screen.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/widgets/rule_guidance_text.dart';
+import 'package:tajweed_practice/features/rules/widgets/rule_example_text.dart';
 
 void main() {
   late Directory temp;
@@ -29,6 +30,82 @@ void main() {
   tearDown(() async {
     await Hive.close();
     await temp.delete(recursive: true);
+  });
+
+  testWidgets('all rule examples fit every locale with enlarged text', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 900);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final supported in AppLocalizations.supportedLocales) {
+      final locale = LocaleProvider(deviceLocales: () => [supported]);
+      for (final brightness in Brightness.values) {
+        for (final definition in RulesRepository.all) {
+          await tester.pumpWidget(
+            ChangeNotifierProvider.value(
+              value: locale,
+              child: MaterialApp(
+                locale: supported,
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: const [
+                  AppLocalizations.delegate,
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                theme: ThemeData(brightness: brightness),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: TextScaler.linear(1.6)),
+                  child: child!,
+                ),
+                home: RuleDetailScreen(
+                  key: ValueKey(
+                    '${supported.languageCode}-$brightness-${definition.rule}',
+                  ),
+                  definition: definition,
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final label =
+              '${supported.languageCode}/${definition.rule.name}/$brightness';
+          expect(tester.takeException(), isNull, reason: label);
+          final examples = find.byType(RuleExampleText);
+          expect(
+            examples,
+            findsNWidgets(
+              definition.rule == TajweedRule.waqf
+                  ? 0
+                  : definition.exampleArabic.length,
+            ),
+            reason: label,
+          );
+          for (final element in examples.evaluate()) {
+            final text = find.descendant(
+              of: find.byWidget(element.widget),
+              matching: find.byType(Text),
+            );
+            final widget = tester.widget<Text>(text);
+            expect(widget.maxLines, isNull, reason: label);
+            expect(
+              widget.overflow,
+              isNot(TextOverflow.ellipsis),
+              reason: label,
+            );
+            final rect = tester.getRect(text);
+            expect(rect.left, greaterThanOrEqualTo(0), reason: label);
+            expect(rect.right, lessThanOrEqualTo(320), reason: label);
+          }
+        }
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+      locale.dispose();
+    }
   });
 
   testWidgets('rule headings fit and bullets follow the first text baseline', (
@@ -103,8 +180,8 @@ void main() {
       await tester.pumpAndSettle();
       final payload = shares.last.arguments as Map;
       final sharedText = payload['text'] as String;
-      expect(sharedText, contains('(و۟)'));
-      expect(sharedText, contains('(بۡ)'));
+      expect(sharedText, isNot(contains('(و۟)')));
+      expect(sharedText, isNot(contains('(بۡ)')));
       expect(sharedText, isNot(contains('(۟)')));
       expect(sharedText, isNot(contains('(ۡ)')));
       for (final example in definition.exampleArabic) {
@@ -115,4 +192,67 @@ void main() {
       locale.dispose();
     }
   });
+
+  testWidgets(
+    'Hamzat al-Wasl guidance uses Quranic small-head sukoon in all languages',
+    (tester) async {
+      const languages = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
+      const examples = [
+        'ٱهۡدِنَا',
+        'ٱلۡحَمۡدُ',
+        'ٱسۡتَغۡفِرُوا',
+        'ٱدۡخُلُوا',
+        'يَدۡخُلُ',
+        'ٱضۡرِبُوا',
+        'يَضۡرِبُ',
+      ];
+      const ordinarySukoon = '\u0652';
+      const roundedZero = '\u06DF';
+      final definition = RulesRepository.findByRule(TajweedRule.hamzatWasl)!;
+
+      for (final language in languages) {
+        final locale = LocaleProvider(deviceLocales: () => [Locale(language)]);
+        await tester.pumpWidget(
+          ChangeNotifierProvider.value(
+            value: locale,
+            child: MaterialApp(
+              locale: locale.locale,
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              home: RuleDetailScreen(
+                key: ValueKey('hamzat-wasl-$language'),
+                definition: definition,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final guidance = find
+            .byType(RuleGuidanceText)
+            .evaluate()
+            .map((element) => (element.widget as RuleGuidanceText).text)
+            .join('\n');
+        for (final example in examples) {
+          expect(
+            guidance,
+            contains(example),
+            reason: '$language guidance is missing $example',
+          );
+        }
+        expect(guidance, isNot(contains(ordinarySukoon)), reason: language);
+        expect(guidance, isNot(contains(roundedZero)), reason: language);
+        expect(tester.takeException(), isNull, reason: language);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        locale.dispose();
+      }
+    },
+  );
 }

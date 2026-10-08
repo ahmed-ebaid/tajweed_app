@@ -601,8 +601,11 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _cancelProgrammaticAyahScroll() {
     _scrollToAyahRequestId++;
+    _restoreGuardToken++;
     _isProgrammaticScroll = false;
     _userInterruptedRestore = true;
+    _startupRestoreTargetAyah = null;
+    _suppressAutoSaveUntilMs = 0;
   }
 
   void _saveScrollPosition() {
@@ -836,8 +839,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     // to whichever surah the user has since switched to.
     final surahNumber = _selectedSurah;
     final langCode = context.read<LocaleProvider>().locale.languageCode;
-    final isOffline = await _isDeviceOffline();
-    if (!mounted || loadVersion != _surahLoadVersion) return;
     setState(() {
       _loading = true;
       _ayahs = [];
@@ -846,6 +847,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       _juzBoundaries = {};
       _mushafPageAnchorCache.clear();
     });
+    final isOffline = await _isDeviceOffline();
+    if (!mounted || loadVersion != _surahLoadVersion) return;
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     _lastObservedReciterId = reciterId;
     final forceRefresh = _forceRefreshNextSurahLoad;
@@ -1019,7 +1022,8 @@ class _ReaderScreenState extends State<ReaderScreen>
     if (preserveReadingPosition) return;
     // Defer position restore until widgets are rendered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _restorePositionAfterSurahLoad();
+      if (!mounted || loadVersion != _surahLoadVersion) return;
+      _restorePositionAfterSurahLoad(loadVersion: loadVersion);
     });
   }
 
@@ -1456,8 +1460,8 @@ class _ReaderScreenState extends State<ReaderScreen>
     return true;
   }
 
-  void _restorePositionAfterSurahLoad() {
-    if (!mounted || _ayahs.isEmpty) return;
+  void _restorePositionAfterSurahLoad({required int loadVersion}) {
+    if (!mounted || loadVersion != _surahLoadVersion || _ayahs.isEmpty) return;
 
     if (_viewMode == _ReaderViewMode.page) {
       _didInitialReopenRestore = true;
@@ -1467,7 +1471,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     if (_pendingScrollOffset > 0) {
       // In-session reciter-change reload: pixel offset is still valid.
-      _restoreScrollOffset(_pendingScrollOffset);
+      _restoreScrollOffset(_pendingScrollOffset, loadVersion: loadVersion);
       _pendingScrollOffset = 0.0;
     } else if (_pendingScrollAyah != null) {
       // Cross-surah bookmark navigation: scroll by ayah number.
@@ -1477,17 +1481,30 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (ayah <= _ayahs.first.ayahNumber) {
         // The surah's first ayah sits below its header, so start at the very
         // top rather than aligning the ayah itself to the viewport edge.
-        _restoreScrollOffset(0.0);
+        _restoreScrollOffset(0.0, loadVersion: loadVersion);
         return;
       }
-      _scrollToAyah(ayah, maxAttempts: 20, alignment: 0.0, allowSeedJump: true);
+      final requestId = ++_scrollToAyahRequestId;
+      _scrollToAyah(
+        ayah,
+        maxAttempts: 20,
+        alignment: 0.0,
+        allowSeedJump: true,
+        requestId: requestId,
+      );
       Future.delayed(const Duration(milliseconds: 650), () {
-        if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+        if (!mounted ||
+            loadVersion != _surahLoadVersion ||
+            requestId != _scrollToAyahRequestId ||
+            _viewMode != _ReaderViewMode.ayah) {
+          return;
+        }
         _scrollToAyah(
           ayah,
           maxAttempts: 8,
           alignment: 0.0,
           allowSeedJump: true,
+          requestId: requestId,
         );
       });
     } else {
@@ -1498,10 +1515,26 @@ class _ReaderScreenState extends State<ReaderScreen>
         if (bookmarks.lastReadSurah == _selectedSurah) {
           final targetAyah = bookmarks.lastReadAyah;
           _setRestoreGuard(targetAyah, durationMs: 2200);
-          _scrollToAyah(targetAyah, maxAttempts: 20, alignment: 0.0);
+          final requestId = ++_scrollToAyahRequestId;
+          _scrollToAyah(
+            targetAyah,
+            maxAttempts: 20,
+            alignment: 0.0,
+            requestId: requestId,
+          );
           Future.delayed(const Duration(milliseconds: 750), () {
-            if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
-            _scrollToAyah(targetAyah, maxAttempts: 8, alignment: 0.0);
+            if (!mounted ||
+                loadVersion != _surahLoadVersion ||
+                requestId != _scrollToAyahRequestId ||
+                _viewMode != _ReaderViewMode.ayah) {
+              return;
+            }
+            _scrollToAyah(
+              targetAyah,
+              maxAttempts: 8,
+              alignment: 0.0,
+              requestId: requestId,
+            );
           });
         }
 
@@ -1545,16 +1578,26 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _restoreScrollOffset(
     double offset, {
+    required int loadVersion,
+    int? requestId,
     int attempt = 0,
     double? lastMaxExtent,
     int stablePasses = 0,
   }) {
-    if (!mounted || _viewMode != _ReaderViewMode.ayah) return;
+    if (!mounted ||
+        loadVersion != _surahLoadVersion ||
+        _viewMode != _ReaderViewMode.ayah) {
+      return;
+    }
+    final activeRequestId = requestId ?? ++_scrollToAyahRequestId;
+    if (activeRequestId != _scrollToAyahRequestId) return;
 
     if (!_scrollController.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _restoreScrollOffset(
           offset,
+          loadVersion: loadVersion,
+          requestId: activeRequestId,
           attempt: attempt + 1,
           lastMaxExtent: lastMaxExtent,
           stablePasses: stablePasses,
@@ -1574,6 +1617,8 @@ class _ReaderScreenState extends State<ReaderScreen>
         Future.delayed(const Duration(milliseconds: 60), () {
           _restoreScrollOffset(
             offset,
+            loadVersion: loadVersion,
+            requestId: activeRequestId,
             attempt: attempt + 1,
             lastMaxExtent: maxExtent,
             stablePasses: nextStablePasses,
@@ -1594,7 +1639,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     _scrollController.jumpTo(validOffset);
 
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
+      if (mounted &&
+          loadVersion == _surahLoadVersion &&
+          activeRequestId == _scrollToAyahRequestId) {
         _isProgrammaticScroll = false;
       }
     });
@@ -2546,12 +2593,13 @@ class _ReaderScreenState extends State<ReaderScreen>
                 juzStarts: _juzStartReferences(),
                 onBeforeOpen: () => _hideMushafScrubberOverlay(),
                 onChanged: (surah, {ayah}) {
+                  _scrollSaveTimer?.cancel();
+                  _cancelProgrammaticAyahScroll();
                   _selectedSurah = surah;
                   // A plain surah pick opens at its first ayah. Without an
                   // explicit target the reload kept the previous surah's
                   // scroll offset, because the controller survives the swap.
                   final targetAyah = ayah ?? 1;
-                  ++_scrollToAyahRequestId;
                   if (_scrollController.hasClients) {
                     _scrollController.jumpTo(0.0);
                   }
@@ -2666,6 +2714,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => _cancelProgrammaticAyahScroll(),
       child: ListView.builder(
+        key: ValueKey('ayah-list-$_selectedSurah'),
         controller: _scrollController,
         padding: EdgeInsets.symmetric(vertical: pageMode ? 12 : 8),
         itemCount:
