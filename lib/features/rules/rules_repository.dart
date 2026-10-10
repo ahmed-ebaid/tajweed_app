@@ -85,21 +85,21 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'Natural elongation of a madd letter for exactly 2 counts: alif after a fatha, waw after a damma, or ya after a kasra, with no hamzah and no sukoon following it.',
+            'Natural elongation of a madd letter for exactly 2 counts: alif after a fatha, waw after a damma, or ya after a kasra, with no hamzah and no sukoon following it. In the disjointed letters opening some surahs, ح ي ط ه ر (حي طهر) are pronounced حا، يا، طا، ها، را and prolonged 2 counts. In حمٓ, ح is 2 counts but م is 6 counts.',
         'ar':
-            'أن يأتي حرف المد — الألف الساكنة المفتوح ما قبلها، أو الواو الساكنة المضموم ما قبلها، أو الياء الساكنة المكسور ما قبلها — ولا يأتي بعده همز ولا سكون. مقداره: ٢ حركة (حركتان).',
+            'أن يأتي حرف المد — الألف الساكنة المفتوح ما قبلها، أو الواو الساكنة المضموم ما قبلها، أو الياء الساكنة المكسور ما قبلها — ولا يأتي بعده همز ولا سكون. مقداره: ٢ حركة (حركتان). وفي الحروف المقطعة في فواتح السور، تُقرأ حروف «حي طهر» بهجاء من حرفين: حا، يا، طا، ها، را، وتمد حركتين. في حمٓ: الحاء حركتان، والميم ٦ حركات.',
         'ur':
-            'حرف مد کو دو حرکات تک کھینچنا: الف جس سے پہلے فتحہ، واو جس سے پہلے ضمہ، یا یاء جس سے پہلے کسرہ ہو، اور اس کے بعد نہ ہمزہ ہو نہ سکون۔',
+            'حرف مد کو دو حرکات تک کھینچنا: الف جس سے پہلے فتحہ، واو جس سے پہلے ضمہ، یا یاء جس سے پہلے کسرہ ہو، اور اس کے بعد نہ ہمزہ ہو نہ سکون۔ سورتوں کے آغاز کے حروفِ مقطعات میں «حي طهر» کے حروف حا، يا، طا، ها، را دو حرفوں سے پڑھے جاتے ہیں اور دو حرکات کھینچے جاتے ہیں۔ حمٓ میں حا دو اور میم چھ حرکات ہے۔',
         'tr':
-            'Med harfinin tam 2 hareke uzatılması: öncesinde fetha bulunan elif, ötre bulunan vav veya esre bulunan ya; ardından hemze de sükûn da gelmez.',
+            'Med harfinin tam 2 hareke uzatılması: öncesinde fetha bulunan elif, ötre bulunan vav veya esre bulunan ya; ardından hemze de sükûn da gelmez. Sûre başlarındaki mukattaa harflerinden ح ي ط ه ر (حي طهر), حا، يا، طا، ها، را şeklinde iki harfle okunur ve 2 hareke uzatılır. حمٓ içinde ح 2, م ise 6 harekedir.',
         'fr':
-            'Prolongation naturelle de 2 temps d\'une lettre de madd: alif après une fatha, waw après une damma, ou ya après une kasra, sans hamza ni soukoun à sa suite.',
+            'Prolongation naturelle de 2 temps d\'une lettre de madd: alif après une fatha, waw après une damma, ou ya après une kasra, sans hamza ni soukoun à sa suite. Parmi les lettres isolées en début de sourate, ح ي ط ه ر (حي طهر) se lisent حا، يا، طا، ها، را, avec deux lettres, et se prolongent 2 temps. Dans حمٓ, ح dure 2 temps, mais م dure 6 temps.',
         'id':
-            'Pemanjangan alami huruf mad selama tepat 2 harakat: alif setelah fathah, wau setelah dhammah, atau ya setelah kasrah, tanpa diikuti hamzah maupun sukun.',
+            'Pemanjangan alami huruf mad selama tepat 2 harakat: alif setelah fathah, wau setelah dhammah, atau ya setelah kasrah, tanpa diikuti hamzah maupun sukun. Pada huruf muqatha’ah di awal surah, ح ي ط ه ر (حي طهر) dibaca حا، يا، طا، ها، را, dengan ejaan dua huruf, selama 2 harakat. Dalam حمٓ, ح dibaca 2 harakat, sedangkan م 6 harakat.',
         'de':
-            'Natürliche Dehnung eines Madd-Buchstabens um genau 2 Zählzeiten: Alif nach Fatha, Waw nach Damma oder Ya nach Kasra, ohne folgendes Hamza und ohne Sukun.',
+            'Natürliche Dehnung eines Madd-Buchstabens um genau 2 Zählzeiten: Alif nach Fatha, Waw nach Damma oder Ya nach Kasra, ohne folgendes Hamza und ohne Sukun. Von den Einzelbuchstaben am Surenanfang werden ح ي ط ه ر (حي طهر) als حا، يا، طا، ها، را mit jeweils zwei Buchstaben gelesen und 2 Zählzeiten gedehnt. In حمٓ wird ح 2, aber م 6 Zählzeiten gedehnt.',
         'es':
-            'Alargamiento natural de una letra de madd durante exactamente 2 tiempos: alif después de fatha, waw después de damma o ya después de kasra, sin hamza ni sukún posterior.',
+            'Alargamiento natural de una letra de madd durante exactamente 2 tiempos: alif después de fatha, waw después de damma o ya después de kasra, sin hamza ni sukún posterior. Entre las letras aisladas al inicio de algunas suras, ح ي ط ه ر (حي طهر) se leen حا، يا، طا، ها، را, con dos letras, y se prolongan 2 tiempos. En حمٓ, ح dura 2 tiempos, pero م dura 6 tiempos.',
       },
       exampleArabic: ['قَالَ', 'يَقُولُ', 'قِيلَ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -412,7 +412,7 @@ class RulesRepository {
         'es':
             'Pronunciación clara de la nun en sukún o del tanwin ante las seis letras guturales (ء ه ع ح غ خ), sin gunna.',
       },
-      exampleArabic: ['مَنْ آمَنَ', 'عَلِيمٌ حَكِيمٌ'],
+      exampleArabic: ['مَنْ ءَامَنَ', 'عَلِيمٌ حَكِيمٌ'],
       triggerLetters: ['ء', 'ه', 'ع', 'ح', 'غ', 'خ'],
     ),
     TajweedRuleDefinition(
@@ -579,21 +579,21 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'In the disjointed letters opening some surahs, a spelled letter ends in a consonant that merges into the next letter. Prolong 6 counts. Example: the ل of الٓمٓ.',
+            'In the disjointed letters opening some surahs, a spelled letter ends in a consonant that merges into the next letter. Prolong 6 counts. Example: the ل of الٓمٓ. The letters ن ق ص س ل ك م have three-letter names with a madd letter in the middle and a final sukoon; prolong them 6 counts. ع is an exception: 4 or 6 counts in Hafs via al-Shatibiyyah. The two-letter readings of حي طهر take 2 counts; ا (alif) has no madd. In الٓمٓ: alif has no madd, lam and meem take 6 counts each. In حمٓ: ح takes 2 counts and م takes 6.',
         'ar':
-            'في فواتح السور، يكون حرف المد في اسم الحرف مدغمًا آخره فيما بعده، ويمد ٦ حركات. مثاله: اللام في الٓمٓ.',
+            'في فواتح السور، يكون حرف المد في اسم الحرف مدغمًا آخره فيما بعده، ويمد ٦ حركات. مثاله: اللام في الٓمٓ. الحروف ن ق ص س ل ك م هجاؤها ثلاثة أحرف، أوسطها حرف مد وآخرها ساكن، فتمد ٦ حركات. والعين استثناء: تمد ٤ أو ٦ حركات لحفص من طريق الشاطبية. أما حروف «حي طهر» فهجاؤها حرفان وتمد حركتين، والألف لا مد في هجائها. في الٓمٓ: الألف لا تمد، واللام والميم كل منهما ٦ حركات. وفي حمٓ: الحاء حركتان، والميم ٦ حركات.',
         'ur':
-            'حروفِ مقطعات میں حرف کا آخری حصہ اگلے حرف میں مدغم ہو تو چھ حرکات۔ مثال: الٓمٓ کا لام۔',
+            'حروفِ مقطعات میں حرف کا آخری حصہ اگلے حرف میں مدغم ہو تو چھ حرکات۔ مثال: الٓمٓ کا لام۔ ن ق ص س ل ك م کے نام تین حرفوں پر مشتمل ہیں، درمیان میں حرفِ مد اور آخر میں سکون ہوتا ہے؛ انہیں چھ حرکات کھینچیں۔ ع مستثنیٰ ہے: حفص بطریقِ شاطبیہ میں چار یا چھ حرکات۔ «حي طهر» کی دو حرفی قراءت دو حرکات ہے؛ الف کے نام میں مد نہیں۔ الٓمٓ میں الف بلا مد، لام اور میم ہر ایک چھ حرکات؛ حمٓ میں حا دو اور میم چھ حرکات ہے۔',
         'tr':
-            'Sûre başlarındaki hurûf-ı mukattaada harfin sonu sonrakine idgam olur; 6 hareke. Örnek: الٓمٓ’deki lâm.',
+            'Sûre başlarındaki hurûf-ı mukattaada harfin sonu sonrakine idgam olur; 6 hareke. Örnek: الٓمٓ’deki lâm. ن ق ص س ل ك م harflerinin adları üç harflidir; ortada med harfi, sonda sükûn bulunur ve 6 hareke uzatılır. ع istisnadır: Hafs’ın Şâtıbiyye tarikinde 4 veya 6 hareke. حي طهر harflerinin iki harfli okunuşları 2 harekedir; elifin adında med yoktur. الٓمٓ içinde elif uzatılmaz, lâm ve mim 6’şar harekedir. حمٓ içinde ح 2, م 6 harekedir.',
         'fr':
-            'Dans les lettres isolées en début de sourate, la fin de la lettre épelée s\'assimile à la suivante. 6 temps. Exemple : le ل de الٓمٓ.',
+            'Dans les lettres isolées en début de sourate, la fin de la lettre épelée s\'assimile à la suivante. 6 temps. Exemple : le ل de الٓمٓ. Les noms de ن ق ص س ل ك م comportent trois lettres, avec une lettre de madd au milieu et un soukoun final : 6 temps. ع est une exception : 4 ou 6 temps selon Hafs par la voie d’al-Shatibiyyah. Les lectures à deux lettres de حي طهر durent 2 temps ; le nom alif ne contient pas de madd. Dans الٓمٓ, alif ne se prolonge pas, lam et meem durent chacun 6 temps. Dans حمٓ, ح dure 2 temps et م 6.',
         'id':
-            'Pada huruf muqatha’ah, akhir nama huruf diidghamkan ke huruf berikutnya. 6 harakat. Contoh: lam pada الٓمٓ.',
+            'Pada huruf muqatha’ah, akhir nama huruf diidghamkan ke huruf berikutnya. 6 harakat. Contoh: lam pada الٓمٓ. Nama ن ق ص س ل ك م terdiri dari tiga huruf, dengan huruf mad di tengah dan sukun di akhir; dibaca 6 harakat. ع merupakan pengecualian: 4 atau 6 harakat menurut Hafs melalui jalur al-Syathibiyyah. Bacaan dua huruf حي طهر dibaca 2 harakat; nama alif tidak mengandung mad. Dalam الٓمٓ, alif tidak dipanjangkan, lam dan mim masing-masing 6 harakat. Dalam حمٓ, ح 2 harakat dan م 6.',
         'de':
-            'Bei den Einzelbuchstaben am Surenanfang verschmilzt der Endlaut mit dem nächsten Buchstaben. 6 Zählzeiten. Beispiel: das ل in الٓمٓ.',
+            'Bei den Einzelbuchstaben am Surenanfang verschmilzt der Endlaut mit dem nächsten Buchstaben. 6 Zählzeiten. Beispiel: das ل in الٓمٓ. Die Namen von ن ق ص س ل ك م bestehen aus drei Buchstaben, mit einem Madd-Buchstaben in der Mitte und Sukun am Ende: 6 Zählzeiten. ع ist eine Ausnahme: 4 oder 6 Zählzeiten bei Hafs über den Weg al-Shatibiyyah. Die zweibuchstabigen Lesungen von حي طهر dauern 2 Zählzeiten; der Name Alif enthält kein Madd. In الٓمٓ wird Alif nicht gedehnt, Lam und Mim jeweils 6 Zählzeiten. In حمٓ dauert ح 2 und م 6 Zählzeiten.',
         'es':
-            'En las letras aisladas al comienzo de algunas suras, el final de una letra deletreada se asimila a la siguiente. Se prolonga 6 tiempos. Ejemplo: la ل de الٓمٓ.',
+            'En las letras aisladas al comienzo de algunas suras, el final de una letra deletreada se asimila a la siguiente. Se prolonga 6 tiempos. Ejemplo: la ل de الٓمٓ. Los nombres de ن ق ص س ل ك م tienen tres letras, con una letra de madd en medio y sukún al final: 6 tiempos. ع es una excepción: 4 o 6 tiempos según Hafs por la vía de al-Shatibiyyah. Las lecturas de dos letras de حي طهر duran 2 tiempos; el nombre alif no contiene madd. En الٓمٓ, alif no se prolonga, lam y meem duran 6 tiempos cada una. En حمٓ, ح dura 2 tiempos y م 6.',
       },
       exampleArabic: ['الٓمٓ'],
       triggerLetters: ['ا', 'و', 'ي'],
@@ -612,21 +612,21 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'In the disjointed letters opening some surahs, a spelled letter ends in a plain sukoon with no merging. Prolong 6 counts. Example: the س of يسٓ.',
+            'In the disjointed letters opening some surahs, a spelled letter ends in a plain sukoon with no merging. Prolong 6 counts. Example: the س of يسٓ. The letters ن ق ص س ل ك م have three-letter names with a madd letter in the middle and a final sukoon; prolong them 6 counts. ع is an exception: 4 or 6 counts in Hafs via al-Shatibiyyah. The two-letter readings of حي طهر take 2 counts; ا (alif) has no madd. In الٓمٓ: alif has no madd, lam and meem take 6 counts each. In حمٓ: ح takes 2 counts and م takes 6.',
         'ar':
-            'في فواتح السور، يكون آخر اسم الحرف ساكنًا من غير إدغام، ويمد ٦ حركات. مثاله: السين في يسٓ.',
+            'في فواتح السور، يكون آخر اسم الحرف ساكنًا من غير إدغام، ويمد ٦ حركات. مثاله: السين في يسٓ. الحروف ن ق ص س ل ك م هجاؤها ثلاثة أحرف، أوسطها حرف مد وآخرها ساكن، فتمد ٦ حركات. والعين استثناء: تمد ٤ أو ٦ حركات لحفص من طريق الشاطبية. أما حروف «حي طهر» فهجاؤها حرفان وتمد حركتين، والألف لا مد في هجائها. في الٓمٓ: الألف لا تمد، واللام والميم كل منهما ٦ حركات. وفي حمٓ: الحاء حركتان، والميم ٦ حركات.',
         'ur':
-            'حروفِ مقطعات میں حرف کا آخر ساکن ہو اور ادغام نہ ہو تو چھ حرکات۔ مثال: يسٓ کا سین۔',
+            'حروفِ مقطعات میں حرف کا آخر ساکن ہو اور ادغام نہ ہو تو چھ حرکات۔ مثال: يسٓ کا سین۔ ن ق ص س ل ك م کے نام تین حرفوں پر مشتمل ہیں، درمیان میں حرفِ مد اور آخر میں سکون ہوتا ہے؛ انہیں چھ حرکات کھینچیں۔ ع مستثنیٰ ہے: حفص بطریقِ شاطبیہ میں چار یا چھ حرکات۔ «حي طهر» کی دو حرفی قراءت دو حرکات ہے؛ الف کے نام میں مد نہیں۔ الٓمٓ میں الف بلا مد، لام اور میم ہر ایک چھ حرکات؛ حمٓ میں حا دو اور میم چھ حرکات ہے۔',
         'tr':
-            'Hurûf-ı mukattaada harfin sonu idgamsız sâkin olur; 6 hareke. Örnek: يسٓ’deki sîn.',
+            'Hurûf-ı mukattaada harfin sonu idgamsız sâkin olur; 6 hareke. Örnek: يسٓ’deki sîn. ن ق ص س ل ك م harflerinin adları üç harflidir; ortada med harfi, sonda sükûn bulunur ve 6 hareke uzatılır. ع istisnadır: Hafs’ın Şâtıbiyye tarikinde 4 veya 6 hareke. حي طهر harflerinin iki harfli okunuşları 2 harekedir; elifin adında med yoktur. الٓمٓ içinde elif uzatılmaz, lâm ve mim 6’şar harekedir. حمٓ içinde ح 2, م 6 harekedir.',
         'fr':
-            'Dans les lettres isolées, la lettre épelée se termine par un soukoun sans assimilation. 6 temps. Exemple : le س de يسٓ.',
+            'Dans les lettres isolées, la lettre épelée se termine par un soukoun sans assimilation. 6 temps. Exemple : le س de يسٓ. Les noms de ن ق ص س ل ك م comportent trois lettres, avec une lettre de madd au milieu et un soukoun final : 6 temps. ع est une exception : 4 ou 6 temps selon Hafs par la voie d’al-Shatibiyyah. Les lectures à deux lettres de حي طهر durent 2 temps ; le nom alif ne contient pas de madd. Dans الٓمٓ, alif ne se prolonge pas, lam et meem durent chacun 6 temps. Dans حمٓ, ح dure 2 temps et م 6.',
         'id':
-            'Pada huruf muqatha’ah, akhir nama huruf bersukun tanpa idgham. 6 harakat. Contoh: sin pada يسٓ.',
+            'Pada huruf muqatha’ah, akhir nama huruf bersukun tanpa idgham. 6 harakat. Contoh: sin pada يسٓ. Nama ن ق ص س ل ك م terdiri dari tiga huruf, dengan huruf mad di tengah dan sukun di akhir; dibaca 6 harakat. ع merupakan pengecualian: 4 atau 6 harakat menurut Hafs melalui jalur al-Syathibiyyah. Bacaan dua huruf حي طهر dibaca 2 harakat; nama alif tidak mengandung mad. Dalam الٓمٓ, alif tidak dipanjangkan, lam dan mim masing-masing 6 harakat. Dalam حمٓ, ح 2 harakat dan م 6.',
         'de':
-            'Bei den Einzelbuchstaben endet der Buchstabe auf Sukoon ohne Verschmelzung. 6 Zählzeiten. Beispiel: das س in يسٓ.',
+            'Bei den Einzelbuchstaben endet der Buchstabe auf Sukoon ohne Verschmelzung. 6 Zählzeiten. Beispiel: das س in يسٓ. Die Namen von ن ق ص س ل ك م bestehen aus drei Buchstaben, mit einem Madd-Buchstaben in der Mitte und Sukun am Ende: 6 Zählzeiten. ع ist eine Ausnahme: 4 oder 6 Zählzeiten bei Hafs über den Weg al-Shatibiyyah. Die zweibuchstabigen Lesungen von حي طهر dauern 2 Zählzeiten; der Name Alif enthält kein Madd. In الٓمٓ wird Alif nicht gedehnt, Lam und Mim jeweils 6 Zählzeiten. In حمٓ dauert ح 2 und م 6 Zählzeiten.',
         'es':
-            'En las letras aisladas al comienzo de algunas suras, la letra termina en sukún sin asimilación. Se prolonga 6 tiempos. Ejemplo: la س de يسٓ.',
+            'En las letras aisladas al comienzo de algunas suras, la letra termina en sukún sin asimilación. Se prolonga 6 tiempos. Ejemplo: la س de يسٓ. Los nombres de ن ق ص س ل ك م tienen tres letras, con una letra de madd en medio y sukún al final: 6 tiempos. ع es una excepción: 4 o 6 tiempos según Hafs por la vía de al-Shatibiyyah. Las lecturas de dos letras de حي طهر duran 2 tiempos; el nombre alif no contiene madd. En الٓمٓ, alif no se prolonga, lam y meem duran 6 tiempos cada una. En حمٓ, ح dura 2 tiempos y م 6.',
       },
       exampleArabic: ['يسٓ'],
       triggerLetters: ['ا', 'و', 'ي'],

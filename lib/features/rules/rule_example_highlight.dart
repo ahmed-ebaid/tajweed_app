@@ -26,7 +26,7 @@ class RuleExampleHighlight {
     TajweedRule.idghamWithoutGhunnah: ['ن رَّ', 'ًى لِّ'],
     TajweedRule.ikhfa: ['ن ك', 'نك', 'نت'],
     TajweedRule.iqlab: ['نْ ب', 'ٌ ب'],
-    TajweedRule.izhar: ['نْ آ', 'ٌ ح'],
+    TajweedRule.izhar: ['نْ ءَ', 'ٌ ح'],
     TajweedRule.shaddah: ['يَّ', 'رَّ', 'مَّ'],
     TajweedRule.waqf: ['ۘ', 'ۙ', 'ۚ', 'ۗ', 'ۖ', 'ۛ', 'ۜ'],
     TajweedRule.sajdah: ['۩'],

@@ -8,21 +8,29 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.17 (submitted for review); 1.1.16 remains live until approval.
-- **Build:** 93 (live App Store version) / 94 (internal TestFlight).
-- **Release stage:** 1.1.17 (94) submitted to Apple, verified
-  `WAITING_FOR_REVIEW`. Build 93 remains live until approval.
+- **Version:** 1.1.17 (live); 1.1.18 (internal TestFlight only).
+- **Build:** 94 (live App Store version) / 95 (internal TestFlight).
+- **Release stage:** 1.1.18 (95) uploaded for internal testing on 2026-10-10.
+  Apple processing verified `VALID`; internal status `IN_BETA_TESTING`.
+  No public App Store submission was made for 1.1.18.
 - **Release setting:** Automatic release after approval.
 - **Submission:** 4ece26fa-df40-4f2f-b590-b720a4e702c0
 - **App Store version ID:** 36636462-e787-4e73-8e93-3f5906d4b61c
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
-- **TestFlight status:** 1.1.17 (94) uploaded, Apple-validated (`VALID`), and
+- **TestFlight status:** 1.1.18 (95) uploaded, Apple-validated (`VALID`), and
   available to the internal Tajweed Testers group (`IN_BETA_TESTING`).
   What to Test notes are verified in all eight languages.
-- **TestFlight build ID:** 5a4f04c6-0054-4843-82df-687ef3c9ef9f
-- **Public release:** 1.1.16 (93) remains `READY_FOR_SALE`. Version 1.1.17's
-  build attachment is verified as build 94; automatic release follows approval.
+- **TestFlight build ID:** 9ed9f476-dcad-4881-92c7-34cf54eedab7
+- **Public release:** 1.1.17 (94) verified `READY_FOR_SALE`; unchanged by this upload.
+- **Build 95 changes:** Opening-letter madd guidance distinguishes two and six
+  counts in all eight languages, including alif and ayn exceptions and the
+  separate durations in Alif-Lam-Meem and Ha-Meem. The intermediate izhar
+  example uses `مَنْ ءَامَنَ` with the separate Quranic hamza and corrected
+  highlight. Rules, word details, and quiz feedback share the corrections.
+  No Mushaf image or scrolling changes are included.
+- **Build 95 regressions:** 390 tests passed with both Quran fixtures; only the
+  intentionally disabled manual utility is skipped.
 - **Build train:** Apple closed 1.1.16 to new builds after release, so build 94
   uses 1.1.17. The initial 1.1.16 (94) upload was rejected with error 90186.
 - **Build 94 mark clarity:** Hamzat al-Wasl examples and tips use the Quranic

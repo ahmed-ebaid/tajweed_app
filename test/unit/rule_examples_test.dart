@@ -6,6 +6,60 @@ import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/waqf_symbols.dart';
 
 void main() {
+  test('izhar quiz preserves the separate Quranic hamza and its highlight', () {
+    final definition = RulesRepository.findByRule(TajweedRule.izhar)!;
+    expect(definition.exampleArabic.first, 'مَنْ ءَامَنَ');
+    final questions = QuizRepository.all.where(
+      (question) =>
+          question.rule == TajweedRule.izhar &&
+          question.arabicText == definition.exampleArabic.first,
+    );
+    expect(questions, isNotEmpty);
+    expect(
+      QuizRepository.questionLevel(TajweedRule.izhar),
+      QuizLevel.intermediate,
+    );
+    for (final question in questions) {
+      expect(question.options[question.correctIndex], definition.names);
+      final range = question.highlightRanges.single;
+      expect(question.arabicText.substring(range.start, range.end), 'نْ ءَ');
+      expect(question.arabicText, isNot(contains('آ')));
+      expect(question.arabicText, isNot(contains('\u0653')));
+    }
+  });
+
+  test('opening-letter madd guidance reaches every locale and quiz', () {
+    const languageCodes = ['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
+    for (final rule in [
+      TajweedRule.maddTabeei,
+      TajweedRule.maddLazimHarfiMuthaqqal,
+      TajweedRule.maddLazimHarfiMukhaffaf,
+    ]) {
+      final definition = RulesRepository.findByRule(rule)!;
+      for (final languageCode in languageCodes) {
+        final description = definition.descriptions[languageCode]!;
+        expect(description, contains('حي طهر'));
+        expect(description, contains('حمٓ'));
+        if (rule != TajweedRule.maddTabeei) {
+          expect(description, contains('ن ق ص س ل ك م'));
+          expect(description, contains('الٓمٓ'));
+          expect(description, contains(languageCode == 'ar' ? 'العين' : 'ع'));
+        }
+        for (final question in QuizRepository.all.where(
+          (q) => q.rule == rule,
+        )) {
+          expect(question.explanation[languageCode], contains(description));
+        }
+      }
+    }
+    final arabic = RulesRepository.findByRule(
+      TajweedRule.maddLazimHarfiMukhaffaf,
+    )!.description('ar');
+    expect(arabic, contains('٤ أو ٦'));
+    expect(arabic, contains('الألف لا تمد'));
+    expect(arabic, contains('الحاء حركتان، والميم ٦ حركات'));
+  });
+
   test('rules repository covers every tajweed rule exactly once', () {
     final definedRules = RulesRepository.all
         .map((definition) => definition.rule)

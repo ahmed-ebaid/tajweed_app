@@ -283,6 +283,11 @@ CI enforcement:
 - Tanween annotations highlight only the letter carrying the tanween and its marks, not a supporting alif or preceding letters included in the upstream tag.
 - Tapping a span opens `WordDetailSheet` explaining the rule in the current UI language
 
+### Rule teaching and quizzes
+- Rules, word-detail explanations, and quiz feedback share the eight-language definitions in `RulesRepository`.
+- Opening-letter guidance distinguishes the two-count readings of `حي طهر` from the six-count readings of `ن ق ص س ل ك م`. Alif has no madd; ayn permits four or six counts in Hafs via al-Shatibiyyah. In `حمٓ`, ha takes two counts and meem six; in `الٓمٓ`, lam and meem each take six.
+- The intermediate izhar example uses the separate Quranic hamza in `مَنْ ءَامَنَ`; its highlight covers the noon and following hamza, without adding a maddah sign.
+
 ### Home
 - A localized reading shortcut opens the Reader tab without changing the saved ayah, scroll offset, or reader mode.
 - New readers see “Start reading”; returning readers see their saved surah and ayah.
