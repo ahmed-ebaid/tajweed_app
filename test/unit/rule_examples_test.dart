@@ -4,6 +4,7 @@ import 'package:tajweed_practice/features/quiz/quiz_repository.dart';
 import 'package:tajweed_practice/features/rules/rule_example_references.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
 import 'package:tajweed_practice/features/rules/waqf_symbols.dart';
+import 'package:tajweed_practice/features/rules/widgets/sukoon_comparison.dart';
 
 void main() {
   test('izhar quiz preserves the separate Quranic hamza and its highlight', () {
@@ -58,6 +59,37 @@ void main() {
     expect(arabic, contains('٤ أو ٦'));
     expect(arabic, contains('الألف لا تمد'));
     expect(arabic, contains('الحاء حركتان، والميم ٦ حركات'));
+  });
+
+  test('silent-letter guidance scopes rounded zero to marked ا و ي', () {
+    const languages = {
+      'en': 'it does not make every',
+      'ar': 'وليس معنى ذلك أن كل',
+      'ur': 'یہ نہیں کہ ہر',
+      'tr': 'her ا، و، ي harfinin okunmadığı anlamına gelmez',
+      'fr': 'il ne rend pas muettes toutes',
+      'id': 'bukan berarti semua',
+      'de': 'es macht nicht alle',
+      'es': 'no vuelve mudas todas',
+    };
+    final definition = RulesRepository.findByRule(TajweedRule.silent)!;
+    for (final entry in languages.entries) {
+      final description = definition.description(entry.key);
+      expect(description, contains('ا'));
+      expect(description, contains('و'));
+      expect(description, contains('ي'));
+      expect(
+        description,
+        contains(entry.value),
+        reason:
+            '${entry.key} must clarify that unmarked letters are not silent',
+      );
+      expect(
+        SukoonComparison.labels[entry.key]![2],
+        contains('ا، و، ي'),
+        reason: '${entry.key} comparison must scope the rounded-zero mark',
+      );
+    }
   });
 
   test('rules repository covers every tajweed rule exactly once', () {

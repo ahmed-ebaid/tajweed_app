@@ -9,21 +9,22 @@
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
 - **Version:** 1.1.17 (live); 1.1.18 (submitted for review).
-- **Build:** 94 (live App Store version) / 96 (submitted for review).
-- **Release stage:** 1.1.18 (96) submitted on 2026-10-11 UTC.
-  Apple processing verified `VALID`; internal status `IN_BETA_TESTING`.
-  App Store state verified `WAITING_FOR_REVIEW`, automatic release after approval.
+- **Build:** 94 (live App Store version) / 97 (submitted for review).
+- **Release stage:** 1.1.18 (97) submitted on 2026-10-11 UTC.
+  Apple processing verified `VALID`; App Store state verified
+  `WAITING_FOR_REVIEW`, automatic release after approval. Build 96 was removed
+  from its waiting review submission so the clarification could be included.
 - **Release setting:** Automatic release after approval.
-- **Submission:** 2df5d82e-4718-4bfd-9357-69af8bb3a1fc
+- **Submission:** f23eddcd-4d02-4a85-8578-a039343d73ca
 - **App Store version ID:** 2c8049ae-9f23-482a-9b98-38c3bb5b3f0d
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
-- **TestFlight status:** 1.1.18 (96) uploaded, Apple-validated (`VALID`), and
-  available to the internal Tajweed Testers group (`IN_BETA_TESTING`).
-  What to Test notes are verified in all eight languages.
-- **TestFlight build ID:** d09d1589-a0ab-4afe-beb9-2a2613f5c0a7
+- **TestFlight status:** 1.1.18 (97) uploaded and Apple-validated (`VALID`),
+  assigned to the internal Tajweed Testers group. Localized What to Test notes
+  are configured in all eight languages.
+- **TestFlight build ID:** 58e1eff2-f14a-4224-b406-107b11ec43ad
 - **Public release:** 1.1.17 (94) verified `READY_FOR_SALE`; unchanged by this upload.
-- **Google Play:** Matching 1.1.18 (96) bundle uploaded and production-track edit
+- **Google Play:** Matching 1.1.18 (97) bundle uploaded and production-track edit
   committed and re-read successfully. Store review/public availability is not
   established by the track's `completed` rollout status. Other tracks and
   screenshots were not changed.
@@ -31,6 +32,12 @@
   sukoon/rounded-zero comparisons in rule details and reader word sheets.
   Explains circular ordinary Arabic sukoon versus the Madani mark convention.
   Source Quran glyphs, line endings, and zoom controls remain unchanged.
+- **Build 97 changes:** Clarifies in all eight languages that the
+  closed rounded zero marks an unpronounced written ا، و، or ي, and only the
+  marked letter is omitted; the other letters are not inherently silent.
+- **Build 97 regressions:** Full Flutter test suite passed. Both signed store
+  artifacts use version 1.1.18, build 97; the release notes are localized in
+  all eight store languages.
 - **Build 96 regressions:** 392 tests passed with both corpus fixtures; one
   intentionally disabled manual utility remains skipped. Both signed store
   artifacts use version 1.1.18, build 96.
