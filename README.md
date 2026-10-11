@@ -285,6 +285,7 @@ CI enforcement:
 
 ### Rule teaching and quizzes
 - Rules, word-detail explanations, and quiz feedback share the eight-language definitions in `RulesRepository`.
+- Silent-letter details and reader word sheets show a large, labeled comparison of small-head sukoon, rounded zero, and circular ordinary Arabic sukoon. The shared guidance explains that a circle alone does not identify a silent letter; source Quran marks remain unchanged.
 - Opening-letter guidance distinguishes the two-count readings of `حي طهر` from the six-count readings of `ن ق ص س ل ك م`. Alif has no madd; ayn permits four or six counts in Hafs via al-Shatibiyyah. In `حمٓ`, ha takes two counts and meem six; in `الٓمٓ`, lam and meem each take six.
 - The intermediate izhar example uses the separate Quranic hamza in `مَنْ ءَامَنَ`; its highlight covers the noon and following hamza, without adding a maddah sign.
 

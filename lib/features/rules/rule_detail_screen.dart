@@ -16,6 +16,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:share_plus/share_plus.dart';
 import 'widgets/rule_example_text.dart';
 import 'widgets/rule_guidance_text.dart';
+import 'widgets/sukoon_comparison.dart';
 import '../../shared/utils/share_text.dart';
 
 /// Full-screen detail view for a single tajweed rule.
@@ -408,6 +409,10 @@ class _RuleDetailScreenState extends State<RuleDetailScreen> {
               const SizedBox(height: 24),
 
               // ── Examples section ────────────────────────────────────────
+              if (rule == TajweedRule.silent) ...[
+                SukoonComparison(languageCode: langCode),
+                const SizedBox(height: 24),
+              ],
               if (def.exampleArabic.isNotEmpty && rule != TajweedRule.waqf) ...[
                 _SectionTitle(title: l10n.get('examples')),
                 const SizedBox(height: 10),

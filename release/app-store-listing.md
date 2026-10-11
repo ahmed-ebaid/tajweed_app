@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.17
+# App Store listing — Tajweed 1.1.18
 
 ## App information
 
@@ -8,21 +8,32 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.17 (live); 1.1.18 (internal TestFlight only).
-- **Build:** 94 (live App Store version) / 95 (internal TestFlight).
-- **Release stage:** 1.1.18 (95) uploaded for internal testing on 2026-10-10.
+- **Version:** 1.1.17 (live); 1.1.18 (submitted for review).
+- **Build:** 94 (live App Store version) / 96 (submitted for review).
+- **Release stage:** 1.1.18 (96) submitted on 2026-10-11 UTC.
   Apple processing verified `VALID`; internal status `IN_BETA_TESTING`.
-  No public App Store submission was made for 1.1.18.
+  App Store state verified `WAITING_FOR_REVIEW`, automatic release after approval.
 - **Release setting:** Automatic release after approval.
-- **Submission:** 4ece26fa-df40-4f2f-b590-b720a4e702c0
-- **App Store version ID:** 36636462-e787-4e73-8e93-3f5906d4b61c
+- **Submission:** 2df5d82e-4718-4bfd-9357-69af8bb3a1fc
+- **App Store version ID:** 2c8049ae-9f23-482a-9b98-38c3bb5b3f0d
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
-- **TestFlight status:** 1.1.18 (95) uploaded, Apple-validated (`VALID`), and
+- **TestFlight status:** 1.1.18 (96) uploaded, Apple-validated (`VALID`), and
   available to the internal Tajweed Testers group (`IN_BETA_TESTING`).
   What to Test notes are verified in all eight languages.
-- **TestFlight build ID:** 9ed9f476-dcad-4881-92c7-34cf54eedab7
+- **TestFlight build ID:** d09d1589-a0ab-4afe-beb9-2a2613f5c0a7
 - **Public release:** 1.1.17 (94) verified `READY_FOR_SALE`; unchanged by this upload.
+- **Google Play:** Matching 1.1.18 (96) bundle uploaded and production-track edit
+  committed and re-read successfully. Store review/public availability is not
+  established by the track's `completed` rollout status. Other tracks and
+  screenshots were not changed.
+- **Build 96 changes:** Includes build 95 corrections plus large, localized
+  sukoon/rounded-zero comparisons in rule details and reader word sheets.
+  Explains circular ordinary Arabic sukoon versus the Madani mark convention.
+  Source Quran glyphs, line endings, and zoom controls remain unchanged.
+- **Build 96 regressions:** 392 tests passed with both corpus fixtures; one
+  intentionally disabled manual utility remains skipped. Both signed store
+  artifacts use version 1.1.18, build 96.
 - **Build 95 changes:** Opening-letter madd guidance distinguishes two and six
   counts in all eight languages, including alif and ayn exceptions and the
   separate durations in Alif-Lam-Meem and Ha-Meem. The intermediate izhar

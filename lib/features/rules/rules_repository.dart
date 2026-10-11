@@ -918,21 +918,21 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'An extra letter in the Uthmani script that is written but not pronounced, often marked with the rounded zero (۟). This is not an ordinary sukoon (ۡ), which marks a pronounced consonant without a vowel.',
+            'An extra letter in the Uthmani script that is written but not pronounced, often marked with the rounded zero (۟). In the Madani Mushaf, the closed rounded zero marks a letter omitted in both continuous reading and stopping; the small-head sukoon (ۡ) marks a consonant without a vowel. Ordinary Arabic sukoon can also be circular, as in بْ, but does not mean the letter is silent. Follow the Mushaf’s notation, not a circle’s appearance alone.',
         'ar':
-            'حرف زائد يُكتب في رسم المصحف ولا يُنطق، وتدل عليه غالبًا علامة الصفر المستدير فوقه (۟). ولا تخلطها بعلامة السكون المعتادة، وهي رأس حاء صغيرة (ۡ)، التي تدل على حرف منطوق بلا حركة.',
+            'حرف زائد يُكتب في رسم المصحف ولا يُنطق، وتدل عليه غالبًا علامة الصفر المستدير فوقه (۟). في ضبط المصحف المدني، يدل الصفر المستدير المغلق على حرف لا يُنطق وصلًا ولا وقفًا، أما السكون برأس حاء صغيرة (ۡ) فيدل على حرف بلا حركة. وقد يُرسم السكون في الكتابة العربية المعتادة دائرة مثل بْ، ولا يعني ذلك أن الحرف لا يُنطق. اتبع اصطلاح ضبط المصحف، لا شكل الدائرة وحده.',
         'ur':
-            'رسمِ عثمانی میں زائد لکھا جانے والا مگر تلاوت میں نہ پڑھا جانے والا حرف، جس پر عموماً صفرِ مستدیر (۟) ہوتا ہے۔ یہ عام سکون (ۡ) نہیں؛ عام سکون ایسے ادا ہونے والے حرف کو ظاہر کرتا ہے جس پر کوئی حرکت نہ ہو۔',
+            'رسمِ عثمانی میں زائد لکھا جانے والا مگر تلاوت میں نہ پڑھا جانے والا حرف، جس پر عموماً صفرِ مستدیر (۟) ہوتا ہے۔ مدنی مصحف میں بند گول صفر والا حرف وصل اور وقف دونوں میں نہیں پڑھا جاتا؛ چھوٹے سرِ حاء والا سکون (ۡ) حرف پر حرکت نہ ہونے کی علامت ہے۔ عام عربی سکون بْ کی طرح گول بھی ہو سکتا ہے، مگر اس کا مطلب حرف کو چھوڑنا نہیں۔ مصحف کے ضبط کو دیکھیں، صرف دائرے کو نہیں۔',
         'tr':
-            'Uthmani yazımda yazıldığı hâlde okunmayan ek harf; çoğunlukla üzerindeki yuvarlak sıfır (۟) ile gösterilir. Bu, harekesiz okunan bir ünsüzü belirten normal sükûn (ۡ) değildir.',
+            'Uthmani yazımda yazıldığı hâlde okunmayan ek harf; çoğunlukla üzerindeki yuvarlak sıfır (۟) ile gösterilir. Medine Mushafında kapalı yuvarlak sıfır, vasılda ve vakıfta okunmayan harfi; küçük hâ başı biçimindeki sükûn (ۡ) ise harekesiz ünsüzü belirtir. Normal Arapça sükûn da بْ gibi dairesel olabilir, ancak harfin okunmadığı anlamına gelmez. Yalnız daireye değil, Mushafın işaretleme düzenine bakın.',
         'fr':
-            'Lettre ajoutée au rasm uthmani, écrite mais non prononcée, souvent marquée par un petit zéro rond (۟). Ce signe se distingue du soukoun ordinaire (ۡ), qui indique une consonne prononcée sans voyelle.',
+            'Lettre ajoutée au rasm uthmani, écrite mais non prononcée, souvent marquée par un petit zéro rond (۟). Dans le Mushaf de Médine, le zéro rond fermé indique une lettre omise en continuant comme à l’arrêt ; le soukoun en petite tête de hâ (ۡ) indique une consonne sans voyelle. Le soukoun arabe ordinaire peut aussi être circulaire, comme dans بْ, sans rendre la lettre muette. Suivez la notation du Mushaf, pas le cercle seul.',
         'id':
-            'Huruf tambahan dalam rasm Utsmani yang ditulis tetapi tidak dibaca, biasanya ditandai sifr mustadir (۟). Ini berbeda dari sukun biasa (ۡ), yang menandai konsonan yang tetap dilafalkan tanpa vokal.',
+            'Huruf tambahan dalam rasm Utsmani yang ditulis tetapi tidak dibaca, biasanya ditandai sifr mustadir (۟). Dalam Mushaf Madinah, nol bulat tertutup menandai huruf yang tidak dibaca saat wasal maupun waqaf; sukun berbentuk kepala ha kecil (ۡ) menandai konsonan tanpa vokal. Sukun Arab biasa juga bisa berbentuk lingkaran seperti بْ, tetapi bukan berarti hurufnya tidak dibaca. Ikuti tanda baca Mushaf, bukan lingkarannya saja.',
         'de':
-            'Ein zusätzlicher Buchstabe im uthmanischen Schriftbild, der geschrieben, aber nicht gesprochen wird und oft mit dem runden Nullzeichen (۟) markiert ist. Das unterscheidet sich vom gewöhnlichen Sukūn (ۡ), das einen gesprochenen Konsonanten ohne Vokal kennzeichnet.',
+            'Ein zusätzlicher Buchstabe im uthmanischen Schriftbild, der geschrieben, aber nicht gesprochen wird und oft mit dem runden Nullzeichen (۟) markiert ist. Im Medina-Mushaf kennzeichnet die geschlossene runde Null einen beim Weiterlesen wie beim Anhalten ausgelassenen Buchstaben; das Sukun in Form eines kleinen Ha-Kopfes (ۡ) einen Konsonanten ohne Vokal. Gewöhnliches arabisches Sukun kann wie in بْ ebenfalls kreisförmig sein, ohne den Buchstaben stumm zu machen. Die Zeichenkonvention des Mushaf beachten, nicht nur den Kreis.',
         'es':
-            'Una letra adicional del rasm uthmani que se escribe pero no se pronuncia, normalmente marcada con el cero redondo (۟). No es un sukún ordinario (ۡ), que señala una consonante pronunciada sin vocal.',
+            'Una letra adicional del rasm uthmani que se escribe pero no se pronuncia, normalmente marcada con el cero redondo (۟). En el Mushaf de Medina, el cero redondo cerrado indica una letra omitida al continuar y al detenerse; el sukún con pequeña cabeza de ha (ۡ) indica una consonante sin vocal. El sukún árabe habitual también puede ser circular, como en بْ, sin que la letra sea muda. Siga la notación del Mushaf, no solo el círculo.',
       },
       exampleArabic: ['أُو۟لَـٰٓئِكَ', 'كَفَرُوا۟'],
       triggerLetters: [],

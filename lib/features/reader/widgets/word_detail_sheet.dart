@@ -8,6 +8,7 @@ import '../../rules/rules_repository.dart';
 import 'tajweed_text.dart';
 import '../../rules/widgets/rule_example_text.dart';
 import '../../rules/widgets/rule_guidance_text.dart';
+import '../../rules/widgets/sukoon_comparison.dart';
 
 const _tanweenRules = {
   TajweedRule.idghamWithGhunnah,
@@ -233,6 +234,10 @@ class _WordDetailSheetState extends State<WordDetailSheet> {
                 ),
               if (definition != null &&
                   definition.exampleArabic.isNotEmpty) ...[
+                if (widget.rule == TajweedRule.silent) ...[
+                  const SizedBox(height: 16),
+                  SukoonComparison(languageCode: langCode),
+                ],
                 const SizedBox(height: 16),
                 Text(
                   l10n.get('examples'),
