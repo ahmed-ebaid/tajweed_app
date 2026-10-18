@@ -16,7 +16,7 @@ class RuleExampleHighlight {
 
   static const Map<TajweedRule, List<String>> fragments = {
     TajweedRule.ghunnah: ['نَّ', 'مَّ', 'نَّ'],
-    TajweedRule.qalqalah: ['دْ', 'بْ', 'جْ'],
+    TajweedRule.qalqalah: ['دۡ', 'بۡ', 'جۡ'],
     TajweedRule.maddTabeei: ['ا', 'و', 'ي'],
     TajweedRule.maddMuttasil: ['ا', 'ا', 'ا'],
     TajweedRule.maddMunfasil: ['ي', 'و', 'ا'],
@@ -25,8 +25,8 @@ class RuleExampleHighlight {
     TajweedRule.idghamWithGhunnah: ['ن يَّ', 'ن نِّ'],
     TajweedRule.idghamWithoutGhunnah: ['ن رَّ', 'ًى لِّ'],
     TajweedRule.ikhfa: ['ن ك', 'نك', 'نت'],
-    TajweedRule.iqlab: ['نْ ب', 'ٌ ب'],
-    TajweedRule.izhar: ['نْ ءَ', 'ٌ ح'],
+    TajweedRule.iqlab: ['نۡ ب', 'ٌ ب'],
+    TajweedRule.izhar: ['نۡ ءَ', 'ٌ ح'],
     TajweedRule.shaddah: ['يَّ', 'رَّ', 'مَّ'],
     TajweedRule.waqf: ['ۘ', 'ۙ', 'ۚ', 'ۗ', 'ۖ', 'ۛ', 'ۜ'],
     TajweedRule.sajdah: ['۩'],
@@ -35,7 +35,7 @@ class RuleExampleHighlight {
     TajweedRule.maddLazimHarfiMuthaqqal: ['لٓ'],
     TajweedRule.maddLazimHarfiMukhaffaf: ['سٓ'],
     TajweedRule.maddAridLissukun: ['و', 'ي'],
-    TajweedRule.maddLin: ['يْ', 'وْ'],
+    TajweedRule.maddLin: ['يۡ', 'وۡ'],
     TajweedRule.idghamShafawi: ['م مَّ'],
     TajweedRule.idghamMutajanisayn: ['د تَّ'],
     TajweedRule.ikhfaShafawi: ['م ب'],

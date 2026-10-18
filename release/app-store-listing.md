@@ -1,4 +1,36 @@
-# App Store listing — Tajweed 1.1.18
+# App Store listing — Tajweed 1.1.20
+
+## Localized Tajweed corrections — 1.1.20 (100)
+
+- **Status:** Submitted to both stores on 2026-10-18. Apple build 100 is
+  `VALID` and version 1.1.20 is `WAITING_FOR_REVIEW`, with automatic release
+  after approval. Google Play production versionCode 100 and `completed`
+  rollout status were re-read successfully. This does not establish Google
+  review approval or public availability. Other Play tracks and screenshots
+  are unchanged.
+- **Sukoon:** Authored learning and quiz examples use the Quranic small-head
+  haa mark (U+06E1), with matching letter-level highlights. The rounded-zero
+  silent-letter examples and intentional circular-sukoon comparison remain.
+  Source Quran data and reader layout are unchanged.
+- **Ghunnah:** All eight languages distinguish the nasal outlet of ghunnah
+  from noon's tongue-tip/upper-gum articulation and meem's two lips.
+- **Hamzat al-Wasl:** Localized starting-vowel steps distinguish the definite
+  article from other following lams, original third-letter dammah from
+  incidental dammah, and kasrah starts in verbs and wasl nouns.
+- **Tafkhim:** Every localized article pairs each of the five degrees with a
+  qaf example: قَالَ, قَتَلَ, قُلۡ, يَقۡطَعُونَ, and قِيلَ.
+- **Android configuration:** Built through
+  `release/build_android_release.sh appbundle` with explicit
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`. The previous attestation
+  hotfix and fail-closed safeguards are retained.
+- **Validation:** 397 tests passed with the full 6,236-ayah words fixture;
+  two fixture/manual checks were skipped. Analysis completed without errors.
+  Both artifacts were verified as version 1.1.20, build 100. No physical-device
+  verification of build 100 has been performed.
+- **Artifacts (SHA-256):** Android bundle
+  `4e216a488c6aa2a1c67580c62567b1ae285a978126a80cdef2b5f1d17ea33177`;
+  iOS IPA
+  `741ff6450602e50291e7dcc2ee0a5f94d0e7c6a566302e680d54fa5a40625180`.
 
 ## Android attestation hotfix — 1.1.19 (99)
 
@@ -47,22 +79,20 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.17 (live); 1.1.18 (submitted for review).
-- **Build:** 94 (live App Store version) / 97 (submitted for review).
-- **Release stage:** 1.1.18 (97) submitted on 2026-10-11 UTC.
-  Apple processing verified `VALID`; App Store state verified
-  `WAITING_FOR_REVIEW`, automatic release after approval. Build 96 was removed
-  from its waiting review submission so the clarification could be included.
+- **Version:** 1.1.18 (live); 1.1.20 (submitted for review).
+- **Build:** 97 (live App Store version) / 100 (submitted for review).
+- **Release stage:** 1.1.20 verified `WAITING_FOR_REVIEW`.
+  All eight localized release notes and 160 inherited screenshots verified.
 - **Release setting:** Automatic release after approval.
-- **Submission:** f23eddcd-4d02-4a85-8578-a039343d73ca
-- **App Store version ID:** 2c8049ae-9f23-482a-9b98-38c3bb5b3f0d
+- **Submission:** d5d46905-cfd7-4158-8a5c-958cf7340ea6
+- **App Store version ID:** 7f2be577-8f4f-4fc3-a7fb-7925ebaa0cd9
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
-- **TestFlight status:** 1.1.18 (97) uploaded and Apple-validated (`VALID`),
+- **TestFlight status:** 1.1.20 (100) uploaded and Apple-validated (`VALID`),
   assigned to the internal Tajweed Testers group. Localized What to Test notes
   are configured in all eight languages.
-- **TestFlight build ID:** 58e1eff2-f14a-4224-b406-107b11ec43ad
-- **Public release:** 1.1.17 (94) verified `READY_FOR_SALE`; unchanged by this upload.
+- **TestFlight build ID:** 0a8211d5-7bd4-47e7-bb6e-50a3f3a76dc3
+- **Public release:** 1.1.18 (97) verified `READY_FOR_SALE`; unchanged by this upload.
 - **Google Play (historical build 97):** Matching 1.1.18 (97) bundle uploaded and production-track edit
   committed and re-read successfully. Store review/public availability is not
   established by the track's `completed` rollout status. Other tracks and
@@ -190,11 +220,11 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Clearer Tajweed examples with larger text, improved hamza visibility, and
-spacing that adapts to text size. Improved rule layouts and explanations in
-all eight languages. Corrected Quranic sukoon in Hamzat al-Wasl teaching
-examples and more readable shared guidance. Fixed reading-position jumps
-when changing surahs in ayah-by-ayah mode.
+Quran-style small-head sukoon in learning and quiz examples. Corrected noon
+and meem articulation points and clarified that the nasal cavity is the outlet
+of ghunnah only. Clearer steps for starting with hamzat al-wasl, including
+temporary-damma exceptions. Added an example for each of the five degrees
+of Tafkhim.
 
 ## Previous improvements retained
 

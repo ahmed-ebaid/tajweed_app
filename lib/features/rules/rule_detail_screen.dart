@@ -1043,7 +1043,7 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.ghunnah:
         return [
           'Hold the sound through your nose for 2 counts',
-          'Place your tongue against the upper palate',
+          'Noon: tongue tip against the adjoining upper gum; meem: the two lips. The nasal cavity is the outlet of ghunnah, not of the letters themselves',
           'The nasal resonance should be clear and steady',
         ];
       case TajweedRule.qalqalah:
@@ -1184,8 +1184,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Hamzat al-wasl is pronounced when beginning with a word and omitted when joining from a preceding word',
           'Begin the definite article ال with fatḥah: ٱلۡحَمۡدُ (al-ḥamdu)',
-          'Begin most nouns and verb forms with kasrah: ٱهۡدِنَا (ihdinā), ٱسۡتَغۡفِرُوا (istaghfirū)',
-          'A triliteral imperative begins with ḍammah if the third letter of its present-tense form has an original ḍammah (ٱدۡخُلُوا from يَدۡخُلُ); otherwise, use kasrah (ٱضۡرِبُوا from يَضۡرِبُ)',
+          'Begin a verb with ḍammah when its third letter, counting the initial alif, has an original ḍammah: ٱدۡخُلُوا',
+          'Otherwise begin the verb with kasrah: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا; also use kasrah in nouns with hamzat al-wasl, such as ٱسۡم and ٱبۡن',
+          'An incidental ḍammah does not count: ٱمۡشُوا begins with kasrah, from اِمۡشِ. A following lam means fatḥah only when it belongs to the article ال',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1213,6 +1214,7 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Mantén la resonancia nasal durante 2 tiempos',
           'El sonido sale por la cavidad nasal al pronunciar nun o mim con shadda',
+          'La nun se articula con la punta de la lengua contra la encía superior; la mim, con ambos labios. La cavidad nasal es el punto de salida de la gunna, no de las propias letras',
         ];
       case TajweedRule.qalqalah:
         return [
@@ -1342,8 +1344,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Se pronuncia al comenzar una palabra y se omite al enlazarla con la anterior',
           'El artículo ال comienza con fatha: ٱلۡحَمۡدُ',
-          'La mayoría de los nombres y formas verbales comienzan con kasra: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
-          'El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدۡخُلُوا, يَدۡخُلُ); en caso contrario, kasra (ٱضۡرِبُوا, يَضۡرِبُ)',
+          'Damma si la tercera letra del verbo tiene damma original, contando el alif inicial: ٱدۡخُلُوا',
+          'Kasra en los demás verbos: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا, y en nombres como ٱسۡم y ٱبۡن',
+          'La damma ocasional no cuenta: ٱمۡشُوا comienza con kasra, de اِمۡشِ. La fatha ante lam corresponde solo al artículo ال',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1370,7 +1373,7 @@ class _PronunciationSection extends StatelessWidget {
       case TajweedRule.ghunnah:
         return [
           'حافظ على الغنة من الخيشوم بمقدار حركتين',
-          'ضع اللسان في موضعه الصحيح مع وضوح الرنين الأنفي',
+          'النون من طرف اللسان مع ما يحاذيه من لثة الأسنان العليا، والميم من الشفتين؛ والخيشوم مخرج الغنة فقط',
           'ليكن صوت الغنة ثابتًا وواضحًا',
         ];
       case TajweedRule.qalqalah:
@@ -1505,8 +1508,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'تُنطق همزة الوصل عند البدء بالكلمة، وتسقط في الوصل بما قبلها',
           'تُفتح همزة «الـ» التعريف عند البدء: ٱلۡحَمۡدُ (الۡحَمۡدُ)',
-          'تُكسر في أكثر الأسماء وصيغ الأفعال: ٱهۡدِنَا، ٱسۡتَغۡفِرُوا',
-          'يُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدۡخُلُوا، يَدۡخُلُ)، وإلا يُكسر (ٱضۡرِبُوا، يَضۡرِبُ)',
+          'يُضم أول الفعل إذا كان ثالثه مضمومًا ضمًّا أصليًّا، مع عدّ الألف أولًا: ٱدۡخُلُوا',
+          'تُكسر إذا كان ثالث الفعل مفتوحًا أو مكسورًا: ٱهۡدِنَا، ٱسۡتَغۡفِرُوا، ٱضۡرِبُوا، وفي الأسماء مثل ٱسۡم وٱبۡن',
+          'الضمة العارضة لا توجب الضم: نبدأ ٱمۡشُوا بالكسر، لأن الأصل اِمۡشِ. والفتح قبل اللام خاص بأل التعريف',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1534,6 +1538,7 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'ناک سے آواز کو دو حرکات تک برقرار رکھیں',
           'غنہ واضح اور ہموار ہونا چاہیے',
+          'نون زبان کی نوک اور اوپری مسوڑھے سے، میم دونوں ہونٹوں سے؛ خیشوم صرف غنہ کا مخرج ہے',
         ];
       case TajweedRule.qalqalah:
         return [
@@ -1652,8 +1657,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'ہمزۂ وصل لفظ کے آغاز میں پڑھی جاتی ہے اور وصل میں ساقط ہو جاتی ہے',
           '«ال» کی ہمزہ پر زبر آتی ہے: ٱلۡحَمۡدُ',
-          'اکثر دوسرے اسماء اور افعال کی ہمزہ پر زیر آتی ہے: ٱهۡدِنَا، ٱسۡتَغۡفِرُوا',
-          'ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر بھی پیش آتی ہے: ٱدۡخُلُوا، يَدۡخُلُ؛ ورنہ زیر: ٱضۡرِبُوا، يَضۡرِبُ',
+          'فعل کے تیسرے حرف پر اصلی پیش ہو تو ابتدا پیش سے کریں، الف کو پہلا حرف گنیں: ٱدۡخُلُوا',
+          'باقی افعال میں زیر: ٱهۡدِنَا، ٱسۡتَغۡفِرُوا، ٱضۡرِبُوا؛ اور اسماء جیسے ٱسۡم، ٱبۡن میں بھی زیر',
+          'عارضی پیش شمار نہیں ہوتی: ٱمۡشُوا زیر سے، اصل اِمۡشِ ہے۔ لام سے پہلے زبر صرف «ال» تعریف میں ہے',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1679,6 +1685,7 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Sesi genizden 2 hareke tutun',
           'Ghunna net ve dengeli olmalıdır',
+          'Nun dil ucuyla üst diş eti arasından, mim iki dudaktan çıkar; geniz yalnızca ğunnenin mahrecidir',
         ];
       case TajweedRule.qalqalah:
         return [
@@ -1794,8 +1801,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Hemze-i vasl kelimeye başlanırken okunur, vasl halinde düşer',
           'ال takısı fetha ile başlar: ٱلۡحَمۡدُ',
-          'Diğer isim ve fiillerin çoğu kesra ile başlar: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
-          'Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme ile başlanır: ٱدۡخُلُوا, يَدۡخُلُ; değilse kesra: ٱضۡرِبُوا, يَضۡرِبُ',
+          'İlk elif sayılarak fiilin üçüncü harfi aslî dammeli ise dammeyle başlayın: ٱدۡخُلُوا',
+          'Diğer fiillerde kesra: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا; ٱسۡم ve ٱبۡن gibi isimlerde de kesra',
+          'Geçici damme sayılmaz: ٱمۡشُوا kesrayla başlar; aslı اِمۡشِ. Lamdan önce fetha yalnızca ال takısında geçerlidir',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1821,6 +1829,7 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Maintenez le son nasal pendant 2 temps',
           'La résonance nasale doit être claire et stable',
+          'Le noon s’articule avec la pointe de la langue contre la gencive supérieure, le meem avec les deux lèvres ; la cavité nasale est le point de sortie de la ghounna seule',
         ];
       case TajweedRule.qalqalah:
         return [
@@ -1948,8 +1957,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'La hamza de liaison se prononce au début d’un mot et tombe en liaison',
           'L’article ال commence par une fatḥa : ٱلۡحَمۡدُ',
-          'La plupart des autres noms et verbes commencent par une kasra : ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
-          'À l’impératif trilittère, on commence par une ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale : ٱدۡخُلُوا, يَدۡخُلُ ; sinon, par une kasra : ٱضۡرِبُوا, يَضۡرِبُ',
+          'Ḍamma si la troisième lettre du verbe porte une ḍamma originale, alif initial compris : ٱدۡخُلُوا',
+          'Kasra dans les autres verbes : ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا, et les noms tels ٱسۡم et ٱبۡن',
+          'Une ḍamma occasionnelle ne compte pas : ٱمۡشُوا commence par kasra, de اِمۡشِ. La fatḥa devant lam concerne seulement l’article ال',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -1975,6 +1985,7 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Tahan dengung melalui hidung selama 2 harakat',
           'Resonansi dengung harus jelas dan stabil',
+          'Nun dari ujung lidah dan gusi atas, mim dari kedua bibir; rongga hidung adalah makhraj ghunnah saja',
         ];
       case TajweedRule.qalqalah:
         return [
@@ -2093,8 +2104,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung',
           'ال dibaca dengan fathah: ٱلۡحَمۡدُ',
-          'Kebanyakan kata benda dan kata kerja lain dibaca dengan kasrah: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
-          'Fi’il amr tsulatsi dimulai dengan dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli: ٱدۡخُلُوا, يَدۡخُلُ; jika tidak, dengan kasrah: ٱضۡرِبُوا, يَضۡرِبُ',
+          'Dhammah bila huruf ketiga kata kerja berdhammah asli, menghitung alif awal: ٱدۡخُلُوا',
+          'Kasrah pada kata kerja lainnya: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا, serta kata benda seperti ٱسۡم dan ٱبۡن',
+          'Dhammah sementara tidak dihitung: ٱمۡشُوا dimulai kasrah, dari اِمۡشِ. Fathah sebelum lam hanya untuk ال ta’rif',
         ];
       case TajweedRule.hamzatQat:
         return [
@@ -2120,6 +2132,7 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Halte den Nasalklang 2 Zählzeiten',
           'Die Resonanz soll klar und gleichmäßig sein',
+          'Nun: Zungenspitze am oberen Zahnfleisch; Mim: beide Lippen. Die Nasenhöhle ist nur die Austrittsstelle der Ghunna',
         ];
       case TajweedRule.qalqalah:
         return [
@@ -2247,8 +2260,9 @@ class _PronunciationSection extends StatelessWidget {
         return [
           'Die Hamzat al-Wasl wird am Wortanfang gesprochen und beim Verbinden ausgelassen',
           'Der bestimmte Artikel ال beginnt mit Fatha: ٱلۡحَمۡدُ',
-          'Die meisten anderen Nomen und Verben beginnen mit Kasra: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا',
-          'Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat: ٱدۡخُلُوا, يَدۡخُلُ; sonst mit Kasra: ٱضۡرِبُوا, يَضۡرِبُ',
+          'Damma bei ursprünglicher Damma auf dem dritten Verbbuchstaben, das erste Alif mitgezählt: ٱدۡخُلُوا',
+          'Kasra bei den anderen Verben: ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا, und Nomen wie ٱسۡم und ٱبۡن',
+          'Vorübergehende Damma zählt nicht: ٱمۡشُوا beginnt mit Kasra, von اِمۡشِ. Fatha vor Lam gilt nur beim Artikel ال',
         ];
       case TajweedRule.hamzatQat:
         return [

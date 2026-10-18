@@ -3,13 +3,14 @@ import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/features/quiz/quiz_repository.dart';
 import 'package:tajweed_practice/features/rules/rule_example_references.dart';
 import 'package:tajweed_practice/features/rules/rules_repository.dart';
+import 'package:tajweed_practice/features/rules/tajweed_articles_repository.dart';
 import 'package:tajweed_practice/features/rules/waqf_symbols.dart';
 import 'package:tajweed_practice/features/rules/widgets/sukoon_comparison.dart';
 
 void main() {
   test('izhar quiz preserves the separate Quranic hamza and its highlight', () {
     final definition = RulesRepository.findByRule(TajweedRule.izhar)!;
-    expect(definition.exampleArabic.first, 'مَنْ ءَامَنَ');
+    expect(definition.exampleArabic.first, 'مَنۡ ءَامَنَ');
     final questions = QuizRepository.all.where(
       (question) =>
           question.rule == TajweedRule.izhar &&
@@ -23,7 +24,7 @@ void main() {
     for (final question in questions) {
       expect(question.options[question.correctIndex], definition.names);
       final range = question.highlightRanges.single;
-      expect(question.arabicText.substring(range.start, range.end), 'نْ ءَ');
+      expect(question.arabicText.substring(range.start, range.end), 'نۡ ءَ');
       expect(question.arabicText, isNot(contains('آ')));
       expect(question.arabicText, isNot(contains('\u0653')));
     }
@@ -185,8 +186,10 @@ void main() {
       expect(description, contains('ٱهۡدِنَا'));
       expect(description, contains('ٱدۡخُلُوا'));
       expect(description, contains('ٱضۡرِبُوا'));
-      expect(description, contains('من مضارعه'));
-      expect(description, isNot(contains('ثالثه مضمومًا')));
+      expect(description, contains('مع عدّ الألف أولًا'));
+      expect(description, contains('الضمة العارضة'));
+      expect(description, contains('ٱمۡشُوا'));
+      expect(description, contains('وليس لمجرد وجود لام'));
     },
   );
 
@@ -229,6 +232,94 @@ void main() {
       expect(description, isNot(contains(roundedZero)));
     }
   });
+
+  test('all rule and quiz examples use Quranic small-head sukoon', () {
+    for (final definition in RulesRepository.all) {
+      for (final example in definition.exampleArabic) {
+        expect(
+          example,
+          isNot(contains('\u0652')),
+          reason: definition.rule.name,
+        );
+      }
+    }
+    for (final question in QuizRepository.all) {
+      expect(
+        question.arabicText,
+        isNot(contains('\u0652')),
+        reason: question.rule.name,
+      );
+      for (final range in question.highlightRanges) {
+        expect(range.start, greaterThanOrEqualTo(0));
+        expect(range.end, lessThanOrEqualTo(question.arabicText.length));
+        expect(range.end, greaterThan(range.start));
+      }
+    }
+    expect(RulesRepository.findByRule(TajweedRule.qalqalah)!.exampleArabic, [
+      'قَدۡ',
+      'يَبۡسُطُ',
+      'تَجۡرِى',
+    ]);
+    expect(
+      RulesRepository.findByRule(TajweedRule.silent)!.exampleArabic,
+      everyElement(contains('\u06DF')),
+    );
+  });
+
+  test('ghunnah articulation and wasl steps reach all quiz locales', () {
+    const languages = {
+      'en': ['tip of the tongue', 'two lips', 'not the articulation point'],
+      'ar': ['طرف اللسان', 'الشفتين', 'مخرج الغنة فقط'],
+      'ur': ['زبان کی نوک', 'ہونٹوں', 'خیشوم'],
+      'tr': ['dil ucunun', 'iki dudakla', 'kendi mahreci değildir'],
+      'fr': ['pointe de la langue', 'deux lèvres', 'et non'],
+      'id': ['ujung lidah', 'kedua bibir', 'bukan makhraj'],
+      'de': ['Zungenspitze', 'beiden Lippen', 'nicht die Artikulationsstelle'],
+      'es': ['punta de la lengua', 'ambos labios', 'no el punto'],
+    };
+    for (final entry in languages.entries) {
+      final ghunnah = RulesRepository.findByRule(TajweedRule.ghunnah)!;
+      for (final phrase in entry.value) {
+        expect(ghunnah.description(entry.key), contains(phrase));
+      }
+      final wasl = RulesRepository.findByRule(TajweedRule.hamzatWasl)!;
+      expect(wasl.description(entry.key).split('\n'), hasLength(5));
+      for (final example in ['ٱلۡحَمۡدُ', 'ٱدۡخُلُوا', 'ٱمۡشُوا', 'اِمۡشِ']) {
+        expect(wasl.description(entry.key), contains(example));
+      }
+      for (final rule in [ghunnah, wasl]) {
+        for (final question in QuizRepository.all.where(
+          (question) => question.rule == rule.rule,
+        )) {
+          expect(
+            question.explanation[entry.key],
+            contains(rule.description(entry.key)),
+          );
+        }
+      }
+    }
+  });
+
+  test(
+    'tafkhim pairs every degree with the same-letter example in all locales',
+    () {
+      final article = TajweedArticlesRepository.all.singleWhere(
+        (a) => a.id == 'tafkhim',
+      );
+      for (final language in TajweedArticlesRepository.supportedLanguageCodes) {
+        final body = article.bodies[language]!;
+        final degrees = body.split('\n\n')[1];
+        final examples = ['قَالَ', 'قَتَلَ', 'قُلۡ', 'يَقۡطَعُونَ', 'قِيلَ'];
+        var previous = -1;
+        for (final example in examples) {
+          final index = degrees.indexOf(example);
+          expect(index, greaterThan(previous), reason: '$language: $example');
+          previous = index;
+        }
+        expect(degrees, isNot(contains('\u0652')));
+      }
+    },
+  );
 
   test(
     'silent-letter rule distinguishes rounded zero from ordinary sukoon',

@@ -65,7 +65,7 @@ void main() {
     final question = QuizRepository.all.firstWhere(
       (entry) =>
           entry.rule == TajweedRule.qalqalah &&
-          entry.arabicText == '\u062A\u064E\u062C\u0652\u0631\u0650\u0649',
+          entry.arabicText == '\u062A\u064E\u062C\u06E1\u0631\u0650\u0649',
     );
 
     expect(
@@ -73,7 +73,7 @@ void main() {
         question.highlightRanges.single.start,
         question.highlightRanges.single.end,
       ),
-      '\u062C\u0652', // جْ
+      '\u062C\u06E1', // جۡ
     );
   });
 

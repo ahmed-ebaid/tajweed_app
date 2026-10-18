@@ -19,21 +19,21 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'A nasal resonance produced from the nasal passage when noon or meem carries a shaddah. Duration: 2 counts (harakaat).',
+            'Ghunnah is a nasal resonance whose place of articulation is the nasal cavity, not the articulation point of noon or meem themselves. Noon is articulated with the tip of the tongue against the adjoining upper gum, and meem with the two lips. With a shaddah on noon or meem, hold the ghunnah for 2 counts (harakaat).',
         'ar':
-            'صوت أنفي يخرج من الخيشوم عند النطق بالنون أو الميم المشددتين. مقداره حركتان.',
+            'الغنة صوت يخرج من الخيشوم، وهو مخرج الغنة فقط، وليس مخرج حرفي النون والميم. مخرج النون من طرف اللسان مع ما يحاذيه من لثة الأسنان العليا، ومخرج الميم من الشفتين. وتكون الغنة في النون والميم المشددتين بمقدار حركتين.',
         'ur':
-            'ناک کی گہرائی سے نکلنے والی آواز جب نون یا میم پر تشدید ہو۔ مقدار: دو حرکات۔',
+            'غنہ کی آواز کا مخرج خیشوم یعنی ناک کی اندرونی گہا ہے، خود نون یا میم کا مخرج نہیں۔ نون زبان کی نوک اور اس کے مقابل اوپری دانتوں کے مسوڑھے سے، اور میم دونوں ہونٹوں سے ادا ہوتی ہے۔ نون یا میم پر تشدید ہو تو غنہ دو حرکات ہوتا ہے۔',
         'tr':
-            'Şeddeli nun veya mim harflerinin okunuşunda geniz yolundan çıkan ses. Süresi 2 hareke.',
+            'Ğunnenin mahreci geniz boşluğudur; bu, nun ve mim harflerinin kendi mahreci değildir. Nun, dil ucunun üst dişlerin hizasındaki diş etine temasıyla; mim ise iki dudakla çıkarılır. Şeddeli nun veya mimde ğunne 2 hareke tutulur.',
         'fr':
-            'Son nasal produit par les fosses nasales lors de la prononciation de noon ou meem avec shaddah. Durée: 2 temps.',
+            'La ghounna est une résonance dont le point de sortie est la cavité nasale, et non le point d’articulation des lettres noon et meem elles-mêmes. Le noon s’articule avec la pointe de la langue contre la gencive supérieure correspondante, et le meem avec les deux lèvres. Avec une shaddah sur noon ou meem, la ghounna dure 2 temps.',
         'id':
-            'Suara dengung yang keluar dari rongga hidung saat mengucapkan nun atau mim bertasydid. Ukuran: 2 harakat.',
+            'Ghunnah adalah dengung yang makhrajnya rongga hidung, bukan makhraj huruf nun dan mim itu sendiri. Nun keluar dari ujung lidah yang menyentuh gusi atas di hadapannya, sedangkan mim dari kedua bibir. Pada nun atau mim bertasydid, tahan ghunnah selama 2 harakat.',
         'de':
-            'Ein nasaler Klang aus der Nasenhöhle bei Nun oder Mim mit Shaddah. Dauer: 2 Zählzeiten.',
+            'Ghunna ist ein nasaler Klang aus der Nasenhöhle; diese ist nicht die Artikulationsstelle der Buchstaben Nun und Mim selbst. Nun wird mit der Zungenspitze am gegenüberliegenden oberen Zahnfleisch gebildet, Mim mit beiden Lippen. Bei Nun oder Mim mit Shaddah dauert die Ghunna 2 Zählzeiten.',
         'es':
-            'Resonancia nasal que se produce al pronunciar una nun o una mim con shadda. Duración: 2 tiempos.',
+            'La gunna es una resonancia cuyo punto de salida es la cavidad nasal, no el punto de articulación de las propias letras nun y mim. La nun se articula con la punta de la lengua contra la encía superior correspondiente, y la mim con ambos labios. Con shadda en nun o mim, la gunna dura 2 tiempos.',
       },
       exampleArabic: ['إِنَّ', 'ثُمَّ', 'مِنَّا'],
       triggerLetters: ['ن', 'م'],
@@ -68,7 +68,7 @@ class RulesRepository {
         'es':
             'Rebote sonoro de las letras ق ط ب ج د cuando llevan sukún o se encuentran al final de palabra: menor en medio de palabra y mayor al detenerse al final.',
       },
-      exampleArabic: ['قَدْ', 'يَبْسُطُ', 'تَجْرِى'],
+      exampleArabic: ['قَدۡ', 'يَبۡسُطُ', 'تَجۡرِى'],
       triggerLetters: ['ق', 'ط', 'ب', 'ج', 'د'],
     ),
     TajweedRuleDefinition(
@@ -167,7 +167,7 @@ class RulesRepository {
         'es':
             'Madd permitido separado: una letra de madd al final de una palabra seguida de hamza al comienzo de la siguiente. Duración: 2–5 tiempos, según la lectura.',
       },
-      exampleArabic: ['فِي أَنفُسِكُمْ', 'قَالُوا آمَنَّا', 'بِمَا أُنزِلَ'],
+      exampleArabic: ['فِي أَنفُسِكُمۡ', 'قَالُوا آمَنَّا', 'بِمَا أُنزِلَ'],
       triggerLetters: ['ا', 'و', 'ي'],
     ),
     TajweedRuleDefinition(
@@ -200,7 +200,7 @@ class RulesRepository {
         'es':
             'Alargamiento menor de la ha pronominal entre dos letras vocalizadas cuando no va seguida de hamza. Duración: 2 tiempos.',
       },
-      exampleArabic: ['بِهِۦ عِلْمٌ', 'إِنَّهُۥ كَانَ'],
+      exampleArabic: ['بِهِۦ عِلۡمٌ', 'إِنَّهُۥ كَانَ'],
       triggerLetters: ['ه'],
     ),
     TajweedRuleDefinition(
@@ -233,7 +233,7 @@ class RulesRepository {
         'es':
             'Alargamiento mayor de la ha pronominal entre dos letras vocalizadas cuando va seguida de hamza. Duración: 4–5 tiempos.',
       },
-      exampleArabic: ['بِهِۦٓ إِلَّا', 'لَهُۥٓ أَجْرٌ'],
+      exampleArabic: ['بِهِۦٓ إِلَّا', 'لَهُۥٓ أَجۡرٌ'],
       triggerLetters: ['ه'],
     ),
     TajweedRuleDefinition(
@@ -266,7 +266,7 @@ class RulesRepository {
         'es':
             'La nun en sukún o el tanwin se asimilan a una de las letras ي ن م و con nasalización (gunna) durante 2 tiempos.',
       },
-      exampleArabic: ['مِن يَّقُولُ', 'مِن نِّعْمَةٍ'],
+      exampleArabic: ['مِن يَّقُولُ', 'مِن نِّعۡمَةٍ'],
       triggerLetters: ['ي', 'ن', 'م', 'و'],
     ),
     TajweedRuleDefinition(
@@ -298,7 +298,7 @@ class RulesRepository {
         'es':
             'La nun en sukún o el tanwin se asimilan a ل o ر sin nasalización; el sonido de la nun desaparece.',
       },
-      exampleArabic: ['مِن رَّبِّكَ', 'هُدًى لِّلْمُتَّقِينَ'],
+      exampleArabic: ['مِن رَّبِّكَ', 'هُدًى لِّلۡمُتَّقِينَ'],
       triggerLetters: ['ل', 'ر'],
     ),
     TajweedRuleDefinition(
@@ -331,7 +331,7 @@ class RulesRepository {
         'es':
             'Se oculta la nun en sukún o el tanwin ante estas quince letras ت ث ج د ذ ز س ش ص ض ط ظ ف ق ك: no se pronuncia claramente ni se asimila por completo; se mantiene la gunna durante 2 tiempos.',
       },
-      exampleArabic: ['مِن كُلِّ', 'عَنكَبُوتٌ', 'أَنتُمْ'],
+      exampleArabic: ['مِن كُلِّ', 'عَنكَبُوتٌ', 'أَنتُمۡ'],
       triggerLetters: [
         'ص',
         'ذ',
@@ -379,7 +379,7 @@ class RulesRepository {
         'es':
             'La nun en sukún o el tanwin se convierten en un sonido de mim antes de ب, con gunna; el pequeño م del mushaf indica esta regla.',
       },
-      exampleArabic: ['مِنْ بَعْدِ', 'سَمِيعٌ بَصِيرٌ'],
+      exampleArabic: ['مِنۡ بَعۡدِ', 'سَمِيعٌ بَصِيرٌ'],
       triggerLetters: ['ب'],
     ),
     TajweedRuleDefinition(
@@ -412,7 +412,7 @@ class RulesRepository {
         'es':
             'Pronunciación clara de la nun en sukún o del tanwin ante las seis letras guturales (ء ه ع ح غ خ), sin gunna.',
       },
-      exampleArabic: ['مَنْ ءَامَنَ', 'عَلِيمٌ حَكِيمٌ'],
+      exampleArabic: ['مَنۡ ءَامَنَ', 'عَلِيمٌ حَكِيمٌ'],
       triggerLetters: ['ء', 'ه', 'ع', 'ح', 'غ', 'خ'],
     ),
     TajweedRuleDefinition(
@@ -440,7 +440,7 @@ class RulesRepository {
         'es':
             'La shadda indica que la consonante se pronuncia doble, como dos letras fusionadas.',
       },
-      exampleArabic: ['إِيَّاكَ', 'الرَّحْمَٰنِ', 'ثُمَّ'],
+      exampleArabic: ['إِيَّاكَ', 'الرَّحۡمَٰنِ', 'ثُمَّ'],
       triggerLetters: [],
     ),
     TajweedRuleDefinition(
@@ -496,7 +496,7 @@ class RulesRepository {
         'es':
             'El signo de sajdah (۩) marca los versículos de postración durante la recitación.',
       },
-      exampleArabic: ['فَاسْجُدُوا لِلَّهِ وَاعْبُدُوا ۩'],
+      exampleArabic: ['فَاسۡجُدُوا لِلَّهِ وَاعۡبُدُوا ۩'],
       triggerLetters: [],
     ),
     TajweedRuleDefinition(
@@ -562,7 +562,7 @@ class RulesRepository {
         'es':
             'En una palabra, una letra de madd va seguida de una letra con sukún original; se prolonga 6 tiempos. Solo aparece dos veces en el Corán: 10:51 y 10:91.',
       },
-      exampleArabic: ['ءَآلْـَٔـٰنَ'],
+      exampleArabic: ['ءَآلۡـَٔـٰنَ'],
       triggerLetters: ['ا', 'و', 'ي'],
     ),
     TajweedRuleDefinition(
@@ -661,7 +661,7 @@ class RulesRepository {
         'es':
             'Una letra de madd (alif tras fatha, waw tras damma o ya tras kasra) seguida de una letra que solo queda en sukún al detenerse. Al parar, se prolonga 2, 4 o 6 tiempos manteniendo la misma medida; al continuar vuelve a 2 tiempos.',
       },
-      exampleArabic: ['يَعْمَهُونَ', 'نَسْتَعِينُ'],
+      exampleArabic: ['يَعۡمَهُونَ', 'نَسۡتَعِينُ'],
       triggerLetters: ['ا', 'و', 'ي'],
     ),
     TajweedRuleDefinition(
@@ -694,7 +694,7 @@ class RulesRepository {
         'es':
             'Una letra lin — waw o ya con sukún precedida de fatha — va seguida de una letra en la que se hace pausa. Al detenerse se prolonga 2, 4 o 6 tiempos; al continuar no se alarga.',
       },
-      exampleArabic: ['قُرَيْشٍ', 'خَوْفٍ'],
+      exampleArabic: ['قُرَيۡشٍ', 'خَوۡفٍ'],
       triggerLetters: ['و', 'ي'],
     ),
     TajweedRuleDefinition(
@@ -787,7 +787,7 @@ class RulesRepository {
         'es':
             'La mim en sukún se oculta antes de la letra ب con gunna de 2 tiempos y los labios suavemente aproximados.',
       },
-      exampleArabic: ['تَرْمِيهِم بِحِجَارَةٍ'],
+      exampleArabic: ['تَرۡمِيهِم بِحِجَارَةٍ'],
       triggerLetters: ['ب'],
     ),
     TajweedRuleDefinition(
@@ -804,21 +804,21 @@ class RulesRepository {
       },
       descriptions: {
         'en':
-            'A connecting hamza pronounced when beginning a word and omitted in connected reading. When beginning, the definite article ال takes fatḥah (ٱلۡحَمۡدُ); most nouns and verb forms take kasrah (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). A triliteral imperative takes ḍammah when the third letter of its present-tense form has an original ḍammah (ٱدۡخُلُوا from يَدۡخُلُ); otherwise it takes kasrah (ٱضۡرِبُوا from يَضۡرِبُ).',
+            'Hamzat al-Wasl is pronounced when starting a word and omitted when joining it to the preceding word. Choose its starting vowel:\n1. Fatḥah: in the definite article ال, as in ٱلۡحَمۡدُ. This applies to the article, not simply to any following lam.\n2. Ḍammah: in a verb whose third letter, counting the initial alif, has an original ḍammah, as in ٱدۡخُلُوا (from يَدۡخُلُ).\n3. Kasrah: in verbs whose third letter has fatḥah or kasrah, as in ٱهۡدِنَا, ٱسۡتَغۡفِرُوا and ٱضۡرِبُوا (from يَضۡرِبُ), and in nouns beginning with hamzat al-wasl, such as ٱسۡم and ٱبۡن.\nAn incidental ḍammah does not change the starting vowel to ḍammah: begin ٱمۡشُوا with kasrah because the original form is اِمۡشِ.',
         'ar':
-            'همزة الوصل تُنطق عند البدء بالكلمة وتسقط في الوصل. تُفتح همزة «الـ» التعريف (ٱلۡحَمۡدُ)، وتُكسر في أكثر الأسماء وصيغ الأفعال (ٱهۡدِنَا، ٱسۡتَغۡفِرُوا). ويُضم أول أمر الفعل الثلاثي إذا كان الحرف الثالث من مضارعه مضمومًا ضمًا أصليًا (ٱدۡخُلُوا من يَدۡخُلُ)، وإلا يُكسر (ٱضۡرِبُوا من يَضۡرِبُ).',
+            'همزة الوصل تُنطق عند البدء بالكلمة وتسقط عند وصلها بما قبلها. نختار حركتها عند البدء هكذا:\n١. تُفتح في «أل» التعريف، مثل ٱلۡحَمۡدُ. الحكم خاص بأل التعريف، وليس لمجرد وجود لام بعد الهمزة.\n٢. يُضم أول الفعل إذا كان حرفه الثالث، مع عدّ الألف أولًا، مضمومًا ضمًّا أصليًّا، مثل ٱدۡخُلُوا (من يَدۡخُلُ).\n٣. تُكسر في الفعل إذا كان ثالثه مفتوحًا أو مكسورًا، مثل ٱهۡدِنَا، ٱسۡتَغۡفِرُوا، ٱضۡرِبُوا (من يَضۡرِبُ)، وفي الأسماء التي تبدأ بهمزة وصل، مثل ٱسۡم وٱبۡن.\nتنبيه: الضمة العارضة لا توجب الضم؛ نبدأ ٱمۡشُوا بالكسر، لأن الأصل اِمۡشِ.',
         'ur':
-            'ہمزۂ وصل ابتدا میں پڑھی جاتی اور وصل میں ساقط ہو جاتی ہے۔ ابتدا میں «ال» کی ہمزہ پر زبر آتی ہے (ٱلۡحَمۡدُ)، اکثر دوسرے اسماء اور افعال پر زیر (ٱهۡدِنَا، ٱسۡتَغۡفِرُوا)۔ ثلاثی فعلِ امر میں مضارع کے تیسرے حرف پر اصلی پیش ہو تو ہمزہ پر پیش آتی ہے (ٱدۡخُلُوا، مضارع: يَدۡخُلُ)، ورنہ زیر (ٱضۡرِبُوا، مضارع: يَضۡرِبُ)۔',
+            'ہمزۂ وصل لفظ سے ابتدا کرتے وقت پڑھی جاتی ہے اور پچھلے لفظ سے ملانے پر ساقط ہوتی ہے۔ ابتدا کی حرکت:\n۱. زبر: «ال» تعریف میں، جیسے ٱلۡحَمۡدُ؛ صرف بعد میں لام ہونا کافی نہیں۔\n۲. پیش: فعل کے تیسرے حرف پر اصلی پیش ہو، ابتدائی الف کو پہلا حرف گنیں؛ جیسے ٱدۡخُلُوا (يَدۡخُلُ سے)۔\n۳. زیر: فعل کے تیسرے حرف پر زبر یا زیر ہو؛ جیسے ٱهۡدِنَا، ٱسۡتَغۡفِرُوا، ٱضۡرِبُوا (يَضۡرِبُ سے)، اور ہمزۂ وصل والے اسماء جیسے ٱسۡم اور ٱبۡن۔\nعارضی پیش کی وجہ سے ہمزہ پر پیش نہیں آتی؛ ٱمۡشُوا کو زیر سے شروع کریں کیونکہ اصل اِمۡشِ ہے۔',
         'tr':
-            'Hemze-i vasl kelimeye başlanırken okunur, önceki kelimeye bağlanırken düşer. ال takısı fetha (ٱلۡحَمۡدُ), isim ve fiil kalıplarının çoğu kesra ile başlar (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). Üç harfli emir fiilinde muzari biçimin üçüncü harfi aslî dammeli ise damme (ٱدۡخُلُوا; يَدۡخُلُ), değilse kesra (ٱضۡرِبُوا; يَضۡرِبُ) okunur.',
+            'Hemze-i vasl kelimeye başlanırken okunur, önceki kelimeye bağlanırken düşer. Başlangıç harekesini seçin:\n1. Fetha: ال takısında, örneğin ٱلۡحَمۡدُ. Yalnızca ardından lam gelmesi yeterli değildir.\n2. Damme: baştaki elif birinci sayıldığında fiilin üçüncü harfi aslî dammeli ise; örneğin ٱدۡخُلُوا (يَدۡخُلُ).\n3. Kesra: fiilin üçüncü harfi fethalı veya kesralı ise; örneğin ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا (يَضۡرِبُ); ayrıca hemze-i vaslla başlayan ٱسۡم ve ٱبۡن gibi isimlerde.\nGeçici damme başlangıcı dammeye çevirmez: ٱمۡشُوا kesrayla başlar, çünkü aslı اِمۡشِ şeklindedir.',
         'fr':
-            'La hamza de liaison se prononce au début d’un mot et tombe en liaison. L’article ال commence par la fatḥa (ٱلۡحَمۡدُ) ; la plupart des noms et formes verbales par la kasra (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). À l’impératif trilittère, on prend la ḍamma si la troisième lettre de la forme au présent porte une ḍamma originale (ٱدۡخُلُوا, يَدۡخُلُ), sinon la kasra (ٱضۡرِبُوا, يَضۡرِبُ).',
+            'La hamza de liaison se prononce au début d’un mot et tombe en liaison avec le mot précédent. Choisir sa voyelle initiale :\n1. Fatḥa : dans l’article ال, comme ٱلۡحَمۡدُ. La seule présence d’un lam après la hamza ne suffit pas.\n2. Ḍamma : dans un verbe dont la troisième lettre, en comptant l’alif initial, porte une ḍamma originale, comme ٱدۡخُلُوا (يَدۡخُلُ).\n3. Kasra : si la troisième lettre du verbe porte fatḥa ou kasra, comme ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا (يَضۡرِبُ), ainsi que dans les noms à hamza de liaison, tels ٱسۡم et ٱبۡن.\nUne ḍamma occasionnelle ne suffit pas : ٱمۡشُوا commence par kasra, car sa forme d’origine est اِمۡشِ.',
         'id':
-            'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung. ال dimulai dengan fathah (ٱلۡحَمۡدُ); kebanyakan kata benda dan bentuk kata kerja dengan kasrah (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). Fi’il amr tsulatsi memakai dhammah jika huruf ketiga bentuk mudhari’nya berdhammah asli (ٱدۡخُلُوا, يَدۡخُلُ), selain itu memakai kasrah (ٱضۡرِبُوا, يَضۡرِبُ).',
+            'Hamzah wasal dibaca saat memulai kata dan gugur ketika disambung dengan kata sebelumnya. Pilih harakat awalnya:\n1. Fathah: pada ال ta’rif, seperti ٱلۡحَمۡدُ; bukan sekadar karena diikuti lam.\n2. Dhammah: pada kata kerja yang huruf ketiganya berdhammah asli, dengan alif awal dihitung sebagai huruf pertama; seperti ٱدۡخُلُوا (يَدۡخُلُ).\n3. Kasrah: bila huruf ketiga kata kerja berfathah atau berkasrah; seperti ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا (يَضۡرِبُ), serta kata benda berhamzah wasal seperti ٱسۡم dan ٱبۡن.\nDhammah sementara tidak membuat awalnya berdhammah: ٱمۡشُوا dimulai dengan kasrah karena bentuk asalnya اِمۡشِ.',
         'de':
-            'Die Hamzat al-Wasl wird am Wortanfang gesprochen und beim Verbinden ausgelassen. Der bestimmte Artikel ال beginnt mit Fatha (ٱلۡحَمۡدُ); die meisten Nomen und Verbformen mit Kasra (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). Ein dreiradikaliger Imperativ beginnt mit Damma, wenn der dritte Buchstabe der Präsensform ursprünglich eine Damma hat (ٱدۡخُلُوا, يَدۡخُلُ), sonst mit Kasra (ٱضۡرِبُوا, يَضۡرِبُ).',
+            'Hamzat al-Wasl wird beim Wortbeginn gesprochen und beim Verbinden mit dem vorherigen Wort ausgelassen. Den Anfangsvokal wählen:\n1. Fatha: im bestimmten Artikel ال, etwa ٱلۡحَمۡدُ. Ein nachfolgendes Lam allein genügt nicht.\n2. Damma: wenn der dritte Buchstabe des Verbs eine ursprüngliche Damma trägt, wobei das anfangende Alif mitzählt; etwa ٱدۡخُلُوا (يَدۡخُلُ).\n3. Kasra: wenn der dritte Verbbuchstabe Fatha oder Kasra trägt; etwa ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا (يَضۡرِبُ), sowie bei Nomen mit Hamzat al-Wasl wie ٱسۡم und ٱبۡن.\nEine vorübergehende Damma genügt nicht: ٱمۡشُوا beginnt mit Kasra, da die ursprüngliche Form اِمۡشِ lautet.',
         'es':
-            'La hamza de enlace se pronuncia al comenzar una palabra y se omite al enlazarla con la anterior. El artículo ال comienza con fatha (ٱلۡحَمۡدُ); la mayoría de los nombres y formas verbales, con kasra (ٱهۡدِنَا, ٱسۡتَغۡفِرُوا). El imperativo trilítero lleva damma si la tercera letra de su forma en presente tiene damma original (ٱدۡخُلُوا, يَدۡخُلُ); en caso contrario, kasra (ٱضۡرِبُوا, يَضۡرِبُ).',
+            'La hamza de enlace se pronuncia al comenzar una palabra y se omite al unirla con la anterior. Elija la vocal inicial:\n1. Fatha: en el artículo ال, como ٱلۡحَمۡدُ. No basta con que siga una lam.\n2. Damma: si la tercera letra del verbo tiene damma original, contando el alif inicial como primera letra; como ٱدۡخُلُوا (يَدۡخُلُ).\n3. Kasra: si la tercera letra del verbo tiene fatha o kasra; como ٱهۡدِنَا, ٱسۡتَغۡفِرُوا, ٱضۡرِبُوا (يَضۡرِبُ), y en nombres con hamza de enlace, como ٱسۡم y ٱبۡن.\nUna damma ocasional no cambia el inicio a damma: ٱمۡشُوا comienza con kasra porque su forma original es اِمۡشِ.',
       },
       exampleArabic: ['ٱهۡدِنَا', 'ٱلۡحَمۡدُ', 'ٱسۡتَغۡفِرُوا'],
       triggerLetters: [],
@@ -853,7 +853,7 @@ class RulesRepository {
         'es':
             'Hamza fija que siempre se pronuncia, tanto al comenzar la palabra como al unirla con la palabra anterior.',
       },
-      exampleArabic: ['أَنْعَمْتَ', 'إِيَّاكَ', 'أُنزِلَ'],
+      exampleArabic: ['أَنۡعَمۡتَ', 'إِيَّاكَ', 'أُنزِلَ'],
       triggerLetters: ['أ', 'إ'],
     ),
     TajweedRuleDefinition(
@@ -886,7 +886,7 @@ class RulesRepository {
         'es':
             'Cuando ال va seguido de una de las catorce letras solares ت ث د ذ ر ز س ش ص ض ط ظ ل ن, la lam no se pronuncia: se asimila a la letra siguiente, que lleva shadda. Ante letras lunares, la lam sí se pronuncia claramente.',
       },
-      exampleArabic: ['الشَّمْسِ', 'النَّاسِ'],
+      exampleArabic: ['الشَّمۡسِ', 'النَّاسِ'],
       triggerLetters: [
         'ت',
         'ث',

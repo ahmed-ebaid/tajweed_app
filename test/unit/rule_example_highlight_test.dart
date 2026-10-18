@@ -20,7 +20,7 @@ const _waw = '\u0648';
 const _ya = '\u064A';
 const _alifMaqsura = '\u0649';
 const _maddah = '\u0653';
-const _sukoon = '\u0652';
+const _sukoon = '\u06E1';
 const _roundedZero = '\u06DF';
 
 void main() {

@@ -26,37 +26,37 @@ class WaqfSymbols {
       index: 1,
       displaySymbol: 'لا',
       quranSymbol: 'ۙ',
-      arabicText: 'مِن ثَمَرَةٍ رِّزْقًا ۙ قَالُوا هَٰذَا',
+      arabicText: 'مِن ثَمَرَةٍ رِّزۡقًا ۙ قَالُوا هَٰذَا',
     ),
     WaqfSymbolExample(
       index: 2,
       displaySymbol: 'ج',
       quranSymbol: 'ۚ',
-      arabicText: 'حَذَرَ الْمَوْتِ ۚ وَاللَّهُ مُحِيطٌ',
+      arabicText: 'حَذَرَ الۡمَوۡتِ ۚ وَاللَّهُ مُحِيطٌ',
     ),
     WaqfSymbolExample(
       index: 3,
       displaySymbol: 'قلى',
       quranSymbol: 'ۗ',
-      arabicText: 'آمَنَ السُّفَهَاءُ ۗ أَلَا إِنَّهُمْ',
+      arabicText: 'آمَنَ السُّفَهَاءُ ۗ أَلَا إِنَّهُمۡ',
     ),
     WaqfSymbolExample(
       index: 4,
       displaySymbol: 'صلى',
       quranSymbol: 'ۖ',
-      arabicText: 'مِّن رَّبِّهِمْ ۖ وَأُولَٰئِكَ',
+      arabicText: 'مِّن رَّبِّهِمۡ ۖ وَأُولَٰئِكَ',
     ),
     WaqfSymbolExample(
       index: 5,
       displaySymbol: '∴',
       quranSymbol: 'ۛ',
-      arabicText: 'الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى',
+      arabicText: 'الۡكِتَابُ لَا رَيۡبَ ۛ فِيهِ ۛ هُدًى',
     ),
     WaqfSymbolExample(
       index: 6,
       displaySymbol: 'س',
       quranSymbol: 'ۜ',
-      arabicText: 'وَقِيلَ مَنْ ۜ رَاقٍ',
+      arabicText: 'وَقِيلَ مَنۡ ۜ رَاقٍ',
     ),
   ];
 
