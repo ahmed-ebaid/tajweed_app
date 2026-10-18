@@ -1,10 +1,15 @@
 # App Store listing — Tajweed 1.1.18
 
-## Android attestation hotfix — build 98
+## Android attestation hotfix — 1.1.19 (99)
 
 - **Status:** 1.1.18 (98) uploaded to Google Play internal testing on 2026-10-18.
-  Internal track and eight localized notes re-read successfully. Production
-  remains 1.1.18 (97); promotion is held for physical-device verification.
+  The user confirmed that internal-testing version works on their device.
+  The same fix was rebuilt as 1.1.19 (99) so the displayed version distinguishes
+  it from affected 1.1.18 installations. Build 99 was uploaded to internal
+  testing, then submitted to production on 2026-10-18 with user authorization.
+  Production versionCode 99, `completed` rollout status, and eight localized
+  release notes were re-read successfully; non-production tracks are unchanged.
+  This API status does not confirm review approval or public availability.
   iOS is unchanged by this hotfix.
 - **Incident:** Android builds 96 and 97 were built without the guarded release
   script and omitted `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER`. The app rejected
@@ -25,10 +30,14 @@
   Analysis completed with no errors. An ordinary Flutter release build with
   an explicit project number of zero was rejected by the Gradle guard. Signed
   bundle SHA-256:
-  `34f364187f3c11095c51f22f4dd626b9edd95aa03b7dab3a175fc66486c49922`.
-- **Device verification:** Fresh Google Play installation on a physical Android
-  device has not yet been verified for build 98. The user will install from
-  internal testing and confirm new Quran content loads before promotion.
+  `34f364187f3c11095c51f22f4dd626b9edd95aa03b7dab3a175fc66486c49922`
+  (build 98). Build 99 passed the version and attestation tests and was built
+  through the same guarded script with project number `312770688680`.
+  Build 99 bundle SHA-256:
+  `0b989c5ffc9ad981ee4fca26cfdc8dafdbcc53f48b44a70b6a5fc2ea90d2ba12`.
+- **Device verification:** The user confirmed the internal-testing version
+  works before authorizing production submission. Build 99 is a version-label
+  rebuild of that fix, not a separately device-tested build.
 
 ## App information
 
@@ -54,7 +63,7 @@
   are configured in all eight languages.
 - **TestFlight build ID:** 58e1eff2-f14a-4224-b406-107b11ec43ad
 - **Public release:** 1.1.17 (94) verified `READY_FOR_SALE`; unchanged by this upload.
-- **Google Play:** Matching 1.1.18 (97) bundle uploaded and production-track edit
+- **Google Play (historical build 97):** Matching 1.1.18 (97) bundle uploaded and production-track edit
   committed and re-read successfully. Store review/public availability is not
   established by the track's `completed` rollout status. Other tracks and
   screenshots were not changed.
