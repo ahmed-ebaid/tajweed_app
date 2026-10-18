@@ -228,20 +228,36 @@ void main() {
       );
     });
 
-    test('fails closed on Android without a cloud project number', () async {
-      await expectLater(
-        serviceFor(AttestationPlatform.android).accessToken(),
-        throwsA(
-          isA<QuranAttestationException>().having(
-            (error) => error.message,
-            'message',
-            contains('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER'),
-          ),
-        ),
-      );
-      expect(adapter.requests, isEmpty);
-      expect(appAttest.generatedKeys, 0);
-    });
+    test(
+      'a fresh Android install uses the configured project without build flags',
+      () async {
+        final playIntegrity = _FakePlayIntegrityClient();
+        final dio = Dio(BaseOptions(baseUrl: 'https://worker.example'))
+          ..httpClientAdapter = adapter;
+        final androidService = QuranAttestationService(
+          workerOrigin: 'https://worker.example',
+          appAttest: appAttest,
+          playIntegrity: playIntegrity,
+          keyStore: keyStore,
+          platform: () => AttestationPlatform.android,
+          client: dio,
+        );
+        expect(keyStore.values, isEmpty);
+
+        expect(
+          await androidService.accessToken(),
+          'play-integrity-access-token',
+        );
+        expect(playIntegrity.lastCloudProjectNumber, 312770688680);
+        expect(playIntegrity.nonces, ['integrity-challenge']);
+        expect(adapter.requests.map((request) => request.path), [
+          '/v1/attest/challenge',
+          '/v1/attest/play-integrity',
+        ]);
+        expect(keyStore.values, hasLength(1));
+        expect(appAttest.generatedKeys, 0);
+      },
+    );
 
     test('honours an explicitly injected provider', () async {
       final dio = Dio(BaseOptions(baseUrl: 'https://worker.example'))
@@ -277,6 +293,34 @@ void main() {
         cloudProjectNumber: 1234567890,
       );
     });
+
+    for (final projectNumber in [0, -1]) {
+      test('fails closed for invalid project number $projectNumber', () async {
+        final dio = Dio(BaseOptions(baseUrl: 'https://worker.example'))
+          ..httpClientAdapter = adapter;
+        final invalidProvider = PlayIntegrityProvider(
+          workerOrigin: 'https://worker.example',
+          playIntegrity: playIntegrity,
+          keyStore: keyStore,
+          client: dio,
+          cloudProjectNumber: projectNumber,
+        );
+
+        await expectLater(
+          invalidProvider.obtainToken(),
+          throwsA(
+            isA<QuranAttestationException>().having(
+              (error) => error.message,
+              'message',
+              contains('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER'),
+            ),
+          ),
+        );
+        expect(adapter.requests, isEmpty);
+        expect(playIntegrity.nonces, isEmpty);
+        expect(keyStore.values, isEmpty);
+      });
+    }
 
     test('binds the server challenge into the integrity token', () async {
       final token = await provider.obtainToken();

@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -19,6 +20,29 @@ val keystorePropertiesFile: File? = listOf(
 
 keystorePropertiesFile?.let { file ->
     FileInputStream(file).use { keystoreProperties.load(it) }
+}
+
+val releaseDartDefines = providers.gradleProperty("dart-defines").orElse("")
+val verifyPlayIntegrityReleaseConfiguration by tasks.registering {
+    inputs.property("dart-defines", releaseDartDefines)
+    doLast {
+        val projectNumberKey = "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER="
+        val overrides = releaseDartDefines.get().split(",")
+            .filter { it.isNotEmpty() }
+            .map { String(Base64.getDecoder().decode(it), Charsets.UTF_8) }
+            .filter { it.startsWith(projectNumberKey) }
+            .map { it.removePrefix(projectNumberKey) }
+        check(overrides.all { it == "312770688680" }) {
+            "Android releases require PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680. " +
+                "Remove the override to use the embedded production default, or correct it."
+        }
+    }
+}
+
+tasks.matching {
+    it.name.startsWith("compileFlutterBuild") && it.name.endsWith("Release")
+}.configureEach {
+    dependsOn(verifyPlayIntegrityReleaseConfiguration)
 }
 
 android {

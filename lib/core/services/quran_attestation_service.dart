@@ -318,11 +318,11 @@ AttestationToken _parseAccessToken(Map<String, dynamic>? data) {
 /// routes the server's per-client state; it is not a credential and proves
 /// nothing on its own.
 class PlayIntegrityProvider implements AttestationProvider {
-  /// Required because Google Play cannot link a Cloud project to a build that
-  /// it did not distribute.
+  /// Public configuration, not a credential. Keep the production project in
+  /// ordinary builds too; release operators must not have to supply a flag.
   static const _cloudProjectNumberFromEnv = int.fromEnvironment(
     'PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER',
-    defaultValue: 0,
+    defaultValue: 312770688680,
   );
 
   final String workerOrigin;

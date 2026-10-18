@@ -120,6 +120,11 @@ per release for both stores.
 - [ ] Build only through `release/build_android_release.sh appbundle`. This wrapper
       requires `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680` and refuses a
       different project number or an app bundle without upload signing config.
+      The app also embeds this public project number by default, so bypassing
+      the wrapper cannot produce a build with a missing project number. Keep
+      the fresh-install attestation regression test passing without build flags.
+      Gradle rejects a different or invalid explicit project-number override
+      before compiling release Dart code, even with a plain Flutter build.
 - [ ] Install the release from the Internal testing track on a physical device,
       then run `tool/smoke_android_release.sh --installed`; open the Quran reader
       and confirm Arabic text is visible. Testing via Google Play preserves the

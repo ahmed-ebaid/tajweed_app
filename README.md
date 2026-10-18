@@ -147,8 +147,10 @@ exchanges the returned token for the same bearer access token iOS receives. A
 *classic* request is used precisely because it accepts a caller-supplied nonce;
 standard requests are cached by Google and cannot bind a token to one challenge.
 
-Because the app is distributed outside Google Play, the client must name the
-Google Cloud project that owns the Play Integrity API:
+The client names the Google Cloud project that owns the Play Integrity API.
+The production project number (`312770688680`) is public app configuration and
+is included by default, including when building without extra flags. A
+different project's number can be supplied explicitly for development:
 
 ```bash
 flutter run -d emulator-5554 \
@@ -156,8 +158,9 @@ flutter run -d emulator-5554 \
   --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=<gcp-project-number>
 ```
 
-Without that define the provider fails closed rather than falling back to an
-unauthenticated request. The Worker needs four matching secrets; until they are
+An explicitly configured non-positive number still fails closed, and a missing
+or invalid integrity token never falls back to an unauthenticated request.
+The Worker needs four matching secrets; until they are
 set it answers `integrity` challenges with `503`, which is also fail-closed:
 `ANDROID_PACKAGE_NAME`, `ANDROID_CERT_SHA256`, `PLAY_INTEGRITY_SA_EMAIL`, and
 `PLAY_INTEGRITY_SA_PRIVATE_KEY`.

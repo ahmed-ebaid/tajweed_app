@@ -72,6 +72,19 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Verify fresh-install Android attestation without build flags
+        run: flutter test --no-pub test/unit/quran_attestation_service_test.dart
+
+      - name: Reject invalid Play Integrity configuration outside the wrapper
+        shell: bash
+        run: |
+          if flutter build apk --release --no-pub \
+            --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=0 > invalid-integrity-build.log 2>&1; then
+            echo "Release build unexpectedly accepted an invalid project number."
+            exit 1
+          fi
+          grep -F "Android releases require PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680" invalid-integrity-build.log
+
       # Compile a release-mode APK through the same guarded entry point used
       # by release operators. The public GCP project number is a build input,
       # not a credential.

@@ -1,5 +1,35 @@
 # App Store listing — Tajweed 1.1.18
 
+## Android attestation hotfix — build 98
+
+- **Status:** 1.1.18 (98) uploaded to Google Play internal testing on 2026-10-18.
+  Internal track and eight localized notes re-read successfully. Production
+  remains 1.1.18 (97); promotion is held for physical-device verification.
+  iOS is unchanged by this hotfix.
+- **Incident:** Android builds 96 and 97 were built without the guarded release
+  script and omitted `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER`. The app rejected
+  attestation locally before requesting an integrity token. Fresh installs are
+  affected; cached Quran content can mask the failure on existing installs.
+  Reinstalling or changing the Worker cannot repair an affected binary.
+- **Fix:** The public production project number `312770688680` is now embedded
+  as the app default, including builds with no Dart defines. Explicit invalid
+  configuration still fails closed; integrity verification is not bypassed.
+- **Prevention:** A regression test starts the Android attestation service with
+  empty storage and no build flags and verifies the challenge/token exchange
+  uses the production project. CI runs it explicitly before the guarded build.
+  Gradle also rejects invalid explicit project-number overrides before release
+  compilation, even when the build wrapper is not used.
+- **Release build:** Use `release/build_android_release.sh appbundle` with
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`.
+- **Validation:** 390 Flutter tests passed; six fixture/manual tests skipped.
+  Analysis completed with no errors. An ordinary Flutter release build with
+  an explicit project number of zero was rejected by the Gradle guard. Signed
+  bundle SHA-256:
+  `34f364187f3c11095c51f22f4dd626b9edd95aa03b7dab3a175fc66486c49922`.
+- **Device verification:** Fresh Google Play installation on a physical Android
+  device has not yet been verified for build 98. The user will install from
+  internal testing and confirm new Quran content loads before promotion.
+
 ## App information
 
 - **App Store name:** Tajweed Practice

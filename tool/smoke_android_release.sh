@@ -2,6 +2,10 @@
 set -euo pipefail
 
 readonly PACKAGE_NAME="com.ebaidllc.tajweed_practice"
+readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly APP_VERSION="$(sed -n 's/^version: //p' "$REPO_ROOT/pubspec.yaml")"
+readonly VERSION_NAME="${APP_VERSION%+*}"
+readonly VERSION_CODE="${APP_VERSION##*+}"
 readonly INSTALLED_MODE="$( [[ "${1:-}" == "--installed" ]] && echo 1 || echo 0 )"
 readonly APK="${1:-build/app/outputs/flutter-apk/app-release.apk}"
 readonly SERIAL="${ANDROID_SERIAL:-}"
@@ -29,9 +33,9 @@ if [[ "$INSTALLED_MODE" == "0" ]]; then
   "${ADB[@]}" install -r "$APK"
 fi
 installed_package="$("${ADB[@]}" shell dumpsys package "$PACKAGE_NAME")"
-if [[ "$installed_package" != *"versionCode=73"* ||
-      "$installed_package" != *"versionName=1.1.9"* ]]; then
-  echo "Expected version 1.1.9 (73) is not installed from Play." >&2
+if ! grep -Eq "versionCode=${VERSION_CODE}([[:space:]]|$)" <<< "$installed_package" ||
+   ! grep -Fxq "versionName=${VERSION_NAME}" <<< "$(sed 's/^[[:space:]]*//' <<< "$installed_package")"; then
+  echo "Expected version $VERSION_NAME ($VERSION_CODE) is not installed." >&2
   exit 1
 fi
 "${ADB[@]}" logcat -c
