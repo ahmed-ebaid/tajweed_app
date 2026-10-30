@@ -1,4 +1,45 @@
-# App Store listing — Tajweed 1.1.20
+# App Store listing — Tajweed 1.1.21 testing
+
+## Hijri date, feedback, and seasonal icons — 1.1.21 (102)
+
+- **Status:** Available to the internal TestFlight group and Google Play
+  internal testing on 2026-10-30. Apple processing is `VALID` and internal
+  state is `IN_BETA_TESTING`. Play internal versionCode `102` and all eight
+  localized testing notes were re-read after committing the edit. Production
+  tracks and App Store version states were verified unchanged; no production
+  submission was made.
+- **Hijri date:** Home shows a localized date in all eight languages.
+  iOS uses Apple's `Calendar(identifier: .islamicUmmAlQura)`; Android uses
+  ICU `IslamicCalendar` with `ISLAMIC_UMALQURA`. Both use the current device
+  time zone, with local midnight rollover and refresh on resume. This is a
+  system-calculated calendar, not a local moon-sighting announcement or a
+  sunset-based day boundary. Native failures are logged and the date is
+  hidden rather than replaced with a different calculation.
+- **Review and feedback:** After one minute of foreground reading on each
+  of three distinct days, a later launch can request the native store review
+  sheet. Attempts have a 120-day cooldown; stores control whether the sheet
+  appears, and TestFlight does not display Apple's review request. Settings
+  provides direct store-rating and email/support links in every language.
+- **Seasonal icons:** iOS automatically selects Ramadan, Eid al-Fitr
+  (1–3 Shawwal), and Eid al-Adha (8–13 Dhu al-Hijjah) icons using the same
+  system calendar. A localized Settings switch restores the normal icon.
+  Android keeps its normal icon to avoid removing launcher shortcuts.
+  Explicit iPhone/iPad icon slots and all three alternate registrations
+  were verified in the signed iOS archive. Superseded Apple build 101 was
+  expired after an archive check found that Xcode had omitted its icons;
+  build 102 fixes that packaging issue.
+- **Android configuration:** Signed bundle built through
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680 release/build_android_release.sh appbundle`.
+- **Validation:** 416 Flutter tests passed, with two fixture/manual skips.
+  Native integration tests passed on both the iOS simulator and Android
+  emulator, including known Umm al-Qura dates and local midnight boundaries.
+  Analysis has no errors; existing warnings remain. Physical-device testing
+  of this build is still pending.
+- **TestFlight build ID:** `61871910-c5dc-4da0-890b-a4fd77ec4eed`.
+- **Artifacts (SHA-256):** Android bundle
+  `c9fc5d271126769c10705729b1f99dfae82f053985d538a8be0d3909e39abd1b`;
+  iOS IPA
+  `837a8397b4d8778b8de836c9dadbb48f727056635d308fa5b38249177ab14d5f`.
 
 ## Localized Tajweed corrections — 1.1.20 (100)
 
@@ -88,10 +129,10 @@
 - **App Store version ID:** 7f2be577-8f4f-4fc3-a7fb-7925ebaa0cd9
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
-- **TestFlight status:** 1.1.20 (100) uploaded and Apple-validated (`VALID`),
-  assigned to the internal Tajweed Testers group. Localized What to Test notes
-  are configured in all eight languages.
-- **TestFlight build ID:** 0a8211d5-7bd4-47e7-bb6e-50a3f3a76dc3
+- **TestFlight status:** 1.1.21 (102) is Apple-validated (`VALID`) and
+  `IN_BETA_TESTING` in the internal Tajweed Testers group. Localized What to
+  Test notes are configured in all eight languages.
+- **TestFlight build ID:** 61871910-c5dc-4da0-890b-a4fd77ec4eed
 - **Public release:** 1.1.18 (97) verified `READY_FOR_SALE`; unchanged by this upload.
 - **Google Play (historical build 97):** Matching 1.1.18 (97) bundle uploaded and production-track edit
   committed and re-read successfully. Store review/public availability is not

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/l10n/hijri_format.dart';
+import '../../core/services/hijri_calendar_service.dart';
 import '../../core/data/surah_names.dart';
 import '../../core/providers/daily_lesson_provider.dart';
 import '../../core/providers/bookmark_provider.dart';
@@ -78,6 +82,8 @@ class _Header extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
+          const SizedBox(height: 4),
+          _HijriDateLabel(l10n: l10n),
           const SizedBox(height: 8),
           Text(
             l10n.get('home_moment'),
@@ -109,6 +115,78 @@ class _Header extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HijriDateLabel extends StatefulWidget {
+  final AppLocalizations l10n;
+  const _HijriDateLabel({required this.l10n});
+
+  @override
+  State<_HijriDateLabel> createState() => _HijriDateLabelState();
+}
+
+/// Uses the device's local date, so the Hijri day follows the user's time
+/// zone and rolls over at local midnight or when the app resumes.
+class _HijriDateLabelState extends State<_HijriDateLabel>
+    with WidgetsBindingObserver {
+  Timer? _midnightTimer;
+  HijriDate? _date;
+  int _refreshId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshDate();
+    _scheduleMidnightRefresh();
+  }
+
+  Future<void> _refreshDate() async {
+    final id = ++_refreshId;
+    final date = await const HijriCalendarService().dateFor(DateTime.now());
+    if (!mounted || id != _refreshId) return;
+    setState(() => _date = date);
+  }
+
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    _midnightTimer = Timer(nextMidnight.difference(now), () {
+      if (!mounted) return;
+      _refreshDate();
+      _scheduleMidnightRefresh();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _refreshDate();
+      _scheduleMidnightRefresh();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _midnightTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hijri = _date;
+    if (hijri == null) return const SizedBox.shrink();
+    return Text(
+      formatHijriDate(hijri, widget.l10n),
+      key: const Key('home_hijri_date'),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: Theme.of(context).colorScheme.primary,
+        fontWeight: FontWeight.w500,
       ),
     );
   }

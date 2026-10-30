@@ -99,6 +99,17 @@ class AppLocalizations {
       'share_failed': 'Could not share. Please try again.',
       'app_coming_soon': 'Coming soon on the App Store and Google Play',
       'settings': 'Settings',
+      'rate_app': 'Enjoying Tajweed Practice?',
+      'rate_app_subtitle': 'Share a review to help others discover the app.',
+      'feedback_section': 'Your feedback',
+      'feedback_email_subject': 'Tajweed Practice feedback',
+      'send_feedback': 'Help us improve Tajweed Practice',
+      'send_feedback_subtitle':
+          'Share a suggestion or tell us what is not working.',
+      'seasonal_icon': 'Seasonal app icon',
+      'seasonal_icon_subtitle':
+          'Change the icon for Ramadan, Eid al-Fitr and Eid al-Adha.',
+      'open_link_failed': 'Could not open the link. Please try again.',
       'language': 'Language',
       'select_language': 'Select language',
       'surah': 'Surah',
@@ -213,6 +224,16 @@ class AppLocalizations {
       'share_failed': 'تعذرت المشاركة. يرجى المحاولة مرة أخرى.',
       'app_coming_soon': 'قريباً على App Store و Google Play',
       'settings': 'الإعدادات',
+      'rate_app': 'هل تستمتع بتطبيق تعلم التجويد؟',
+      'rate_app_subtitle': 'شاركنا تقييمك ليساعد الآخرين على اكتشاف التطبيق.',
+      'feedback_section': 'ملاحظاتك',
+      'feedback_email_subject': 'ملاحظات حول تطبيق تعلم التجويد',
+      'send_feedback': 'ساعدنا على تحسين تطبيق تعلم التجويد',
+      'send_feedback_subtitle': 'شارك اقتراحًا أو أخبرنا بما لا يعمل.',
+      'seasonal_icon': 'أيقونة المواسم',
+      'seasonal_icon_subtitle':
+          'تغيير أيقونة التطبيق في رمضان وعيد الفطر وعيد الأضحى.',
+      'open_link_failed': 'تعذر فتح الرابط. يرجى المحاولة مرة أخرى.',
       'language': 'اللغة',
       'select_language': 'اختر اللغة',
       'surah': 'سورة',
@@ -325,6 +346,17 @@ class AppLocalizations {
       'share_failed': 'شیئر نہیں ہو سکا۔ دوبارہ کوشش کریں۔',
       'app_coming_soon': 'جلد ہی App Store اور Google Play پر',
       'settings': 'ترتیبات',
+      'rate_app': 'کیا آپ تجوید پریکٹس سے لطف اندوز ہو رہے ہیں؟',
+      'rate_app_subtitle': 'اپنی رائے دیں تاکہ دوسرے بھی ایپ دریافت کر سکیں۔',
+      'feedback_section': 'آپ کی رائے',
+      'feedback_email_subject': 'تجوید پریکٹس کے بارے میں رائے',
+      'send_feedback': 'تجوید پریکٹس بہتر بنانے میں مدد کریں',
+      'send_feedback_subtitle':
+          'اپنی تجویز دیں یا بتائیں کہ کیا کام نہیں کر رہا۔',
+      'seasonal_icon': 'موسمی ایپ آئیکن',
+      'seasonal_icon_subtitle':
+          'رمضان، عید الفطر اور عید الاضحیٰ کے لیے آئیکن تبدیل کریں۔',
+      'open_link_failed': 'لنک نہیں کھل سکا۔ دوبارہ کوشش کریں۔',
       'language': 'زبان',
       'select_language': 'زبان منتخب کریں',
       'surah': 'سورہ',
@@ -437,6 +469,18 @@ class AppLocalizations {
       'share_failed': 'Paylaşılamadı. Lütfen tekrar deneyin.',
       'app_coming_soon': 'App Store ve Google Play\'de yakında',
       'settings': 'Ayarlar',
+      'rate_app': 'Tajweed Practice hoşunuza gidiyor mu?',
+      'rate_app_subtitle':
+          'Başkalarının uygulamayı keşfetmesine yardımcı olmak için yorum yazın.',
+      'feedback_section': 'Geri bildiriminiz',
+      'feedback_email_subject': 'Tajweed Practice hakkında geri bildirim',
+      'send_feedback': 'Tajweed Practice’i geliştirmemize yardım edin',
+      'send_feedback_subtitle':
+          'Bir önerinizi paylaşın veya çalışmayan bir şeyi bildirin.',
+      'seasonal_icon': 'Mevsimlik uygulama simgesi',
+      'seasonal_icon_subtitle':
+          'Ramazan, Ramazan Bayramı ve Kurban Bayramı için simgeyi değiştirin.',
+      'open_link_failed': 'Bağlantı açılamadı. Lütfen tekrar deneyin.',
       'language': 'Dil',
       'select_language': 'Dil seçin',
       'surah': 'Sure',
@@ -552,6 +596,18 @@ class AppLocalizations {
       'share_failed': 'Impossible de partager. Veuillez réessayer.',
       'app_coming_soon': 'Bientôt sur l\'App Store et Google Play',
       'settings': 'Paramètres',
+      'rate_app': 'Tajweed Practice vous plaît ?',
+      'rate_app_subtitle':
+          'Laissez un avis pour aider d’autres personnes à découvrir l’application.',
+      'feedback_section': 'Votre avis',
+      'feedback_email_subject': 'Avis sur Tajweed Practice',
+      'send_feedback': 'Aidez-nous à améliorer Tajweed Practice',
+      'send_feedback_subtitle':
+          'Partagez une suggestion ou signalez un problème.',
+      'seasonal_icon': 'Icône saisonnière',
+      'seasonal_icon_subtitle':
+          'Changer l’icône pour le Ramadan, l’Aïd al-Fitr et l’Aïd al-Adha.',
+      'open_link_failed': 'Impossible d’ouvrir le lien. Veuillez réessayer.',
       'language': 'Langue',
       'select_language': 'Choisir la langue',
       'surah': 'Sourate',
@@ -667,6 +723,18 @@ class AppLocalizations {
       'share_failed': 'Tidak dapat membagikan. Silakan coba lagi.',
       'app_coming_soon': 'Segera hadir di App Store dan Google Play',
       'settings': 'Pengaturan',
+      'rate_app': 'Menikmati Tajweed Practice?',
+      'rate_app_subtitle':
+          'Bagikan ulasan agar orang lain dapat menemukan aplikasi ini.',
+      'feedback_section': 'Masukan Anda',
+      'feedback_email_subject': 'Masukan Tajweed Practice',
+      'send_feedback': 'Bantu kami meningkatkan Tajweed Practice',
+      'send_feedback_subtitle':
+          'Bagikan saran atau beri tahu kami jika ada yang tidak berfungsi.',
+      'seasonal_icon': 'Ikon aplikasi musiman',
+      'seasonal_icon_subtitle':
+          'Ubah ikon saat Ramadan, Idulfitri, dan Iduladha.',
+      'open_link_failed': 'Tidak dapat membuka tautan. Silakan coba lagi.',
       'language': 'Bahasa',
       'select_language': 'Pilih bahasa',
       'surah': 'Surah',
@@ -783,6 +851,19 @@ class AppLocalizations {
       'share_failed': 'Teilen fehlgeschlagen. Bitte erneut versuchen.',
       'app_coming_soon': 'Demnächst im App Store und bei Google Play',
       'settings': 'Einstellungen',
+      'rate_app': 'Gefällt Ihnen Tajweed Practice?',
+      'rate_app_subtitle':
+          'Teilen Sie eine Bewertung, damit andere die App entdecken können.',
+      'feedback_section': 'Ihr Feedback',
+      'feedback_email_subject': 'Feedback zu Tajweed Practice',
+      'send_feedback': 'Helfen Sie uns, Tajweed Practice zu verbessern',
+      'send_feedback_subtitle':
+          'Teilen Sie einen Vorschlag oder melden Sie ein Problem.',
+      'seasonal_icon': 'Saisonales App-Symbol',
+      'seasonal_icon_subtitle':
+          'Symbol für Ramadan, Eid al-Fitr und Eid al-Adha ändern.',
+      'open_link_failed':
+          'Der Link konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.',
       'language': 'Sprache',
       'select_language': 'Sprache auswählen',
       'surah': 'Sure',
@@ -889,6 +970,18 @@ class AppLocalizations {
       'ayah_link': 'Enlace de la aleya',
       'app_coming_soon': 'Próximamente en App Store y Google Play',
       'settings': 'Ajustes',
+      'rate_app': '¿Te gusta Tajweed Practice?',
+      'rate_app_subtitle':
+          'Deja una reseña para ayudar a otras personas a descubrir la aplicación.',
+      'feedback_section': 'Tus comentarios',
+      'feedback_email_subject': 'Comentarios sobre Tajweed Practice',
+      'send_feedback': 'Ayúdanos a mejorar Tajweed Practice',
+      'send_feedback_subtitle':
+          'Comparte una sugerencia o cuéntanos qué no funciona.',
+      'seasonal_icon': 'Icono de temporada',
+      'seasonal_icon_subtitle':
+          'Cambia el icono en Ramadán, Eid al-Fitr y Eid al-Adha.',
+      'open_link_failed': 'No se pudo abrir el enlace. Inténtalo de nuevo.',
       'language': 'Idioma',
       'select_language': 'Seleccionar idioma',
       'surah': 'Sura',

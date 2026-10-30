@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -13,6 +14,7 @@ import 'package:tajweed_practice/core/providers/daily_lesson_provider.dart';
 import 'package:tajweed_practice/core/providers/reader_navigation_provider.dart';
 import 'package:tajweed_practice/core/providers/streak_provider.dart';
 import 'package:tajweed_practice/features/home/home_screen.dart';
+import 'package:tajweed_practice/core/services/hijri_calendar_service.dart';
 
 void main() {
   late Directory temp;
@@ -21,8 +23,15 @@ void main() {
   late DailyLessonProvider lesson;
   late StreakProvider streak;
   late List<int> tabs;
+  var hijriDay = 1;
+  const calendarChannel = MethodChannel(HijriCalendarService.channelName);
 
   setUp(() async {
+    hijriDay = 1;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(calendarChannel, (_) async {
+          return {'year': 1445, 'month': 9, 'day': hijriDay};
+        });
     temp = await Directory.systemTemp.createTemp('home_test_');
     Hive.init(temp.path);
     for (final box in ['settings', 'bookmarks', 'streak']) {
@@ -35,6 +44,8 @@ void main() {
     tabs = [];
   });
   tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(calendarChannel, null);
     bookmarks.dispose();
     navigation.dispose();
     lesson.dispose();
@@ -89,6 +100,22 @@ void main() {
     expect(tabs, [1]);
     expect(navigation.pending, isNull);
     expect(bookmarks.hasLastRead, isFalse);
+  });
+
+  testWidgets('shows the system Hijri date and refreshes on resume', (
+    tester,
+  ) async {
+    await tester.pumpWidget(subject());
+    await tester.pumpAndSettle();
+    expect(find.text('1 Ramadan 1445 AH'), findsOneWidget);
+    hijriDay = 2;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.text('2 Ramadan 1445 AH'), findsOneWidget);
+    await tester.pumpWidget(subject(lang: 'ar'));
+    await tester.pumpAndSettle();
+    expect(find.text('٢ رمضان ١٤٤٥ هـ'), findsOneWidget);
   });
 
   testWidgets('continue keeps the saved ayah and scroll offset intact', (

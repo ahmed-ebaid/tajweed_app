@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:in_app_review/in_app_review.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/constants/app_links.dart';
 import '../../core/constants/app_version.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/providers/locale_provider.dart';
@@ -14,6 +17,7 @@ import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/onboarding_service.dart';
+import '../../core/services/seasonal_icon_service.dart';
 import '../onboarding/onboarding_screen.dart';
 import 'language_selector_screen.dart';
 
@@ -133,6 +137,22 @@ class SettingsScreen extends StatelessWidget {
           _SectionLabel(label: s.text('quran_data_section')),
           const _QuranDataTile(),
           const Divider(height: 0.5, indent: 16),
+          const _SeasonalIconTile(),
+          _SectionLabel(label: l10n.get('feedback_section')),
+          ListTile(
+            leading: const Icon(Icons.star_outline_rounded),
+            title: Text(l10n.get('rate_app')),
+            subtitle: Text(l10n.get('rate_app_subtitle')),
+            onTap: () => _openStoreListing(context),
+          ),
+          const Divider(height: 0.5, indent: 16),
+          ListTile(
+            leading: const Icon(Icons.feedback_outlined),
+            title: Text(l10n.get('send_feedback')),
+            subtitle: Text(l10n.get('send_feedback_subtitle')),
+            onTap: () => _sendFeedback(context, l10n),
+          ),
+          const Divider(height: 0.5, indent: 16),
           _SectionLabel(label: s.text('about_section')),
           ListTile(
             leading: const Icon(Icons.info_outline_rounded),
@@ -145,6 +165,62 @@ class SettingsScreen extends StatelessWidget {
           const Divider(height: 0.5, indent: 16),
           const _AboutSourcesTile(),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openStoreListing(BuildContext context) async {
+    try {
+      await InAppReview.instance.openStoreListing(
+        appStoreId: AppLinks.appStoreId,
+      );
+    } catch (error) {
+      debugPrint('Could not open the store listing: $error');
+      if (context.mounted) _showLinkError(context);
+    }
+  }
+
+  Future<void> _sendFeedback(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: AppLinks.supportEmail,
+      queryParameters: {'subject': l10n.get('feedback_email_subject')},
+    );
+    try {
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+      if (!context.mounted) return;
+      final supportOpened = await launchUrl(
+        Uri.parse(AppLinks.support),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!supportOpened && context.mounted) {
+        _showLinkError(context);
+      }
+    } catch (error) {
+      debugPrint('Could not open the feedback email: $error');
+      if (!context.mounted) return;
+      try {
+        final opened = await launchUrl(
+          Uri.parse(AppLinks.support),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened && context.mounted) {
+          _showLinkError(context);
+        }
+      } catch (fallbackError) {
+        debugPrint('Could not open the support page: $fallbackError');
+        if (context.mounted) _showLinkError(context);
+      }
+    }
+  }
+
+  void _showLinkError(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context).get('open_link_failed')),
       ),
     );
   }
@@ -1463,6 +1539,74 @@ class _QuranDataTileState extends State<_QuranDataTile> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _SeasonalIconTile extends StatefulWidget {
+  const _SeasonalIconTile();
+
+  @override
+  State<_SeasonalIconTile> createState() => _SeasonalIconTileState();
+}
+
+class _SeasonalIconTileState extends State<_SeasonalIconTile> {
+  SeasonalIconService? _service;
+  bool _supported = false;
+  bool _enabled = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final service = SeasonalIconService();
+      final supported = await service.isSupported();
+      if (!mounted) return;
+      setState(() {
+        _service = service;
+        _supported = supported;
+        _enabled = service.isEnabled;
+      });
+    } catch (error) {
+      debugPrint('Seasonal icon setting unavailable: $error');
+    }
+  }
+
+  Future<void> _toggle(bool value) async {
+    final service = _service;
+    if (service == null || _saving) return;
+    setState(() {
+      _enabled = value;
+      _saving = true;
+    });
+    try {
+      await service.setEnabled(value);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_supported) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.nights_stay_outlined),
+          title: Text(l10n.get('seasonal_icon')),
+          subtitle: Text(l10n.get('seasonal_icon_subtitle')),
+          value: _enabled,
+          onChanged: _saving ? null : _toggle,
+        ),
+        const Divider(height: 0.5, indent: 16),
+      ],
     );
   }
 }

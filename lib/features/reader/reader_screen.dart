@@ -25,6 +25,7 @@ import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
+import '../../core/services/review_prompt_service.dart';
 import 'ayah_share_content.dart';
 import '../reader/widgets/audio_player_bar.dart';
 import '../reader/widgets/single_page_scroll_physics.dart';
@@ -36,7 +37,9 @@ import '../rules/rules_repository.dart';
 import '../settings/settings_screen.dart';
 
 class ReaderScreen extends StatefulWidget {
-  const ReaderScreen({super.key});
+  final bool isActive;
+
+  const ReaderScreen({super.key, this.isActive = true});
 
   @override
   State<ReaderScreen> createState() => _ReaderScreenState();
@@ -95,6 +98,10 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   // Debounce timer for scroll position saving
   Timer? _scrollSaveTimer;
+  Timer? _reviewReadingTimer;
+  bool _isAppForeground = true;
+  bool _isRouteCurrent = false;
+  String? _lastReviewReadingDay;
 
   // Audio state
   bool _isPlayingAll = false;
@@ -405,6 +412,51 @@ class _ReaderScreenState extends State<ReaderScreen>
       _readerNavigationProvider?.addListener(_handleExternalReaderNavigation);
       _handleExternalReaderNavigation();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant ReaderScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      _syncReviewReadingTimer();
+    }
+  }
+
+  void _syncReviewReadingTimer({bool? routeCurrent}) {
+    if (routeCurrent != null) _isRouteCurrent = routeCurrent;
+    final shouldTrack =
+        widget.isActive &&
+        _isRouteCurrent &&
+        _isAppForeground &&
+        !_loading &&
+        _ayahs.isNotEmpty;
+    if (!shouldTrack) {
+      _reviewReadingTimer?.cancel();
+      _reviewReadingTimer = null;
+      return;
+    }
+    _reviewReadingTimer ??= Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => _recordMeaningfulReadingDay(),
+    );
+  }
+
+  Future<void> _recordMeaningfulReadingDay() async {
+    if (!widget.isActive || !_isAppForeground || _loading || _ayahs.isEmpty) {
+      return;
+    }
+    final now = DateTime.now();
+    final dayKey =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    if (_lastReviewReadingDay == dayKey) return;
+    try {
+      await ReviewPromptService().recordMeaningfulReadingDay(date: now);
+      _lastReviewReadingDay = dayKey;
+    } catch (error) {
+      debugPrint('Could not save reading day for review eligibility: $error');
+    }
   }
 
   void _handleExternalReaderNavigation() {
@@ -793,6 +845,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   void dispose() {
     // Cancel the scroll save timer
     _scrollSaveTimer?.cancel();
+    _reviewReadingTimer?.cancel();
     _mushafScrubberHideTimer?.cancel();
     // Save position one final time before closing
     _saveScrollPosition();
@@ -808,6 +861,8 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isAppForeground = state == AppLifecycleState.resumed;
+    _syncReviewReadingTimer();
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _scrollSaveTimer?.cancel();
@@ -2555,6 +2610,9 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   Widget build(BuildContext context) {
+    _syncReviewReadingTimer(
+      routeCurrent: ModalRoute.of(context)?.isCurrent ?? false,
+    );
     final l10n = AppLocalizations.of(context);
     final langCode = context.watch<LocaleProvider>().locale.languageCode;
     final selectedReciterId = context
