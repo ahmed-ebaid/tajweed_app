@@ -55,7 +55,10 @@ class DailyLessonFocus extends StatelessWidget {
             TextButton(
               key: const Key('open_daily_lesson_rule'),
               onPressed: onOpen,
-              child: Text(l10n.get(lesson.rule.nameKey)),
+              child: Text(
+                definition?.name(l10n.locale.languageCode) ??
+                    lesson.rule.arabicName,
+              ),
             ),
           ],
         ),

@@ -2,8 +2,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/widgets.dart';
 
 import '../models/tajweed_models.dart';
-import '../l10n/app_localizations.dart';
 import '../data/surah_names.dart';
+import '../../features/rules/rules_repository.dart';
 
 class DailyLesson {
   final int surah;
@@ -93,7 +93,7 @@ class DailyLesson {
 
   String titleFor(String langCode) =>
       titles[langCode] ??
-      '${AppLocalizations(Locale(langCode)).get(rule.nameKey)} · ${surahName(surah, langCode)}';
+      '${RulesRepository.findByRule(rule)?.name(langCode) ?? rule.arabicName} · ${surahName(surah, langCode)}';
 
   bool matches(Ayah value) {
     if (value.surahNumber != surah || value.ayahNumber != ayah) return false;

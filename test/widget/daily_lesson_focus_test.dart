@@ -7,6 +7,7 @@ import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/providers/daily_lesson_provider.dart';
 import 'package:tajweed_practice/features/reader/widgets/daily_lesson_focus.dart';
 import 'package:tajweed_practice/features/reader/widgets/tajweed_text.dart';
+import 'package:tajweed_practice/features/rules/rules_repository.dart';
 
 void main() {
   testWidgets('lesson banner is localized, opens details, and dismisses', (
@@ -14,38 +15,48 @@ void main() {
   ) async {
     var opened = 0;
     var dismissed = 0;
-    final lesson = DailyLesson.forDate(DateTime(2026, 1, 1));
-    for (final locale in AppLocalizations.supportedLocales) {
-      await tester.pumpWidget(
-        MaterialApp(
-          locale: locale,
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          home: Scaffold(
-            body: DailyLessonFocus(
-              lesson: lesson,
-              onOpen: () => opened++,
-              onDismiss: () => dismissed++,
+    for (var day = 1; day <= 7; day++) {
+      final lesson = DailyLesson.forDate(DateTime(2026, 1, day));
+      for (final locale in AppLocalizations.supportedLocales) {
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: Scaffold(
+              body: DailyLessonFocus(
+                lesson: lesson,
+                onOpen: () => opened++,
+                onDismiss: () => dismissed++,
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        find.text(AppLocalizations(locale).get('lesson_focus_hint')),
-        findsOneWidget,
-      );
-      await tester.tap(find.byKey(const Key('open_daily_lesson_rule')));
-      await tester.tap(find.byKey(const Key('dismiss_daily_lesson')));
-      expect(tester.takeException(), isNull);
+        );
+        await tester.pumpAndSettle();
+        final button = tester.widget<TextButton>(
+          find.byKey(const Key('open_daily_lesson_rule')),
+        );
+        expect(
+          (button.child as Text).data,
+          RulesRepository.findByRule(lesson.rule)!.name(locale.languageCode),
+        );
+        expect(find.textContaining('rule_'), findsNothing);
+        expect(
+          find.text(AppLocalizations(locale).get('lesson_focus_hint')),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const Key('open_daily_lesson_rule')));
+        await tester.tap(find.byKey(const Key('dismiss_daily_lesson')));
+        expect(tester.takeException(), isNull);
+      }
     }
-    expect(opened, 8);
-    expect(dismissed, 8);
+    expect(opened, 56);
+    expect(dismissed, 56);
   });
 
   testWidgets(

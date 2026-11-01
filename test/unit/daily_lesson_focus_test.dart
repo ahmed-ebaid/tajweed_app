@@ -7,6 +7,7 @@ import 'package:tajweed_practice/core/providers/daily_lesson_provider.dart';
 import 'package:tajweed_practice/core/providers/reader_navigation_provider.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
+import 'package:tajweed_practice/features/rules/rules_repository.dart';
 
 void main() {
   final lessons = List.generate(
@@ -37,7 +38,11 @@ void main() {
         if (!['en', 'ar'].contains(locale.languageCode)) {
           expect(
             lesson.titleFor(locale.languageCode),
-            contains(l10n.get(lesson.rule.nameKey)),
+            contains(
+              RulesRepository.findByRule(
+                lesson.rule,
+              )!.name(locale.languageCode),
+            ),
           );
         }
       }
