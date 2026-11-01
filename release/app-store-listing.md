@@ -1,5 +1,25 @@
 # App Store listing — Tajweed 1.1.21
 
+## Daily lesson localization correction — 1.1.22 (104), testing only
+
+- **Scope:** Replaces raw rule keys such as `rule_qalqalah` with shared
+  localized rule names in lesson buttons and titles. All seven lesson labels
+  are covered in eight languages. Quran translation fallback is unchanged.
+- **Distribution:** Google Play internal versionCode `104` is committed and
+  verified with eight localized testing notes; production and other tracks
+  are unchanged. iOS build 104 is `VALID` and `IN_BETA_TESTING` in the internal
+  tester group, with eight localized notes verified. Apple production version
+  states are unchanged. No production submission.
+- **TestFlight build ID:** `5e7d6eb2-9175-408f-8a19-9da0b7195521`.
+- **Android configuration:** Guarded signed build with explicit
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`.
+- **Validation:** 31 targeted version, attestation, lesson, and Home tests
+  passed. Both signed artifacts built successfully.
+- **Artifacts (SHA-256):** Android bundle
+  `5dda8d612d967f5a500f588c50f3be2932db8e4911dd4502f80bd0c2164525bc`;
+  iOS IPA
+  `411f1a5014a0a1a86ab7051d3568b282aed07955d2d4041a6b6f9c101ee67300`.
+
 ## Daily lesson focus — 1.1.22 (103), testing only
 
 - **Status:** Released to internal TestFlight and Google Play internal testing
