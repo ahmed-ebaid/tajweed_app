@@ -47,6 +47,8 @@ class TajweedText extends StatelessWidget {
   final bool compactFlow;
   final bool highlightEnabled;
   final int highlightedWordIndex;
+  final Set<int> lessonWordIndices;
+  final TajweedRule? lessonRule;
   final TajweedRule? focusedRule;
   final bool strictFocusedRuleOnly;
   final Set<TajweedRule> suppressedRules;
@@ -61,6 +63,8 @@ class TajweedText extends StatelessWidget {
     this.compactFlow = false,
     this.highlightEnabled = true,
     this.highlightedWordIndex = -1,
+    this.lessonWordIndices = const {},
+    this.lessonRule,
     this.focusedRule,
     this.strictFocusedRuleOnly = false,
     this.suppressedRules = const {},
@@ -169,11 +173,12 @@ class TajweedText extends StatelessWidget {
 
     for (int wi = 0; wi < ayah.words.length; wi++) {
       final word = ayah.words[wi];
+      final wordSpans = <InlineSpan>[];
       final isActiveWord = wi == highlightedWordIndex;
       if (!highlightEnabled || word.spans.isEmpty) {
         // No tajweed spans — still route through grapheme renderer so
         // Quran markers always receive marker-specific glyph styling.
-        spans.addAll(
+        wordSpans.addAll(
           _buildGraphemeTextSpans(
             _normalizeForCurrentAyah(word.arabic),
             _baseWordStyle(baseColor, isActiveWord: isActiveWord),
@@ -181,9 +186,33 @@ class TajweedText extends StatelessWidget {
         );
       } else {
         // Build per-character colored spans within the word
-        spans.addAll(_buildWordSpans(word, baseColor, isActiveWord));
+        wordSpans.addAll(_buildWordSpans(word, baseColor, isActiveWord));
       }
 
+      final isLessonWord = lessonWordIndices.contains(wi);
+      if (isLessonWord) {
+        for (final span in wordSpans.cast<TextSpan>()) {
+          spans.add(
+            TextSpan(
+              text: span.text,
+              style: isActiveWord
+                  ? span.style
+                  : span.style?.copyWith(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.secondaryContainer.withValues(alpha: 0.65),
+                    ),
+              recognizer: lessonRule != null && onRuleTapped != null
+                  ? (TapGestureRecognizer()
+                      ..onTap = () =>
+                          onRuleTapped!(lessonRule!, word, word.audioUrl))
+                  : span.recognizer,
+            ),
+          );
+        }
+      } else {
+        spans.addAll(wordSpans);
+      }
       if (wi < ayah.words.length - 1) {
         spans.add(
           TextSpan(

@@ -1,26 +1,38 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/widgets.dart';
+
+import '../models/tajweed_models.dart';
+import '../l10n/app_localizations.dart';
+import '../data/surah_names.dart';
 
 class DailyLesson {
   final int surah;
   final int ayah;
   final Map<String, String> titles;
+  final TajweedRule rule;
+  final Set<int> wordIndices;
 
   const DailyLesson({
     required this.surah,
     required this.ayah,
     required this.titles,
+    required this.rule,
+    required this.wordIndices,
   });
 
   static const List<DailyLesson> _plan = [
     DailyLesson(
       surah: 67,
       ayah: 12,
+      rule: TajweedRule.ghunnah,
+      wordIndices: {0},
       titles: {'en': 'Ghunnah in Surah Al-Mulk', 'ar': 'غُنَّة في سورة الملك'},
     ),
     DailyLesson(
       surah: 105,
       ayah: 4,
+      rule: TajweedRule.ikhfaShafawi,
+      wordIndices: {0, 1},
       titles: {
         'en': 'Ikhfa Shafawi in Surah Al-Fil',
         'ar': 'إخفاء شفوي في سورة الفيل',
@@ -29,6 +41,8 @@ class DailyLesson {
     DailyLesson(
       surah: 36,
       ayah: 58,
+      rule: TajweedRule.maddTabeei,
+      wordIndices: {0},
       titles: {
         'en': 'Madd Practice in Surah Ya-Sin',
         'ar': 'تدريب المد في سورة يس',
@@ -37,21 +51,29 @@ class DailyLesson {
     DailyLesson(
       surah: 19,
       ayah: 61,
+      rule: TajweedRule.qalqalah,
+      wordIndices: {1},
       titles: {'en': 'Qalqalah in Surah Maryam', 'ar': 'قلقلة في سورة مريم'},
     ),
     DailyLesson(
       surah: 2,
       ayah: 21,
+      rule: TajweedRule.ikhfa,
+      wordIndices: {7, 8},
       titles: {'en': 'Ikhfa in Surah Al-Baqarah', 'ar': 'إخفاء في سورة البقرة'},
     ),
     DailyLesson(
       surah: 15,
       ayah: 87,
+      rule: TajweedRule.idghamWithGhunnah,
+      wordIndices: {2, 3},
       titles: {'en': 'Idgham in Surah Al-Hijr', 'ar': 'إدغام في سورة الحجر'},
     ),
     DailyLesson(
       surah: 37,
       ayah: 9,
+      rule: TajweedRule.waqf,
+      wordIndices: {0},
       titles: {
         'en': 'Waqf Signs in Surah As-Saffat',
         'ar': 'علامات الوقف في سورة الصافات',
@@ -60,13 +82,28 @@ class DailyLesson {
   ];
 
   static DailyLesson forDate(DateTime date) {
-    final startOfYear = DateTime(date.year, 1, 1);
-    final dayOfYear = date.difference(startOfYear).inDays;
+    final startOfYear = DateTime.utc(date.year, 1, 1);
+    final dayOfYear = DateTime.utc(
+      date.year,
+      date.month,
+      date.day,
+    ).difference(startOfYear).inDays;
     return _plan[dayOfYear % _plan.length];
   }
 
   String titleFor(String langCode) =>
-      titles[langCode] ?? titles['en'] ?? 'Today\'s lesson';
+      titles[langCode] ??
+      '${AppLocalizations(Locale(langCode)).get(rule.nameKey)} · ${surahName(surah, langCode)}';
+
+  bool matches(Ayah value) {
+    if (value.surahNumber != surah || value.ayahNumber != ayah) return false;
+    if (wordIndices.isEmpty ||
+        wordIndices.any((index) => index < 0 || index >= value.words.length)) {
+      debugPrint('Daily lesson example unavailable for $surah:$ayah');
+      return false;
+    }
+    return true;
+  }
 }
 
 class DailyLessonProvider extends ChangeNotifier {

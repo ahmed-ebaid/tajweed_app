@@ -296,6 +296,12 @@ CI enforcement:
 - A localized reading shortcut opens the Reader tab without changing the saved ayah, scroll offset, or reader mode.
 - New readers see “Start reading”; returning readers see their saved surah and ayah.
 - The daily lesson retains its targeted navigation and shows progress only after practice begins. Home shows surah names and omits the fire/streak widget.
+- Opening Today’s lesson shows a dismissible, localized rule explanation at its
+  ayah and highlights one authored word or cross-word example. Tapping any part
+  of that example opens the corresponding word-detail rule sheet. Existing
+  Tajweed letter colors and audio word highlighting are preserved. Lesson focus
+  clears when dismissed, leaving the Reader tab, changing surahs, or switching
+  to Mushaf mode; ordinary reading navigation does not enable it.
 
 ### Audio
 - Reader playback uses selectable Quran.Foundation recitations and defaults to AbdulBasit Mujawwad

@@ -146,6 +146,7 @@ void main() {
     expect(tabs, [1]);
     expect(navigation.pending?.surah, lesson.todayLesson.surah);
     expect(navigation.pending?.ayah, lesson.todayLesson.ayah);
+    expect(navigation.pending?.lesson, same(lesson.todayLesson));
   });
 
   testWidgets('all locales render in light and dark mode', (tester) async {

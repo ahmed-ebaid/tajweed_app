@@ -38,10 +38,7 @@ class HomeScreen extends StatelessWidget {
                 lessonTitle: lesson.titleFor(l10n.locale.languageCode),
                 progress: dailyLesson.progressForToday,
                 onTap: () {
-                  context.read<ReaderNavigationProvider>().openSurahAyah(
-                    surah: lesson.surah,
-                    ayah: lesson.ayah,
-                  );
+                  context.read<ReaderNavigationProvider>().openLesson(lesson);
                   onTabSwitch(1);
                 },
               ),

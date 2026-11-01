@@ -102,6 +102,8 @@ class AppLocalizations {
       'rate_app': 'Enjoying Tajweed Practice?',
       'rate_app_subtitle': 'Share a review to help others discover the app.',
       'feedback_section': 'Your feedback',
+      'lesson_focus_hint':
+          'Notice the highlighted example. Tap it to learn the rule.',
       'feedback_email_subject': 'Tajweed Practice feedback',
       'send_feedback': 'Help us improve Tajweed Practice',
       'send_feedback_subtitle':
@@ -227,6 +229,7 @@ class AppLocalizations {
       'rate_app': 'هل تستمتع بتطبيق تعلم التجويد؟',
       'rate_app_subtitle': 'شاركنا تقييمك ليساعد الآخرين على اكتشاف التطبيق.',
       'feedback_section': 'ملاحظاتك',
+      'lesson_focus_hint': 'لاحظ المثال المظلل. اضغط عليه لتتعلم الحكم.',
       'feedback_email_subject': 'ملاحظات حول تطبيق تعلم التجويد',
       'send_feedback': 'ساعدنا على تحسين تطبيق تعلم التجويد',
       'send_feedback_subtitle': 'شارك اقتراحًا أو أخبرنا بما لا يعمل.',
@@ -349,6 +352,8 @@ class AppLocalizations {
       'rate_app': 'کیا آپ تجوید پریکٹس سے لطف اندوز ہو رہے ہیں؟',
       'rate_app_subtitle': 'اپنی رائے دیں تاکہ دوسرے بھی ایپ دریافت کر سکیں۔',
       'feedback_section': 'آپ کی رائے',
+      'lesson_focus_hint':
+          'نمایاں مثال پر غور کریں۔ قاعدہ سیکھنے کے لیے اسے دبائیں۔',
       'feedback_email_subject': 'تجوید پریکٹس کے بارے میں رائے',
       'send_feedback': 'تجوید پریکٹس بہتر بنانے میں مدد کریں',
       'send_feedback_subtitle':
@@ -473,6 +478,8 @@ class AppLocalizations {
       'rate_app_subtitle':
           'Başkalarının uygulamayı keşfetmesine yardımcı olmak için yorum yazın.',
       'feedback_section': 'Geri bildiriminiz',
+      'lesson_focus_hint':
+          'Vurgulanan örneğe dikkat edin. Kuralı öğrenmek için dokunun.',
       'feedback_email_subject': 'Tajweed Practice hakkında geri bildirim',
       'send_feedback': 'Tajweed Practice’i geliştirmemize yardım edin',
       'send_feedback_subtitle':
@@ -600,6 +607,8 @@ class AppLocalizations {
       'rate_app_subtitle':
           'Laissez un avis pour aider d’autres personnes à découvrir l’application.',
       'feedback_section': 'Votre avis',
+      'lesson_focus_hint':
+          'Observez l’exemple surligné. Touchez-le pour découvrir la règle.',
       'feedback_email_subject': 'Avis sur Tajweed Practice',
       'send_feedback': 'Aidez-nous à améliorer Tajweed Practice',
       'send_feedback_subtitle':
@@ -727,6 +736,8 @@ class AppLocalizations {
       'rate_app_subtitle':
           'Bagikan ulasan agar orang lain dapat menemukan aplikasi ini.',
       'feedback_section': 'Masukan Anda',
+      'lesson_focus_hint':
+          'Perhatikan contoh yang disorot. Ketuk untuk mempelajari aturannya.',
       'feedback_email_subject': 'Masukan Tajweed Practice',
       'send_feedback': 'Bantu kami meningkatkan Tajweed Practice',
       'send_feedback_subtitle':
@@ -855,6 +866,8 @@ class AppLocalizations {
       'rate_app_subtitle':
           'Teilen Sie eine Bewertung, damit andere die App entdecken können.',
       'feedback_section': 'Ihr Feedback',
+      'lesson_focus_hint':
+          'Beachten Sie das hervorgehobene Beispiel. Tippen Sie darauf, um die Regel zu lernen.',
       'feedback_email_subject': 'Feedback zu Tajweed Practice',
       'send_feedback': 'Helfen Sie uns, Tajweed Practice zu verbessern',
       'send_feedback_subtitle':
@@ -974,6 +987,8 @@ class AppLocalizations {
       'rate_app_subtitle':
           'Deja una reseña para ayudar a otras personas a descubrir la aplicación.',
       'feedback_section': 'Tus comentarios',
+      'lesson_focus_hint':
+          'Observe el ejemplo resaltado. Tóquelo para aprender la regla.',
       'feedback_email_subject': 'Comentarios sobre Tajweed Practice',
       'send_feedback': 'Ayúdanos a mejorar Tajweed Practice',
       'send_feedback_subtitle':

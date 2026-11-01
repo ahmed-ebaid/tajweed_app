@@ -26,6 +26,7 @@ import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/review_prompt_service.dart';
+import 'widgets/daily_lesson_focus.dart';
 import 'ayah_share_content.dart';
 import '../reader/widgets/audio_player_bar.dart';
 import '../reader/widgets/single_page_scroll_physics.dart';
@@ -87,6 +88,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   final Map<int, Future<List<Ayah>>> _mushafTextPageLoads = {};
 
   int _selectedSurah = 1;
+  DailyLesson? _activeLesson;
   bool _tajweedEnabled = true;
   _AyahContentMode _ayahContentMode = _AyahContentMode.arabicWithTranslation;
   _ReaderViewMode _viewMode = _ReaderViewMode.ayah;
@@ -418,6 +420,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   void didUpdateWidget(covariant ReaderScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isActive != widget.isActive) {
+      if (!widget.isActive) _activeLesson = null;
       _syncReviewReadingTimer();
     }
   }
@@ -482,6 +485,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     setState(() {
       _viewMode = _ReaderViewMode.ayah;
       _selectedSurah = request.surah;
+      _activeLesson = request.lesson;
       _pendingScrollAyah = request.ayah;
       _pendingScrollOffset = 0.0;
       _didInitialReopenRestore = true;
@@ -888,6 +892,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Future<void> _loadSurah({bool allowFallback = true}) async {
+    if (_activeLesson?.surah != _selectedSurah) _activeLesson = null;
     final loadVersion = ++_surahLoadVersion;
     // Captured once. `_selectedSurah` is mutated synchronously by the surah
     // picker, so re-reading it after an await can attribute this load's verses
@@ -2477,6 +2482,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Future<void> _openPageBookmark(Bookmark bookmark) async {
+    setState(() => _activeLesson = null);
     final targetPage = (bookmark.pageNumber ?? 1).clamp(1, 604);
     final targetIndex = targetPage - 1;
 
@@ -2521,6 +2527,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         surahNameFor: _surahArabicName,
         onTap: (bookmark) {
           Navigator.pop(context);
+          setState(() => _activeLesson = null);
           if (bookmark.isPage) {
             unawaited(_openPageBookmark(bookmark));
             return;
@@ -2654,6 +2661,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                   _scrollSaveTimer?.cancel();
                   _cancelProgrammaticAyahScroll();
                   _selectedSurah = surah;
+                  _activeLesson = null;
                   // A plain surah pick opens at its first ayah. Without an
                   // explicit target the reload kept the previous surah's
                   // scroll offset, because the controller survives the swap.
@@ -2834,6 +2842,10 @@ class _ReaderScreenState extends State<ReaderScreen>
                   isPlaying: isPlaying,
                   activeWordIndex: isPlaying ? _activeWordIndex : -1,
                   isBookmarked: isBookmarked,
+                  lesson: _activeLesson?.matches(ayah) == true
+                      ? _activeLesson
+                      : null,
+                  onDismissLesson: () => setState(() => _activeLesson = null),
                   onWordTapped: _onWordTapped,
                   onDoubleTap: () => _playSingleAyah(ayah),
                   onTafseerTap: () => _showTafseer(ayah),
@@ -2897,6 +2909,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Future<void> _toggleReaderViewMode() async {
+    setState(() => _activeLesson = null);
     if (_viewMode == _ReaderViewMode.ayah) {
       final ayahOffset = _scrollController.hasClients
           ? _scrollController.offset
@@ -5604,6 +5617,8 @@ class _AyahTile extends StatelessWidget {
   final bool isPlaying;
   final int activeWordIndex;
   final bool isBookmarked;
+  final DailyLesson? lesson;
+  final VoidCallback? onDismissLesson;
   final void Function(TajweedRule, TajweedWord, Ayah, {String? wordAudioUrl})
   onWordTapped;
   final VoidCallback onDoubleTap;
@@ -5620,6 +5635,8 @@ class _AyahTile extends StatelessWidget {
     required this.isPlaying,
     required this.activeWordIndex,
     required this.isBookmarked,
+    this.lesson,
+    this.onDismissLesson,
     required this.onWordTapped,
     required this.onDoubleTap,
     required this.onTafseerTap,
@@ -5644,6 +5661,16 @@ class _AyahTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (lesson != null)
+              DailyLessonFocus(
+                lesson: lesson!,
+                onDismiss: onDismissLesson!,
+                onOpen: () => onWordTapped(
+                  lesson!.rule,
+                  ayah.words[lesson!.wordIndices.first],
+                  ayah,
+                ),
+              ),
             Row(
               children: [
                 _AyahNumber(number: ayah.ayahNumber),
@@ -5693,9 +5720,22 @@ class _AyahTile extends StatelessWidget {
                 fontSize: 32,
                 highlightEnabled: tajweedEnabled,
                 highlightedWordIndex: activeWordIndex,
+                lessonWordIndices: lesson?.wordIndices ?? const {},
+                lessonRule: lesson?.rule,
                 suppressedRules: const {TajweedRule.izhar},
-                onRuleTapped: (rule, word, wordAudioUrl) =>
-                    onWordTapped(rule, word, ayah, wordAudioUrl: wordAudioUrl),
+                onRuleTapped: (rule, word, wordAudioUrl) {
+                  final index = ayah.words.indexOf(word);
+                  final selectedRule =
+                      lesson?.wordIndices.contains(index) == true
+                      ? lesson!.rule
+                      : rule;
+                  onWordTapped(
+                    selectedRule,
+                    word,
+                    ayah,
+                    wordAudioUrl: wordAudioUrl,
+                  );
+                },
               ),
             if (showTranslation) ...[
               const SizedBox(height: 8),
