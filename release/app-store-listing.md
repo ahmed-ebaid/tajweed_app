@@ -1,4 +1,21 @@
-# App Store listing — Tajweed 1.1.21
+# App Store listing — Tajweed 1.1.22
+
+## Production submission — 1.1.22 (104)
+
+- **Apple:** Submitted on 2026-11-01; verified `WAITING_FOR_REVIEW` with
+  automatic release after approval (`AFTER_APPROVAL`). Build 104 is attached.
+  Eight localized release notes and 160 unchanged inherited screenshots were
+  verified. TestFlight access remains available.
+- **Google Play:** The exact internal-testing bundle 104 was promoted to
+  production without rebuilding. VersionCode `104`, status `completed`, and
+  eight localized production notes were verified after commit. Other tracks
+  and screenshots are unchanged. Review approval and public availability
+  have not been established by this API status.
+- **Android safeguards:** Bundle SHA-256 matches the guarded artifact below,
+  built with `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`. All 14
+  attestation regression tests passed again before promotion.
+- **Apple version ID:** `d208a2fa-6386-4399-9b95-19ceccc8d253`.
+- **Apple submission ID:** `8f784e07-9400-4086-a888-a0863a87ae5e`.
 
 ## Daily lesson localization correction — 1.1.22 (104), testing only
 
@@ -184,22 +201,22 @@
 - **Primary category:** Education
 - **Secondary category:** Reference
 - **Copyright:** © 2026 Ebaid LLC
-- **Version:** 1.1.20 (Apple `READY_FOR_SALE`); 1.1.21 (submitted for review).
-- **Build:** 100 (live App Store version) / 102 (submitted for review).
-- **Release stage:** 1.1.21 verified `WAITING_FOR_REVIEW`.
+- **Version:** 1.1.21 (Apple `READY_FOR_SALE`); 1.1.22 (submitted for review).
+- **Build:** 102 (live App Store version) / 104 (submitted for review).
+- **Release stage:** 1.1.22 verified `WAITING_FOR_REVIEW`.
   All eight localized release notes and 160 inherited screenshots verified.
 - **Release setting:** Automatic release after approval.
-- **Submission:** 3b4a3ee4-c747-4e92-9390-c167c019d8eb
-- **App Store version ID:** ae1718d6-8393-4544-97b7-5322a0ce0259
+- **Submission:** 8f784e07-9400-4086-a888-a0863a87ae5e
+- **App Store version ID:** d208a2fa-6386-4399-9b95-19ceccc8d253
 - **Store assets:** All 160 inherited screenshots verified unchanged; What's New
   updated in all eight store languages.
-- **TestFlight status:** 1.1.21 (102) is Apple-validated (`VALID`) and
+- **TestFlight status:** 1.1.22 (104) is Apple-validated (`VALID`) and
   `IN_BETA_TESTING` in the internal Tajweed Testers group. Localized What to
   Test notes are configured in all eight languages.
-- **TestFlight build ID:** 61871910-c5dc-4da0-890b-a4fd77ec4eed
-- **Public release:** Apple 1.1.20 (100) verified `READY_FOR_SALE` before
-  submission; 1.1.21 (102) is awaiting review. Google production is configured
-  for build 102; public availability has not been verified.
+- **TestFlight build ID:** 5e7d6eb2-9175-408f-8a19-9da0b7195521
+- **Public release:** Apple 1.1.21 (102) verified `READY_FOR_SALE` before
+  submission; 1.1.22 (104) is awaiting review. Google production is configured
+  for build 104; public availability has not been verified.
 - **Google Play (historical build 97):** Matching 1.1.18 (97) bundle uploaded and production-track edit
   committed and re-read successfully. Store review/public availability is not
   established by the track's `completed` rollout status. Other tracks and
