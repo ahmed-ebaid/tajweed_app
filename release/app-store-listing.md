@@ -1,5 +1,30 @@
 # App Store listing — Tajweed 1.1.21
 
+## Daily lesson focus — 1.1.22 (103), testing only
+
+- **Status:** Released to internal TestFlight and Google Play internal testing
+  on 2026-11-01. Apple build 103 is `VALID` and `IN_BETA_TESTING`; Play internal
+  versionCode `103` and all eight testing-note translations were re-read.
+  Production and other Play tracks were verified unchanged. No App Store
+  review submission or Google production promotion was made for this version.
+- **Lesson focus:** Today’s lesson highlights one authored word or phrase
+  while preserving Tajweed colors. A localized, dismissible banner explains
+  the rule; tapping the highlighted example or rule button opens details.
+  Focus clears on dismissal, tab changes, bookmarks, surah selection, or
+  switching to Mushaf mode.
+- **Android configuration:** Built through the guarded release script with
+  explicit `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`.
+- **Validation:** The implementation passed 422 tests with two fixture/manual
+  skips and its real Home-to-Reader simulator integration test. Release 103
+  passed 31 targeted version, attestation, corpus, and lesson-UI tests. Both
+  signed artifacts built successfully; iOS alternate icons remain registered.
+  Physical-device testing is pending.
+- **TestFlight build ID:** `8a1591fe-a4dc-4356-9afa-dc9c736a1285`.
+- **Artifacts (SHA-256):** Android bundle
+  `35b421a12927de7cf8f9493001d80f56b59f66b7e87a4f88e8b5c8be6ee48e17`;
+  iOS IPA
+  `d0ae351317d986f5e22ea419bd3b16aedcaec227c46f61954e8505ece7dc6abf`.
+
 ## Production submission — 1.1.21 (102)
 
 - **Apple:** Submitted on 2026-10-30; verified `WAITING_FOR_REVIEW` with
