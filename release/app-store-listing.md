@@ -1,4 +1,35 @@
-# App Store listing — Tajweed 1.1.22
+# App Store listing — Tajweed 1.1.23
+
+## Production submission — 1.1.23 (105)
+
+- **Scope:** Fixes native review scheduling when eligible readers immediately
+  leave Home. Pending requests wait during onboarding, modal routes, quizzes,
+  reader audio, and backgrounding. Eligibility is captured at launch, and the
+  120-day attempt cooldown is unchanged. The store still controls display.
+- **Apple:** Submitted on 2026-11-02; verified `WAITING_FOR_REVIEW` with
+  automatic release after approval (`AFTER_APPROVAL`). Build 105 is attached.
+  Eight localized release notes and all 160 inherited screenshots were verified.
+  The build is assigned to the internal TestFlight group.
+- **Google Play:** Signed bundle 105 uploaded to production with status
+  `completed`; versionCode, all eight localized notes, and bundle SHA-256 were
+  re-read and verified. Other tracks, including internal testing, and listing
+  screenshots are unchanged. Public availability and review approval have not
+  been established by this API status.
+- **Android safeguards:** Built using
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680 release/build_android_release.sh appbundle`.
+  The project number is also the embedded production default; the guarded
+  wrapper and Gradle validation reject an incorrect override.
+- **Validation:** 31 release-gate tests passed, including review launch,
+  eligibility, version consistency, and all 14 attestation regression tests.
+  Both signed release artifacts built successfully. Physical-device review
+  popup display is not verified; native API invocation does not prove display.
+- **Apple version ID:** `02a4a57e-4c40-4de7-9ac7-bd2921b36fc6`.
+- **Apple build ID:** `3a240849-253e-4b1a-9540-7e7508ee300b`.
+- **Apple submission ID:** `4beca315-7c5d-47ad-ba18-04b76136f385`.
+- **Artifacts (SHA-256):** Android bundle
+  `c0382b5fbeab8a3d933f97ae1ed02bed123557a786b94cfb9e3d02ed75f4cffe`;
+  iOS IPA
+  `6000f9b3764d1fc268f6d5f638b8b7129f94fd83170356a487621c2384141853`.
 
 ## Production submission — 1.1.22 (104)
 

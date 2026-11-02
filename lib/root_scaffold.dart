@@ -37,10 +37,15 @@ class _RootScaffoldState extends State<RootScaffold>
   bool _wasOffline = false;
   bool _isForeground = true;
   bool _reviewPromptHandledThisLaunch = false;
+  bool _reviewRequestInFlight = false;
+  bool _isUpdatingSeasonalIcon = false;
+  bool _isReaderAudioActive = false;
+  late final bool _reviewEligibleAtLaunch;
 
   @override
   void initState() {
     super.initState();
+    _reviewEligibleAtLaunch = ReviewPromptService().shouldRequestAtLaunch();
     WidgetsBinding.instance.addObserver(this);
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
       _onConnectivityChanged,
@@ -61,6 +66,8 @@ class _RootScaffoldState extends State<RootScaffold>
   }
 
   Future<void> _applySeasonalIcon() async {
+    if (_isUpdatingSeasonalIcon) return;
+    _isUpdatingSeasonalIcon = true;
     try {
       if (await SeasonalIconService().applyForDate()) {
         // Avoid stacking the review sheet on top of the icon-change alert.
@@ -70,33 +77,61 @@ class _RootScaffoldState extends State<RootScaffold>
       }
     } catch (error) {
       debugPrint('Seasonal icon update failed: $error');
+    } finally {
+      _isUpdatingSeasonalIcon = false;
     }
   }
 
   void _scheduleReviewPrompt() {
-    if (_reviewPromptHandledThisLaunch || _reviewPromptTimer != null) return;
+    if (!mounted ||
+        !_isForeground ||
+        !_reviewEligibleAtLaunch ||
+        _reviewPromptHandledThisLaunch ||
+        _reviewRequestInFlight ||
+        _reviewPromptTimer != null) {
+      return;
+    }
     _reviewPromptTimer = Timer(const Duration(seconds: 5), () {
       _reviewPromptTimer = null;
       unawaited(_requestReviewIfAppropriate());
     });
   }
 
+  bool get _canRequestReview =>
+      mounted &&
+      _isForeground &&
+      !_isUpdatingSeasonalIcon &&
+      !_isReaderAudioActive &&
+      _currentIndex != 2 &&
+      ModalRoute.of(context)?.isCurrent == true;
+
   Future<void> _requestReviewIfAppropriate() async {
-    if (!mounted ||
-        !_isForeground ||
-        _currentIndex != 0 ||
-        ModalRoute.of(context)?.isCurrent != true ||
-        _reviewPromptHandledThisLaunch) {
+    if (!mounted || _reviewPromptHandledThisLaunch || _reviewRequestInFlight) {
       return;
     }
-    _reviewPromptHandledThisLaunch = true;
+    if (!_canRequestReview) {
+      _scheduleReviewPrompt();
+      return;
+    }
+    _reviewRequestInFlight = true;
+    var deferred = false;
     try {
       await ReviewPromptService().requestAtLaunch(
         isAvailable: InAppReview.instance.isAvailable,
         requestReview: InAppReview.instance.requestReview,
+        canRequest: () {
+          final allowed = _canRequestReview && !_reviewPromptHandledThisLaunch;
+          deferred = !allowed;
+          return allowed;
+        },
       );
+      if (!deferred) _reviewPromptHandledThisLaunch = true;
     } catch (error) {
+      _reviewPromptHandledThisLaunch = true;
       debugPrint('In-app review request failed: $error');
+    } finally {
+      _reviewRequestInFlight = false;
+      if (deferred) _scheduleReviewPrompt();
     }
   }
 
@@ -105,8 +140,11 @@ class _RootScaffoldState extends State<RootScaffold>
     _isForeground = state == AppLifecycleState.resumed;
     if (_isForeground) {
       unawaited(_applySeasonalIcon());
-      if (_currentIndex == 0) _scheduleReviewPrompt();
+      _scheduleReviewPrompt();
       unawaited(_runOfflineMaintenance());
+    } else {
+      _reviewPromptTimer?.cancel();
+      _reviewPromptTimer = null;
     }
   }
 
@@ -161,7 +199,6 @@ class _RootScaffoldState extends State<RootScaffold>
   }
 
   void _switchTab(int index) {
-    if (index != 0) _reviewPromptTimer?.cancel();
     setState(() => _currentIndex = index);
   }
 
@@ -171,7 +208,10 @@ class _RootScaffoldState extends State<RootScaffold>
 
     final screens = [
       HomeScreen(onTabSwitch: _switchTab),
-      ReaderScreen(isActive: _currentIndex == 1),
+      ReaderScreen(
+        isActive: _currentIndex == 1,
+        onAudioActivityChanged: (active) => _isReaderAudioActive = active,
+      ),
       const QuizScreen(),
       const RulesScreen(),
     ];

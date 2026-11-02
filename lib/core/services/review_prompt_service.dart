@@ -52,8 +52,11 @@ class ReviewPromptService {
     DateTime? now,
     required Future<bool> Function() isAvailable,
     required Future<void> Function() requestReview,
+    bool Function()? canRequest,
   }) async {
-    if (!shouldRequestAtLaunch(now: now) || !await isAvailable()) {
+    if (!shouldRequestAtLaunch(now: now) ||
+        !await isAvailable() ||
+        canRequest?.call() == false) {
       return false;
     }
     await recordPromptAttempt(now: now);

@@ -58,6 +58,28 @@ void main() {
   });
 
   test(
+    'does not consume an attempt when presentation is no longer safe',
+    () async {
+      for (var day = 1; day <= 3; day++) {
+        await service.recordMeaningfulReadingDay(date: DateTime(2026, 10, day));
+      }
+      var safe = true;
+      var requests = 0;
+      final requested = await service.requestAtLaunch(
+        isAvailable: () async {
+          safe = false;
+          return true;
+        },
+        requestReview: () async => requests++,
+        canRequest: () => safe,
+      );
+      expect(requested, isFalse);
+      expect(requests, 0);
+      expect(settingsBox.get(ReviewPromptService.lastAttemptKey), isNull);
+    },
+  );
+
+  test(
     'does not consume an attempt when native review is unavailable',
     () async {
       var reviewRequested = false;

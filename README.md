@@ -55,6 +55,19 @@ tajweed_app/
 
 ---
 
+## Store review requests
+
+After at least one minute of reading on three distinct days, a later launch
+can request the native store review sheet after five seconds. Switching from
+Home to Reader does not cancel the request. Requests wait while the app is
+backgrounded, another route or dialog is open, a quiz is selected, reader audio
+is playing, or a seasonal icon update is in progress. An icon change skips the
+request for that launch. Attempts are limited to once every 120 days.
+
+The app does not ask for a username or create an account to leave a review.
+Apple and Google control the review sheet and any store-account requirements;
+calling their API does not guarantee that the sheet is displayed.
+
 ## Setup
 
 ### 1. Install dependencies

@@ -39,8 +39,13 @@ import '../settings/settings_screen.dart';
 
 class ReaderScreen extends StatefulWidget {
   final bool isActive;
+  final ValueChanged<bool>? onAudioActivityChanged;
 
-  const ReaderScreen({super.key, this.isActive = true});
+  const ReaderScreen({
+    super.key,
+    this.isActive = true,
+    this.onAudioActivityChanged,
+  });
 
   @override
   State<ReaderScreen> createState() => _ReaderScreenState();
@@ -375,6 +380,9 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     // Listen for audio completion
     _playerStateSub = _audio.playerStateStream.listen((state) {
+      widget.onAudioActivityChanged?.call(
+        state.playing && state.processingState != ProcessingState.completed,
+      );
       if (state.processingState == ProcessingState.completed) {
         if (!_isPlayingAll && mounted) {
           setState(() {
