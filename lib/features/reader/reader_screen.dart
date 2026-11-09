@@ -130,6 +130,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _isMushafScrubberDragging = false;
   int? _mushafScrubberPreviewPage;
   Timer? _mushafScrubberHideTimer;
+  Timer? _pageControlsHideTimer;
+  int _pageControlsPointers = 0;
   int? _ayahModeAnchorAyah;
   int? _mushafAnchorSurah;
   int? _mushafCurrentAnchorAyah;
@@ -435,6 +437,32 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (!widget.isActive) _activeLesson = null;
       _syncReviewReadingTimer();
     }
+  }
+
+  void _syncPageControlsTimer({bool restart = false}) {
+    final shouldHide =
+        widget.isActive &&
+        _pageControlsPointers == 0 &&
+        _isAppForeground &&
+        _viewMode == _ReaderViewMode.page &&
+        !widget.isPageFullscreen &&
+        widget.onPageFullscreenChanged != null &&
+        !_loading &&
+        _ayahs.isNotEmpty;
+    if (!shouldHide || restart) {
+      _pageControlsHideTimer?.cancel();
+      _pageControlsHideTimer = null;
+    }
+    if (!shouldHide) return;
+    _pageControlsHideTimer ??= Timer(const Duration(seconds: 6), () {
+      _pageControlsHideTimer = null;
+      if (!mounted) return;
+      if (ModalRoute.of(context)?.isCurrent ?? false) {
+        widget.onPageFullscreenChanged?.call(true);
+      } else {
+        _syncPageControlsTimer();
+      }
+    });
   }
 
   void _syncReviewReadingTimer({bool? routeCurrent}) {
@@ -866,6 +894,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _scrollSaveTimer?.cancel();
     _reviewReadingTimer?.cancel();
     _mushafScrubberHideTimer?.cancel();
+    _pageControlsHideTimer?.cancel();
     // Save position one final time before closing
     _saveScrollPosition();
     WidgetsBinding.instance.removeObserver(this);
@@ -881,6 +910,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _isAppForeground = state == AppLifecycleState.resumed;
+    _syncPageControlsTimer(restart: true);
     _syncReviewReadingTimer();
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
@@ -2632,6 +2662,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   Widget build(BuildContext context) {
+    _syncPageControlsTimer();
     _syncReviewReadingTimer(
       routeCurrent: ModalRoute.of(context)?.isCurrent ?? false,
     );
@@ -2665,185 +2696,202 @@ class _ReaderScreenState extends State<ReaderScreen>
           widget.onPageFullscreenChanged?.call(false);
         }
       },
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Scaffold(
-          appBar: fullscreen
-              ? null
-              : AppBar(
-                  centerTitle: false,
-                  titleSpacing: 0,
-                  actionsPadding: const EdgeInsets.only(left: 2, right: 8),
-                  title: Padding(
-                    padding: const EdgeInsets.only(left: 0, right: 10),
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: _SurahSelector(
-                        surahs: _surahsForSelector(),
-                        selected: _selectedSurah,
-                        juzStarts: _juzStartReferences(),
-                        onBeforeOpen: () => _hideMushafScrubberOverlay(),
-                        onChanged: (surah, {ayah}) {
-                          _scrollSaveTimer?.cancel();
-                          _cancelProgrammaticAyahScroll();
-                          _selectedSurah = surah;
-                          _activeLesson = null;
-                          // A plain surah pick opens at its first ayah. Without an
-                          // explicit target the reload kept the previous surah's
-                          // scroll offset, because the controller survives the swap.
-                          final targetAyah = ayah ?? 1;
-                          if (_scrollController.hasClients) {
-                            _scrollController.jumpTo(0.0);
-                          }
-                          _pendingScrollAyah = targetAyah;
-                          _pendingScrollOffset = 0.0;
-                          unawaited(
-                            context.read<BookmarkProvider>().saveLastRead(
-                              surah,
-                              targetAyah,
-                              scrollOffset: 0.0,
-                              caller: ayah == null
-                                  ? '[surah-picker]'
-                                  : '[surah-picker/juz-jump]',
-                            ),
-                          );
-                          _stopAudio();
-                          _loadSurah(allowFallback: false);
-                        },
+      child: Listener(
+        onPointerDown: (_) {
+          _pageControlsPointers++;
+          _syncPageControlsTimer(restart: true);
+        },
+        onPointerUp: (_) {
+          _pageControlsPointers--;
+          _syncPageControlsTimer(restart: true);
+        },
+        onPointerCancel: (_) {
+          _pageControlsPointers--;
+          _syncPageControlsTimer(restart: true);
+        },
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Scaffold(
+            backgroundColor: fullscreen
+                ? _MushafColors.of(context).paper
+                : null,
+            appBar: fullscreen
+                ? null
+                : AppBar(
+                    centerTitle: false,
+                    titleSpacing: 0,
+                    actionsPadding: const EdgeInsets.only(left: 2, right: 8),
+                    title: Padding(
+                      padding: const EdgeInsets.only(left: 0, right: 10),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: _SurahSelector(
+                          surahs: _surahsForSelector(),
+                          selected: _selectedSurah,
+                          juzStarts: _juzStartReferences(),
+                          onBeforeOpen: () => _hideMushafScrubberOverlay(),
+                          onChanged: (surah, {ayah}) {
+                            _scrollSaveTimer?.cancel();
+                            _cancelProgrammaticAyahScroll();
+                            _selectedSurah = surah;
+                            _activeLesson = null;
+                            // A plain surah pick opens at its first ayah. Without an
+                            // explicit target the reload kept the previous surah's
+                            // scroll offset, because the controller survives the swap.
+                            final targetAyah = ayah ?? 1;
+                            if (_scrollController.hasClients) {
+                              _scrollController.jumpTo(0.0);
+                            }
+                            _pendingScrollAyah = targetAyah;
+                            _pendingScrollOffset = 0.0;
+                            unawaited(
+                              context.read<BookmarkProvider>().saveLastRead(
+                                surah,
+                                targetAyah,
+                                scrollOffset: 0.0,
+                                caller: ayah == null
+                                    ? '[surah-picker]'
+                                    : '[surah-picker/juz-jump]',
+                              ),
+                            );
+                            _stopAudio();
+                            _loadSurah(allowFallback: false);
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                  actions:
-                      [
-                            if (_viewMode == _ReaderViewMode.page &&
-                                widget.onPageFullscreenChanged != null)
+                    actions:
+                        [
+                              if (_viewMode == _ReaderViewMode.page &&
+                                  widget.onPageFullscreenChanged != null)
+                                IconButton(
+                                  icon: const Icon(Icons.fullscreen, size: 22),
+                                  tooltip: l10n.get('quran_fullscreen'),
+                                  onPressed: () {
+                                    _hideMushafScrubberOverlay();
+                                    widget.onPageFullscreenChanged!(true);
+                                  },
+                                ),
                               IconButton(
-                                icon: const Icon(Icons.fullscreen, size: 22),
-                                tooltip: l10n.get('quran_fullscreen'),
-                                onPressed: () {
-                                  _hideMushafScrubberOverlay();
-                                  widget.onPageFullscreenChanged!(true);
-                                },
-                              ),
-                            IconButton(
-                              icon: Icon(
-                                _viewMode == _ReaderViewMode.page
-                                    ? Icons.view_list_outlined
-                                    : Icons.chrome_reader_mode_outlined,
-                                size: 22,
-                              ),
-                              tooltip: _viewMode == _ReaderViewMode.page
-                                  ? l10n.get('switch_to_ayah_view')
-                                  : l10n.get('switch_to_page_view'),
-                              onPressed: _toggleReaderViewMode,
-                            ),
-                            // Bookmarks
-                            IconButton(
-                              icon: const Icon(
-                                Icons.bookmark_border_rounded,
-                                size: 22,
-                              ),
-                              tooltip: l10n.get('bookmarks'),
-                              onPressed: _showBookmarksList,
-                            ),
-                            // Play all toggle
-                            IconButton(
-                              icon: Icon(
-                                _isPlayingAll
-                                    ? Icons.stop_circle_outlined
-                                    : Icons.play_circle_outline,
-                                size: 22,
-                              ),
-                              color: _isPlayingAll
-                                  ? Colors.red
-                                  : const Color(0xFF1D9E75),
-                              tooltip: _isPlayingAll
-                                  ? l10n.get('stop')
-                                  : l10n.get('play_all'),
-                              onPressed: _ayahs.isNotEmpty
-                                  ? _togglePlayAll
-                                  : null,
-                            ),
-                            if (_viewMode == _ReaderViewMode.ayah)
-                              IconButton(
-                                icon: Icon(_ayahContentModeIcon, size: 22),
-                                tooltip: _ayahContentModeTooltip,
-                                onPressed: _cycleAyahContentMode,
-                              ),
-                            if (_viewMode == _ReaderViewMode.page)
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.palette_outlined,
+                                icon: Icon(
+                                  _viewMode == _ReaderViewMode.page
+                                      ? Icons.view_list_outlined
+                                      : Icons.chrome_reader_mode_outlined,
                                   size: 22,
                                 ),
-                                tooltip: AppLocalizations.of(
-                                  context,
-                                ).get('tajweed_colors'),
-                                onPressed: _showMushafTajweedPalette,
+                                tooltip: _viewMode == _ReaderViewMode.page
+                                    ? l10n.get('switch_to_ayah_view')
+                                    : l10n.get('switch_to_page_view'),
+                                onPressed: _toggleReaderViewMode,
                               ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.settings_outlined,
-                                size: 22,
+                              // Bookmarks
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.bookmark_border_rounded,
+                                  size: 22,
+                                ),
+                                tooltip: l10n.get('bookmarks'),
+                                onPressed: _showBookmarksList,
                               ),
-                              tooltip: AppLocalizations.of(context).settings,
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
+                              // Play all toggle
+                              IconButton(
+                                icon: Icon(
+                                  _isPlayingAll
+                                      ? Icons.stop_circle_outlined
+                                      : Icons.play_circle_outline,
+                                  size: 22,
+                                ),
+                                color: _isPlayingAll
+                                    ? Colors.red
+                                    : const Color(0xFF1D9E75),
+                                tooltip: _isPlayingAll
+                                    ? l10n.get('stop')
+                                    : l10n.get('play_all'),
+                                onPressed: _ayahs.isNotEmpty
+                                    ? _togglePlayAll
+                                    : null,
+                              ),
+                              if (_viewMode == _ReaderViewMode.ayah)
+                                IconButton(
+                                  icon: Icon(_ayahContentModeIcon, size: 22),
+                                  tooltip: _ayahContentModeTooltip,
+                                  onPressed: _cycleAyahContentMode,
+                                ),
+                              if (_viewMode == _ReaderViewMode.page)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.palette_outlined,
+                                    size: 22,
+                                  ),
+                                  tooltip: AppLocalizations.of(
+                                    context,
+                                  ).get('tajweed_colors'),
+                                  onPressed: _showMushafTajweedPalette,
+                                ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.settings_outlined,
+                                  size: 22,
+                                ),
+                                tooltip: AppLocalizations.of(context).settings,
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SettingsScreen(),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ]
-                          .map((action) => SizedBox(width: 44, child: action))
-                          .toList(),
-                ),
-          body: SafeArea(
-            top: fullscreen,
-            bottom: fullscreen,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Column(
-                  children: [
-                    if (_viewMode == _ReaderViewMode.ayah) ...[
-                      if (_showsArabicText) ...[
-                        TajweedLegend(
-                          rules: TajweedRule.values,
-                          langCode: langCode,
-                        ),
-                        const Divider(height: 0.5),
-                      ],
-                    ],
-                    Expanded(
-                      child: _loading
-                          ? const Center(child: CircularProgressIndicator())
-                          : _ayahs.isEmpty
-                          ? _EmptyState(onRetry: _loadSurah)
-                          : (_viewMode == _ReaderViewMode.page
-                                ? _buildMushafPageView()
-                                : _buildAyahList(langCode, pageMode: false)),
-                    ),
-                    if (_playingAyahNumber != null && !fullscreen)
-                      AudioPlayerBar(
-                        audioService: _audio,
-                        label:
-                            '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
-                        onClose: _stopAudio,
-                      ),
-                  ],
-                ),
-                if (fullscreen)
-                  Positioned(
-                    right: 4,
-                    bottom: 4,
-                    child: IconButton(
-                      icon: const Icon(Icons.fullscreen_exit),
-                      tooltip: l10n.get('quran_show_controls'),
-                      onPressed: () =>
-                          widget.onPageFullscreenChanged?.call(false),
-                    ),
+                            ]
+                            .map((action) => SizedBox(width: 44, child: action))
+                            .toList(),
                   ),
-              ],
+            body: SafeArea(
+              top: fullscreen,
+              bottom: fullscreen,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Column(
+                    children: [
+                      if (_viewMode == _ReaderViewMode.ayah) ...[
+                        if (_showsArabicText) ...[
+                          TajweedLegend(
+                            rules: TajweedRule.values,
+                            langCode: langCode,
+                          ),
+                          const Divider(height: 0.5),
+                        ],
+                      ],
+                      Expanded(
+                        child: _loading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _ayahs.isEmpty
+                            ? _EmptyState(onRetry: _loadSurah)
+                            : (_viewMode == _ReaderViewMode.page
+                                  ? _buildMushafPageView()
+                                  : _buildAyahList(langCode, pageMode: false)),
+                      ),
+                      if (_playingAyahNumber != null && !fullscreen)
+                        AudioPlayerBar(
+                          audioService: _audio,
+                          label:
+                              '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
+                          onClose: _stopAudio,
+                        ),
+                    ],
+                  ),
+                  if (fullscreen)
+                    Positioned(
+                      right: 4,
+                      bottom: 4,
+                      child: IconButton(
+                        icon: const Icon(Icons.fullscreen_exit),
+                        tooltip: l10n.get('quran_show_controls'),
+                        onPressed: () =>
+                            widget.onPageFullscreenChanged?.call(false),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

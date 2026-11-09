@@ -260,6 +260,70 @@ void main() {
     await close(tester);
   });
 
+  testWidgets('Mushaf controls auto-hide and taps restart the delay', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = FakeViewPadding(top: 47, bottom: 34);
+    addTearDown(tester.view.reset);
+    await launch(tester);
+    await tester.tap(find.byIcon(Icons.menu_book_outlined));
+    await tick(tester, duration: const Duration(seconds: 1));
+    final region = find.byKey(const ValueKey('mushaf-content-region')).first;
+    final originalHeight = tester.getSize(region).height;
+    await tick(tester, duration: const Duration(seconds: 6));
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.byType(BottomNavigationBar), findsNothing);
+    expect(tester.getSize(region).height, greaterThan(originalHeight + 70));
+    await tester.tap(find.byTooltip('Show reading controls'));
+    await tester.pump();
+    expect(find.byType(AppBar), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    final gesture = await tester.startGesture(const Offset(200, 200));
+    await tester.pump(const Duration(seconds: 7));
+    expect(find.byType(AppBar), findsOneWidget);
+    await gesture.up();
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.byType(AppBar), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(AppBar), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.home_outlined));
+    await tick(tester, duration: const Duration(seconds: 10));
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+    expect(find.byTooltip('Read full screen'), findsNothing);
+    await close(tester);
+  });
+
+  testWidgets('Mushaf auto-hide pauses for dialogs and backgrounding', (
+    tester,
+  ) async {
+    await launch(tester);
+    await tester.tap(find.byIcon(Icons.menu_book_outlined));
+    await tick(tester, duration: const Duration(seconds: 1));
+    final context = tester.element(find.byType(RootScaffold));
+    unawaited(
+      showDialog<void>(
+        context: context,
+        builder: (_) => const AlertDialog(content: Text('Reading dialog')),
+      ),
+    );
+    await tester.pump();
+    await tick(tester, duration: const Duration(seconds: 8));
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+    Navigator.of(context).pop();
+    await tester.pumpAndSettle();
+    background(tester);
+    await tick(tester, duration: const Duration(seconds: 8));
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+    foreground(tester);
+    await tick(tester, duration: const Duration(seconds: 6));
+    expect(find.byType(BottomNavigationBar), findsNothing);
+    await close(tester);
+  });
+
   testWidgets('waits for a dialog to close instead of losing the request', (
     tester,
   ) async {
@@ -294,6 +358,10 @@ void main() {
     await tick(tester);
     expect(requests, 0);
     reader.onAudioActivityChanged!(false);
+    await tick(tester);
+    expect(requests, 0, reason: 'Auto-hidden reading still defers reviews');
+    await tester.tap(find.byTooltip('Show reading controls'));
+    await tester.pump();
     await tick(tester);
     expect(requests, 1);
     await close(tester);
