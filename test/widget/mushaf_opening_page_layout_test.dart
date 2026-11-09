@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tajweed_practice/core/l10n/app_localizations.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/features/reader/mushaf_page_view.dart';
+import 'package:tajweed_practice/features/reader/widgets/tajweed_text.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +12,150 @@ void main() {
     final font = FontLoader('AmiriQuran')
       ..addFont(rootBundle.load('assets/fonts/AmiriQuran.ttf'));
     await font.load();
+  });
+
+  for (final firstTextLine in [1, 2, 3]) {
+    testWidgets(
+      'opening decorations never replace printed line $firstTextLine',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: MushafPageContent(
+                pageNumber: 591,
+                ayahs: [
+                  Ayah(
+                    surahNumber: 86,
+                    ayahNumber: 1,
+                    pageNumber: 591,
+                    arabic: 'وَالسَّمَاءِ وَالطَّارِقِ',
+                    translations: const {},
+                    words: [
+                      TajweedWord(
+                        arabic: 'وَالسَّمَاءِ',
+                        spans: const [],
+                        lineNumber: firstTextLine,
+                      ),
+                      TajweedWord(
+                        arabic: 'وَالطَّارِقِ',
+                        spans: const [],
+                        lineNumber: firstTextLine,
+                      ),
+                    ],
+                    endLineNumber: firstTextLine,
+                  ),
+                ],
+                isLandscape: false,
+                textScale: 1,
+                highlightEnabled: true,
+                surahNameFor: (_) => 'الطارق',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final line = find.byKey(ValueKey('mushaf-line-$firstTextLine'));
+        final expectedWord = TextSpan(
+          children: TajweedText.buildStyledWordSpans(
+            const TajweedWord(arabic: 'وَالسَّمَاءِ', spans: []),
+            baseStyle: const TextStyle(),
+          ),
+        ).toPlainText();
+        expect(
+          find.descendant(
+            of: line,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Text &&
+                  (widget.textSpan?.toPlainText().contains(expectedWord) ??
+                      false),
+            ),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
+          firstTextLine > 1 ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey('mushaf-surah-cartouche')),
+          firstTextLine == 3 ? findsOneWidget : findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets('fixed lines share one font size and do not stretch vertically', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MushafPageContent(
+            pageNumber: 22,
+            ayahs: [
+              for (var line = 1; line <= 15; line++)
+                Ayah(
+                  surahNumber: 2,
+                  ayahNumber: line + 141,
+                  pageNumber: 22,
+                  arabic: 'كَلِمَةٌ',
+                  translations: const {},
+                  words: [
+                    for (var word = 0; word < (line.isEven ? 8 : 6); word++)
+                      TajweedWord(
+                        arabic: 'كَلِمَةٌ',
+                        spans: const [],
+                        lineNumber: line,
+                      ),
+                  ],
+                  endLineNumber: line,
+                ),
+            ],
+            isLandscape: false,
+            textScale: 1,
+            highlightEnabled: true,
+            surahNameFor: (_) => 'البقرة',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final sizes = <double>[];
+    for (var line = 1; line <= 15; line++) {
+      final words = find.descendant(
+        of: find.byKey(ValueKey('mushaf-line-$line')),
+        matching: find.byType(Text),
+      );
+      for (final element in words.evaluate()) {
+        final text = element.widget as Text;
+        final box = element.renderObject! as RenderBox;
+        final scale = box.getTransformTo(null).getColumn(0).length;
+        final fontSize = (text.textSpan! as TextSpan).style!.fontSize!;
+        sizes.add(text.textScaler!.scale(fontSize) * scale);
+      }
+    }
+    expect(sizes.every((size) => (size - sizes.first).abs() < 0.01), isTrue);
+    final row = tester.getRect(find.byKey(const ValueKey('mushaf-line-1')));
+    expect(row.height, lessThanOrEqualTo(sizes.first * 2.2 + 4.01));
+    final region = tester.getRect(
+      find.byKey(const ValueKey('mushaf-content-region')),
+    );
+    final last = tester.getRect(find.byKey(const ValueKey('mushaf-line-15')));
+    expect(last.bottom, lessThanOrEqualTo(region.bottom));
+    expect(
+      tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position
+          .maxScrollExtent,
+      closeTo(0, 0.01),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Al-Fajr page 593 includes ayah 23 in the fitted viewport', (
@@ -143,8 +288,8 @@ void main() {
           tester.getRect(find.byWidget(element.widget)),
       ];
       final lineRect = tester.getRect(line);
-      expect(wordRects.last.left, closeTo(lineRect.left + 8, 1));
-      expect(wordRects.first.right, closeTo(lineRect.right - 8, 1));
+      expect(wordRects.last.left, closeTo(lineRect.left + 20, 1));
+      expect(wordRects.first.right, closeTo(lineRect.right - 20, 1));
     }
     expect(tester.takeException(), isNull);
     final viewer = tester.widget<InteractiveViewer>(

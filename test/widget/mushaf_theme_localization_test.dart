@@ -113,6 +113,22 @@ List<TextSpan> pageSpans(WidgetTester tester) {
 
 void main() {
   for (final locale in AppLocalizations.supportedLocales) {
+    testWidgets('Mushaf page labels are localized in ${locale.languageCode}', (
+      tester,
+    ) async {
+      final l10n = AppLocalizations(locale);
+      await tester.pumpWidget(
+        subject(
+          page(printed: true, landscape: false, highlighted: true),
+          locale: locale,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('${l10n.get('juz')} ${l10n.digits(1)}'), findsOneWidget);
+      expect(find.text(l10n.digits(3)), findsOneWidget);
+      expect(l10n.get('juz'), isNot('juz'));
+      expect(tester.takeException(), isNull);
+    });
     testWidgets('Mushaf palette is localized in ${locale.languageCode}', (
       tester,
     ) async {
@@ -129,6 +145,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text(l10n.get('tajweed_colors')), findsOneWidget);
+      for (final key in ['quran_fullscreen', 'quran_show_controls']) {
+        expect(l10n.get(key), readerTranslations[locale.languageCode]![key]);
+        expect(l10n.get(key), isNot(key));
+      }
       expect(
         find.text(
           readerTranslations[locale
@@ -192,6 +212,35 @@ void main() {
                   : const Color(0xFFFFFCF3),
             );
             final spans = pageSpans(tester);
+            for (final marker
+                in find
+                    .byKey(const ValueKey('mushaf-hizb-boundary'))
+                    .evaluate()) {
+              final markerRect = tester.getRect(
+                find.byElementPredicate(
+                  (element) => identical(element, marker),
+                ),
+              );
+              for (final text
+                  in find
+                      .descendant(
+                        of: find.byKey(const ValueKey('mushaf-content-region')),
+                        matching: find.byType(Text),
+                      )
+                      .evaluate()) {
+                if ((text.widget as Text).textSpan == null) continue;
+                final textRect = tester.getRect(
+                  find.byElementPredicate(
+                    (element) => identical(element, text),
+                  ),
+                );
+                expect(
+                  markerRect.overlaps(textRect),
+                  isFalse,
+                  reason: 'Hizb markers must stay outside Quran text',
+                );
+              }
+            }
             final region = tester.widget<Container>(
               find.byKey(const ValueKey('mushaf-content-region')),
             );
@@ -202,9 +251,28 @@ void main() {
               dark ? scheme.outline : const Color(0xFF5F9584),
             );
             final surahTitle = tester.widget<Text>(find.text('سُورَةُ البقرة'));
+            if (printed) {
+              expect(surahTitle.style!.inherit, isFalse);
+              expect(
+                surahTitle.style!.leadingDistribution,
+                TextLeadingDistribution.even,
+              );
+              final frame = tester.getRect(
+                find.byKey(const ValueKey('mushaf-surah-cartouche')),
+              );
+              final title = tester.getRect(find.text('سُورَةُ البقرة'));
+              expect(frame.deflate(1).contains(title.topLeft), isTrue);
+              expect(frame.deflate(1).contains(title.bottomRight), isTrue);
+            }
             expect(
               surahTitle.style!.color,
-              dark ? scheme.primary : const Color(0xFF083F31),
+              printed
+                  ? dark
+                        ? AppTheme.darkTheme.colorScheme.onSurface
+                        : const Color(0xFF050807)
+                  : dark
+                  ? scheme.primary
+                  : const Color(0xFF083F31),
             );
             final ayahMarkers = spans.where(
               (span) => span.text?.contains('\u06DD') ?? false,
@@ -245,6 +313,10 @@ void main() {
             );
             final basmala = tester.widget<Text>(
               find.text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
+            );
+            expect(
+              basmala.style!.fontWeight ?? FontWeight.w400,
+              FontWeight.w400,
             );
             expect(
               basmala.style!.color,

@@ -212,6 +212,54 @@ void main() {
     await close(tester);
   });
 
+  testWidgets('page fullscreen hides both bars and restores navigation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await launch(tester);
+    await tester.tap(find.byIcon(Icons.menu_book_outlined));
+    await tick(tester, duration: const Duration(seconds: 1));
+    final region = find.byKey(const ValueKey('mushaf-content-region')).first;
+    final originalHeight = tester.getSize(region).height;
+    await tester.tap(find.byTooltip('Read full screen'));
+    await tester.pump();
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.byType(BottomNavigationBar), findsNothing);
+    expect(find.byTooltip('Show reading controls'), findsOneWidget);
+    expect(tester.getSize(region).height, greaterThan(originalHeight + 80));
+    await tick(tester);
+    expect(requests, 0, reason: 'Do not interrupt full-screen reading');
+
+    await tester.tapAt(tester.getCenter(region));
+    await tester.pump();
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+    expect(tester.getSize(region).height, closeTo(originalHeight, 0.01));
+
+    await tester.tap(find.byTooltip('Read full screen'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Show reading controls'));
+    await tester.pump();
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Read full screen'));
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.home_outlined));
+    await tester.pump();
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+    expect(find.byTooltip('Read full screen'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await close(tester);
+  });
+
   testWidgets('waits for a dialog to close instead of losing the request', (
     tester,
   ) async {

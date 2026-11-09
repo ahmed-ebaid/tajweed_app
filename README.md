@@ -322,7 +322,10 @@ CI enforcement:
 - `just_audio` streams verse audio and `AudioCacheService` stores optional offline downloads
 
 ### Mushaf pages
-- The complete page fits the viewport without vertical scrolling. Original printed line endings, ayah-marker positions, and Hizb marks are preserved; spacing and word size adapt within each fixed line. Missing line metadata shows an explicit retry state instead of reflowing Quran text.
+- The complete page fits the viewport without vertical scrolling. Original printed line endings, ayah-marker positions, and Hizb marks are preserved; word spacing adapts within each fixed line. Missing line metadata shows an explicit retry state instead of reflowing Quran text.
+- Printed pages use one common Quran font size and weight per page, with tighter line spacing rather than stretching rows to fill a tall screen. Surah headings use an outlined Mushaf-style cartouche; opening basmalas never overwrite headings or Quran text.
+- Hizb markers occupy a reserved side margin with clearance from Quran text in both page and flowing layouts.
+- In Quran page view, the full-screen button hides the reader toolbar and bottom navigation. Tap the page, use the exit-full-screen control, or press Back to restore them. Ayah view and other tabs retain their normal controls.
 - The 604-page reader uses Quran.Foundation Uthmani verse text and page metadata
 - Pages are rendered locally as text; the app does not download or redistribute Mushaf page images
 - The bundled Amiri Quran font is provided by the Amiri Project under the SIL Open Font License 1.1
