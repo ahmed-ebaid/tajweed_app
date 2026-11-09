@@ -78,6 +78,7 @@ Widget page({
   isLandscape: landscape,
   textScale: 1,
   highlightEnabled: highlighted,
+  fitToViewport: printed,
   surahNameFor: (_) => 'البقرة',
 );
 
@@ -194,10 +195,10 @@ void main() {
             final region = tester.widget<Container>(
               find.byKey(const ValueKey('mushaf-content-region')),
             );
+            final border =
+                (region.decoration! as BoxDecoration).border! as Border;
             expect(
-              ((region.decoration! as BoxDecoration).border! as Border)
-                  .top
-                  .color,
+              (printed ? border.left : border.top).color,
               dark ? scheme.outline : const Color(0xFF5F9584),
             );
             final surahTitle = tester.widget<Text>(find.text('سُورَةُ البقرة'));

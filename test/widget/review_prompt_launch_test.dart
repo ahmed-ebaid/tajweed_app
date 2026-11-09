@@ -192,6 +192,11 @@ void main() {
 
   testWidgets('opening Reader immediately still requests once', (tester) async {
     await launch(tester);
+    final navigation = tester.widget<BottomNavigationBar>(
+      find.byType(BottomNavigationBar),
+    );
+    expect(navigation.items, hasLength(4));
+    expect(find.byIcon(Icons.psychology_outlined), findsNothing);
     await tester.tap(find.byIcon(Icons.menu_book_outlined));
     await tester.pump();
     expect(

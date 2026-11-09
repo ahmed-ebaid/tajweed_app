@@ -322,6 +322,7 @@ CI enforcement:
 - `just_audio` streams verse audio and `AudioCacheService` stores optional offline downloads
 
 ### Mushaf pages
+- The complete page fits the viewport without vertical scrolling. Original printed line endings, ayah-marker positions, and Hizb marks are preserved; spacing and word size adapt within each fixed line. Missing line metadata shows an explicit retry state instead of reflowing Quran text.
 - The 604-page reader uses Quran.Foundation Uthmani verse text and page metadata
 - Pages are rendered locally as text; the app does not download or redistribute Mushaf page images
 - The bundled Amiri Quran font is provided by the Amiri Project under the SIL Open Font License 1.1
