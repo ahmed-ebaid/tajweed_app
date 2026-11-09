@@ -528,6 +528,36 @@ void main() {
               expect(scaleX, closeTo(scaleY, 0.0001));
               final span = text.textSpan! as TextSpan;
               expect(span.style!.fontWeight, FontWeight.w700);
+              void checkInk(TextSpan paintedSpan) {
+                if (paintedSpan.text?.isNotEmpty ?? false) {
+                  final shadows = paintedSpan.style!.shadows!;
+                  expect(shadows, hasLength(4));
+                  for (final shadow in shadows) {
+                    expect(shadow.color, paintedSpan.style!.color);
+                    expect(shadow.blurRadius, 0);
+                    expect(shadow.offset.distance * scaleX, lessThan(0.5));
+                  }
+                  final plainStyle = paintedSpan.style!.copyWith(shadows: []);
+                  final plain = TextPainter(
+                    text: TextSpan(text: paintedSpan.text, style: plainStyle),
+                    textDirection: TextDirection.rtl,
+                    textScaler: TextScaler.noScaling,
+                  )..layout();
+                  final painted = TextPainter(
+                    text: paintedSpan,
+                    textDirection: TextDirection.rtl,
+                    textScaler: TextScaler.noScaling,
+                  )..layout();
+                  expect(painted.size, plain.size);
+                  plain.dispose();
+                  painted.dispose();
+                }
+                for (final child in paintedSpan.children ?? <InlineSpan>[]) {
+                  checkInk(child as TextSpan);
+                }
+              }
+
+              checkInk(span);
               effectiveSizes.add(span.style!.fontSize! * scaleX);
               final rect = tester.getRect(find.byWidget(text));
               rects.add(rect);

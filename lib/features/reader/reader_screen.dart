@@ -5337,6 +5337,41 @@ class _MushafJustifiedLine extends StatelessWidget {
     required this.scale,
   });
 
+  TextSpan _withPrintedInk(InlineSpan span, TextStyle parentStyle) {
+    if (span is! TextSpan) {
+      throw StateError('Printed Mushaf words must contain only text spans');
+    }
+    final resolvedStyle = parentStyle.merge(span.style);
+    final color = resolvedStyle.color!;
+    // Explicit, sharp ink expansion also works when iOS ignores synthetic bold.
+    // Shadows affect paint only, leaving shaping and measured advances intact.
+    final radius = (resolvedStyle.fontSize ?? 25) * 0.012;
+    return TextSpan(
+      text: span.text,
+      style: resolvedStyle.copyWith(
+        shadows: [
+          for (final offset in [
+            Offset(-radius, 0),
+            Offset(radius, 0),
+            Offset(0, -radius),
+            Offset(0, radius),
+          ])
+            Shadow(color: color, offset: offset),
+        ],
+      ),
+      children: span.children
+          ?.map((child) => _withPrintedInk(child, resolvedStyle))
+          .toList(growable: false),
+      recognizer: span.recognizer,
+      mouseCursor: span.mouseCursor,
+      onEnter: span.onEnter,
+      onExit: span.onExit,
+      semanticsLabel: span.semanticsLabel,
+      locale: span.locale,
+      spellOut: span.spellOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -5344,7 +5379,12 @@ class _MushafJustifiedLine extends StatelessWidget {
         final width = math.max(1.0, constraints.maxWidth - horizontalInset * 2);
         final groups = [
           for (final group in content.wordGroups)
-            TextSpan(style: style, children: group),
+            TextSpan(
+              style: style,
+              children: [
+                for (final span in group) _withPrintedInk(span, style),
+              ],
+            ),
         ];
         final metrics = _MushafLineMetrics.measure(content, style);
         final lineWidth = centered ? metrics.width : width / scale;
