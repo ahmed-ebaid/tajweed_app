@@ -532,7 +532,18 @@ Tajweed Practice is independently owned and operated by Ebaid LLC.
 Quran.Foundation Content API requests are routed through an Ebaid LLC
 Cloudflare Worker and protected by Apple App Attest. No login is required, and
 publicly released builds through 1.1.23 (105), and the reader-only TestFlight
-builds 1.1.24 (108–109), do not request microphone or speech-recognition permission.
+builds 1.1.24 (108–110), do not request microphone or speech-recognition permission.
+
+### Larger reader layout — TestFlight build 110
+
+Version 1.1.24 (110) reduces side margins, uses proportionate ayah numerals,
+and removes extra vertical centering space on normal Mushaf pages. Quran
+lettering on page 591 is approximately 8% larger than build 109. Printed line
+endings, Tajweed colors, localized labels, and clear Hizb margins are preserved.
+Opening pages retain their centered composition.
+
+Internal TestFlight only; no public App Review submission. Hifz, Quran ASR,
+microphone and speech-recognition permissions remain excluded.
 
 ### Reader refinement — TestFlight build 109
 
