@@ -242,7 +242,8 @@ void main() {
           .estimatedChildCount,
       604,
     );
-    expect(find.byTooltip('Show reading controls'), findsOneWidget);
+    expect(find.byTooltip('Show reading controls'), findsNothing);
+    expect(find.byIcon(Icons.fullscreen_exit), findsNothing);
     expect(tester.getSize(region).height, greaterThan(originalHeight + 80));
     await tick(tester);
     expect(requests, 0, reason: 'Do not interrupt full-screen reading');
@@ -255,7 +256,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Read full screen'));
     await tester.pump();
-    await tester.tap(find.byTooltip('Show reading controls'));
+    await tester.tapAt(tester.getBottomRight(region) - const Offset(16, 16));
     await tester.pump();
     expect(find.byType(BottomNavigationBar), findsOneWidget);
 
@@ -290,7 +291,8 @@ void main() {
     expect(find.byType(AppBar), findsNothing);
     expect(find.byType(BottomNavigationBar), findsNothing);
     expect(tester.getSize(region).height, greaterThan(originalHeight + 70));
-    await tester.tap(find.byTooltip('Show reading controls'));
+    expect(find.byIcon(Icons.fullscreen_exit), findsNothing);
+    await tester.tapAt(tester.getCenter(region));
     await tester.pump();
     expect(find.byType(AppBar), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
@@ -374,7 +376,11 @@ void main() {
     reader.onAudioActivityChanged!(false);
     await tick(tester);
     expect(requests, 0, reason: 'Auto-hidden reading still defers reviews');
-    await tester.tap(find.byTooltip('Show reading controls'));
+    await tester.tapAt(
+      tester.getCenter(
+        find.byKey(const ValueKey('mushaf-content-region')).first,
+      ),
+    );
     await tester.pump();
     await tick(tester);
     expect(requests, 1);

@@ -2847,48 +2847,32 @@ class _ReaderScreenState extends State<ReaderScreen>
             body: SafeArea(
               top: fullscreen,
               bottom: fullscreen,
-              child: Stack(
-                fit: StackFit.expand,
+              child: Column(
                 children: [
-                  Column(
-                    children: [
-                      if (_viewMode == _ReaderViewMode.ayah) ...[
-                        if (_showsArabicText) ...[
-                          TajweedLegend(
-                            rules: TajweedRule.values,
-                            langCode: langCode,
-                          ),
-                          const Divider(height: 0.5),
-                        ],
-                      ],
-                      Expanded(
-                        child: _loading
-                            ? const Center(child: CircularProgressIndicator())
-                            : _ayahs.isEmpty
-                            ? _EmptyState(onRetry: _loadSurah)
-                            : (_viewMode == _ReaderViewMode.page
-                                  ? _buildMushafPageView()
-                                  : _buildAyahList(langCode, pageMode: false)),
+                  if (_viewMode == _ReaderViewMode.ayah) ...[
+                    if (_showsArabicText) ...[
+                      TajweedLegend(
+                        rules: TajweedRule.values,
+                        langCode: langCode,
                       ),
-                      if (_playingAyahNumber != null && !fullscreen)
-                        AudioPlayerBar(
-                          audioService: _audio,
-                          label:
-                              '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
-                          onClose: _stopAudio,
-                        ),
+                      const Divider(height: 0.5),
                     ],
+                  ],
+                  Expanded(
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _ayahs.isEmpty
+                        ? _EmptyState(onRetry: _loadSurah)
+                        : (_viewMode == _ReaderViewMode.page
+                              ? _buildMushafPageView()
+                              : _buildAyahList(langCode, pageMode: false)),
                   ),
-                  if (fullscreen)
-                    Positioned(
-                      right: 4,
-                      bottom: 4,
-                      child: IconButton(
-                        icon: const Icon(Icons.fullscreen_exit),
-                        tooltip: l10n.get('quran_show_controls'),
-                        onPressed: () =>
-                            widget.onPageFullscreenChanged?.call(false),
-                      ),
+                  if (_playingAyahNumber != null && !fullscreen)
+                    AudioPlayerBar(
+                      audioService: _audio,
+                      label:
+                          '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
+                      onClose: _stopAudio,
                     ),
                 ],
               ),
@@ -3669,7 +3653,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                         surahNameFor: _surahArabicName,
                         fitToViewport: true,
                         viewportHeight: viewportSize.height,
-                        verticalGlyphScale: widget.isPageFullscreen ? 1.15 : 1,
                         onRetry: () => _retryMushafTextPage(pageNumber),
                       ),
                 );
@@ -4032,7 +4015,6 @@ class MushafPageContent extends StatelessWidget {
   final bool highlightEnabled;
   final String Function(int surahNumber) surahNameFor;
   final bool fitToViewport;
-  final double verticalGlyphScale;
 
   const MushafPageContent({
     super.key,
@@ -4043,7 +4025,6 @@ class MushafPageContent extends StatelessWidget {
     required this.highlightEnabled,
     required this.surahNameFor,
     this.fitToViewport = true,
-    this.verticalGlyphScale = 1,
   });
 
   @override
@@ -4073,7 +4054,6 @@ class MushafPageContent extends StatelessWidget {
         surahNameFor: surahNameFor,
         fitToViewport: fitToViewport,
         viewportHeight: viewportSize.height,
-        verticalGlyphScale: verticalGlyphScale,
         onRetry: () {},
       ),
     );
@@ -4111,7 +4091,6 @@ class _MushafTextPage extends StatelessWidget {
   final VoidCallback onRetry;
   final bool fitToViewport;
   final double viewportHeight;
-  final double verticalGlyphScale;
 
   const _MushafTextPage({
     super.key,
@@ -4127,7 +4106,6 @@ class _MushafTextPage extends StatelessWidget {
     required this.onRetry,
     this.fitToViewport = false,
     this.viewportHeight = 0,
-    this.verticalGlyphScale = 1,
   });
 
   @override
@@ -4280,11 +4258,11 @@ class _MushafTextPage extends StatelessWidget {
                 fontFamily: 'AmiriQuran',
                 fontSize: baseFontSize,
                 height: fitToViewport && hasPrintedLineLayout
-                    ? 1.5
+                    ? null
                     : heightFactor,
                 leadingDistribution: TextLeadingDistribution.even,
                 color: colors.ink,
-                fontWeight: fitToViewport ? FontWeight.w600 : FontWeight.w700,
+                fontWeight: fitToViewport ? FontWeight.w400 : FontWeight.w700,
               );
 
               // Keep the text column proportional to the glyph size so lines
@@ -4332,7 +4310,6 @@ class _MushafTextPage extends StatelessWidget {
                                 fitHeight: fitToViewport
                                     ? math.max(0, availableTextHeight)
                                     : null,
-                                verticalGlyphScale: verticalGlyphScale,
                               )
                             else
                               for (final section in sections) ...[
@@ -4462,7 +4439,6 @@ class _MushafTextPage extends StatelessWidget {
     required bool trimEmptyOuterLines,
     required double minimumPageHeight,
     double? fitHeight,
-    required double verticalGlyphScale,
   }) {
     var scaledStyle = style.copyWith(
       fontSize: (style.fontSize ?? 18) * textScale,
@@ -4565,7 +4541,6 @@ class _MushafTextPage extends StatelessWidget {
     }
 
     var pageScale = double.infinity;
-    var fittedVerticalGlyphScale = 1.0;
     if (fitHeight != null) {
       for (final line in collectedLines) {
         final metrics = _MushafLineMetrics.measure(line, scaledStyle);
@@ -4573,28 +4548,9 @@ class _MushafTextPage extends StatelessWidget {
           pageScale,
           math.min(
             math.max(1, availableLineWidth - 1) / metrics.width,
-            math.max(1, slotHeight - 4) / metrics.height,
+            math.max(1, slotHeight - 8) / metrics.height,
           ),
         );
-      }
-      if (verticalGlyphScale <= 1) {
-        slotHeight = math.min(
-          slotHeight,
-          (scaledStyle.fontSize ?? 25) * pageScale * 2.2 + 4,
-        );
-      }
-    }
-    if (fitHeight != null && verticalGlyphScale > 1) {
-      fittedVerticalGlyphScale = verticalGlyphScale;
-      for (final line in collectedLines) {
-        final metrics = _MushafLineMetrics.measure(line, scaledStyle);
-        final rowHeight = metrics.height * pageScale;
-        if (rowHeight > 0) {
-          fittedVerticalGlyphScale = math.min(
-            fittedVerticalGlyphScale,
-            slotHeight / rowHeight,
-          );
-        }
       }
     }
 
@@ -4631,9 +4587,14 @@ class _MushafTextPage extends StatelessWidget {
                     content: content,
                     style: scaledStyle,
                     horizontalInset: horizontalInset,
-                    centered: pageNumber <= 2 || content.wordGroups.length < 3,
+                    centered:
+                        pageNumber <= 2 ||
+                        (_mushafCenteredTextLines[pageNumber]?.contains(
+                              lineNumber,
+                            ) ??
+                            false) ||
+                        content.wordGroups.length == 1,
                     scale: pageScale,
-                    verticalGlyphScale: fittedVerticalGlyphScale,
                   );
                 }
                 return _MushafPrintedLine(
@@ -4966,19 +4927,19 @@ class _MushafSurahHeaderLine extends StatelessWidget {
     final colors = _MushafColors.of(context);
     if (compact) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: CustomPaint(
           key: const ValueKey('mushaf-surah-cartouche'),
           painter: _MushafSurahCartouchePainter(colors.ink, colors.paper),
           child: Center(
             child: FractionallySizedBox(
               widthFactor: 0.5,
-              heightFactor: 0.72,
+              heightFactor: 0.6,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: FractionalTranslation(
                   // Amiri's visible lettering sits below its line-box center.
-                  translation: const Offset(0, -0.12),
+                  translation: const Offset(0, -0.08),
                   child: Text(
                     'سُورَةُ ${_mushafSurahName(surahName)}',
                     textDirection: TextDirection.rtl,
@@ -5159,6 +5120,15 @@ class _MushafBoundaryPlacement {
   });
 }
 
+// Centered text lines in the app's Madinah QCF V1 layout, excluding decorations.
+// https://qul.tarteel.ai/resources/mushaf-layout/15
+const _mushafCenteredTextLines = <int, Set<int>>{
+  600: {9},
+  602: {5, 15},
+  603: {10},
+  604: {9, 14, 15},
+};
+
 class _MushafPrintedLineContent {
   final int lineNumber;
   final List<List<InlineSpan>> wordGroups = [];
@@ -5279,7 +5249,6 @@ class _MushafJustifiedLine extends StatelessWidget {
   final double horizontalInset;
   final bool centered;
   final double scale;
-  final double verticalGlyphScale;
 
   const _MushafJustifiedLine({
     required this.content,
@@ -5287,7 +5256,6 @@ class _MushafJustifiedLine extends StatelessWidget {
     required this.horizontalInset,
     required this.centered,
     required this.scale,
-    required this.verticalGlyphScale,
   });
 
   @override
@@ -5300,6 +5268,7 @@ class _MushafJustifiedLine extends StatelessWidget {
             TextSpan(style: style, children: group),
         ];
         final metrics = _MushafLineMetrics.measure(content, style);
+        final lineWidth = centered ? metrics.width : width / scale;
         return Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -5313,38 +5282,35 @@ class _MushafJustifiedLine extends StatelessWidget {
                 textDirection: TextDirection.rtl,
                 excludeSemantics: true,
                 child: SizedBox(
-                  width: width,
+                  width: lineWidth * scale,
                   height: metrics.height * scale,
-                  child: Transform.scale(
-                    scaleY: verticalGlyphScale,
-                    child: FittedBox(
-                      child: SizedBox(
-                        width: width / scale,
-                        height: metrics.height,
-                        child: Row(
-                          textDirection: TextDirection.rtl,
-                          mainAxisAlignment: centered
-                              ? MainAxisAlignment.center
-                              : MainAxisAlignment.spaceBetween,
-                          children: [
-                            for (
-                              var index = 0;
-                              index < groups.length;
-                              index++
-                            ) ...[
-                              if (centered && index > 0)
-                                SizedBox(width: metrics.wordSpacing),
-                              Text.rich(
-                                groups[index],
-                                style: style,
-                                textDirection: TextDirection.rtl,
-                                textScaler: TextScaler.noScaling,
-                                maxLines: 1,
-                                softWrap: false,
-                              ),
-                            ],
+                  child: FittedBox(
+                    child: SizedBox(
+                      width: lineWidth,
+                      height: metrics.height,
+                      child: Row(
+                        textDirection: TextDirection.rtl,
+                        mainAxisAlignment: centered
+                            ? MainAxisAlignment.center
+                            : MainAxisAlignment.spaceBetween,
+                        children: [
+                          for (
+                            var index = 0;
+                            index < groups.length;
+                            index++
+                          ) ...[
+                            if (centered && index > 0)
+                              SizedBox(width: metrics.wordSpacing),
+                            Text.rich(
+                              groups[index],
+                              style: style,
+                              textDirection: TextDirection.rtl,
+                              textScaler: TextScaler.noScaling,
+                              maxLines: 1,
+                              softWrap: false,
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                   ),
