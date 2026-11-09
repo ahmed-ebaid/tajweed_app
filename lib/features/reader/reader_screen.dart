@@ -4554,7 +4554,7 @@ class _MushafTextPage extends StatelessWidget {
           pageScale,
           math.min(
             math.max(1, availableLineWidth - 1) / metrics.width,
-            math.max(1, slotHeight - 8) / metrics.height,
+            math.max(1, slotHeight - 6) / metrics.height,
           ),
         );
       }
@@ -5246,7 +5246,7 @@ class _MushafLineMetrics {
       textDirection: TextDirection.rtl,
       textScaler: TextScaler.noScaling,
     )..layout();
-    final wordSpacing = space.width * 0.5;
+    final wordSpacing = space.width * 0.35;
     space.dispose();
     return _MushafLineMetrics(
       math.max(1, width + wordSpacing * (content.wordGroups.length - 1)),

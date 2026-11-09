@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -201,10 +203,42 @@ void main() {
     await tester.pumpAndSettle();
     final sizes = <double>[];
     final verticalSizes = <double>[];
+    var previousFitFontSize = double.infinity;
     for (var line = 1; line <= 15; line++) {
       final words = find.descendant(
         of: find.byKey(ValueKey('mushaf-line-$line')),
         matching: find.byType(Text),
+      );
+      final rowRect = tester.getRect(find.byKey(ValueKey('mushaf-line-$line')));
+      var measuredWidth = 0.0;
+      var measuredHeight = 0.0;
+      final lineTexts = tester.widgetList<Text>(words).toList();
+      for (final text in lineTexts) {
+        final painter = TextPainter(
+          text: text.textSpan,
+          textDirection: TextDirection.rtl,
+          textScaler: TextScaler.noScaling,
+          maxLines: 1,
+        )..layout();
+        measuredWidth += painter.width;
+        measuredHeight = math.max(measuredHeight, painter.height);
+        painter.dispose();
+      }
+      final style = (lineTexts.first.textSpan! as TextSpan).style!;
+      final space = TextPainter(
+        text: TextSpan(text: ' ', style: style),
+        textDirection: TextDirection.rtl,
+        textScaler: TextScaler.noScaling,
+      )..layout();
+      measuredWidth += space.width * 0.5 * (lineTexts.length - 1);
+      space.dispose();
+      previousFitFontSize = math.min(
+        previousFitFontSize,
+        style.fontSize! *
+            math.min(
+              (rowRect.width - 28 - 1) / measuredWidth,
+              (rowRect.height - 8) / measuredHeight,
+            ),
       );
       for (final element in words.evaluate()) {
         final text = element.widget as Text;
@@ -229,7 +263,8 @@ void main() {
     );
     expect(verticalSizes.first / sizes.first, closeTo(1, 0.001));
     final row = tester.getRect(find.byKey(const ValueKey('mushaf-line-1')));
-    expect(row.height, greaterThanOrEqualTo(sizes.first * 1.8 + 7.9));
+    expect(row.height, greaterThanOrEqualTo(sizes.first * 1.8 + 5.9));
+    expect(sizes.first, greaterThan(previousFitFontSize * 1.01));
     final region = tester.getRect(
       find.byKey(const ValueKey('mushaf-content-region')),
     );
@@ -496,8 +531,8 @@ void main() {
               effectiveSizes.add(span.style!.fontSize! * scaleX);
               final rect = tester.getRect(find.byWidget(text));
               rects.add(rect);
-              expect(rect.top, greaterThanOrEqualTo(row.top + 3.9));
-              expect(rect.bottom, lessThanOrEqualTo(row.bottom - 3.9));
+              expect(rect.top, greaterThanOrEqualTo(row.top + 2.9));
+              expect(rect.bottom, lessThanOrEqualTo(row.bottom - 2.9));
               expect(rect.left, greaterThanOrEqualTo(row.left + 13));
               expect(rect.right, lessThanOrEqualTo(row.right - 13));
             }
@@ -527,7 +562,10 @@ void main() {
             isTrue,
           );
           if (size == const Size(390, 780)) {
-            expect(fontSizes.first, greaterThanOrEqualTo(21));
+            expect(
+              fontSizes.first,
+              greaterThanOrEqualTo(pageNumber == 602 ? 23.8 : 24.4),
+            );
           }
           expect(
             find.byKey(const ValueKey('mushaf-surah-cartouche')),

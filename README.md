@@ -331,6 +331,7 @@ CI enforcement:
 - Pages are rendered locally as text; the app does not download or redistribute Mushaf page images
 - The bundled Amiri Quran font is provided by the Amiri Project under the SIL Open Font License 1.1
 - Fitted Quran lines use a proportional 1.8-em line box with reserved row clearance instead of Amiri's oversized default leading, so lettering fills the printed lines without stretching glyphs. Compact basmalas use the bundled font's calligraphic U+FDFD glyph with the full Arabic phrase retained for accessibility. Landscape pages keep a portrait-like width-to-height ratio rather than spreading words across the entire screen.
+- The common fitted page size uses a minimum gap of 0.35 of the font's space advance and reserves 3 logical pixels above and below each text line box. This trades excess spacing for modestly larger lettering without reflow, independent line sizes, or glyph distortion; the tightest printed line still caps enlargement.
 
 ### API attestation
 - `QuranAttestationService` owns token caching and request coalescing, and delegates the platform handshake to an `AttestationProvider`
