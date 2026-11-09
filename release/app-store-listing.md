@@ -12,8 +12,14 @@ The floating exit-full-screen button is removed; tapping the page or pressing
 Back restores the toolbars, which still automatically hide after six seconds.
 
 Internal TestFlight only; no public App Review submission. Hifz, Quran ASR,
-microphone/speech permissions, and Google Play are unchanged. Upload and
-Apple processing verification are pending.
+microphone/speech permissions, and Google Play are unchanged. Uploaded on
+2026-11-09; Apple processing is `VALID` and internal testing is
+`IN_BETA_TESTING`. Membership in **Tajweed Testers** and all eight localized
+testing notes were re-read and verified.
+
+- **Apple build/delivery ID:** `fdae9757-fe58-4ddb-8453-272940d99246`.
+- **IPA SHA-256:**
+  `d1040653d29d7a017cebf92ea35c69966d2c87e1c452ec5e383fa31a3e9be230`.
 
 ## Reader-only TestFlight upload — 1.1.24 (108)
 
