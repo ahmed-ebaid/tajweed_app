@@ -9,9 +9,15 @@ refinement recovers modest lettering size without changing the existing
 604-page V1 context, printed line endings, natural proportions, Tajweed colors,
 basmalas, header row heights, or immersive controls.
 
-Prepared for internal TestFlight review only; upload and Apple processing
-are pending. No public App Review submission, replacement font, Hifz, Quran
-ASR, microphone/speech permissions, or Google Play changes.
+Uploaded on 2026-11-09 for internal TestFlight review only. Apple processing is
+`VALID`, internal testing is `IN_BETA_TESTING`, and membership in **Tajweed
+Testers** plus all eight localized testing notes were re-read and verified.
+No public App Review submission, replacement font, Hifz, Quran ASR,
+microphone/speech permissions, or Google Play changes.
+
+- **Apple build/delivery ID:** `2eb453ca-0f3c-4b4c-845b-4f42a16a9f1a`.
+- **IPA SHA-256:**
+  `2877ef8fb8621fc9ecb386f8784394280d6334e932cd4bca736f88fafcc1fa21`.
 
 ## Natural Mushaf typography — 1.1.24 (112)
 
