@@ -3669,6 +3669,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                         surahNameFor: _surahArabicName,
                         fitToViewport: true,
                         viewportHeight: viewportSize.height,
+                        verticalGlyphScale: widget.isPageFullscreen ? 1.15 : 1,
                         onRetry: () => _retryMushafTextPage(pageNumber),
                       ),
                 );
@@ -4031,6 +4032,7 @@ class MushafPageContent extends StatelessWidget {
   final bool highlightEnabled;
   final String Function(int surahNumber) surahNameFor;
   final bool fitToViewport;
+  final double verticalGlyphScale;
 
   const MushafPageContent({
     super.key,
@@ -4041,6 +4043,7 @@ class MushafPageContent extends StatelessWidget {
     required this.highlightEnabled,
     required this.surahNameFor,
     this.fitToViewport = true,
+    this.verticalGlyphScale = 1,
   });
 
   @override
@@ -4070,6 +4073,7 @@ class MushafPageContent extends StatelessWidget {
         surahNameFor: surahNameFor,
         fitToViewport: fitToViewport,
         viewportHeight: viewportSize.height,
+        verticalGlyphScale: verticalGlyphScale,
         onRetry: () {},
       ),
     );
@@ -4107,6 +4111,7 @@ class _MushafTextPage extends StatelessWidget {
   final VoidCallback onRetry;
   final bool fitToViewport;
   final double viewportHeight;
+  final double verticalGlyphScale;
 
   const _MushafTextPage({
     super.key,
@@ -4122,6 +4127,7 @@ class _MushafTextPage extends StatelessWidget {
     required this.onRetry,
     this.fitToViewport = false,
     this.viewportHeight = 0,
+    this.verticalGlyphScale = 1,
   });
 
   @override
@@ -4326,6 +4332,7 @@ class _MushafTextPage extends StatelessWidget {
                                 fitHeight: fitToViewport
                                     ? math.max(0, availableTextHeight)
                                     : null,
+                                verticalGlyphScale: verticalGlyphScale,
                               )
                             else
                               for (final section in sections) ...[
@@ -4455,6 +4462,7 @@ class _MushafTextPage extends StatelessWidget {
     required bool trimEmptyOuterLines,
     required double minimumPageHeight,
     double? fitHeight,
+    required double verticalGlyphScale,
   }) {
     var scaledStyle = style.copyWith(
       fontSize: (style.fontSize ?? 18) * textScale,
@@ -4557,6 +4565,7 @@ class _MushafTextPage extends StatelessWidget {
     }
 
     var pageScale = double.infinity;
+    var fittedVerticalGlyphScale = 1.0;
     if (fitHeight != null) {
       for (final line in collectedLines) {
         final metrics = _MushafLineMetrics.measure(line, scaledStyle);
@@ -4568,10 +4577,25 @@ class _MushafTextPage extends StatelessWidget {
           ),
         );
       }
-      slotHeight = math.min(
-        slotHeight,
-        (scaledStyle.fontSize ?? 25) * pageScale * 2.2 + 4,
-      );
+      if (verticalGlyphScale <= 1) {
+        slotHeight = math.min(
+          slotHeight,
+          (scaledStyle.fontSize ?? 25) * pageScale * 2.2 + 4,
+        );
+      }
+    }
+    if (fitHeight != null && verticalGlyphScale > 1) {
+      fittedVerticalGlyphScale = verticalGlyphScale;
+      for (final line in collectedLines) {
+        final metrics = _MushafLineMetrics.measure(line, scaledStyle);
+        final rowHeight = metrics.height * pageScale;
+        if (rowHeight > 0) {
+          fittedVerticalGlyphScale = math.min(
+            fittedVerticalGlyphScale,
+            slotHeight / rowHeight,
+          );
+        }
+      }
     }
 
     final printedPage = Column(
@@ -4609,6 +4633,7 @@ class _MushafTextPage extends StatelessWidget {
                     horizontalInset: horizontalInset,
                     centered: pageNumber <= 2 || content.wordGroups.length < 3,
                     scale: pageScale,
+                    verticalGlyphScale: fittedVerticalGlyphScale,
                   );
                 }
                 return _MushafPrintedLine(
@@ -5254,6 +5279,7 @@ class _MushafJustifiedLine extends StatelessWidget {
   final double horizontalInset;
   final bool centered;
   final double scale;
+  final double verticalGlyphScale;
 
   const _MushafJustifiedLine({
     required this.content,
@@ -5261,6 +5287,7 @@ class _MushafJustifiedLine extends StatelessWidget {
     required this.horizontalInset,
     required this.centered,
     required this.scale,
+    required this.verticalGlyphScale,
   });
 
   @override
@@ -5288,33 +5315,36 @@ class _MushafJustifiedLine extends StatelessWidget {
                 child: SizedBox(
                   width: width,
                   height: metrics.height * scale,
-                  child: FittedBox(
-                    child: SizedBox(
-                      width: width / scale,
-                      height: metrics.height,
-                      child: Row(
-                        textDirection: TextDirection.rtl,
-                        mainAxisAlignment: centered
-                            ? MainAxisAlignment.center
-                            : MainAxisAlignment.spaceBetween,
-                        children: [
-                          for (
-                            var index = 0;
-                            index < groups.length;
-                            index++
-                          ) ...[
-                            if (centered && index > 0)
-                              SizedBox(width: metrics.wordSpacing),
-                            Text.rich(
-                              groups[index],
-                              style: style,
-                              textDirection: TextDirection.rtl,
-                              textScaler: TextScaler.noScaling,
-                              maxLines: 1,
-                              softWrap: false,
-                            ),
+                  child: Transform.scale(
+                    scaleY: verticalGlyphScale,
+                    child: FittedBox(
+                      child: SizedBox(
+                        width: width / scale,
+                        height: metrics.height,
+                        child: Row(
+                          textDirection: TextDirection.rtl,
+                          mainAxisAlignment: centered
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.spaceBetween,
+                          children: [
+                            for (
+                              var index = 0;
+                              index < groups.length;
+                              index++
+                            ) ...[
+                              if (centered && index > 0)
+                                SizedBox(width: metrics.wordSpacing),
+                              Text.rich(
+                                groups[index],
+                                style: style,
+                                textDirection: TextDirection.rtl,
+                                textScaler: TextScaler.noScaling,
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),

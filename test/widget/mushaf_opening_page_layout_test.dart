@@ -86,7 +86,7 @@ void main() {
     );
   }
 
-  testWidgets('fixed lines share one font size and do not stretch vertically', (
+  testWidgets('fullscreen enlarges fixed lines without scrolling', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -121,12 +121,14 @@ void main() {
             textScale: 1,
             highlightEnabled: true,
             surahNameFor: (_) => 'البقرة',
+            verticalGlyphScale: 1.15,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
     final sizes = <double>[];
+    final verticalSizes = <double>[];
     for (var line = 1; line <= 15; line++) {
       final words = find.descendant(
         of: find.byKey(ValueKey('mushaf-line-$line')),
@@ -136,11 +138,24 @@ void main() {
         final text = element.widget as Text;
         final box = element.renderObject! as RenderBox;
         final scale = box.getTransformTo(null).getColumn(0).length;
+        final verticalScale = box.getTransformTo(null).getColumn(1).length;
         final fontSize = (text.textSpan! as TextSpan).style!.fontSize!;
         sizes.add(text.textScaler!.scale(fontSize) * scale);
+        verticalSizes.add(text.textScaler!.scale(fontSize) * verticalScale);
+        final lineRect = tester.getRect(
+          find.byKey(ValueKey('mushaf-line-$line')),
+        );
+        final textRect = tester.getRect(find.byWidget(text));
+        expect(textRect.top, greaterThanOrEqualTo(lineRect.top - 0.1));
+        expect(textRect.bottom, lessThanOrEqualTo(lineRect.bottom + 0.1));
       }
     }
     expect(sizes.every((size) => (size - sizes.first).abs() < 0.01), isTrue);
+    expect(
+      verticalSizes.every((size) => (size - verticalSizes.first).abs() < 0.01),
+      isTrue,
+    );
+    expect(verticalSizes.first / sizes.first, greaterThan(1.05));
     final row = tester.getRect(find.byKey(const ValueKey('mushaf-line-1')));
     expect(row.height, lessThanOrEqualTo(sizes.first * 2.2 + 4.01));
     final region = tester.getRect(

@@ -222,12 +222,26 @@ void main() {
     await launch(tester);
     await tester.tap(find.byIcon(Icons.menu_book_outlined));
     await tick(tester, duration: const Duration(seconds: 1));
+    expect(
+      tester.widget<PageView>(find.byType(PageView).last).childrenDelegate,
+      isA<SliverChildBuilderDelegate>().having(
+        (delegate) => delegate.estimatedChildCount,
+        '604-page Mushaf context',
+        604,
+      ),
+    );
     final region = find.byKey(const ValueKey('mushaf-content-region')).first;
     final originalHeight = tester.getSize(region).height;
     await tester.tap(find.byTooltip('Read full screen'));
     await tester.pump();
     expect(find.byType(AppBar), findsNothing);
     expect(find.byType(BottomNavigationBar), findsNothing);
+    expect(
+      (tester.widget<PageView>(find.byType(PageView).last).childrenDelegate
+              as SliverChildBuilderDelegate)
+          .estimatedChildCount,
+      604,
+    );
     expect(find.byTooltip('Show reading controls'), findsOneWidget);
     expect(tester.getSize(region).height, greaterThan(originalHeight + 80));
     await tick(tester);
