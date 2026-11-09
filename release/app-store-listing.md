@@ -1,5 +1,20 @@
 # App Store listing — Tajweed 1.1.24
 
+## Natural Mushaf typography — 1.1.24 (112)
+
+Larger, naturally proportioned Quran lettering and a calligraphic basmala
+refine the shared reader while preserving the existing 604-page Madinah
+QCF V1 context, printed word/ayah-marker line assignments, Tajweed colors,
+localized labels, and reserved Hizb margins. Ordinary lines align at both
+margins; verified printed exceptions remain centered. Landscape pages keep
+proportional page width rather than spreading words across the whole screen.
+The floating exit-full-screen button is removed; tapping the page or pressing
+Back restores the toolbars, which still automatically hide after six seconds.
+
+Internal TestFlight only; no public App Review submission. Hifz, Quran ASR,
+microphone/speech permissions, and Google Play are unchanged. Upload and
+Apple processing verification are pending.
+
 ## Reader-only TestFlight upload — 1.1.24 (108)
 
 Complete Quran pages fit the available screen without vertical scrolling.
