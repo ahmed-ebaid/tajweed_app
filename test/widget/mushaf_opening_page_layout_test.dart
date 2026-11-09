@@ -527,7 +527,7 @@ void main() {
               final scaleY = transform.getColumn(1).length;
               expect(scaleX, closeTo(scaleY, 0.0001));
               final span = text.textSpan! as TextSpan;
-              expect(span.style!.fontWeight, FontWeight.w400);
+              expect(span.style!.fontWeight, FontWeight.w700);
               effectiveSizes.add(span.style!.fontSize! * scaleX);
               final rect = tester.getRect(find.byWidget(text));
               rects.add(rect);

@@ -1,5 +1,18 @@
 # App Store listing — Tajweed 1.1.24
 
+## Final Mushaf typography review — 1.1.24 (113)
+
+Heavier Amiri Quran lettering, larger bold surah names inside the existing
+cartouches, and localized surah numbers (right circle) and total ayah counts
+(left circle). Counts are bundled for all 114 surahs. The additional spacing
+refinement recovers modest lettering size without changing the existing
+604-page V1 context, printed line endings, natural proportions, Tajweed colors,
+basmalas, header row heights, or immersive controls.
+
+Prepared for internal TestFlight review only; upload and Apple processing
+are pending. No public App Review submission, replacement font, Hifz, Quran
+ASR, microphone/speech permissions, or Google Play changes.
+
 ## Natural Mushaf typography — 1.1.24 (112)
 
 Larger, naturally proportioned Quran lettering and a calligraphic basmala

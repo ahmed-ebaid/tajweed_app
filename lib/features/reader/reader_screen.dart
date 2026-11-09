@@ -10,6 +10,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/data/surah_names.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/bookmark_provider.dart';
@@ -4264,7 +4265,7 @@ class _MushafTextPage extends StatelessWidget {
                     : heightFactor,
                 leadingDistribution: TextLeadingDistribution.even,
                 color: colors.ink,
-                fontWeight: fitToViewport ? FontWeight.w400 : FontWeight.w700,
+                fontWeight: FontWeight.w700,
               );
 
               // Keep the text column proportional to the glyph size so lines
@@ -4573,6 +4574,7 @@ class _MushafTextPage extends StatelessWidget {
                 final surahLine = surahLines[lineNumber];
                 if (surahLine != null) {
                   return _MushafSurahHeaderLine(
+                    surahNumber: surahLine,
                     surahName: surahNameFor(surahLine),
                     fontSize: (scaledStyle.fontSize ?? 24) * 0.92,
                     compact: fitHeight != null,
@@ -4871,7 +4873,7 @@ class _MushafSurahOpener extends StatelessWidget {
                       color: _MushafColors.of(context).isDark
                           ? _MushafColors.of(context).accent
                           : const Color(0xFF083F31),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -4918,11 +4920,13 @@ class _MushafSurahOrnament extends StatelessWidget {
 }
 
 class _MushafSurahHeaderLine extends StatelessWidget {
+  final int surahNumber;
   final String surahName;
   final double fontSize;
   final bool compact;
 
   const _MushafSurahHeaderLine({
+    required this.surahNumber,
     required this.surahName,
     required this.fontSize,
     this.compact = false,
@@ -4937,34 +4941,40 @@ class _MushafSurahHeaderLine extends StatelessWidget {
         child: CustomPaint(
           key: const ValueKey('mushaf-surah-cartouche'),
           painter: _MushafSurahCartouchePainter(colors.ink, colors.paper),
-          child: Center(
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              heightFactor: 0.6,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: FractionalTranslation(
-                  // Amiri's visible lettering sits below its line-box center.
-                  translation: const Offset(0, -0.08),
-                  child: Text(
-                    'سُورَةُ ${_mushafSurahName(surahName)}',
-                    textDirection: TextDirection.rtl,
-                    textHeightBehavior: const TextHeightBehavior(
-                      leadingDistribution: TextLeadingDistribution.even,
-                    ),
-                    style: TextStyle(
-                      inherit: false,
-                      fontFamily: 'AmiriQuran',
-                      fontSize: fontSize,
-                      height: 2.2,
-                      leadingDistribution: TextLeadingDistribution.even,
-                      color: colors.ink,
-                      fontWeight: FontWeight.w600,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: FractionallySizedBox(
+                  widthFactor: 0.5,
+                  heightFactor: 0.75,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: FractionalTranslation(
+                      // Amiri's visible lettering sits below its line-box center.
+                      translation: const Offset(0, -0.02),
+                      child: Text(
+                        'سُورَةُ ${_mushafSurahName(surahName)}',
+                        textDirection: TextDirection.rtl,
+                        textHeightBehavior: const TextHeightBehavior(
+                          leadingDistribution: TextLeadingDistribution.even,
+                        ),
+                        style: TextStyle(
+                          inherit: false,
+                          fontFamily: 'AmiriQuran',
+                          fontSize: fontSize,
+                          height: 1.8,
+                          leadingDistribution: TextLeadingDistribution.even,
+                          color: colors.ink,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+              _MushafSurahCircleNumbers(surahNumber: surahNumber),
+            ],
           ),
         ),
       );
@@ -4996,7 +5006,7 @@ class _MushafSurahHeaderLine extends StatelessWidget {
                     color: colors.isDark
                         ? colors.accent
                         : const Color(0xFF083F31),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -5005,6 +5015,62 @@ class _MushafSurahHeaderLine extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MushafSurahCircleNumbers extends StatelessWidget {
+  final int surahNumber;
+
+  const _MushafSurahCircleNumbers({required this.surahNumber});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations(Localizations.localeOf(context));
+    final count = surahAyahCounts[surahNumber - 1];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final diameter = constraints.maxHeight * 0.36;
+        return Stack(
+          children: [
+            for (final (position, value, label, kind) in [
+              (0.83, surahNumber, l10n.get('surah'), 'number'),
+              (0.17, count, l10n.get('verses'), 'ayah-count'),
+            ])
+              Positioned(
+                left: constraints.maxWidth * position - diameter / 2,
+                top: (constraints.maxHeight - diameter) / 2,
+                width: diameter,
+                height: diameter,
+                child: Semantics(
+                  label: '$label ${l10n.digits(value)}',
+                  excludeSemantics: true,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: FractionalTranslation(
+                      translation: const Offset(0, -0.12),
+                      child: Text(
+                        l10n.digits(value),
+                        key: ValueKey('mushaf-surah-$surahNumber-$kind'),
+                        textDirection: TextDirection.ltr,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          inherit: false,
+                          fontFamily: 'AmiriQuran',
+                          fontSize: 20,
+                          height: 1.4,
+                          leadingDistribution: TextLeadingDistribution.even,
+                          fontWeight: FontWeight.w700,
+                          color: _MushafColors.of(context).ink,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
