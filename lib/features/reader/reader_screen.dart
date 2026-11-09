@@ -4257,8 +4257,10 @@ class _MushafTextPage extends StatelessWidget {
                 inherit: !fitToViewport,
                 fontFamily: 'AmiriQuran',
                 fontSize: baseFontSize,
+                // Amiri's default line box adds leading that shrinks fitted text.
+                // Keep a proportional em box; fixed rows reserve mark clearance.
                 height: fitToViewport && hasPrintedLineLayout
-                    ? null
+                    ? 1.8
                     : heightFactor,
                 leadingDistribution: TextLeadingDistribution.even,
                 color: colors.ink,
@@ -4268,8 +4270,12 @@ class _MushafTextPage extends StatelessWidget {
               // Keep the text column proportional to the glyph size so lines
               // stay as tight as the printed page instead of stretching.
               final aspectCap = baseFontSize * 26;
-              final contentWidth =
-                  !fitToViewport && aspectCap < constraints.maxWidth
+              final contentWidth = fitToViewport && isLandscape
+                  ? math.min(
+                      constraints.maxWidth,
+                      math.max(1, availableTextHeight) * 0.62,
+                    )
+                  : !fitToViewport && aspectCap < constraints.maxWidth
                   ? aspectCap
                   : constraints.maxWidth;
 
@@ -5086,19 +5092,26 @@ class _MushafBasmalaLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          _bismillah,
-          textAlign: TextAlign.center,
-          textDirection: TextDirection.rtl,
-          style: TextStyle(
-            fontFamily: 'AmiriQuran',
-            fontSize: fontSize,
-            height: 1.8,
-            color: _MushafColors.of(context).ink,
-            fontWeight: FontWeight.w400,
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 14 : 0,
+        vertical: compact ? 4 : 0,
+      ),
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            compact ? '\uFDFD' : _bismillah,
+            semanticsLabel: _bismillah,
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'AmiriQuran',
+              fontSize: fontSize,
+              height: compact ? null : 1.8,
+              color: _MushafColors.of(context).ink,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),

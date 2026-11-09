@@ -312,7 +312,9 @@ void main() {
               highlighted,
             );
             final basmala = tester.widget<Text>(
-              find.text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
+              find.text(
+                printed ? '\uFDFD' : 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+              ),
             );
             expect(
               basmala.style!.fontWeight ?? FontWeight.w400,

@@ -147,7 +147,7 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
+          find.text('\uFDFD'),
           firstTextLine > 1 ? findsOneWidget : findsNothing,
         );
         expect(
@@ -229,7 +229,7 @@ void main() {
     );
     expect(verticalSizes.first / sizes.first, closeTo(1, 0.001));
     final row = tester.getRect(find.byKey(const ValueKey('mushaf-line-1')));
-    expect(row.height, greaterThanOrEqualTo(sizes.first * 2.2 + 4));
+    expect(row.height, greaterThanOrEqualTo(sizes.first * 1.8 + 7.9));
     final region = tester.getRect(
       find.byKey(const ValueKey('mushaf-content-region')),
     );
@@ -526,17 +526,29 @@ void main() {
             fontSizes.every((size) => (size - fontSizes.first).abs() < 0.01),
             isTrue,
           );
+          if (size == const Size(390, 780)) {
+            expect(fontSizes.first, greaterThanOrEqualTo(21));
+          }
           expect(
             find.byKey(const ValueKey('mushaf-surah-cartouche')),
             findsNWidgets(3),
           );
-          expect(
-            find.text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
-            findsNWidgets(3),
-          );
+          expect(find.text('\uFDFD'), findsNWidgets(3));
+          for (final basmala in tester.widgetList<Text>(find.text('\uFDFD'))) {
+            expect(
+              basmala.semanticsLabel,
+              'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+            );
+          }
           final region = tester.getRect(
             find.byKey(const ValueKey('mushaf-content-region')),
           );
+          if (size.width > size.height) {
+            final printedRow = tester.getRect(
+              find.byKey(const ValueKey('mushaf-line-15')),
+            );
+            expect(printedRow.width, lessThanOrEqualTo(size.height * 0.62));
+          }
           expect(
             tester.getRect(find.byKey(const ValueKey('mushaf-line-15'))).bottom,
             lessThanOrEqualTo(region.bottom),
