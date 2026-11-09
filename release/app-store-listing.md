@@ -1,5 +1,41 @@
 # App Store listing — Tajweed 1.1.24
 
+## Production submission — 1.1.24 (114)
+
+- **Scope:** Full-page Mushaf fitting, natural Quran proportions, heavier
+  Amiri lettering with the cross-platform paint-only ink fix, larger bold
+  surah names, and localized surah numbers and total ayah counts. The existing
+  604-page V1 context, printed word/marker line assignments and Tajweed colors
+  are preserved. No replacement fonts, Hifz, Quran ASR, or speech permissions.
+- **Apple:** Submitted on 2026-11-09; verified `WAITING_FOR_REVIEW` with
+  automatic release after approval (`AFTER_APPROVAL`). Build 114 is attached
+  and `VALID`, with internal TestFlight state `IN_BETA_TESTING`. All eight
+  localized release notes and 160 unchanged inherited screenshots were verified.
+  Public availability is not yet established.
+- **Google Play:** Signed bundle 114 uploaded to production with status
+  `completed`. VersionCode, bundle SHA-256, eight localized release notes,
+  unchanged other tracks and unchanged listing screenshots were re-read after
+  commit. This API status does not establish review approval or public availability;
+  managed publishing was not changed or independently verified.
+- **Android safeguards:** Built using
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680 release/build_android_release.sh appbundle`.
+  The embedded default and guarded project number, packaged version and
+  permissions, original Amiri font, bundle signature and expected upload
+  certificate were checked.
+- **Validation:** 109 targeted reader, localization, version, attestation,
+  reader-state and review-scheduling tests passed. Both signed artifacts built.
+  Static analysis reports existing diagnostics (58; no errors). The ink fix
+  was previously compared in the iOS simulator on pages 597, 602 and 604 with
+  identical before/after geometry. Physical-device checks of this build remain
+  unverified; no authorized Android device was connected.
+- **Apple version ID:** `ab9f82cb-3375-4bd5-8146-1eff2564afd9`.
+- **Apple build/delivery ID:** `0b75fe74-853c-44b6-8c36-89a54522292f`.
+- **Apple submission ID:** `709a22f6-8eb1-468e-99e2-17c8877e52ff`.
+- **Artifacts (SHA-256):** Android bundle
+  `9943d588d2b1534507acf6aea1734ba96f52913936c49f7e0d2a3f53c96f475f`;
+  iOS IPA
+  `ef7130fe4c32fd1e7478b7705986f3f33324099a3e8b45d2a55ffa2815d9b393`.
+
 ## Final Mushaf typography review — 1.1.24 (113)
 
 Heavier Amiri Quran lettering, larger bold surah names inside the existing
