@@ -536,6 +536,10 @@ builds 1.1.24 (108–111), do not request microphone or speech-recognition permi
 
 ### Immersive reader — TestFlight build 111
 
+Uploaded to App Store Connect on 2026-11-09. Apple processing is `VALID` and
+internal testing is `IN_BETA_TESTING` for the Tajweed Testers group. Testing
+notes are verified in all eight supported locales.
+
 Version 1.1.24 (111) automatically hides the reader toolbar and bottom
 navigation after six seconds without interaction in Quran page view. Tap the
 page, use the exit-full-screen control, or press Back to restore controls.
