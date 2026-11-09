@@ -325,6 +325,7 @@ CI enforcement:
 - The complete page fits the viewport without vertical scrolling. Original printed line endings, ayah-marker positions, and Hizb marks are preserved; word spacing adapts within each fixed line. Missing line metadata shows an explicit retry state instead of reflowing Quran text.
 - Printed pages use one common Quran font size and weight per page, with tighter line spacing rather than stretching rows to fill a tall screen. Surah headings use an outlined Mushaf-style cartouche; opening basmalas never overwrite headings or Quran text.
 - Hizb markers occupy a reserved side margin with clearance from Quran text in both page and flowing layouts.
+- Fitted pages use compact side margins and smaller ayah numerals to give Quran lettering more width. Normal pages start at the top rather than adding vertical centering space; opening pages retain their centered composition.
 - In Quran page view, the full-screen button hides the reader toolbar and bottom navigation. Tap the page, use the exit-full-screen control, or press Back to restore them. Ayah view and other tabs retain their normal controls.
 - The 604-page reader uses Quran.Foundation Uthmani verse text and page metadata
 - Pages are rendered locally as text; the app does not download or redistribute Mushaf page images

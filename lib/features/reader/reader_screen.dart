@@ -4582,7 +4582,12 @@ class _MushafTextPage extends StatelessWidget {
     if (pageHeight <= 0) return printedPage;
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: pageHeight),
-      child: Center(child: printedPage),
+      child: Align(
+        alignment: fitHeight != null && pageNumber > 2
+            ? Alignment.topCenter
+            : Alignment.center,
+        child: printedPage,
+      ),
     );
   }
 
@@ -4634,6 +4639,9 @@ class _MushafTextPage extends StatelessWidget {
       final markerLineNumber = ayah.endLineNumber ?? lastWordLineNumber;
       if (markerLineNumber != null) {
         final markerStyle = scaledStyle.copyWith(
+          fontSize: fitToViewport
+              ? (scaledStyle.fontSize ?? 25) * 0.8
+              : scaledStyle.fontSize,
           color: _MushafColors.of(context).gold,
           fontWeight: FontWeight.w700,
         );
@@ -5358,8 +5366,8 @@ class _MushafFlowText extends StatelessWidget {
 }
 
 class _MushafBorderMarker extends StatelessWidget {
-  static const width = 14.0;
-  static const textGap = 6.0;
+  static const width = 10.0;
+  static const textGap = 4.0;
 
   final _MushafBoundaryPlacement marker;
   final bool placedOnLeft;
@@ -5393,7 +5401,7 @@ class _MushafBorderMarker extends StatelessWidget {
             marker.symbol,
             style: TextStyle(
               fontFamily: 'UthmanicHafs',
-              fontSize: 11,
+              fontSize: 9,
               height: 1,
               color: accent,
               fontWeight: FontWeight.w600,

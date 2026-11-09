@@ -288,9 +288,13 @@ void main() {
           tester.getRect(find.byWidget(element.widget)),
       ];
       final lineRect = tester.getRect(line);
-      expect(wordRects.last.left, closeTo(lineRect.left + 20, 1));
-      expect(wordRects.first.right, closeTo(lineRect.right - 20, 1));
+      expect(wordRects.last.left, closeTo(lineRect.left + 14, 1));
+      expect(wordRects.first.right, closeTo(lineRect.right - 14, 1));
     }
+    final firstLine = tester.getRect(
+      find.byKey(const ValueKey('mushaf-line-1')),
+    );
+    expect(firstLine.top - region.top, lessThanOrEqualTo(3));
     expect(tester.takeException(), isNull);
     final viewer = tester.widget<InteractiveViewer>(
       find.byType(InteractiveViewer),
