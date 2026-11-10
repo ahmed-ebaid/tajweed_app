@@ -1,5 +1,33 @@
 # App Store listing — Tajweed 1.1.25
 
+## Production submission — 1.1.25 (115)
+
+- **Scope:** Larger Quran lettering and vertical scrolling in landscape;
+  portrait retains the complete fitted page without scrolling. Printed line
+  assignments, Tajweed colors, surah metadata and pinch zoom are preserved.
+- **Apple:** Submitted on 2026-11-10 using the existing TestFlight build 115.
+  Verified `WAITING_FOR_REVIEW` and `AFTER_APPROVAL`; build 115 is `VALID`
+  and attached. Eight localized release notes and 160 unchanged inherited
+  screenshots were verified. Public availability is not yet established.
+- **Google Play:** Signed bundle 115 committed to production with status
+  `completed`; the version code, bundle hash, eight localized notes, other
+  tracks and screenshots were re-read. Review approval, managed-publishing
+  state and public availability have not been independently established.
+- **Android safeguards:** Built using
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680 release/build_android_release.sh appbundle`.
+  The expected upload certificate, signature, packaged identity, permissions,
+  bundled font and production project configuration were checked.
+- **Validation:** 82 targeted version, attestation, reader-state and Mushaf
+  layout/localization tests passed. No authorized Android device was
+  connected; physical-device checks of this build remain unverified.
+- **Apple version ID:** `d442b681-1931-49c8-881b-e316250c085b`.
+- **Apple build ID:** `96c70c09-c2fa-45f6-b214-68c75288ff5e`.
+- **Apple submission ID:** `4de9fa93-4f3f-4496-8727-64dbbda2642e`.
+- **Artifacts (SHA-256):** Android bundle
+  `79841751785ce254350fc6f229f4ae0087d4d0f9ad096c265de7c4173f867855`;
+  iOS IPA
+  `dac8ecd0795cf96b7f7ddf309126970cea449a500e046fb8daf450fe352b9a76`.
+
 ## Landscape Mushaf review — 1.1.25 (115)
 
 Landscape pages now use the available width for larger Quran lettering and
@@ -11,9 +39,9 @@ fitted page and clamps the scroll offset.
 Signed IPA uploaded on 2026-11-10 for internal TestFlight review only.
 Apple processing is `VALID`, internal testing is `IN_BETA_TESTING`, and
 membership in **Tajweed Testers** was verified. All eight localized testing
-notes were re-read and verified. No public App Review submission or Google
-Play changes were made. Apple's existing 1.1.24 release remains
-`READY_FOR_SALE`; public version states were re-read and verified unchanged.
+notes were re-read and verified. At that time, no public App Review submission
+or Google Play changes were made; the subsequent production submission is
+recorded above.
 
 - **Apple build ID:** `96c70c09-c2fa-45f6-b214-68c75288ff5e`.
 - **IPA SHA-256:**

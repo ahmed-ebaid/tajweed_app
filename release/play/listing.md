@@ -4,6 +4,25 @@ Adapted from `release/app-store-listing.md`. Apple-specific wording is removed:
 the share text references Google Play rather than the App Store, and the
 attestation note describes Play Integrity rather than App Attest.
 
+## Production submission — 1.1.25 (115)
+
+Submitted on 2026-11-10 with larger landscape Mushaf lettering and vertical
+scrolling. Portrait retains its fitted, non-scrolling page. Printed line
+assignments, Tajweed colors, surah metadata and pinch zoom are preserved.
+
+The production-track edit was committed and re-read: versionCode `115`,
+status `completed`, and all eight localized release notes match. Other tracks
+and listing screenshots are unchanged. Review approval, managed-publishing
+state and public availability have not been independently established.
+
+Built through `release/build_android_release.sh appbundle` with explicit
+`PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680`. Packaged identity,
+permissions, original Amiri font, signature and expected upload certificate
+were checked. SHA-256:
+`79841751785ce254350fc6f229f4ae0087d4d0f9ad096c265de7c4173f867855`.
+No authorized Android device was connected; the Play-installed physical-device
+smoke check remains unverified.
+
 ## Production submission — 1.1.24 (114)
 
 Submitted on 2026-11-09 with clearer full-page Mushaf typography: heavier Quran
