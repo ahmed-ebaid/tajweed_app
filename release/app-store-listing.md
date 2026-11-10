@@ -1,4 +1,23 @@
-# App Store listing — Tajweed 1.1.24
+# App Store listing — Tajweed 1.1.25
+
+## Landscape Mushaf review — 1.1.25 (115)
+
+Landscape pages now use the available width for larger Quran lettering and
+vertical scrolling. Portrait still fits the complete page without scrolling.
+Printed line assignments, Tajweed colors, surah metadata, natural glyph
+proportions and pinch zoom are preserved. Returning to portrait restores the
+fitted page and clamps the scroll offset.
+
+Signed IPA uploaded on 2026-11-10 for internal TestFlight review only.
+Apple processing is `VALID`, internal testing is `IN_BETA_TESTING`, and
+membership in **Tajweed Testers** was verified. All eight localized testing
+notes were re-read and verified. No public App Review submission or Google
+Play changes were made. Apple's existing 1.1.24 release remains
+`READY_FOR_SALE`; public version states were re-read and verified unchanged.
+
+- **Apple build ID:** `96c70c09-c2fa-45f6-b214-68c75288ff5e`.
+- **IPA SHA-256:**
+  `dac8ecd0795cf96b7f7ddf309126970cea449a500e046fb8daf450fe352b9a76`.
 
 ## Production submission — 1.1.24 (114)
 
