@@ -4229,10 +4229,10 @@ class _MushafTextPage extends StatelessWidget {
               final horizontalInset =
                   _MushafBorderMarker.width + _MushafBorderMarker.textGap;
               final heightFactor = isLandscape ? 1.8 : 2.0;
-              final baseFontSize = fitToViewport
-                  ? 25.0
-                  : isLandscape
+              final baseFontSize = isLandscape
                   ? 38.0
+                  : fitToViewport
+                  ? 25.0
                   : 19.0;
               final glyphPadding = isLandscape ? 24.0 : 20.0;
               final scrollTopPadding = fitToViewport
@@ -4246,7 +4246,7 @@ class _MushafTextPage extends StatelessWidget {
                   ? 20.0
                   : 28.0;
               final isOpeningPage = pageNumber <= 2;
-              final availableTextHeight =
+              final viewportTextHeight =
                   (fitToViewport && viewportHeight > 0
                       ? viewportHeight
                       : constraints.maxHeight) -
@@ -4268,23 +4268,22 @@ class _MushafTextPage extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               );
 
-              // Keep the text column proportional to the glyph size so lines
-              // stay as tight as the printed page instead of stretching.
               final aspectCap = baseFontSize * 26;
-              final contentWidth = fitToViewport && isLandscape
-                  ? math.min(
-                      constraints.maxWidth,
-                      math.max(1, availableTextHeight) * 0.62,
-                    )
-                  : !fitToViewport && aspectCap < constraints.maxWidth
+              final contentWidth =
+                  !fitToViewport && aspectCap < constraints.maxWidth
                   ? aspectCap
                   : constraints.maxWidth;
+              // Landscape fits a proportional page to the width, not the short
+              // viewport height, keeping larger fixed lines vertically scrollable.
+              final availableTextHeight = fitToViewport && isLandscape
+                  ? math.max(viewportTextHeight, contentWidth / 0.62)
+                  : viewportTextHeight;
 
               return Directionality(
                 textDirection: TextDirection.rtl,
                 child: Scrollbar(
                   child: SingleChildScrollView(
-                    physics: scrollEnabled && !fitToViewport
+                    physics: scrollEnabled && (!fitToViewport || isLandscape)
                         ? const BouncingScrollPhysics()
                         : const NeverScrollableScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(

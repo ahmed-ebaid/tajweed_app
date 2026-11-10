@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -353,7 +355,9 @@ void main() {
               );
               expect(
                 effectiveFontSize,
-                greaterThanOrEqualTo(oldFontSize * 1.3),
+                greaterThanOrEqualTo(
+                  math.min(oldFontSize * 1.3, surahTitle.style!.fontSize!),
+                ),
               );
             }
             expect(

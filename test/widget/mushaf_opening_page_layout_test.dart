@@ -535,7 +535,10 @@ void main() {
                   for (final shadow in shadows) {
                     expect(shadow.color, paintedSpan.style!.color);
                     expect(shadow.blurRadius, 0);
-                    expect(shadow.offset.distance * scaleX, lessThan(0.5));
+                    expect(
+                      shadow.offset.distance * scaleX,
+                      lessThan(size.width > size.height ? 1.0 : 0.5),
+                    );
                   }
                   final plainStyle = paintedSpan.style!.copyWith(shadows: []);
                   final plain = TextPainter(
@@ -615,18 +618,28 @@ void main() {
             final printedRow = tester.getRect(
               find.byKey(const ValueKey('mushaf-line-15')),
             );
-            expect(printedRow.width, lessThanOrEqualTo(size.height * 0.62));
+            expect(printedRow.width, greaterThan(size.width * 0.9));
+          }
+          final scrollable = tester.state<ScrollableState>(
+            find.byType(Scrollable).first,
+          );
+          if (size.width > size.height) {
+            expect(fontSizes.first, greaterThan(40));
+            expect(scrollable.position.maxScrollExtent, greaterThan(0));
+            await tester.drag(
+              find.byType(SingleChildScrollView),
+              const Offset(0, -180),
+            );
+            await tester.pumpAndSettle();
+            expect(scrollable.position.pixels, greaterThan(0));
+            scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+            await tester.pumpAndSettle();
+          } else {
+            expect(scrollable.position.maxScrollExtent, closeTo(0, 0.01));
           }
           expect(
             tester.getRect(find.byKey(const ValueKey('mushaf-line-15'))).bottom,
             lessThanOrEqualTo(region.bottom),
-          );
-          expect(
-            tester
-                .state<ScrollableState>(find.byType(Scrollable).first)
-                .position
-                .maxScrollExtent,
-            closeTo(0, 0.01),
           );
           expect(tester.takeException(), isNull);
         },
@@ -704,7 +717,7 @@ void main() {
     const Size(844, 300),
   ]) {
     for (final printedLines in [true, false]) {
-      testWidgets('complete page fits $size with printed lines $printedLines', (
+      testWidgets('page adapts to $size with printed lines $printedLines', (
         tester,
       ) async {
         tester.view.physicalSize = size;
@@ -756,7 +769,13 @@ void main() {
         final scrollable = tester.state<ScrollableState>(
           find.byType(Scrollable).first,
         );
-        expect(scrollable.position.maxScrollExtent, closeTo(0, 0.01));
+        if (size.width > size.height) {
+          expect(scrollable.position.maxScrollExtent, greaterThan(0));
+          scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+          await tester.pumpAndSettle();
+        } else {
+          expect(scrollable.position.maxScrollExtent, closeTo(0, 0.01));
+        }
         if (printedLines) {
           final region = tester.getRect(
             find.byKey(const ValueKey('mushaf-content-region')),
@@ -771,6 +790,103 @@ void main() {
       });
     }
   }
+
+  testWidgets('rotation enlarges landscape and restores fitted portrait', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final ayahs = shortSurahPage(604);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [AppLocalizations.delegate],
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => MushafPageContent(
+              pageNumber: 604,
+              ayahs: ayahs,
+              isLandscape:
+                  MediaQuery.orientationOf(context) == Orientation.landscape,
+              textScale: 1,
+              highlightEnabled: true,
+              surahNameFor: (number) =>
+                  const {112: 'الإخلاص', 113: 'الفلق', 114: 'الناس'}[number]!,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    double effectiveFontSize() {
+      final word = find
+          .descendant(
+            of: find.byKey(const ValueKey('mushaf-line-3')),
+            matching: find.byType(Text),
+          )
+          .first;
+      final text = tester.widget<Text>(word);
+      final box = tester.renderObject<RenderBox>(word);
+      return (text.textSpan! as TextSpan).style!.fontSize! *
+          box.getTransformTo(null).getColumn(0).length;
+    }
+
+    ScrollPosition position() =>
+        tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+    final portraitFontSize = effectiveFontSize();
+    expect(position().maxScrollExtent, closeTo(0, 0.01));
+
+    tester.view.physicalSize = const Size(844, 390);
+    await tester.pumpAndSettle();
+    expect(effectiveFontSize(), greaterThan(portraitFontSize * 1.5));
+    expect(position().maxScrollExtent, greaterThan(0));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -250),
+    );
+    await tester.pumpAndSettle();
+    expect(position().pixels, greaterThan(0));
+
+    final viewer = tester.widget<InteractiveViewer>(
+      find.byType(InteractiveViewer),
+    );
+    viewer.transformationController!.value = Matrix4.diagonal3Values(
+      1.5,
+      1.5,
+      1,
+    );
+    viewer.onInteractionEnd!(ScaleEndDetails());
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+          .physics,
+      isA<NeverScrollableScrollPhysics>(),
+    );
+    await tester.tap(find.byIcon(Icons.zoom_out_map));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+          .physics,
+      isA<BouncingScrollPhysics>(),
+    );
+
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pumpAndSettle();
+    expect(effectiveFontSize(), closeTo(portraitFontSize, 0.01));
+    expect(position().maxScrollExtent, closeTo(0, 0.01));
+    expect(position().pixels, closeTo(0, 0.01));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -250),
+    );
+    await tester.pumpAndSettle();
+    expect(position().pixels, closeTo(0, 0.01));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('page mode rejects missing ayah-end line metadata', (
     tester,
