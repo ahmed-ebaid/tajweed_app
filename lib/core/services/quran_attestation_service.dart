@@ -211,6 +211,9 @@ class AppAttestProvider implements AttestationProvider {
 
     try {
       return await _exchangeAssertionForToken(keyId);
+    } on PlatformException {
+      await keyStore.delete(_keyStoreKey);
+      return _exchangeAssertionForToken(await _registerNewKey());
     } on DioException catch (error) {
       if (error.response?.statusCode != 401 &&
           error.response?.statusCode != 409) {

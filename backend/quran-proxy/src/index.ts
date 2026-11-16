@@ -1,3 +1,4 @@
+import {Buffer} from "node:buffer";
 import {
   type AttestationEnv,
   AttestationState,
@@ -13,6 +14,7 @@ export interface Env extends AttestationEnv {
   QF_CLIENT_SECRET: string;
   QF_ENV: "prelive" | "production";
   SIMULATOR_TEST_TOKEN?: string;
+  ASR_DIAGNOSTICS?: KVNamespace;
 }
 
 interface AccessToken {
@@ -157,7 +159,9 @@ function validateContentRequest(url: URL): string | undefined {
 function isDiagnosticsAdminAuthorized(request: Request, env: Env): boolean {
   const configured = env.SIMULATOR_TEST_TOKEN;
   if (!configured || configured.length < 32) return false;
-  return request.headers.get("x-simulator-test-token") === configured;
+  if (request.headers.get("x-simulator-test-token") === configured) return true;
+  const url = new URL(request.url);
+  return url.searchParams.get("token") === configured;
 }
 
 function isSimulatorTestAuthorized(request: Request, env: Env): boolean {
@@ -405,16 +409,105 @@ async function handleDiagnosticsRequest(
     console.error(`[${requestId}] ${configurationError}`);
     return json({error: "Service unavailable"}, 503, requestId);
   }
-  if (
-    !isDiagnosticsAdminAuthorized(request, env) &&
-    !await verifyAccessToken(request.headers.get("authorization"), env)
-  ) {
+  const operation = url.pathname.slice(DIAGNOSTICS_PREFIX.length);
+  if (!["upload", "list", "get", "view", "wav"].includes(operation)) {
+    return json({error: "Not found"}, 404, requestId);
+  }
+  const authorized =
+    isDiagnosticsAdminAuthorized(request, env) ||
+    await verifyAccessToken(request.headers.get("authorization"), env);
+  if (operation !== "upload" && !authorized) {
     return json({error: "Unauthorized"}, 401, requestId);
   }
-
-  const operation = url.pathname.slice(DIAGNOSTICS_PREFIX.length);
-  if (!["upload", "list", "get"].includes(operation)) {
-    return json({error: "Not found"}, 404, requestId);
+  if (operation === "view" && request.method === "GET") {
+    const token = url.searchParams.get("token") ?? "";
+    const internal = await attestationStub(env, DIAGNOSTICS_DO_KEY).fetch(
+      new Request("https://attestation.internal/diagnostics-list", {
+        method: "POST",
+        headers: {"content-type": "application/json"},
+        body: JSON.stringify({key_id: DIAGNOSTICS_DO_KEY}),
+      }),
+    );
+    const data = (await internal.json()) as {
+      items?: Array<{
+        id: string;
+        verseKey: string;
+        appVersion: string;
+        snapshotCount: number;
+        createdAt: number;
+      }>;
+    };
+    const items = data.items ?? [];
+    const rows = items
+      .map((item) => {
+        const ts = new Date(item.createdAt).toISOString().replace("T", " ").slice(0, 19);
+        const detailUrl = `/v1/asr-diagnostics/get?id=${encodeURIComponent(item.id)}&token=${encodeURIComponent(token)}`;
+        const wavLinks = Array.from({length: item.snapshotCount}, (_, i) =>
+          `<a href="/v1/asr-diagnostics/wav?id=${encodeURIComponent(item.id)}&slot=${i}&token=${encodeURIComponent(token)}" style="margin-right:8px">🔊 snapshot-${i}.wav</a>`
+        ).join(" ");
+        return `<tr>
+          <td><code>${item.id}</code></td>
+          <td><b>${item.verseKey}</b></td>
+          <td>${item.appVersion}</td>
+          <td>${item.snapshotCount}</td>
+          <td>${ts} UTC</td>
+          <td><a href="${detailUrl}" target="_blank">JSON / Logs</a> ${wavLinks}</td>
+        </tr>`;
+      })
+      .join("\n");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Tajweed ASR Cloud Recordings</title>
+      <style>body{font-family:system-ui,sans-serif;margin:2rem;background:#0f172a;color:#f8fafc}
+      table{border-collapse:collapse;width:100%;margin-top:1rem}th,td{border:1px solid #334155;padding:10px;text-align:left}
+      th{background:#1e293b}a{color:#38bdf8}</style></head>
+      <body><h2>Tajweed ASR Cloud Recordings (${items.length})</h2>
+      <table><thead><tr><th>ID</th><th>Verse</th><th>App</th><th>Snapshots</th><th>Uploaded</th><th>Files</th></tr></thead>
+      <tbody>${rows}</tbody></table></body></html>`;
+    return new Response(html, {
+      status: 200,
+      headers: {"content-type": "text/html; charset=utf-8", "cache-control": "no-store"},
+    });
+  }
+  if (operation === "wav" && request.method === "GET") {
+    const id = url.searchParams.get("id") ?? "";
+    const slot = Number(url.searchParams.get("slot") ?? "0");
+    const internal = await attestationStub(env, DIAGNOSTICS_DO_KEY).fetch(
+      new Request("https://attestation.internal/diagnostics-get", {
+        method: "POST",
+        headers: {"content-type": "application/json"},
+        body: JSON.stringify({key_id: DIAGNOSTICS_DO_KEY, id}),
+      }),
+    );
+    if (!internal.ok) return json({error: "Not found"}, 404, requestId);
+    const bundle = (await internal.json()) as {
+      snapshots?: Array<{slot: number; wav_base64?: string}>;
+    };
+    const match = (bundle.snapshots ?? []).find((s) => s.slot === slot);
+    if (!match?.wav_base64) return json({error: "WAV not found"}, 404, requestId);
+    const bytes = Buffer.from(match.wav_base64, "base64");
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "content-type": "audio/wav",
+        "content-disposition": `inline; filename="${id}-snapshot-${slot}.wav"`,
+      },
+    });
+  }
+  if (
+    request.method === "GET" &&
+    (operation === "list" || operation === "get")
+  ) {
+    const targetOp =
+      operation === "list" ? "diagnostics-list" : "diagnostics-get";
+    const id = url.searchParams.get("id") ?? undefined;
+    const internal = await attestationStub(env, DIAGNOSTICS_DO_KEY).fetch(
+      new Request(`https://attestation.internal/${targetOp}`, {
+        method: "POST",
+        headers: {"content-type": "application/json"},
+        body: JSON.stringify({key_id: DIAGNOSTICS_DO_KEY, id}),
+      }),
+    );
+    const internalBody: unknown = await internal.json();
+    return json(internalBody, internal.status, requestId);
   }
   if (request.method !== "POST") {
     return json({error: "Method not allowed"}, 405, requestId, {
@@ -445,6 +538,16 @@ async function handleDiagnosticsRequest(
   } catch {
     return json({error: "Invalid request"}, 400, requestId);
   }
+  if (
+    operation === "upload" &&
+    !authorized &&
+    (typeof body.verse_key !== "string" ||
+      !/^\d{1,3}:\d{1,3}$/.test(body.verse_key) ||
+      typeof body.app_version !== "string" ||
+      body.app_version.length === 0)
+  ) {
+    return json({error: "Unauthorized"}, 401, requestId);
+  }
 
   const targetOp =
     operation === "upload"
@@ -461,6 +564,60 @@ async function handleDiagnosticsRequest(
     }),
   );
   const internalBody: unknown = await internal.json();
+  if (operation === "upload" && internal.ok && env.ASR_DIAGNOSTICS) {
+    const savedId =
+      internalBody &&
+      typeof internalBody === "object" &&
+      typeof (internalBody as Record<string, unknown>).id === "string"
+        ? ((internalBody as Record<string, unknown>).id as string)
+        : typeof body.session_id === "string"
+        ? body.session_id
+        : requestId;
+    const verseSlug =
+      typeof body.verse_key === "string"
+        ? body.verse_key.replaceAll(":", "_")
+        : "unknown";
+    const prefix = `${new Date().toISOString().slice(0, 10)}_${verseSlug}_${savedId}`;
+    const ttl = {expirationTtl: 14 * 24 * 60 * 60};
+    try {
+      if (
+        typeof body.diagnostics_jsonl === "string" &&
+        body.diagnostics_jsonl.length > 0
+      ) {
+        await env.ASR_DIAGNOSTICS.put(
+          `${prefix}/quran-asr-diagnostics.jsonl`,
+          body.diagnostics_jsonl,
+          ttl,
+        );
+      }
+      if (Array.isArray(body.snapshots)) {
+        for (const rawSnap of body.snapshots) {
+          if (!rawSnap || typeof rawSnap !== "object") continue;
+          const snap = rawSnap as Record<string, unknown>;
+          const slot = typeof snap.slot === "number" ? snap.slot : 0;
+          if (typeof snap.json === "string" && snap.json.length > 0) {
+            await env.ASR_DIAGNOSTICS.put(
+              `${prefix}/snapshot-${slot}.json`,
+              snap.json,
+              ttl,
+            );
+          }
+          if (
+            typeof snap.wav_base64 === "string" &&
+            snap.wav_base64.length > 0
+          ) {
+            await env.ASR_DIAGNOSTICS.put(
+              `${prefix}/snapshot-${slot}.wav`,
+              Buffer.from(snap.wav_base64, "base64"),
+              ttl,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`[${requestId}] KV mirror warning: ${String(error)}`);
+    }
+  }
   return json(internalBody, internal.status, requestId);
 }
 

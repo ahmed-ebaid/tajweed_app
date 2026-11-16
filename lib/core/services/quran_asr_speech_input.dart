@@ -145,10 +145,14 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
           headers['x-simulator-test-token'] = proxyTestToken;
         }
       } else if (client == null) {
-        final attestation = QuranAttestationService.forContentApi(
-          QuranApiService.contentApiBaseUrl,
-        );
-        headers['authorization'] = 'Bearer ${await attestation.accessToken()}';
+        try {
+          final attestation = QuranAttestationService.forContentApi(
+            QuranApiService.contentApiBaseUrl,
+          );
+          headers['authorization'] = 'Bearer ${await attestation.accessToken()}';
+        } catch (error) {
+          debugPrint('Quran ASR diagnostics token skipped: $error');
+        }
       }
 
       await dio.post<Map<String, dynamic>>(

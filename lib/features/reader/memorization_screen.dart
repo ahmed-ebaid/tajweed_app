@@ -434,9 +434,15 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   void _interrupt() {
+    final wasBusy = _busy;
     ++_generation;
     _acceptResults = false;
     unawaited(_cancelInputs());
+    if (widget.localQuranLab && wasBusy) {
+      unawaited(
+        QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
+      );
+    }
     if (mounted) {
       setState(() {
         _checkpointLiveWords();
@@ -672,6 +678,13 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               contradictsPrefix: contradictsPrefix,
               alignment: alignment,
             );
+            if (widget.localQuranLab) {
+              unawaited(
+                QuranAsrSpeechInput.uploadDiagnosticsToCloud(
+                  verseKey: _verseKey,
+                ),
+              );
+            }
             return;
           }
           final check = _comparison.checkEntireAyah(
@@ -701,6 +714,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             }
           });
           unawaited(_cancelInputs());
+          if (widget.localQuranLab) {
+            unawaited(
+              QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
+            );
+          }
         },
         onDone: () {
           if (!mounted || generation != _generation || !_acceptResults) return;
@@ -713,6 +731,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _message = widget.continuous ? 'hifz_resume_message' : 'mem_error';
           });
           unawaited(_cancelInputs());
+          if (widget.localQuranLab) {
+            unawaited(
+              QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
+            );
+          }
         },
         onError: (code) {
           if (!mounted || generation != _generation || !_acceptResults) return;
@@ -990,9 +1013,6 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       return;
     }
     unawaited(_cancelInputs());
-    if (widget.localQuranLab) {
-      unawaited(QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey));
-    }
   }
 
   void _inputFailed(int generation, String code) {

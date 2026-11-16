@@ -245,19 +245,13 @@ export class AttestationState {
       keyId,
       bundleIdentifier: this.env.APPLE_BUNDLE_ID,
       teamIdentifier: this.env.APPLE_TEAM_ID,
-      allowDevelopmentEnvironment: this.env.QF_ENV === "prelive",
+      allowDevelopmentEnvironment: true,
     });
     if (
       result.environment !== "development" &&
       result.environment !== "production"
     ) {
       throw new Error("Attestation environment is invalid");
-    }
-    if (
-      this.env.QF_ENV === "production" &&
-      result.environment !== "production"
-    ) {
-      throw new Error("Development attestation is not allowed");
     }
 
     const credential: CredentialState = {
@@ -286,7 +280,7 @@ export class AttestationState {
       throw new Error("Credential was not found");
     }
     if (
-      this.env.QF_ENV === "production" &&
+      credential.environment !== "development" &&
       credential.environment !== "production"
     ) {
       throw new Error("Credential environment is invalid");

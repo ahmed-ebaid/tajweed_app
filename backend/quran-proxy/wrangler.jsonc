@@ -19,6 +19,12 @@
       }
     ]
   },
+  "kv_namespaces": [
+    {
+      "binding": "ASR_DIAGNOSTICS",
+      "id": "1348f4a5733f4312a5b6e263e393a608"
+    }
+  ],
   "migrations": [
     {
       "tag": "v1",
@@ -49,6 +55,12 @@
           }
         ]
       },
+      "kv_namespaces": [
+        {
+          "binding": "ASR_DIAGNOSTICS",
+          "id": "1348f4a5733f4312a5b6e263e393a608"
+        }
+      ],
       "migrations": [
         {
           "tag": "v1",
