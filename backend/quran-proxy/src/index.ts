@@ -32,6 +32,9 @@ export type Fetcher = (
 
 const CONTENT_PREFIX = "/v2/content/";
 const ATTESTATION_PREFIX = "/v1/attest/";
+const DIAGNOSTICS_PREFIX = "/v1/asr-diagnostics/";
+const DIAGNOSTICS_DO_KEY = `${"D".repeat(43)}=`;
+const MAX_DIAGNOSTICS_BODY_LENGTH = 10 * 1024 * 1024;
 const TOKEN_SAFETY_WINDOW_MS = 60_000;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const MAX_ATTESTATION_REQUEST_LENGTH = 256 * 1024;
@@ -151,11 +154,15 @@ function validateContentRequest(url: URL): string | undefined {
   return undefined;
 }
 
-function isSimulatorTestAuthorized(request: Request, env: Env): boolean {
-  if (env.QF_ENV === "production") return false;
+function isDiagnosticsAdminAuthorized(request: Request, env: Env): boolean {
   const configured = env.SIMULATOR_TEST_TOKEN;
   if (!configured || configured.length < 32) return false;
   return request.headers.get("x-simulator-test-token") === configured;
+}
+
+function isSimulatorTestAuthorized(request: Request, env: Env): boolean {
+  if (env.QF_ENV === "production") return false;
+  return isDiagnosticsAdminAuthorized(request, env);
 }
 
 async function fetchWithTimeout(
@@ -387,6 +394,76 @@ async function handleAttestationFailureTelemetry(
   return json({status: "accepted"}, 202, requestId);
 }
 
+async function handleDiagnosticsRequest(
+  request: Request,
+  url: URL,
+  env: Env,
+  requestId: string,
+): Promise<Response> {
+  const configurationError = validateAttestationConfiguration(env);
+  if (configurationError) {
+    console.error(`[${requestId}] ${configurationError}`);
+    return json({error: "Service unavailable"}, 503, requestId);
+  }
+  if (
+    !isDiagnosticsAdminAuthorized(request, env) &&
+    !await verifyAccessToken(request.headers.get("authorization"), env)
+  ) {
+    return json({error: "Unauthorized"}, 401, requestId);
+  }
+
+  const operation = url.pathname.slice(DIAGNOSTICS_PREFIX.length);
+  if (!["upload", "list", "get"].includes(operation)) {
+    return json({error: "Not found"}, 404, requestId);
+  }
+  if (request.method !== "POST") {
+    return json({error: "Method not allowed"}, 405, requestId, {
+      allow: "POST",
+    });
+  }
+
+  const contentLength = Number(request.headers.get("content-length"));
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > MAX_DIAGNOSTICS_BODY_LENGTH
+  ) {
+    return json({error: "Request body is too large"}, 413, requestId);
+  }
+
+  let rawBody: string;
+  let body: Record<string, unknown>;
+  try {
+    rawBody = await request.text();
+    if (rawBody.length > MAX_DIAGNOSTICS_BODY_LENGTH) {
+      return json({error: "Request body is too large"}, 413, requestId);
+    }
+    const parsed: unknown = rawBody ? JSON.parse(rawBody) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return json({error: "Invalid request"}, 400, requestId);
+    }
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return json({error: "Invalid request"}, 400, requestId);
+  }
+
+  const targetOp =
+    operation === "upload"
+      ? "diagnostics-save"
+      : operation === "list"
+      ? "diagnostics-list"
+      : "diagnostics-get";
+
+  const internal = await attestationStub(env, DIAGNOSTICS_DO_KEY).fetch(
+    new Request(`https://attestation.internal/${targetOp}`, {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({...body, key_id: DIAGNOSTICS_DO_KEY}),
+    }),
+  );
+  const internalBody: unknown = await internal.json();
+  return json(internalBody, internal.status, requestId);
+}
+
 export async function handleRequest(
   request: Request,
   env: Env,
@@ -428,6 +505,9 @@ export async function handleRequest(
       return json({error: "Service unavailable"}, 503, requestId);
     }
     return handleAttestationRequest(request, url, env, requestId);
+  }
+  if (url.pathname.startsWith(DIAGNOSTICS_PREFIX)) {
+    return handleDiagnosticsRequest(request, url, env, requestId);
   }
   if (!url.pathname.startsWith(CONTENT_PREFIX)) {
     return json({error: "Not found"}, 404, requestId);

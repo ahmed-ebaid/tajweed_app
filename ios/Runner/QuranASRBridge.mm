@@ -1,0 +1,151 @@
+#import "QuranASRBridge.h"
+
+#if QURAN_ASR_NATIVE && (DEBUG || QURAN_ASR_PROFILE || QURAN_ASR_TESTFLIGHT)
+#import <AVFoundation/AVFoundation.h>
+#import <TargetConditionals.h>
+#include "whisper.h"
+#include <atomic>
+#include <cmath>
+#include <mutex>
+#include <string>
+#include <vector>
+
+namespace {
+std::mutex gWhisperMutex;
+whisper_context *gWhisperContext = nullptr;
+std::string gWhisperModelPath;
+bool gWhisperUseGpu = false;
+
+whisper_context * SharedWhisperContext(NSString *modelPath,
+                                       whisper_context_params options) {
+  const std::string path = modelPath ? modelPath.UTF8String : "";
+  if (path.empty()) return nullptr;
+  if (gWhisperContext && gWhisperModelPath == path &&
+      gWhisperUseGpu == options.use_gpu) {
+    return gWhisperContext;
+  }
+  if (gWhisperContext) {
+    whisper_free(gWhisperContext);
+    gWhisperContext = nullptr;
+    gWhisperModelPath.clear();
+  }
+  gWhisperContext = whisper_init_from_file_with_params(path.c_str(), options);
+  if (gWhisperContext) {
+    gWhisperModelPath = path;
+    gWhisperUseGpu = options.use_gpu;
+  }
+  return gWhisperContext;
+}
+}  // namespace
+
+@implementation QuranASRCancellation {
+  std::atomic<bool> _cancelled;
+}
+
+- (instancetype)init {
+  if ((self = [super init])) _cancelled.store(false);
+  return self;
+}
+
+- (void)cancel { _cancelled.store(true); }
+- (BOOL)isCancelled { return _cancelled.load(); }
+@end
+
+NSDictionary *QuranASRTranscribe(NSString *modelPath, NSString *audioPath, NSError **error) {
+  return QuranASRTranscribeCancellable(modelPath, audioPath, nil, error);
+}
+
+NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audioPath,
+                                          QuranASRCancellation *cancellation, NSError **error) {
+  auto fail = [&](NSString *message, NSInteger code = 1) -> NSDictionary * {
+    if (error) *error = [NSError errorWithDomain:@"QuranASR" code:code
+                                      userInfo:@{NSLocalizedDescriptionKey: message}];
+    return nil;
+  };
+  if (cancellation.isCancelled) return fail(@"Recognition was cancelled.", 5);
+  AVAudioFile *file = [[AVAudioFile alloc] initForReading:[NSURL fileURLWithPath:audioPath]
+                                                  error:error];
+  if (!file) return nil;
+  auto format = file.processingFormat;
+  const AudioStreamBasicDescription *source = file.fileFormat.streamDescription;
+  if (source->mFormatID != kAudioFormatLinearPCM || source->mBitsPerChannel != 16 ||
+      format.channelCount != 1 || format.sampleRate != 16000 ||
+      file.length <= 0 || file.length > 480000) {
+    return fail(@"Supply mono PCM16 16 kHz audio of at most 30 seconds.");
+  }
+  AVAudioPCMBuffer *buffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:format
+                                                       frameCapacity:(AVAudioFrameCount)file.length];
+  if (![file readIntoBuffer:buffer error:error]) return nil;
+  if (!buffer.floatChannelData || buffer.frameLength == 0 ||
+      buffer.frameLength != file.length) {
+    return fail(@"Could not decode audio samples.");
+  }
+  const float *samples = buffer.floatChannelData[0];
+  double energy = 0;
+  for (uint32_t i = 0; i < buffer.frameLength; i++) {
+    if (!std::isfinite(samples[i])) return fail(@"Invalid audio samples.");
+    energy += samples[i] * samples[i];
+  }
+  if (std::sqrt(energy / buffer.frameLength) < 0.0001) {
+    if (error) *error = [NSError errorWithDomain:@"QuranASR" code:4
+                                      userInfo:@{NSLocalizedDescriptionKey: @"No audible input. Please record again."}];
+    return nil;
+  }
+  auto options = whisper_context_default_params();
+#if QURAN_ASR_USE_METAL && !TARGET_OS_SIMULATOR
+#if QURAN_ASR_GPU_PREVIEWS
+  options.use_gpu = true;
+#else
+  options.use_gpu = cancellation == nil;
+#endif
+#else
+  options.use_gpu = false;
+#endif
+  std::lock_guard<std::mutex> lock(gWhisperMutex);
+  if (cancellation.isCancelled) return fail(@"Recognition was cancelled.", 5);
+  whisper_context *ctx = SharedWhisperContext(modelPath, options);
+  if (!ctx) return fail(@"Could not load the experimental Quran model.");
+  auto params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+  params.greedy.best_of = 1;
+  params.beam_search.beam_size = 1;
+  params.temperature_inc = 0.0f;
+  params.language = "ar";
+  params.translate = false;
+  params.no_context = true;
+  params.no_timestamps = true;
+  params.print_progress = false;
+  params.print_realtime = false;
+  params.print_timestamps = false;
+  params.print_special = false;
+  params.n_threads = 4;
+  if (cancellation) {
+    params.abort_callback = [](void *userData) -> bool {
+      return [(__bridge QuranASRCancellation *)userData isCancelled];
+    };
+    params.abort_callback_user_data = (__bridge void *)cancellation;
+  }
+  const auto started = [NSDate timeIntervalSinceReferenceDate];
+  int status = whisper_full(ctx, params, samples, (int)buffer.frameLength);
+  NSMutableString *text = [NSMutableString string];
+  if (status == 0) {
+    for (int i = 0; i < whisper_full_n_segments(ctx); i++) {
+      const char *segment = whisper_full_get_segment_text(ctx, i);
+      if (segment) [text appendString:[NSString stringWithUTF8String:segment]];
+    }
+  }
+  if (status != 0 && cancellation.isCancelled) return fail(@"Recognition was cancelled.", 5);
+  if (status != 0) {
+    whisper_free(gWhisperContext);
+    gWhisperContext = nullptr;
+    gWhisperModelPath.clear();
+    return fail(@"Experimental recognition failed.");
+  }
+  NSString *transcript = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+  if (transcript.length == 0) return fail(@"No words recognized. Please record again.");
+  return @{
+    @"transcript": transcript,
+    @"durationSeconds": @(buffer.frameLength / 16000.0),
+    @"inferenceSeconds": @([NSDate timeIntervalSinceReferenceDate] - started)
+  };
+}
+#endif

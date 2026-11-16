@@ -22,6 +22,58 @@ class AudioCacheService {
     return f.existsSync() ? path : null;
   }
 
+  Future<String> cacheAyahAudio({
+    required int reciterId,
+    required int surahNumber,
+    required int ayahNumber,
+    required String url,
+    CancelToken? cancelToken,
+  }) async {
+    final existing = await getCachedAyahPath(
+      reciterId: reciterId,
+      surahNumber: surahNumber,
+      ayahNumber: ayahNumber,
+    );
+    if (existing != null) return existing;
+
+    final dir = await getApplicationDocumentsDirectory();
+    final surahDir = Directory(
+      '${dir.path}/audio_cache/r$reciterId/s$surahNumber',
+    );
+    if (!surahDir.existsSync()) {
+      surahDir.createSync(recursive: true);
+    }
+
+    final filePath = '${surahDir.path}/$ayahNumber.mp3';
+    final file = File(filePath);
+    if (!file.existsSync() || file.lengthSync() == 0) {
+      if (file.existsSync()) await file.delete();
+      final resolvedUrl = url.startsWith('http')
+          ? url
+          : 'https://verses.quran.com/$url';
+      final partial = File('$filePath.part');
+      if (partial.existsSync()) await partial.delete();
+      try {
+        await _dio.download(resolvedUrl, partial.path, cancelToken: cancelToken);
+        if (!partial.existsSync() || partial.lengthSync() == 0) {
+          throw StateError(
+            'Downloaded audio is empty for $surahNumber:$ayahNumber.',
+          );
+        }
+        await partial.rename(filePath);
+      } catch (_) {
+        if (partial.existsSync()) await partial.delete();
+        rethrow;
+      }
+    }
+
+    await Hive.box(_boxKey).put(
+      _ayahKey(reciterId, surahNumber, ayahNumber),
+      filePath,
+    );
+    return filePath;
+  }
+
   Future<int> getDownloadedCountForSurah({
     required int reciterId,
     required int surahNumber,

@@ -16,6 +16,7 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
       currentIndex: currentIndex,
       onTap: onTap,
       showSelectedLabels: true,
@@ -40,6 +41,11 @@ class AppBottomNav extends StatelessWidget {
           icon: const Icon(Icons.library_books_outlined),
           activeIcon: const Icon(Icons.library_books_rounded),
           label: l10n.get('tab_rules'),
+        ),
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.psychology_outlined),
+          activeIcon: const Icon(Icons.psychology),
+          label: l10n.get('tab_hifz'),
         ),
       ],
     );

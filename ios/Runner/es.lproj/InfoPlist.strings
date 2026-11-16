@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Con tu permiso, usar tu voz para comprobar las palabras de la aleya seleccionada durante la memorización.";
+"NSSpeechRecognitionUsageDescription" = "Con tu permiso, reconocer la recitación árabe para comparar palabras. El servicio de voz de Apple puede procesar audio; no es una evaluación del tajwid.";

@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "İzninizle, ezber çalışmasında seçili ayetin kelimelerini kontrol etmek için sesinizi kullanın.";
+"NSSpeechRecognitionUsageDescription" = "İzninizle, kelime karşılaştırması için Arapça okuyuşu tanıyın. Apple'ın konuşma hizmeti sesi işleyebilir; bu tecvid değerlendirmesi değildir.";

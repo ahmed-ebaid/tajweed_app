@@ -194,12 +194,32 @@ class AyahMapper {
       rubElHizbNumber: rubElHizbNumber,
       sajdahNumber: sajdahNumber,
       arabic: arabic,
+      imlaei: _imlaeiText(json, rawWords),
       translations: translations,
       words: wordsWithMaddSilah,
       endLineNumber: endLineNumber,
       audioUrl: audioUrl,
       tajweedSegments: tajweedSegments,
     );
+  }
+
+  static String? _imlaeiText(
+    Map<String, dynamic> json,
+    List<dynamic> rawWords,
+  ) {
+    final verseText = (json['text_imlaei'] as String?)?.trim();
+    if (verseText != null && verseText.isNotEmpty) return verseText;
+    final words = rawWords
+        .whereType<Map>()
+        .where((word) => word['char_type_name'] == 'word')
+        .toList();
+    if (words.isEmpty) return null;
+    final text = words
+        .map((word) => (word['text_imlaei'] as String?)?.trim() ?? '')
+        .toList();
+    // Never grade against an incomplete reference or stripped Uthmani glyphs.
+    if (text.any((word) => word.isEmpty)) return null;
+    return text.join(' ');
   }
 
   /// Converts a list of verse JSON objects into [Ayah] models.

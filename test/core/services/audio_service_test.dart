@@ -48,7 +48,65 @@ class _FailingPlayer implements AudioPlayer {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _LoadingPlayer implements AudioPlayer {
+  final loaded = Completer<Duration?>();
+  final loadStarted = Completer<void>();
+  int plays = 0;
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> play() async {
+    plays++;
+  }
+
+  @override
+  Future<Duration?> setUrl(
+    String url, {
+    Map<String, String>? headers,
+    Duration? initialPosition,
+    bool preload = true,
+    dynamic tag,
+  }) {
+    loadStarted.complete();
+    return loaded.future;
+  }
+
+  @override
+  Future<Duration?> setFilePath(
+    String path, {
+    Duration? initialPosition,
+    bool preload = true,
+    dynamic tag,
+  }) {
+    loadStarted.complete();
+    return loaded.future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
+  for (final cached in [false, true]) {
+    test(
+      'stop prevents delayed ${cached ? 'cached' : 'remote'} reference playback',
+      () async {
+        final player = _LoadingPlayer();
+        final service = AudioService(player: player);
+        final loading = cached
+            ? service.playFile('/tmp/ayah.mp3')
+            : service.playUrl('https://example.com/ayah.mp3');
+        await player.loadStarted.future;
+        await service.stop();
+        player.loaded.complete(const Duration(seconds: 1));
+        await loading;
+        expect(player.plays, 0);
+      },
+    );
+  }
+
   test(
     'session activation failure does not escape background playback',
     () async {

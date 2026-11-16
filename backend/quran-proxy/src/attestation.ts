@@ -102,9 +102,12 @@ function internalJson(body: unknown, status = 200): Response {
   });
 }
 
-async function readObject(request: Request): Promise<Record<string, unknown>> {
+async function readObject(
+  request: Request,
+  maxLength = MAX_ATTESTATION_LENGTH,
+): Promise<Record<string, unknown>> {
   const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_ATTESTATION_LENGTH) {
+  if (Number.isFinite(contentLength) && contentLength > maxLength) {
     throw new Error("Request body is too large");
   }
   const value: unknown = await request.json();
@@ -113,6 +116,8 @@ async function readObject(request: Request): Promise<Record<string, unknown>> {
   }
   return value as Record<string, unknown>;
 }
+
+const MAX_INTERNAL_DIAGNOSTICS_LENGTH = 8 * 1024 * 1024;
 
 export class AttestationState {
   private readonly ctx: DurableObjectState;
@@ -130,7 +135,11 @@ export class AttestationState {
 
     try {
       const url = new URL(request.url);
-      const body = await readObject(request);
+      const isDiag = url.pathname.startsWith("/diagnostics-");
+      const body = await readObject(
+        request,
+        isDiag ? MAX_INTERNAL_DIAGNOSTICS_LENGTH : MAX_ATTESTATION_LENGTH,
+      );
       // These are awaited rather than returned directly: returning a promise
       // from inside `try` hands the rejection to the caller instead of the
       // `catch` below, so a rejected handler escaped as an unhandled rejection
@@ -146,6 +155,15 @@ export class AttestationState {
       }
       if (url.pathname === "/play-integrity") {
         return await this.verifyPlayIntegrity(body);
+      }
+      if (url.pathname === "/diagnostics-save") {
+        return await this.saveDiagnostics(body);
+      }
+      if (url.pathname === "/diagnostics-list") {
+        return await this.listDiagnostics();
+      }
+      if (url.pathname === "/diagnostics-get") {
+        return await this.getDiagnostics(body);
       }
       return internalJson({error: "Not found"}, 404);
     } catch (error) {
@@ -324,6 +342,140 @@ export class AttestationState {
     const verdict = await decodeIntegrityToken(integrityToken, this.env);
     assertPlayIntegrityVerdict(verdict, challenge, this.env);
     return internalJson({status: "verified", key_id: keyId});
+  }
+
+  private async saveDiagnostics(
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    const id = typeof body.id === "string" && /^[A-Za-z0-9._:-]{1,64}$/u.test(body.id)
+      ? body.id
+      : crypto.randomUUID();
+    const verseKey = typeof body.verse_key === "string" && /^\d{1,3}:\d{1,3}$/u.test(body.verse_key)
+      ? body.verse_key
+      : "unknown";
+    const appVersion = typeof body.app_version === "string" && body.app_version.length <= 32
+      ? body.app_version
+      : "unknown";
+    const createdAt = Date.now();
+    const diagnosticsJsonl = typeof body.diagnostics_jsonl === "string" && body.diagnostics_jsonl.length <= 128 * 1024
+      ? body.diagnostics_jsonl
+      : "";
+    const snapshotsRaw = Array.isArray(body.snapshots) ? body.snapshots.slice(0, 6) : [];
+    const snapshotMeta: Array<{slot: number; json: string; wavChunks: number; wavBytes: number}> = [];
+
+    for (let i = 0; i < snapshotsRaw.length; i++) {
+      const item = snapshotsRaw[i];
+      if (!item || typeof item !== "object") continue;
+      const rec = item as Record<string, unknown>;
+      const slot = typeof rec.slot === "number" && Number.isInteger(rec.slot) && rec.slot >= 0 && rec.slot < 6
+        ? rec.slot
+        : i;
+      const metaJson = typeof rec.json === "string" && rec.json.length <= 64 * 1024
+        ? rec.json
+        : "{}";
+      const wavBase64 = typeof rec.wav_base64 === "string" && rec.wav_base64.length <= 1400000
+        ? rec.wav_base64
+        : "";
+      const wavBytes = wavBase64 ? Buffer.from(wavBase64, "base64") : Buffer.alloc(0);
+      const chunkSize = 64 * 1024;
+      let chunks = 0;
+      for (let offset = 0; offset < wavBytes.length; offset += chunkSize) {
+        const slice = wavBytes.subarray(offset, offset + chunkSize);
+        await this.ctx.storage.put(`diag_wav:${id}:${slot}:${chunks}`, new Uint8Array(slice));
+        chunks++;
+      }
+      snapshotMeta.push({
+        slot,
+        json: metaJson,
+        wavChunks: chunks,
+        wavBytes: wavBytes.length,
+      });
+    }
+
+    const index = (await this.ctx.storage.get<string[]>("diag_index")) ?? [];
+    index.unshift(id);
+    while (index.length > 25) {
+      const evicted = index.pop();
+      if (evicted) {
+        await this.deleteDiagnosticEntry(evicted);
+      }
+    }
+    await this.ctx.storage.put(`diag_meta:${id}`, {
+      id,
+      verseKey,
+      appVersion,
+      createdAt,
+      diagnosticsJsonl,
+      snapshots: snapshotMeta,
+    });
+    await this.ctx.storage.put("diag_index", index);
+    return internalJson({status: "saved", id, snapshots: snapshotMeta.length}, 201);
+  }
+
+  private async deleteDiagnosticEntry(id: string): Promise<void> {
+    const meta = await this.ctx.storage.get<{snapshots?: Array<{slot: number; wavChunks: number}>}>(`diag_meta:${id}`);
+    if (meta?.snapshots) {
+      for (const snap of meta.snapshots) {
+        for (let c = 0; c < snap.wavChunks; c++) {
+          await this.ctx.storage.delete(`diag_wav:${id}:${snap.slot}:${c}`);
+        }
+      }
+    }
+    await this.ctx.storage.delete(`diag_meta:${id}`);
+  }
+
+  private async listDiagnostics(): Promise<Response> {
+    const index = (await this.ctx.storage.get<string[]>("diag_index")) ?? [];
+    const items: Array<Record<string, unknown>> = [];
+    for (const id of index) {
+      const meta = await this.ctx.storage.get<Record<string, unknown>>(`diag_meta:${id}`);
+      if (meta) {
+        items.push({
+          id: meta.id,
+          verseKey: meta.verseKey,
+          appVersion: meta.appVersion,
+          createdAt: meta.createdAt,
+          snapshotCount: Array.isArray(meta.snapshots) ? meta.snapshots.length : 0,
+        });
+      }
+    }
+    return internalJson({items});
+  }
+
+  private async getDiagnostics(body: Record<string, unknown>): Promise<Response> {
+    const id = typeof body.id === "string" ? body.id : "";
+    const meta = await this.ctx.storage.get<{
+      id: string;
+      verseKey: string;
+      appVersion: string;
+      createdAt: number;
+      diagnosticsJsonl: string;
+      snapshots: Array<{slot: number; json: string; wavChunks: number; wavBytes: number}>;
+    }>(`diag_meta:${id}`);
+    if (!meta) {
+      return internalJson({error: "Not found"}, 404);
+    }
+    const snapshots: Array<Record<string, unknown>> = [];
+    for (const snap of meta.snapshots) {
+      const parts: Buffer[] = [];
+      for (let c = 0; c < snap.wavChunks; c++) {
+        const chunk = await this.ctx.storage.get<Uint8Array>(`diag_wav:${id}:${snap.slot}:${c}`);
+        if (chunk) parts.push(Buffer.from(chunk));
+      }
+      snapshots.push({
+        slot: snap.slot,
+        json: snap.json,
+        wav_base64: Buffer.concat(parts).toString("base64"),
+      });
+    }
+    return internalJson({
+      id: meta.id,
+      verseKey: meta.verseKey,
+      appVersion: meta.appVersion,
+      createdAt: meta.createdAt,
+      diagnostics_jsonl: meta.diagnosticsJsonl,
+      snapshots,
+    });
   }
 }
 

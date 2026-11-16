@@ -1,0 +1,562 @@
+import AVFoundation
+import Flutter
+import UIKit
+
+#if QURAN_ASR_NATIVE && (DEBUG || QURAN_ASR_PROFILE || QURAN_ASR_TESTFLIGHT)
+final class QuranASRDiagnostics {
+  private let fileURL: URL
+  private let maximumBytes: Int
+  private let lock = NSLock()
+  private var snapshotSequence = 0
+
+  init(
+    fileURL: URL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("quran-asr-diagnostics.jsonl"),
+    maximumBytes: Int = 65536
+  ) {
+    self.fileURL = fileURL
+    self.maximumBytes = maximumBytes
+  }
+
+  func record(_ event: String, metrics: [String: Double] = [:]) {
+    lock.lock()
+    defer { lock.unlock() }
+    do {
+      let entry: [String: Any] = [
+        "time": Date().timeIntervalSince1970, "event": event, "metrics": metrics
+      ]
+      var line = try JSONSerialization.data(withJSONObject: entry, options: [.sortedKeys])
+      line.append(10)
+      var data = FileManager.default.fileExists(atPath: fileURL.path)
+        ? try Data(contentsOf: fileURL) : Data()
+      data.append(line)
+      if data.count > maximumBytes {
+        let overflow = data.count - maximumBytes
+        if let newline = data[overflow...].firstIndex(of: 10) {
+          data.removeSubrange(...newline)
+        } else {
+          data.removeAll()
+        }
+      }
+      try data.write(to: fileURL, options: .atomic)
+    } catch {
+      NSLog("Quran ASR diagnostics could not be saved: %@", error.localizedDescription)
+    }
+  }
+
+  func retainSnapshot(
+    _ source: URL, report: [String: Any]?, provisional: Bool,
+    windowStart: Double, requested: Date, errorCode: Int
+  ) {
+    do {
+      let audio = try Data(contentsOf: source)
+      guard audio.count <= 960044 else {
+        throw NSError(domain: "QuranASRDiagnostics", code: 1)
+      }
+      let directory = fileURL.deletingLastPathComponent()
+        .appendingPathComponent("quran-asr-debug", isDirectory: true)
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      let slot = snapshotSequence % 6
+      snapshotSequence += 1
+      let metadata: [String: Any] = [
+        "requested": requested.timeIntervalSince1970,
+        "returned": Date().timeIntervalSince1970,
+        "preview": provisional, "windowStart": windowStart,
+        "errorCode": errorCode, "report": report ?? [:]
+      ]
+      let json = try JSONSerialization.data(withJSONObject: metadata, options: [.sortedKeys])
+      guard json.count <= 65536 else {
+        throw NSError(domain: "QuranASRDiagnostics", code: 2)
+      }
+      try audio.write(
+        to: directory.appendingPathComponent("snapshot-\(slot).wav"), options: .atomic
+      )
+      try json.write(
+        to: directory.appendingPathComponent("snapshot-\(slot).json"), options: .atomic
+      )
+      record("debug_snapshot_saved", metrics: [
+        "slot": Double(slot), "requested": requested.timeIntervalSince1970
+      ])
+    } catch {
+      NSLog("Quran ASR debug snapshot could not be saved: %@", error.localizedDescription)
+      record("debug_snapshot_failed")
+    }
+  }
+
+  func exportedFilePaths() -> [String] {
+    lock.lock()
+    defer { lock.unlock() }
+    var paths: [String] = []
+    let fm = FileManager.default
+    if fm.fileExists(atPath: fileURL.path) {
+      paths.append(fileURL.path)
+    }
+    let directory = fileURL.deletingLastPathComponent()
+      .appendingPathComponent("quran-asr-debug", isDirectory: true)
+    for slot in 0..<6 {
+      for ext in ["json", "wav"] {
+        let candidate = directory.appendingPathComponent("snapshot-\(slot).\(ext)")
+        if fm.fileExists(atPath: candidate.path) {
+          paths.append(candidate.path)
+        }
+      }
+    }
+    return paths
+  }
+}
+
+// A bounded in-memory PCM snapshot avoids reading a WAV file while its header
+// is still being written by a recorder.
+final class QuranASRCapture {
+  struct Snapshot {
+    let wav: Data
+    let startSeconds: Double
+  }
+
+  private let lock = NSLock()
+  private let converter: AVAudioConverter
+  private let output: AVAudioFormat
+  private var pcm = Data()
+  private var captureError: Error?
+  private let maximumBytes = 16000 * 2 * 30
+  private var capturedSamples: Int64 = 0
+
+  init(format: AVAudioFormat) throws {
+    guard format.sampleRate > 0, format.channelCount > 0,
+          let output = AVAudioFormat(
+            commonFormat: .pcmFormatInt16, sampleRate: 16000,
+            channels: 1, interleaved: false
+          ),
+          let converter = AVAudioConverter(from: format, to: output) else {
+      throw NSError(domain: "QuranASR", code: 5, userInfo: [
+        NSLocalizedDescriptionKey: "Unsupported microphone format."
+      ])
+    }
+    self.output = output
+    self.converter = converter
+  }
+
+  func append(_ buffer: AVAudioPCMBuffer) {
+    lock.lock()
+    defer { lock.unlock() }
+    guard captureError == nil else { return }
+    let capacity = AVAudioFrameCount(
+      ceil(Double(buffer.frameLength) * 16000 / buffer.format.sampleRate) + 32
+    )
+    guard let converted = AVAudioPCMBuffer(pcmFormat: output, frameCapacity: capacity) else {
+      captureError = NSError(domain: "QuranASR", code: 5)
+      return
+    }
+    var supplied = false
+    var error: NSError?
+    let status = converter.convert(to: converted, error: &error) { _, inputStatus in
+      if supplied {
+        inputStatus.pointee = .noDataNow
+        return nil
+      }
+      supplied = true
+      inputStatus.pointee = .haveData
+      return buffer
+    }
+    if status == .error {
+      captureError = error ?? NSError(domain: "QuranASR", code: 5)
+      return
+    }
+    guard let samples = converted.int16ChannelData else {
+      captureError = NSError(domain: "QuranASR", code: 5, userInfo: [
+        NSLocalizedDescriptionKey: "Could not read converted microphone samples."
+      ])
+      return
+    }
+    let count = Int(converted.frameLength) * 2
+    capturedSamples += Int64(converted.frameLength)
+    let bytes = UnsafeRawPointer(samples[0]).assumingMemoryBound(to: UInt8.self)
+    if count >= maximumBytes {
+      pcm = Data(bytes: bytes.advanced(by: count - maximumBytes), count: maximumBytes)
+    } else {
+      let overflow = max(0, pcm.count + count - maximumBytes)
+      if overflow > 0 { pcm.removeFirst(overflow) }
+      pcm.append(bytes, count: count)
+    }
+  }
+
+  func snapshot(forPreview: Bool = false) throws -> Snapshot? {
+    lock.lock()
+    defer { lock.unlock() }
+    if let captureError { throw captureError }
+    guard !pcm.isEmpty else { return nil }
+    // Long hypotheses can omit whole earlier ayahs; live checks use an
+    // overlapping short tail while final checks keep the full bounded buffer.
+    let audio = pcm.suffix(forPreview ? 16000 * 2 * 8 : maximumBytes)
+    var wav = Data()
+    func ascii(_ text: String) { wav.append(contentsOf: text.utf8) }
+    func integer<T: FixedWidthInteger>(_ value: T) {
+      var little = value.littleEndian
+      withUnsafeBytes(of: &little) { wav.append(contentsOf: $0) }
+    }
+    ascii("RIFF")
+    integer(UInt32(36 + audio.count))
+    ascii("WAVEfmt ")
+    integer(UInt32(16))
+    integer(UInt16(1))
+    integer(UInt16(1))
+    integer(UInt32(16000))
+    integer(UInt32(32000))
+    integer(UInt16(2))
+    integer(UInt16(16))
+    ascii("data")
+    integer(UInt32(audio.count))
+    wav.append(audio)
+    return Snapshot(
+      wav: wav,
+      startSeconds: Double(capturedSamples - Int64(audio.count / 2)) / 16000
+    )
+  }
+}
+
+final class QuranASRChannel {
+  private let diagnostics = QuranASRDiagnostics()
+  private let worker = DispatchQueue(label: "quran.asr.inference", qos: .userInitiated)
+  private var engine: AVAudioEngine?
+  private var capture: QuranASRCapture?
+  private var audioURL: URL?
+  private var processing = false
+  private var previewCancellation: QuranASRCancellation?
+  private var starting = false
+  private var retainDebugAudio = false
+  private var generation = 0
+  private var previousCategory: AVAudioSession.Category?
+  private var previousMode: AVAudioSession.Mode?
+  private var previousOptions: AVAudioSession.CategoryOptions?
+  private var interruptionObserver: NSObjectProtocol?
+
+  func register(messenger: FlutterBinaryMessenger) {
+    let allowedBundles: Set<String> = [
+      "com.ebaidllc.tajweedpractice.quranailab",
+      "com.ebaidllc.tajweedpractice",
+    ]
+    guard let bundleId = Bundle.main.bundleIdentifier, allowedBundles.contains(bundleId) else {
+      NSLog("Quran ASR registration refused for unexpected bundle identifier.")
+      return
+    }
+    let channel = FlutterMethodChannel(
+      name: "com.ebaidllc.tajweed_practice/quran_asr",
+      binaryMessenger: messenger
+    )
+    interruptionObserver = NotificationCenter.default.addObserver(
+      forName: AVAudioSession.interruptionNotification,
+      object: AVAudioSession.sharedInstance(),
+      queue: .main
+    ) { [weak self] notification in
+      guard let self, self.engine != nil || self.starting,
+            let value = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+            value == AVAudioSession.InterruptionType.began.rawValue else { return }
+      self.generation += 1
+      do {
+        try self.clearRecording()
+        channel.invokeMethod("interrupted", arguments: nil)
+      } catch {
+        channel.invokeMethod("interrupted", arguments: error.localizedDescription)
+      }
+    }
+    channel.setMethodCallHandler { [self] call, result in
+      handle(call, result: result)
+    }
+  }
+
+  func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+      switch call.method {
+      case "available":
+        result(Bundle.main.path(forResource: "quran-tiny", ofType: "bin") != nil)
+      case "start":
+        let arguments = call.arguments as? [String: Any]
+        start(result, retainDebugAudio: arguments?["retainDebugAudio"] as? Bool == true)
+      case "check":
+        check(result)
+      case "preview":
+        preview(result)
+      case "finishCapture":
+        diagnostics.record("pause", metrics: ["processing": processing ? 1 : 0])
+        previewCancellation?.cancel()
+        stopCapture()
+        do {
+          try restoreSession()
+          result(nil)
+        } catch {
+          result(failure(error))
+        }
+      case "cancel":
+        diagnostics.record("cancel")
+        generation += 1
+        do {
+          try clearRecording()
+          result(nil)
+        } catch {
+          result(failure(error))
+        }
+      case "traceProgress":
+        let allowed: Set<String> = [
+          "expectedIndex", "rawWords", "visibleWords", "final", "contradiction",
+          "generation", "active", "stopping", "schemaVersion", "recordingIndex",
+          "cursorIndex", "cursorWords", "displayedBefore", "rawCompleted",
+          "rawWordIndex", "rawMismatch", "combinedPrefix", "cursorRawPrefix",
+          "cursorTailPrefix"
+        ]
+        guard let fields = call.arguments as? [String: NSNumber],
+              fields.keys.allSatisfy({ allowed.contains($0) }),
+              fields.values.allSatisfy({ $0.doubleValue.isFinite && $0.doubleValue >= 0 }) else {
+          result(FlutterError(code: "invalid_diagnostics", message: "Expected numeric progress counters.", details: nil))
+          return
+        }
+        diagnostics.record("progress", metrics: fields.mapValues(\.doubleValue))
+        result(nil)
+      case "exportDiagnostics":
+        result(diagnostics.exportedFilePaths())
+      case "checkWav":
+        guard !processing, !starting, engine == nil, audioURL == nil,
+              let bytes = call.arguments as? FlutterStandardTypedData,
+              bytes.data.count <= 960044 else {
+          result(FlutterError(code: "invalid_audio", message: "Invalid or busy audio input.", details: nil))
+          return
+        }
+        do {
+          let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".wav")
+          try bytes.data.write(to: url, options: .atomic)
+          audioURL = url
+          check(result)
+        } catch {
+          result(failure(error))
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+    }
+  }
+
+  deinit {
+    if let interruptionObserver {
+      NotificationCenter.default.removeObserver(interruptionObserver)
+    }
+  }
+
+  private func failure(_ error: Error) -> FlutterError {
+    FlutterError(code: "quran_asr_failed", message: error.localizedDescription, details: nil)
+  }
+
+  private func start(_ result: @escaping FlutterResult, retainDebugAudio: Bool) {
+    guard !processing, !starting, engine == nil, audioURL == nil else {
+      result(FlutterError(code: "busy", message: "Recognition is already active.", details: nil))
+      return
+    }
+    guard Bundle.main.path(forResource: "quran-tiny", ofType: "bin") != nil else {
+      result(FlutterError(code: "unavailable", message: "Experimental model is not installed.", details: nil))
+      return
+    }
+    starting = true
+    let requestGeneration = generation
+    AVAudioSession.sharedInstance().requestRecordPermission { [self] allowed in
+      DispatchQueue.main.async {
+        self.starting = false
+        guard requestGeneration == self.generation else {
+          result(FlutterError(code: "cancelled", message: "Recording was cancelled.", details: nil))
+          return
+        }
+        guard allowed else {
+          result(FlutterError(code: "permission_denied", message: "Microphone permission is required.", details: nil))
+          return
+        }
+        do {
+          let session = AVAudioSession.sharedInstance()
+          self.previousCategory = session.category
+          self.previousMode = session.mode
+          self.previousOptions = session.categoryOptions
+          try session.setCategory(.record, mode: .measurement)
+          try session.setActive(true)
+          let engine = AVAudioEngine()
+          let input = engine.inputNode
+          let format = input.outputFormat(forBus: 0)
+          let capture = try QuranASRCapture(format: format)
+          self.engine = engine
+          self.capture = capture
+          input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+            capture.append(buffer)
+          }
+          engine.prepare()
+          try engine.start()
+          self.retainDebugAudio = retainDebugAudio
+          self.diagnostics.record("capture_started")
+          result(nil)
+        } catch {
+          let original = error
+          do { try self.clearRecording() } catch {
+            result(self.failure(error))
+            return
+          }
+          result(self.failure(original))
+        }
+      }
+    }
+  }
+
+  private func restoreSession() throws {
+    guard let category = previousCategory, let mode = previousMode,
+          let options = previousOptions else { return }
+    let session = AVAudioSession.sharedInstance()
+    try session.setActive(false, options: .notifyOthersOnDeactivation)
+    let targetCategory: AVAudioSession.Category = (category == .soloAmbient || category == .ambient || category == .record) ? .playback : category
+    try session.setCategory(targetCategory, mode: mode == .measurement ? .default : mode, options: options)
+    try session.setActive(true)
+    previousCategory = nil
+    previousMode = nil
+    previousOptions = nil
+  }
+
+  private func clearRecording() throws {
+    stopCapture()
+    capture = nil
+    var restoreError: Error?
+    do { try restoreSession() } catch { restoreError = error }
+    if let url = audioURL {
+      try FileManager.default.removeItem(at: url)
+      audioURL = nil
+    }
+    if let restoreError { throw restoreError }
+  }
+
+  private func stopCapture() {
+    if let engine {
+      engine.stop()
+      engine.inputNode.removeTap(onBus: 0)
+      self.engine = nil
+    }
+  }
+
+  private func preview(_ result: @escaping FlutterResult) {
+    guard !processing, !starting, engine != nil, let capture,
+          let model = Bundle.main.path(forResource: "quran-tiny", ofType: "bin") else {
+      result(FlutterError(code: "busy", message: "No available live recording.", details: nil))
+      return
+    }
+    do {
+      guard let snapshot = try capture.snapshot(forPreview: true), snapshot.wav.count >= 32044 else {
+        result(nil)
+        return
+      }
+      let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".wav")
+      try snapshot.wav.write(to: url, options: .atomic)
+      transcribe(
+        url, model: model, provisional: true,
+        windowStartSeconds: snapshot.startSeconds,
+        retainDebugAudio: retainDebugAudio, result: result
+      )
+    } catch {
+      result(failure(error))
+    }
+  }
+
+  private func check(_ result: @escaping FlutterResult) {
+    guard !processing else {
+      result(FlutterError(code: "busy", message: "Recognition is already active.", details: nil))
+      return
+    }
+    var windowStartSeconds = 0.0
+    let retainSnapshot = capture != nil && retainDebugAudio
+    do {
+      stopCapture()
+      if let capture {
+        if let snapshot = try capture.snapshot() {
+          let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".wav")
+          try snapshot.wav.write(to: url, options: .atomic)
+          windowStartSeconds = snapshot.startSeconds
+          audioURL = url
+        }
+        self.capture = nil
+      }
+    } catch {
+      do { try clearRecording() } catch {
+        result(failure(error))
+        return
+      }
+      result(failure(error))
+      return
+    }
+    guard let url = audioURL,
+          let model = Bundle.main.path(forResource: "quran-tiny", ofType: "bin") else {
+      do { try clearRecording() } catch {
+        result(failure(error))
+        return
+      }
+      result(FlutterError(code: "unavailable", message: "Audio or the experimental model is unavailable.", details: nil))
+      return
+    }
+    do { try restoreSession() } catch {
+      do { try clearRecording() } catch {
+        result(failure(error))
+        return
+      }
+      result(failure(error))
+      return
+    }
+    audioURL = nil
+    transcribe(
+      url, model: model, provisional: false,
+      windowStartSeconds: windowStartSeconds, retainDebugAudio: retainSnapshot, result: result
+    )
+  }
+
+  private func transcribe(
+    _ url: URL, model: String, provisional: Bool,
+    windowStartSeconds: Double, retainDebugAudio: Bool,
+    result: @escaping FlutterResult
+  ) {
+    processing = true
+    let cancellation = provisional ? QuranASRCancellation() : nil
+    previewCancellation = cancellation
+    let current = generation
+    let requested = Date()
+    diagnostics.record("inference_requested", metrics: [
+      "preview": provisional ? 1 : 0, "windowStart": windowStartSeconds
+    ])
+    worker.async { [self] in
+      var error: NSError?
+      let report = QuranASRTranscribeCancellable(model, url.path, cancellation, &error)
+      if retainDebugAudio {
+        diagnostics.retainSnapshot(
+          url, report: report as? [String: Any], provisional: provisional,
+          windowStart: windowStartSeconds, requested: requested, errorCode: error?.code ?? 0
+        )
+      }
+      var cleanupError: Error?
+      do { try FileManager.default.removeItem(at: url) } catch { cleanupError = error }
+      DispatchQueue.main.async {
+        self.processing = false
+        self.previewCancellation = nil
+        self.diagnostics.record("inference_returned", metrics: [
+          "preview": provisional ? 1 : 0,
+          "elapsedSeconds": Date().timeIntervalSince(requested),
+          "inferenceSeconds": (report?["inferenceSeconds"] as? NSNumber)?.doubleValue ?? 0,
+          "durationSeconds": (report?["durationSeconds"] as? NSNumber)?.doubleValue ?? 0,
+          "characters": Double((report?["transcript"] as? String)?.count ?? 0),
+          "errorCode": Double(error?.code ?? 0),
+          "cancelled": current != self.generation ? 1 : 0
+        ])
+        if let cleanupError {
+          self.audioURL = url
+          result(self.failure(cleanupError))
+        } else if current != self.generation {
+          result(FlutterError(code: "cancelled", message: "Recognition was cancelled.", details: nil))
+        } else if provisional && error?.domain == "QuranASR" && error?.code == 5 {
+          result(FlutterError(code: "preview_cancelled", message: "Preview was cancelled for final recognition.", details: nil))
+        } else if provisional && error?.domain == "QuranASR" && error?.code == 4 {
+          result(nil)
+        } else if let report {
+          var response = report
+          response["windowStartSeconds"] = windowStartSeconds
+          result(response)
+        } else {
+          result(self.failure(error ?? NSError(domain: "QuranASR", code: 3)))
+        }
+      }
+    }
+  }
+}
+#endif

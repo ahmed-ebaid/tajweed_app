@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "With your permission, use your voice to check the words of a selected ayah during memorization practice.";
+"NSSpeechRecognitionUsageDescription" = "With your permission, recognize Arabic recitation for word matching. Apple's speech service may process audio; this is not Tajweed grading.";

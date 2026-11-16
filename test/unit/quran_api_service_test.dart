@@ -70,50 +70,53 @@ void main() {
       expect(request.queryParameters['word_fields'], contains('page_number'));
     });
 
-    test('requests Uthmani text and metadata for Mushaf pages', () async {
-      final adapter = _RecordingAdapter();
-      final contentClient = Dio(
-        BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
-      )..httpClientAdapter = adapter;
-      final service = QuranApiService(contentClient: contentClient);
-      adapter.responseBodies['/verses/by_page/293'] = {
-        'verses': [
-          {
-            'verse_key': '18:1',
-            'text_uthmani': 'ٱلْحَمْدُ لِلَّهِ',
-            'page_number': 293,
-            'juz_number': 15,
-            'hizb_number': 30,
-            'rub_el_hizb_number': 119,
-          },
-        ],
-      };
+    test(
+      'requests display text, speech reference and metadata for Mushaf pages',
+      () async {
+        final adapter = _RecordingAdapter();
+        final contentClient = Dio(
+          BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
+        )..httpClientAdapter = adapter;
+        final service = QuranApiService(contentClient: contentClient);
+        adapter.responseBodies['/verses/by_page/293'] = {
+          'verses': [
+            {
+              'verse_key': '18:1',
+              'text_uthmani': 'ٱلْحَمْدُ لِلَّهِ',
+              'page_number': 293,
+              'juz_number': 15,
+              'hizb_number': 30,
+              'rub_el_hizb_number': 119,
+            },
+          ],
+        };
 
-      final verses = await service.fetchVersesByPage(
-        pageNumber: 293,
-        langCode: 'ar',
-      );
+        final verses = await service.fetchVersesByPage(
+          pageNumber: 293,
+          langCode: 'ar',
+        );
 
-      expect(verses.single['verse_key'], '18:1');
-      expect(
-        adapter.requests.single.uri.host,
-        'tajweed-quran-proxy-production.ebaidllc.workers.dev',
-      );
-      expect(
-        adapter.requests.single.uri.path,
-        '/v2/content/verses/by_page/293',
-      );
-      expect(adapter.requests.single.queryParameters, {
-        'mushaf': 2,
-        'language': 'ar',
-        'words': 'true',
-        'fields':
-            'text_uthmani,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
-        'word_fields':
-            'text_uthmani,text_uthmani_tajweed,tajweed,char_type_name,line_number,page_number',
-        'per_page': 50,
-      });
-    });
+        expect(verses.single['verse_key'], '18:1');
+        expect(
+          adapter.requests.single.uri.host,
+          'tajweed-quran-proxy-production.ebaidllc.workers.dev',
+        );
+        expect(
+          adapter.requests.single.uri.path,
+          '/v2/content/verses/by_page/293',
+        );
+        expect(adapter.requests.single.queryParameters, {
+          'mushaf': 2,
+          'language': 'ar',
+          'words': 'true',
+          'fields':
+              'text_uthmani,text_imlaei,page_number,verse_key,juz_number,hizb_number,rub_el_hizb_number,sajdah_number',
+          'word_fields':
+              'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,char_type_name,line_number,page_number',
+          'per_page': 50,
+        });
+      },
+    );
 
     test('fetches a complete surah Tafseer in one request', () async {
       final adapter = _RecordingAdapter();

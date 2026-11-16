@@ -373,18 +373,29 @@ class TajweedText extends StatelessWidget {
     String normalizedText,
     TextStyle style, {
     VoidCallback? onTap,
+    Color? maskColor,
   }) {
+    final bodyStyle = maskColor == null
+        ? style
+        : style.copyWith(color: Colors.transparent, backgroundColor: maskColor);
     if (!_containsQuranMarker(normalizedText)) {
       if (onTap != null) {
         return [
           TextSpan(
             text: normalizedText,
-            style: style,
+            style: bodyStyle,
+            semanticsLabel: maskColor == null ? null : '',
             recognizer: TapGestureRecognizer()..onTap = onTap,
           ),
         ];
       }
-      return [TextSpan(text: normalizedText, style: style)];
+      return [
+        TextSpan(
+          text: normalizedText,
+          style: bodyStyle,
+          semanticsLabel: maskColor == null ? null : '',
+        ),
+      ];
     }
 
     final spans = <InlineSpan>[];
@@ -398,7 +409,8 @@ class TajweedText extends StatelessWidget {
                   markerRule: run.markerRule,
                   isSajdah: run.markerRule == TajweedRule.sajdah,
                 )
-              : style,
+              : bodyStyle,
+          semanticsLabel: maskColor != null && !run.isMarker ? '' : null,
           recognizer: onTap != null
               ? (TapGestureRecognizer()..onTap = onTap)
               : null,
@@ -620,7 +632,12 @@ class TajweedText extends StatelessWidget {
     required TextStyle baseStyle,
     bool highlightEnabled = true,
     Set<TajweedRule> suppressedRules = const {},
+    Color? maskColor,
+    Color? highlightBackground,
   }) {
+    if (highlightBackground != null) {
+      baseStyle = baseStyle.copyWith(backgroundColor: highlightBackground);
+    }
     final result = <InlineSpan>[];
     final text = _normalizeArabicText(word.arabic);
     final graphemeMap = _GraphemeMap.fromText(text, spans: word.spans);
@@ -637,6 +654,7 @@ class TajweedText extends StatelessWidget {
           _buildNormalizedGraphemeTextSpans(
             _normalizeArabicText(graphemeMap.slice(cursor, start)),
             baseStyle,
+            maskColor: maskColor,
           ),
         );
       }
@@ -653,6 +671,7 @@ class TajweedText extends StatelessWidget {
         _buildNormalizedGraphemeTextSpans(
           _normalizeArabicText(graphemeMap.slice(start, end)),
           spanStyle,
+          maskColor: maskColor,
         ),
       );
       cursor = end;
@@ -663,6 +682,7 @@ class TajweedText extends StatelessWidget {
         _buildNormalizedGraphemeTextSpans(
           _normalizeArabicText(graphemeMap.slice(cursor, graphemeMap.length)),
           baseStyle,
+          maskColor: maskColor,
         ),
       );
     }

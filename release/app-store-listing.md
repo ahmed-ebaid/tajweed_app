@@ -1,4 +1,77 @@
-# App Store listing — Tajweed 1.1.23
+# App Store listing — Tajweed 1.1.24
+
+## Unuploaded disconnected-letter recognition fix
+
+Both recitation modes now match the spoken letter names at all 29 surah
+openings with disconnected letters, including the second opening ayah at
+42:2. Recognizer variants for Alif (`1000`, `١٠٠٠`, `۱۰۰۰`) are scoped to
+those exact letter positions. Missing, reordered, or extra words still fail;
+the displayed Mushaf text is unchanged. This does not grade pronunciation
+or madd duration. The fix is local and is **not in TestFlight build 107**.
+Simulator integration checks passed for all 30 verse positions in both
+recitation modes with controlled recognition callbacks; partial results
+remain hidden and final matches reveal the unchanged text. These synthetic
+fixtures do not validate native microphone accuracy or printed-page geometry.
+The full app was also built and launched on the iPhone 17 Pro simulator.
+The simulator now uses the existing token-protected prelive Worker.
+Its limited Al-Fatihah/Al-Baqarah chapter list is accepted only with the
+existing non-release bypass on the prelive host, without replacing the
+complete chapter cache or relaxing surah/page checks. Live Al-Baqarah
+practice loaded successfully on the simulator. Production is unchanged.
+Speech session startup now ignores a late native shutdown status until
+the new session actually starts listening or receives a result. A regression
+test reproduces shutdown arriving during Resume preparation. Automated checks
+pass and the simulator has been rebuilt; whether this resolves the reported
+live microphone restart failure remains unverified.
+Continuous practice now has an optional, eight-language live-preview switch
+(off by default). Matching partial ayahs may appear provisionally without
+advancing the confirmed position or counters; revisions and interruptions
+remove unconfirmed previews. This is not included in TestFlight build 107.
+
+## TestFlight Hifz improvements — 1.1.24 (107), testing only
+
+The working tree adds a fifth, localized **Hifz** tab with surah selection,
+visible-text Review, and continuous recitation practice. Final recognition
+segments can reveal several completed ayahs in Quran order without Next taps;
+recognition ending provides Resume, not an unlimited microphone promise.
+On-demand opening-word hints and full-ayah reveals are marked as assisted.
+The complete Reader Mushaf page is preserved, including neighboring surahs,
+word/end-token line breaks, Juz and Hizb markers. Incomplete page data is rejected.
+These changes are included in **build 107**, uploaded on 2026-11-08.
+Apple processing is `VALID` and internal testing is `IN_BETA_TESTING`.
+The existing **Tajweed Testers** internal group has automatic access to all
+builds; build 107 membership was verified. All eight localized testing notes
+were re-read and verified. External beta review was not submitted.
+No App Store review submission or public release was made; production
+1.1.23 remains `READY_FOR_SALE`. Google Play is unchanged.
+- **Apple build/delivery ID:** `b3dd7cae-e8c0-4778-bff5-ff0d259f456b`.
+- **IPA SHA-256:**
+  `2614bc249f2a37d33d1945669715208d4ab1ebf59fcd40a87eba93407a52ab88`.
+Validation: 165 targeted regression tests passed, including shared-page
+geometry in portrait/landscape and light/dark mode, Hizb preservation,
+opening-word hints, recognition cancellation, and actual Hifz-tab navigation.
+Targeted analysis is clean; the arm64 iOS simulator and signed release IPA
+builds succeed. Exported version 1.1.24 (107) and all eight localized native
+permission resources were verified.
+Physical-device speech accuracy remains unverified.
+
+## App Store Connect upload — 1.1.24 (106), testing only
+
+- **Scope:** Experimental, opt-in Arabic word checking for full-surah
+  memorization in Mushaf view, with hints, reference recitation, cross-page
+  progression, Juz metadata, and eight-language controls and voice consent.
+  Recognized words are checked; pronunciation and Tajweed are not graded.
+- **Apple:** Signed IPA uploaded successfully on 2026-11-08. Delivery UUID:
+  `c5e4db32-4210-492f-bf43-a0ddadf07b16`. Apple processing reached `VALID`;
+  version 1.1.24 and build 106 were re-read and verified.
+  No App Store review submission or production release was requested.
+- **IPA SHA-256:**
+  `8e866a29551d7a1678684fe1a74255ef6cfbf7336c2ccfd9ea0414acb3f00f3f`.
+- **Validation:** 110 targeted regression tests passed. The exported IPA
+  contains version 1.1.24, build 106, and all eight localized microphone and
+  speech-recognition permission resources. Physical-device recitation accuracy
+  and permission/audio-interruption trials remain outstanding.
+- **Google Play:** No upload or track changes.
 
 ## Production submission — 1.1.23 (105)
 
@@ -453,12 +526,34 @@ ten-image limit. All other existing screenshots are retained.
 Tajweed Practice is independently owned and operated by Ebaid LLC.
 Quran.Foundation Content API requests are routed through an Ebaid LLC
 Cloudflare Worker and protected by Apple App Attest. No login is required, and
-the App does not request microphone or speech-recognition permission.
+released builds through 1.1.23 (105) do not request microphone or
+speech-recognition permission.
 
 To review the updated Mushaf, open any Surah, switch to page view, and rotate
 the device to compare portrait and landscape alignment. Green Hizb markers in
 the page margin are tappable and announce the numbered Hizb boundary. Ayah
 markers follow the QCF V2 printed-line metadata.
+
+### Experimental memorization — build 106, not publicly released
+
+Build 106 adds opt-in Arabic voice word checking to full-surah Mushaf practice,
+with hints and the Reader's existing reference recitation. Microphone and iOS
+speech-recognition purpose strings are localized in all eight languages.
+Voice access is requested only after a consent explanation that the device
+provider may process audio remotely. Recordings and transcripts are not saved
+or sent to Ebaid LLC or Quran.Foundation. This is not Tajweed grading.
+
+Open the Reader overflow menu in either reading mode and select “Memorize this
+surah.” Practice starts at ayah 1, advances across the surah's Mushaf pages,
+and offers an ayah selector for the whole surah. Incomplete surah data is
+rejected rather than reporting partial-page practice as surah completion.
+
+Before any public release, validate Arabic accuracy and long-ayah/pause behavior on
+physical iOS and Android devices, verify denied permissions and audio
+interruptions, publish the revised privacy/terms pages, and review both stores'
+privacy/data-safety disclosures for the platform voice processing. Build 106
+has been uploaded to App Store Connect for testing only; it has not been
+submitted for App Store review.
 
 ## Manual App Store Connect confirmations
 

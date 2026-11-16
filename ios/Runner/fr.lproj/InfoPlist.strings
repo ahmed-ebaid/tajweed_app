@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Avec votre accord, utiliser votre voix pour vérifier les mots du verset choisi pendant la mémorisation.";
+"NSSpeechRecognitionUsageDescription" = "Avec votre accord, reconnaître la récitation arabe pour comparer les mots. Le service vocal d’Apple peut traiter l’audio ; ce n’est pas une évaluation du tajwid.";

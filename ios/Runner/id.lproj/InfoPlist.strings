@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Dengan izin Anda, gunakan suara untuk memeriksa kata ayat yang dipilih saat latihan hafalan.";
+"NSSpeechRecognitionUsageDescription" = "Dengan izin Anda, kenali bacaan Arab untuk membandingkan kata. Layanan ucapan Apple dapat memproses audio; ini bukan penilaian tajwid.";

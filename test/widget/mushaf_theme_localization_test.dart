@@ -30,6 +30,7 @@ Widget page({
   required bool printed,
   required bool landscape,
   required bool highlighted,
+  Set<String> hiddenAyahs = const {},
 }) => MushafPageContent(
   pageNumber: 3,
   ayahs: [
@@ -79,6 +80,7 @@ Widget page({
   textScale: 1,
   highlightEnabled: highlighted,
   surahNameFor: (_) => 'البقرة',
+  hiddenAyahs: hiddenAyahs,
 );
 
 Color pageBackground(WidgetTester tester) {
@@ -111,6 +113,269 @@ List<TextSpan> pageSpans(WidgetTester tester) {
 }
 
 void main() {
+  for (final printed in [true]) {
+    testWidgets('pause marks do not hide matched words printed=$printed', (
+      tester,
+    ) async {
+      const words = [
+        'ذَٰلِكَ',
+        'ٱلْكِتَـٰبُ',
+        'لَا',
+        'رَيْبَ ۛ',
+        'فِيهِ ۛ',
+        'هُدًۭى',
+        'لِّلْمُتَّقِينَ',
+      ];
+      await tester.pumpWidget(
+        subject(
+          MushafPageContent(
+            pageNumber: 3,
+            ayahs: [
+              Ayah(
+                surahNumber: 2,
+                ayahNumber: 2,
+                pageNumber: 3,
+                arabic: words.join(' '),
+                translations: const {},
+                words: [
+                  for (final word in words)
+                    TajweedWord(
+                      arabic: word,
+                      spans: const [],
+                      lineNumber: printed ? 3 : null,
+                    ),
+                ],
+                endLineNumber: printed ? 3 : null,
+              ),
+              Ayah(
+                surahNumber: 2,
+                ayahNumber: 3,
+                pageNumber: 3,
+                arabic: 'أول ثاني',
+                translations: const {},
+                words: [
+                  TajweedWord(
+                    arabic: 'أول ثاني',
+                    spans: const [],
+                    lineNumber: printed ? 4 : null,
+                  ),
+                ],
+                endLineNumber: printed ? 4 : null,
+              ),
+            ],
+            isLandscape: false,
+            textScale: 1,
+            highlightEnabled: true,
+            surahNameFor: (_) => 'البقرة',
+            hiddenAyahs: const {'2:2', '2:3'},
+            revealedWordCounts: const {'2:2': 5, '2:3': 1},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final spans = pageSpans(tester);
+      for (final word in ['رَيْبَ', 'فِيهِ']) {
+        expect(
+          spans
+              .firstWhere(
+                (span) => (span.text ?? '').contains(word),
+                orElse: () => throw StateError(
+                  'Missing $word: ${spans.map((s) => s.text).toList()}',
+                ),
+              )
+              .style
+              ?.color,
+          isNot(Colors.transparent),
+        );
+      }
+      for (final word in ['هُد', 'مُت', 'أول ثاني']) {
+        final span = spans.firstWhere(
+          (span) => (span.text ?? '').contains(word),
+          orElse: () => throw StateError(
+            'Missing $word: ${spans.map((s) => s.text).toList()}',
+          ),
+        );
+        expect(span.style?.color, Colors.transparent);
+        expect(span.semanticsLabel, '');
+      }
+    });
+  }
+
+  for (final landscape in [false, true]) {
+    for (final dark in [false, true]) {
+      testWidgets(
+        'shared printed page retains line ends and Hizb through hints landscape=$landscape dark=$dark',
+        (tester) async {
+          final semantics = tester.ensureSemantics();
+          try {
+            tester.view.physicalSize = landscape
+                ? const Size(844, 390)
+                : const Size(390, 844);
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+            final ayahs = [
+              Ayah(
+                surahNumber: 2,
+                ayahNumber: 142,
+                pageNumber: 22,
+                juzNumber: 2,
+                hizbNumber: 3,
+                rubElHizbNumber: 9,
+                arabic: '۞ سَيَقُولُ السُّفَهَاءُ مِنَ النَّاسِ',
+                translations: const {},
+                words: [
+                  const TajweedWord(
+                    arabic: '۞ سَيَقُولُ',
+                    spans: [],
+                    lineNumber: 3,
+                  ),
+                  const TajweedWord(
+                    arabic: 'السُّفَهَاءُ',
+                    spans: [],
+                    lineNumber: 3,
+                  ),
+                  const TajweedWord(arabic: 'مِنَ', spans: [], lineNumber: 4),
+                  const TajweedWord(
+                    arabic: 'النَّاسِ',
+                    spans: [],
+                    lineNumber: 4,
+                  ),
+                ],
+                endLineNumber: 4,
+              ),
+              const Ayah(
+                surahNumber: 3,
+                ayahNumber: 1,
+                pageNumber: 22,
+                juzNumber: 2,
+                arabic: 'الٓمٓ',
+                translations: {},
+                words: [TajweedWord(arabic: 'الٓمٓ', spans: [], lineNumber: 7)],
+                endLineNumber: 7,
+              ),
+            ];
+            Widget shared({bool hidden = false, bool hint = false}) => subject(
+              MushafPageContent(
+                pageNumber: 22,
+                ayahs: ayahs,
+                isLandscape: landscape,
+                textScale: 1,
+                highlightEnabled: true,
+                surahNameFor: (surah) => surah == 2 ? 'البقرة' : 'آل عمران',
+                hiddenAyahs: hidden ? {'2:142'} : {},
+                hintedWords: hint ? {'2:142': 2} : {},
+              ),
+              themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+            );
+            await tester.pumpWidget(shared());
+            await tester.pumpAndSettle();
+            final texts = find.descendant(
+              of: find.byKey(const ValueKey('mushaf-content-region')),
+              matching: find.byType(RichText),
+            );
+            final rects = [
+              for (var i = 0; i < texts.evaluate().length; i++)
+                tester.getRect(texts.at(i)),
+            ];
+            final hizb = find.bySemanticsLabel(RegExp('.*حزب.*'));
+            expect(hizb, findsWidgets);
+            for (final hint in [false, true]) {
+              await tester.pumpWidget(shared(hidden: true, hint: hint));
+              await tester.pumpAndSettle();
+              expect([
+                for (var i = 0; i < texts.evaluate().length; i++)
+                  tester.getRect(texts.at(i)),
+              ], rects);
+              expect(hizb, findsWidgets);
+              final spans = pageSpans(tester);
+              String plain(String? text) => (text ?? '')
+                  .replaceAll(RegExp(r'[\u064B-\u065F\u06DE]'), '')
+                  .trim();
+              for (final word in ayahs.first.words.take(2)) {
+                final span = spans.firstWhere(
+                  (span) => plain(span.text) == plain(word.arabic),
+                );
+                expect(span.style?.color == Colors.transparent, !hint);
+              }
+              expect(
+                spans
+                    .firstWhere((span) => plain(span.text) == 'الناس')
+                    .style
+                    ?.color,
+                Colors.transparent,
+              );
+              expect(
+                spans.firstWhere((span) => span.text == 'الٓمٓ').style?.color,
+                isNot(Colors.transparent),
+              );
+            }
+          } finally {
+            semantics.dispose();
+          }
+        },
+      );
+    }
+  }
+
+  for (final printed in [false, true]) {
+    for (final landscape in [false, true]) {
+      testWidgets(
+        'masking preserves text geometry and hides semantics printed=$printed landscape=$landscape',
+        (tester) async {
+          final semantics = tester.ensureSemantics();
+          try {
+            await tester.pumpWidget(
+              subject(
+                page(printed: printed, landscape: landscape, highlighted: true),
+              ),
+            );
+            await tester.pumpAndSettle();
+            final richTexts = find.descendant(
+              of: find.byKey(const ValueKey('mushaf-content-region')),
+              matching: find.byType(RichText),
+            );
+            final sizes = [
+              for (var i = 0; i < richTexts.evaluate().length; i++)
+                tester.getSize(richTexts.at(i)),
+            ];
+            await tester.pumpWidget(
+              subject(
+                page(
+                  printed: printed,
+                  landscape: landscape,
+                  highlighted: true,
+                  hiddenAyahs: {'2:1'},
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+            expect([
+              for (var i = 0; i < richTexts.evaluate().length; i++)
+                tester.getSize(richTexts.at(i)),
+            ], sizes);
+            final hidden = pageSpans(
+              tester,
+            ).where((span) => span.style?.color == Colors.transparent).toList();
+            expect(hidden, hasLength(2));
+            expect(hidden.every((span) => span.semanticsLabel == ''), isTrue);
+            expect(find.bySemanticsLabel(RegExp('نَّ')), findsNothing);
+            expect(
+              pageSpans(tester).any(
+                (span) =>
+                    span.text == 'كَلِمَةٌ' &&
+                    span.style?.color != Colors.transparent,
+              ),
+              isTrue,
+            );
+          } finally {
+            semantics.dispose();
+          }
+        },
+      );
+    }
+  }
+
   for (final locale in AppLocalizations.supportedLocales) {
     testWidgets('Mushaf palette is localized in ${locale.languageCode}', (
       tester,

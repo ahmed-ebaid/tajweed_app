@@ -18,6 +18,9 @@ import 'package:tajweed_practice/core/services/review_prompt_service.dart';
 import 'package:tajweed_practice/core/services/seasonal_icon_service.dart';
 import 'package:tajweed_practice/features/onboarding/onboarding_screen.dart';
 import 'package:tajweed_practice/features/reader/reader_screen.dart';
+import 'package:tajweed_practice/features/reader/memorization_screen.dart';
+import 'package:tajweed_practice/features/hifz/hifz_screen.dart';
+import 'package:tajweed_practice/features/reader/mushaf_page_view.dart';
 import 'package:tajweed_practice/main.dart';
 import 'package:tajweed_practice/root_scaffold.dart';
 
@@ -206,6 +209,183 @@ void main() {
     expect(requests, 1);
     await close(tester);
   });
+
+  testWidgets(
+    'Hifz tab opens Review and continuous practice without review interruptions',
+    (tester) async {
+      await Hive.box('settings').put('reader_surah_list_ar', [
+        for (var surah = 1; surah <= 114; surah++)
+          {
+            'id': surah,
+            'name_arabic': surah == 1 ? 'الفاتحة' : 'سورة $surah',
+            'name_simple': surah == 1 ? 'Al-Fatihah' : 'Surah $surah',
+            'verses_count': surah == 1 ? 2 : 1,
+          },
+      ]);
+      await Hive.box('verse_cache').put('quran_ar_surah_1', [
+        for (var ayah = 1; ayah <= 2; ayah++)
+          {
+            'verse_key': '1:$ayah',
+            'page_number': 1,
+            'text_uthmani': 'بسم الله',
+            'text_imlaei': 'بسم الله',
+            'words': [
+              {
+                'char_type_name': 'word',
+                'text_uthmani': 'بسم',
+                'line_number': ayah,
+              },
+              {
+                'char_type_name': 'word',
+                'text_uthmani': 'الله',
+                'line_number': ayah,
+              },
+              {'char_type_name': 'end', 'line_number': ayah},
+            ],
+          },
+      ]);
+      await launch(tester);
+      await tester.tap(find.byIcon(Icons.psychology_outlined));
+      await tick(tester, duration: const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<HifzScreen>(find.byType(HifzScreen)).isActive,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<ReaderScreen>(
+              find.byType(ReaderScreen, skipOffstage: false),
+            )
+            .suspendAudio,
+        isTrue,
+      );
+      await tick(tester);
+      expect(requests, 0);
+      await tester.tap(find.text('Review'));
+      await tick(tester, duration: const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<MemorizationScreen>(find.byType(MemorizationScreen))
+            .review,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<MushafPageContent>(find.byType(MushafPageContent))
+            .hiddenAyahs,
+        isEmpty,
+      );
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Recite from memory'));
+      await tick(tester, duration: const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      final practice = tester.widget<MemorizationScreen>(
+        find.byType(MemorizationScreen),
+      );
+      expect(practice.continuous, isTrue);
+      expect(practice.review, isFalse);
+      expect(find.text('Need a hint?'), findsOneWidget);
+      expect(find.text('Next ayah'), findsNothing);
+      await close(tester);
+    },
+  );
+
+  for (final complete in [true, false]) {
+    testWidgets(
+      'Reader opens only complete offline surah practice complete=$complete',
+      (tester) async {
+        await Hive.box('settings').put('reader_surah_list_en', [
+          {
+            'id': 1,
+            'name_simple': 'Al-Fatihah',
+            'name_arabic': 'الفاتحة',
+            'verses_count': 2,
+          },
+        ]);
+        await Hive.box('verse_cache').put('quran_ar_surah_1', [
+          {
+            'verse_key': '1:1',
+            'page_number': 1,
+            'text_uthmani': 'بسم الله',
+            'text_imlaei': 'بسم الله',
+            'words': [
+              {
+                'char_type_name': 'word',
+                'text_uthmani': 'بسم',
+                'line_number': 1,
+              },
+              {
+                'char_type_name': 'word',
+                'text_uthmani': 'الله',
+                'line_number': 1,
+              },
+              {'char_type_name': 'end', 'line_number': 1},
+            ],
+          },
+          if (complete)
+            {
+              'verse_key': '1:2',
+              'page_number': 1,
+              'text_uthmani': 'الحمد لله',
+              'text_imlaei': 'الحمد لله',
+              'words': [
+                {
+                  'char_type_name': 'word',
+                  'text_uthmani': 'الحمد',
+                  'line_number': 2,
+                },
+                {
+                  'char_type_name': 'word',
+                  'text_uthmani': 'لله',
+                  'line_number': 2,
+                },
+                {'char_type_name': 'end', 'line_number': 2},
+              ],
+            },
+        ]);
+        await launch(tester);
+        await tester.tap(find.byIcon(Icons.menu_book_outlined));
+        await tick(tester, duration: const Duration(milliseconds: 300));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<ReaderScreen>(find.byType(ReaderScreen)).isActive,
+          isTrue,
+        );
+        await tester.tap(
+          find.descendant(
+            of: find.byType(ReaderScreen),
+            matching: find.byIcon(Icons.more_vert),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Memorize this surah'));
+        await tick(tester, duration: const Duration(milliseconds: 300));
+        await tester.pumpAndSettle();
+        if (complete) {
+          final practice = tester.widget<MemorizationScreen>(
+            find.byType(MemorizationScreen),
+          );
+          expect(practice.ayahs.map((ayah) => ayah.ayahNumber), [1, 2]);
+          expect(practice.ayahs.map((ayah) => ayah.pageNumber), [1, 1]);
+          final attempts = requests;
+          await tick(tester);
+          expect(requests, attempts);
+        } else {
+          expect(find.byType(MemorizationScreen), findsNothing);
+          expect(
+            find.textContaining(
+              'The complete surah and Mushaf pages could not be loaded',
+            ),
+            findsOneWidget,
+          );
+        }
+        await close(tester);
+      },
+    );
+  }
 
   testWidgets('waits for a dialog to close instead of losing the request', (
     tester,

@@ -297,6 +297,9 @@ class Ayah {
   final int? rubElHizbNumber;
   final int? sajdahNumber;
   final String arabic;
+
+  /// Complete ordinary-spelling text for speech matching, never for display.
+  final String? imlaei;
   final Map<String, String> translations; // langCode → translation
   final List<TajweedWord> words;
   final int? endLineNumber;
@@ -312,6 +315,7 @@ class Ayah {
     this.rubElHizbNumber,
     this.sajdahNumber,
     required this.arabic,
+    this.imlaei,
     required this.translations,
     required this.words,
     this.endLineNumber,

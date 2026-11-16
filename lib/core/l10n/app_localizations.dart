@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'onboarding_localizations.dart';
 import 'home_localizations.dart';
 import 'reader_localizations.dart';
+import 'memorization_localizations.dart';
 
 /// Translation strings for all 8 supported languages.
 /// In production, replace with ARB files generated via `flutter gen-l10n`.
@@ -1010,10 +1011,14 @@ class AppLocalizations {
   String get(String key) {
     final lang = locale.languageCode;
     return _translations[lang]?[key] ??
+        memorizationTranslations[lang]?[key] ??
+        hifzTranslations[lang]?[key] ??
         readerTranslations[lang]?[key] ??
         homeTranslations[lang]?[key] ??
         onboardingTranslation(lang, key) ??
         _translations['en']?[key] ??
+        memorizationTranslations['en']?[key] ??
+        hifzTranslations['en']?[key] ??
         readerTranslations['en']?[key] ??
         homeTranslations['en']?[key] ??
         onboardingTranslation('en', key) ??

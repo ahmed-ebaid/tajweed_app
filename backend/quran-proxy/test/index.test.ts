@@ -542,4 +542,97 @@ describe("Quran Foundation proxy", () => {
       error: "Upstream response is too large",
     });
   });
+
+  it("uploads, lists, and retrieves ASR diagnostics with valid authorization", async () => {
+    const store = new Map<string, unknown>();
+    const stubFetch = vi.fn(async (req: Request) => {
+      const {AttestationState} = await import("../src/attestation");
+      const doInstance = new AttestationState(
+        {
+          storage: {
+            get: async (key: string) => store.get(key),
+            put: async (key: string, value: unknown) => {
+              store.set(key, value);
+            },
+            delete: async (key: string) => store.delete(key),
+          },
+        } as unknown as DurableObjectState,
+        env,
+      );
+      return doInstance.fetch(req);
+    });
+    const diagEnv: Env = {
+      ...env,
+      ATTESTATION_STATE: {
+        getByName: () => ({fetch: stubFetch}),
+      } as unknown as DurableObjectNamespace,
+    };
+
+    const unauth = await handleRequest(
+      new Request("https://proxy.example/v1/asr-diagnostics/upload", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+      diagEnv,
+    );
+    expect(unauth.status).toBe(401);
+
+    const wavSample = Buffer.from("RIFF-test-wav-audio").toString("base64");
+    const upload = await handleRequest(
+      contentRequest("https://proxy.example/v1/asr-diagnostics/upload", {
+        method: "POST",
+        headers: {"content-type": "application/json"},
+        body: JSON.stringify({
+          id: "test-diag-1",
+          verse_key: "2:24",
+          app_version: "1.1.26",
+          diagnostics_jsonl: '{"event":"transcribe"}',
+          snapshots: [
+            {
+              slot: 0,
+              json: '{"slot":0,"transcript":"فاتقوا النار"}',
+              wav_base64: wavSample,
+            },
+          ],
+        }),
+      }),
+      diagEnv,
+    );
+    expect(upload.status).toBe(201);
+    expect(await upload.json()).toEqual({
+      status: "saved",
+      id: "test-diag-1",
+      snapshots: 1,
+    });
+
+    const list = await handleRequest(
+      contentRequest("https://proxy.example/v1/asr-diagnostics/list", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+      diagEnv,
+    );
+    expect(list.status).toBe(200);
+    const listBody = (await list.json()) as {items: Array<{id: string; verseKey: string}>};
+    expect(listBody.items).toHaveLength(1);
+    expect(listBody.items[0].id).toBe("test-diag-1");
+    expect(listBody.items[0].verseKey).toBe("2:24");
+
+    const get = await handleRequest(
+      contentRequest("https://proxy.example/v1/asr-diagnostics/get", {
+        method: "POST",
+        body: JSON.stringify({id: "test-diag-1"}),
+      }),
+      diagEnv,
+    );
+    expect(get.status).toBe(200);
+    const getBody = (await get.json()) as {
+      id: string;
+      diagnostics_jsonl: string;
+      snapshots: Array<{slot: number; wav_base64: string}>;
+    };
+    expect(getBody.id).toBe("test-diag-1");
+    expect(getBody.diagnostics_jsonl).toBe('{"event":"transcribe"}');
+    expect(getBody.snapshots[0].wav_base64).toBe(wavSample);
+  });
 });

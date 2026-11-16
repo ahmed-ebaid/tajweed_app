@@ -26,6 +26,7 @@ tajweed_app/
 │   ├── features/
 │   │   ├── home/
 │   │   ├── reader/                   # Ayah and Mushaf reading experiences
+│   │   ├── hifz/                     # Surah review and memorization
 │   │   ├── quiz/
 │   │   ├── rules/
 │   │   └── settings/                 # Preferences, About, and attributions
@@ -60,7 +61,7 @@ tajweed_app/
 After at least one minute of reading on three distinct days, a later launch
 can request the native store review sheet after five seconds. Switching from
 Home to Reader does not cancel the request. Requests wait while the app is
-backgrounded, another route or dialog is open, a quiz is selected, reader audio
+backgrounded, another route or dialog is open, Quiz or Hifz is selected, reader audio
 is playing, or a seasonal icon update is in progress. An icon change skips the
 request for that launch. Attempts are limited to once every 120 days.
 
@@ -149,6 +150,16 @@ client disables it whenever `kReleaseMode` is true, and the Worker refuses it
 when `QF_ENV` is `production` or the token is shorter than 32 characters. Set
 the matching secret on the prelive Worker with
 `npx wrangler secret put SIMULATOR_TEST_TOKEN --env=""`.
+
+The same prelive configuration works on the iOS simulator. The prelive
+chapter endpoint currently supplies Al-Fatihah and Al-Baqarah only. Hifz
+accepts that limited chapter list solely when the existing non-release
+bypass is enabled against the prelive Worker host, and shows a debug sandbox
+banner. It never writes a partial list into the complete Reader chapter
+cache; full-surah and printed-page completeness checks still apply.
+Production builds still require all 114 chapters. Simulator microphone
+recognition availability and accuracy must be evaluated separately from
+content loading.
 
 #### Play Integrity (the Android counterpart to App Attest)
 
@@ -325,6 +336,207 @@ CI enforcement:
 - The 604-page reader uses Quran.Foundation Uthmani verse text and page metadata
 - Pages are rendered locally as text; the app does not download or redistribute Mushaf page images
 - The bundled Amiri Quran font is provided by the Amiri Project under the SIL Open Font License 1.1
+
+### Experimental memorization
+- The **Hifz** bottom tab lets you select a surah and choose **Review** (visible text and reference audio) or **Recite from memory**. Continuous practice is the default; an optional ayah-by-ayah switch retains the step-based experience. Reader's **Memorize this surah** shortcut also opens continuous practice.
+- Practice starts at ayah 1 and preserves the complete Reader Mushaf page, including neighboring surahs, original word lines and ayah end-lines, surah headings, Juz, page numbers, and Hizb/sajdah markers. Only the selected surah is masked; hints and matches change visibility without reflowing text.
+- Final recognition segments are checked against consecutive ayahs in Quran order. Fully matched ayahs are revealed and the current ayah/page advances automatically; a valid unfinished ayah prefix is retained for the next segment. Revisable partial native results never count as matches. When the platform ends recognition, **Resume** continues from the current passage; the app does not promise an unlimited microphone session.
+- The optional **Live ayah preview (unconfirmed)** switch shows fully matching ayahs from the current partial transcript in place while listening. Previews are explicitly labelled, may disappear when recognition revises its text, and never advance the confirmed position or counters. Final results confirm matching ayahs; stopping, errors, hints, and interruptions discard unconfirmed previews. The switch is off by default.
+- Recognition failures show **Retry**, not Resume. Retrying preserves confirmed ayahs, the current page/ayah, and any valid unfinished prefix from earlier final segments; it does not turn a failed or provisional transcript into a confirmed match.
+- A separate local Quran-ASR prototype is available in `tool/quran_asr_eval.py`. Install `tool/quran_asr_requirements.txt` in an isolated Python virtualenv, then run `python tool/quran_asr_eval.py /path/to/clip.wav --cache-dir /private/model-cache` (add `--offline` after the initial download). It accepts only explicit mono PCM16 WAV clips at 16 kHz, up to 30 seconds; it never uploads audio or updates app progress. It defaults to Tarteel AI's [Whisper tiny Quran model](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran), with the base model also selectable. The model cards declare Apache-2.0 but leave training-data and limitations details incomplete; reported benchmark scores are not evidence of mistake-detection accuracy. Actual offline inference on synthetic silence produced nonempty Arabic text, confirming the need for silence filtering and independent evaluation before any app integration. This is a short-clip research tool, not streaming recognition or Tajweed grading. Input checks run with `python -m unittest discover -s tool -p test_quran_asr_eval.py`.
+- Native microphone startup can be checked independently of Quran content and playback with `flutter test integration_test/memorization_microphone_test.dart -d <device-id> --dart-define=RUN_NATIVE_MICROPHONE_TEST=true`. This opt-in check uses real microphone/speech permissions, discards transcripts, and checks two starts; it does not verify recognition accuracy. On the current iOS 26.4 simulator, the isolated first session still fails with native `error_unknown (300)` even after selecting the Mac microphone. The corresponding local speech service log reports failure to create its recognizer from an installed model asset (`_EARSpeechRecognizer is nil`). The live-preview feature does not resolve that native failure.
+- Loading checks the full surah's verse count and consecutive ayah numbers. Complete-page loading checks every expected verse key against the Mushaf page boundaries and requires word and end-token line metadata. Incomplete neighboring-surah caches or missing line metadata show an explicit error/retry state instead of a partial or reflowed page. Full-Quran downloads are needed for complete shared pages offline.
+- Comparison uses complete Quran.Foundation `text_imlaei`, not stripped Uthmani display glyphs. Missing references, omitted/extra/reordered words, and similar-looking substitutions cannot pass. Recognition uncertainty is not presented as a definitive recitation error.
+- **Need a hint?** shows the current ayah's first two word tokens in place. **Reveal ayah and continue** skips it with assistance. Hint-assisted ayahs are distinguished from unaided word matches. Reference listening uses the selected reciter and existing audio cache; playback cancels microphone checking, and starting voice input stops reference audio. Entering Hifz stops background Reader audio. Leaving or backgrounding practice cancels both inputs.
+- Arabic recognition uses the phone's speech service. Before any voice permission request, an eight-language consent screen explains that the platform may process audio remotely and that offline/Arabic availability varies. The app does not store recordings, transcripts, or memorization results.
+- During voice startup, temporary inactivity from the system microphone/speech permission prompt does not cancel the attempt. Actual backgrounding or leaving the screen still cancels pending startup and ignores late results; inactivity after startup also cancels active input.
+- This is word checking, **not pronunciation or Tajweed grading**. Ordinary speech recognition can mishear Quran recitation and may stop at pauses or truncate long ayahs. Physical-device accuracy, permission, audio-interruption, and offline trials are required before a store release. A Quran-trained recognizer would be a separate evaluated integration, not direct waveform comparison with the reference reciter.
+- Disconnected-letter openings use spoken letter names (for example, **الم → ألف لام ميم**) in both continuous and ayah-by-ayah checking. Alif recognition variants such as `1000` and `١٠٠٠` are accepted only at the known opening positions; ordinary words remain strict and the displayed Mushaf text is unchanged. This does not evaluate letter pronunciation or madd duration.
+
+### On-device Quran ASR lab experiment (iOS)
+
+On the isolated `aebaid-hifz-asr-lab` branch, an enabled iOS lab build also uses
+the local model for **Hifz → Recite from memory**. This lab now uses a strict
+word-by-word preview by default in both continuous and ayah-by-ayah practice.
+The **Live word preview (unverified)** switch is the first practice control
+and can be disabled for strict final-check-only practice. Live preview shows only
+the current ordered matching prefix while recording. In continuous lab practice,
+already displayed words remain visible through shorter or contradictory recognition
+revisions, including within a partial ayah. Only the immediately following
+ayah can continue a dropped-prefix preview. If a later snapshot starts at the
+same earlier position and contradicts a previously previewed word, it cannot
+use retained words to bypass the mismatch or reveal new later words. Previously
+displayed words stay visible as unverified, not as final match credit. An
+ambiguous repeated opening is treated as a mismatch, not an ayah skip.
+If a snapshot contains only the next missing word of a partially previewed
+current ayah (for example `الرحيم` after `بسم الله الرحمن`), it can extend
+that exact prefix without Pause/Resume, including after any contiguous
+completed ayahs and before the audio window starts rolling. Empty or unrelated tail snapshots keep
+the current visible prefix, but never reveal a later position; contradictory
+snapshots that start at the earlier position still block at the first mismatch.
+Live retries may also repeat the exact trailing words of that prefix, such as
+`الرحمن الرحيم` after `بسم الله الرحمن`. Only an exact suffix-prefix overlap is
+removed; a wrong word between the overlap and the missing word still blocks it.
+These retained previews are still unverified and never advance match counters.
+In continuous practice, every recognition ending retains the visible ordered
+prefix: **Pause**, completion without a final
+result, recognition errors, and app interruptions. A tail-only final snapshot
+cannot erase earlier visible ayahs. A contradictory snapshot also keeps the
+visible cursor but cannot extend it past that snapshot's mismatch. A tail-only snapshot can reveal the
+matching prefix of the immediately next contiguous ayah even when an earlier
+unfinished prefix was carried into the recording; it cannot bypass an unmatched
+ayah or word. **Resume** (or **Retry**
+after an error) continues at the next unrevealed word, including within an ayah.
+Retained words remain labeled unverified; any ayah containing such words is
+excluded from unaided-match credit. Turning off new live previews does not erase
+this paused cursor. Disabling the switch discards only active, unsaved live
+guesses, not earlier retained or final progress. The raw transcript remains hidden. The microphone
+keeps capturing until **Pause**, an input error, or an app interruption, with no
+session time cap. Only the latest 30 seconds of mono PCM16 audio are retained
+in memory (at most 960,000 PCM bytes); older audio is discarded while the
+microphone stays active. Serialized rolling audio snapshots first check after
+one second of capture, then wait
+500 ms after each inference finishes before checking again. Slow inference
+never queues concurrent checks. These are scheduling delays, not measured word
+reveal latency; checks may need more audio and more frequent inference can
+increase heat and battery use, especially during longer sessions.
+When a window rolls, the lab carries forward only the contiguous matching word
+prefix, reuses exact normalized overlap with the next snapshot, and keeps those
+earlier words unverified and excluded from match credit. This also tracks words
+internally when live preview is off, without displaying them before Pause.
+An unmatched word still blocks later text even if its audio has left the window;
+Pause and Resume from that word to retry it. Windows do not skip over mistakes.
+This is bounded chunked recognition, not a streaming model or a
+promise of per-word latency. **Pause** checks the final snapshot before accepting
+new words as final matches, while retaining earlier visible words separately.
+In continuous practice, only the exact prefix before the first
+mismatch is revealed; later matching words cannot bypass that position.
+**Resume** starts a fresh recording at the indicated blocked word, retaining
+earlier final prefixes without retaining incorrect suffixes. Spoken
+words may repeat the current ayah's saved prefix, or its trailing words, when
+restarting a recording. The lab removes only an exact normalized overlap with
+that prefix, consistently for live and final checks; it never searches past a
+wrong new word or skips an unmatched position. Spoken
+disconnected-letter names must complete their single printed opening word before
+it is revealed. The local Quran model also transcribes spoken letter names as
+their printed opening (verified with the preserved Alafasy 2:1 clip returning
+`الم`). Lab matching accepts either representation only at the authoritative
+opening position; ordinary platform recognition still requires spoken names.
+Standalone Quranic pause marks do not count as words when retaining a prefix,
+and a pause mark attached to a printed word does not prevent its reveal.
+This accommodates model spelling, not proof that every letter was pronounced
+correctly. A final ayah with trailing extra words is not accepted; its
+previously accepted prefix is retained. Ayah-by-ayah practice still requires a
+complete ayah match. Hints show the next two words after the accepted prefix;
+hints, explicit reveals, and reference listening mark the ayah as assisted.
+For example, reciting `الرحمن العليم` at Al-Fatihah 1:3 reveals only `الرحمن`;
+`الرحيم` remains hidden until matched, including after Pause and Resume.
+Errors and interruptions checkpoint the visible prefix without giving it match credit.
+Interim words never advance the confirmed ayah or match counters. **Pause**
+stops capture immediately, requests cancellation of an unfinished lab preview,
+and checks the final snapshot; **Resume** begins a new recording. Cancellation/backgrounding discards
+late results. The shared fixed-line Mushaf renderer preserves line endings and
+Hizb markers while masking/revealing words without reflow.
+
+The local path is opt-in and non-Release, and its native channel is registered
+only for the lab bundle identifier. Normal builds retain the existing platform
+speech path. Audio snapshots are temporary and deleted after inference; the
+bounded microphone buffer stays in memory and is discarded on finish/cancel.
+The lab keeps a bounded 64 KiB local diagnostic file at
+`tmp/quran-asr-diagnostics.jsonl` inside its own app container. It records
+inference request/return times, audio-window durations, numeric error codes,
+and numeric progress counters to diagnose live-versus-final stalls. It never
+records audio, recognized text, or reference text, and is not uploaded.
+Version 2 progress records also include the recording start, displayed cursor,
+raw mismatch position, and prefix counts for cumulative and exact-tail alignment.
+Displayed totals include fully revealed ayahs, so committing a preview on Pause
+does not look like deletion in diagnostics. These counters explain where matching
+stops, not whether the learner actually pronounced a word correctly.
+Live recognition uses overlapping eight-second audio tails to reduce latency
+and whole-ayah omissions in long hypotheses; Stop retains the last 30 seconds
+for final recognition, so its audio window may start earlier than the latest
+preview. Already completed previews remain unverified word progress; an unfinished
+preview is cancelled to start the final check sooner, but its result is retained
+if it finishes before cancellation takes effect. Missing or incorrect words still
+block ordered matching.
+When changing pages, the lab keeps previously displayed partial words highlighted
+as unverified. Returning to a page still starts at its first ayah; those saved
+highlights do not skip words or grant match credit.
+The lab build applies a local whisper.cpp CPU-backend patch so cancellation can
+interrupt encoder graph execution; final decoding and its 30-second window are unchanged.
+For an experimental GPU final pass, set `QURAN_ASR_METAL=1` when running the
+lab build script. By default previews remain on the cancellable CPU backend. This option
+uses CPU inference in the iOS simulator and requires physical-device
+performance, memory, battery, and accuracy checks.
+To test GPU previews separately on a physical device, also set
+`QURAN_ASR_GPU_PREVIEWS=1`. GPU graph execution may not stop immediately when
+Pause requests cancellation, so compare pause latency, recognition accuracy,
+heat, and battery use against the CPU-preview build before adopting it.
+For a separate device-only startup experiment, also set
+`QURAN_ASR_PRECOMPILED_METAL=1` to package Metal shaders compiled at build time
+instead of compiling them on the phone. This requires Apple's Metal toolchain
+and has not yet been validated on physical devices.
+For explicitly consented speech debugging only, the additional Dart define
+`QURAN_ASR_RETAIN_DEBUG_AUDIO=true` enables retention in the separate lab app.
+The consent dialog then explicitly discloses audio retention instead of claiming
+all snapshots are deleted. Only the latest six inference snapshots (up to 30
+seconds each) and their recognized text/timing metadata are kept in
+`tmp/quran-asr-debug/`, overwriting older pairs. Nothing is uploaded; remove those
+local debug files after investigation. This is off by default, is unavailable in
+Release, and does not retain audio supplied through the standalone `checkWav`
+diagnostic path.
+The near-silence filter is not full voice-activity detection. Human-recitation
+accuracy, false matches, omissions, repetitions, timing, heat, and battery use
+still need physical-device evaluation; text matches are not validated Hifz scores.
+
+This opt-in screen is separate from Hifz scoring: **Hifz → DEBUG: On-device Quran AI → Record → Stop and check**. It records mono PCM16 audio at 16 kHz for at most 30 seconds, transcribes locally, and deletes its temporary recording after checking or cancellation. Cancelling inference discards its result; the native computation and deletion finish on the worker queue. Backgrounding or leaving the screen cancels the attempt. No audio or transcript is uploaded or persisted by this experiment. Labels and warnings support all eight app languages.
+
+The transcript is **unverified**, not a pronunciation/Tajweed assessment or proof of correct memorization. The near-silence RMS check rejects essentially inaudible input; it is not validated voice-activity detection and cannot prevent hallucinations from noise. Real microphone capture, interruptions, thermal behavior, and accuracy still require physical-iPhone trials.
+
+The experimental native decoder uses single-beam greedy decoding (`best_of = 1`, `beam_size = 1`) with temperature fallback disabled to reduce preview and Stop latency. Local replay comparisons showed unchanged transcripts on the tested clips, but this may reduce recovery on difficult audio; validate accuracy and latency on an iPhone before relying on it.
+
+Prepare external artifacts, not repository assets:
+
+- Use [whisper.cpp v1.9.5](https://github.com/ggml-org/whisper.cpp/tree/v1.9.5) and the Tarteel tiny snapshot `c3d7e624af5c81bef25a10a2af3a5a84cb4dd0f0` downloaded by the evaluator above.
+- Convert that snapshot with the upstream `models/convert-h5-to-ggml.py`, supplying the model snapshot directory, OpenAI Whisper's assets directory (including `mel_filters.npz`), and an external output directory. The resulting fp16 `ggml-model.bin` is approximately 77 MB. Use an isolated Python environment with the evaluator dependencies and CMake.
+- whisper.cpp is MIT-licensed; the model card declares Apache-2.0 and has incomplete training-data/limitations documentation. Keep upstream license/notice material with the external artifacts. No third-party source, model weights, or personal recordings belong in Git.
+
+From the repository root, configure Flutter for the experiment, then build with explicit external paths:
+
+```bash
+flutter build ios --simulator --debug --config-only --no-pub \
+  -t lib/main.dart --dart-define=QURAN_ASR_EXPERIMENT=true
+bash tool/build_quran_asr_ios.sh /absolute/whisper.cpp-1.9.5 \
+  /absolute/converted/ggml-model.bin /absolute/external-build \
+  simulator CODE_SIGNING_ALLOWED=NO -quiet
+```
+
+Use `--dart-define-from-file=<private-debug-config>` only when explicitly testing the prelive content environment; never include those private debug defines in a store build. The experiment entry is independent of Quran-content loading. The script builds arm64 static libraries and Runner with invocation-only native flags, then adds the model to the resulting lab bundle. It uses the separate bundle identifier `com.ebaidllc.tajweedpractice.quranailab` and display name **Tajweed AI Lab**, so installation does not replace the store/TestFlight app. It does not install or upload anything.
+
+**Physical iPhone builds use Profile mode**, which runs without a debugger. Flutter Debug builds on iOS 14+ exit when opened from the Home Screen without Flutter tooling or Xcode attached. Configure the phone build and then run the script:
+
+```bash
+flutter build ios --profile --config-only --no-pub --no-codesign \
+  -t lib/main.dart --dart-define=QURAN_ASR_EXPERIMENT=true
+bash tool/build_quran_asr_ios.sh /absolute/whisper.cpp-1.9.5 \
+  /absolute/converted/ggml-model.bin /absolute/external-build \
+  device -allowProvisioningUpdates -quiet
+```
+
+The script defaults to Debug for the simulator and Profile for the phone. `QURAN_ASR_CONFIGURATION=Debug` is available only for debugger-attached development; configure Flutter with the matching mode. `CODE_SIGNING_ALLOWED=NO` produces a compilation-only app; a signed device build requires development provisioning for the lab identifier, and the script re-signs after copying the model. Profile outputs are under `app/Build/Products/Profile-iphoneos/Runner.app`.
+
+Clean ordinary builds do not link the engine or bundle the model. The UI requires a non-Release build and `QURAN_ASR_EXPERIMENT=true`. Native code requires `QURAN_ASR_NATIVE` plus either `DEBUG` or the invocation-only `QURAN_ASR_PROFILE` condition, and channel registration requires the separate lab identifier. The script refuses Release configuration. Keep experimental build outputs separate, and do not carry experimental flags or use experimental artifacts for distribution.
+
+Widget/lifecycle checks:
+
+```bash
+flutter test --no-pub --dart-define=QURAN_ASR_EXPERIMENT=true \
+  test/widget/quran_asr_experiment_screen_test.dart
+```
+
+Native tests use an explicitly supplied Alafasy 1:2 mono PCM16 16 kHz WAV, not a personal recording. Set `QURAN_ASR_BUILD_ACTION=build-for-testing` and `QURAN_ASR_REFERENCE_WAV=/absolute/reference.wav` for the build script, then run `xcodebuild test-without-building -xctestrun <external-build>/app/Build/Products/Runner_<sdk>-arm64.xctestrun -destination 'platform=iOS Simulator,id=<device-id>' -only-testing:RunnerTests/QuranASRTests -only-testing:RunnerTests/QuranASRChannelTests -parallel-testing-enabled NO`. Read the test count: all five tests must actually execute, covering the reference transcript, silence/invalid input, repeat checks, malformed-input recovery, and cancellation/concurrent-work rejection. The channel exposes debug-only `checkWav` for typed WAV bytes, not arbitrary filesystem paths.
+
+If signing reports **No Accounts** or **No profiles** for the lab identifier, add the Apple developer account in **Xcode → Settings → Accounts**, then create/download a development provisioning profile for `com.ebaidllc.tajweedpractice.quranailab`. The ordinary app's profile cannot sign a different identifier. Do not change the lab back to the ordinary identifier to bypass this requirement.
 
 ### API attestation
 - `QuranAttestationService` owns token caching and request coalescing, and delegates the platform handshake to an `AttestationProvider`

@@ -11,6 +11,7 @@ import 'core/services/seasonal_icon_service.dart';
 import 'core/services/quran_offline_sync_service.dart';
 import 'core/services/quran_content_sync_service.dart';
 import 'features/home/home_screen.dart';
+import 'features/hifz/hifz_screen.dart';
 import 'features/reader/reader_screen.dart';
 import 'features/quiz/quiz_screen.dart';
 import 'features/rules/rules_screen.dart';
@@ -103,6 +104,7 @@ class _RootScaffoldState extends State<RootScaffold>
       !_isUpdatingSeasonalIcon &&
       !_isReaderAudioActive &&
       _currentIndex != 2 &&
+      _currentIndex != 4 &&
       ModalRoute.of(context)?.isCurrent == true;
 
   Future<void> _requestReviewIfAppropriate() async {
@@ -210,10 +212,12 @@ class _RootScaffoldState extends State<RootScaffold>
       HomeScreen(onTabSwitch: _switchTab),
       ReaderScreen(
         isActive: _currentIndex == 1,
+        suspendAudio: _currentIndex == 4,
         onAudioActivityChanged: (active) => _isReaderAudioActive = active,
       ),
       const QuizScreen(),
       const RulesScreen(),
+      HifzScreen(isActive: _currentIndex == 4),
     ];
 
     return Directionality(

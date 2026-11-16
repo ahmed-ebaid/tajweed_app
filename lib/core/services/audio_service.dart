@@ -7,6 +7,7 @@ class AudioService {
   AudioService({AudioPlayer? player}) : _player = player ?? AudioPlayer();
 
   final AudioPlayer _player;
+  int _playGeneration = 0;
 
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
   Stream<Duration?> get durationStream => _player.durationStream;
@@ -18,13 +19,16 @@ class AudioService {
   /// Load and play a verse audio URL.
   Future<void> playUrl(String url) async {
     if (url.isEmpty) return;
+    final generation = ++_playGeneration;
     try {
       await _player.stop();
+      if (generation != _playGeneration) return;
       await _player.setUrl(url);
+      if (generation != _playGeneration) return;
       unawaited(_startPlayback());
     } catch (e) {
-      // URL not reachable — stop gracefully
-      await stop();
+      debugPrint('Audio URL load failed: ${e.runtimeType}');
+      if (generation == _playGeneration) await stop();
     }
   }
 
@@ -35,27 +39,36 @@ class AudioService {
       await playUrl(urls.first);
       return;
     }
+    final generation = ++_playGeneration;
     try {
       await _player.stop();
+      if (generation != _playGeneration) return;
       final source = ConcatenatingAudioSource(
         children: urls.map((u) => AudioSource.uri(Uri.parse(u))).toList(),
       );
       await _player.setAudioSource(source);
+      if (generation != _playGeneration) return;
       unawaited(_startPlayback());
-    } catch (_) {
-      await stop();
+    } catch (error) {
+      debugPrint('Audio sequence load failed: ${error.runtimeType}');
+      if (generation == _playGeneration) await stop();
     }
   }
 
-  /// Play a locally recorded file.
+  /// Play a locally cached audio file.
   Future<void> playFile(String path) async {
+    final generation = ++_playGeneration;
     await _player.setFilePath(path);
+    if (generation != _playGeneration) return;
     unawaited(_startPlayback());
   }
 
   Future<void> pause() async => _player.pause();
   Future<void> resume() => _startPlayback();
-  Future<void> stop() async => _player.stop();
+  Future<void> stop() async {
+    ++_playGeneration;
+    await _player.stop();
+  }
 
   Future<void> _startPlayback() async {
     try {
@@ -90,5 +103,8 @@ class AudioService {
   Future<void> setSpeed(double speed) async =>
       _player.setSpeed(speed.clamp(0.5, 2.0));
 
-  void dispose() => _player.dispose();
+  void dispose() {
+    ++_playGeneration;
+    _player.dispose();
+  }
 }

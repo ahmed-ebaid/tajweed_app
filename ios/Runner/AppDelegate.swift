@@ -12,6 +12,11 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+#if QURAN_ASR_NATIVE && (DEBUG || QURAN_ASR_PROFILE || QURAN_ASR_TESTFLIGHT)
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "QuranASRChannel") {
+      QuranASRChannel().register(messenger: registrar.messenger())
+    }
+#endif
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AppIconChannel") {
       registerAppIconChannel(messenger: registrar.messenger())
     }
