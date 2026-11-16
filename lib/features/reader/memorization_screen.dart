@@ -619,6 +619,35 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   ? _continuousText(startIndex, text)
                   : text,
             );
+            if (widget.localQuranLab &&
+                input is QuranAsrSpeechInput &&
+                expectedAyahs.isNotEmpty &&
+                wordCounts.length == 1 &&
+                wordCounts.first == 1) {
+              final firstAyah = expectedAyahs.first;
+              final firstKey =
+                  '${firstAyah.surahNumber}:${firstAyah.ayahNumber}';
+              final firstWords = _comparison.recitationWords(
+                firstAyah.imlaei ?? '',
+              );
+              final spokenWords = _comparison.recitationWords(text);
+              if (firstWords.length == 1 &&
+                  firstWords.first.length >= 2 &&
+                  spokenWords.length == 1 &&
+                  input.windowStartSeconds + input.lastDurationSeconds <
+                      firstWords.first.length * 1.1 &&
+                  _comparison
+                          .matchingPrefixWordCounts(
+                            expectedAyahs: [firstAyah.imlaei ?? ''],
+                            expectedVerseKeys: [firstKey],
+                            spokenText: text,
+                            allowWrittenOpenings: false,
+                          )
+                          .first ==
+                      0) {
+                wordCounts = const [0];
+              }
+            }
             setState(() {
               final previousWords = Map<String, int>.of(_liveWordCounts);
               _liveWordCounts.clear();
@@ -1181,17 +1210,40 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     setState(() {
       _assisted.add(_index);
       if (widget.localQuranLab) {
-        final nextCount = _hintBaseWordCount + 2;
-        final maxWords = _currentAyahWordCount;
-        _hintWordCounts[_index] = maxWords > 0 && nextCount > maxWords
-            ? maxWords
-            : nextCount;
+        if (widget.continuous &&
+            _hintBaseWordCount >= _currentAyahWordCount &&
+            _currentAyahWordCount > 0) {
+          _revealed.add(_index);
+          _pausedWordCounts.remove(_verseKey);
+          _acceptedWordCounts.remove(_verseKey);
+          _pendingText = '';
+          if (_index + 1 < widget.ayahs.length) {
+            _index++;
+            _assisted.add(_index);
+            final maxWords = _currentAyahWordCount;
+            _hintWordCounts[_index] = maxWords > 0 && 2 > maxWords
+                ? maxWords
+                : 2;
+          } else {
+            _finished = true;
+          }
+        } else {
+          final nextCount = _hintBaseWordCount + 2;
+          final maxWords = _currentAyahWordCount;
+          _hintWordCounts[_index] = maxWords > 0 && nextCount > maxWords
+              ? maxWords
+              : nextCount;
+        }
       } else {
         _hintWordCounts[_index] = 2;
         _pendingText = '';
       }
       if (!widget.continuous) _revealed.add(_index);
-      _message = widget.continuous ? 'hifz_hint_used' : 'mem_hint_used';
+      _message = _finished
+          ? 'hifz_completed'
+          : widget.continuous
+          ? 'hifz_hint_used'
+          : 'mem_hint_used';
     });
   }
 
@@ -1678,12 +1730,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                     _finished ||
                                     _revealed.contains(_index) ||
                                     (widget.continuous &&
-                                        (widget.localQuranLab
-                                            ? _hintBaseWordCount >=
-                                                  _currentAyahWordCount
-                                            : _hintWordCounts.containsKey(
-                                                _index,
-                                              )))
+                                        !widget.localQuranLab &&
+                                        _hintWordCounts.containsKey(_index))
                                 ? null
                                 : _hint,
                             child: Text(

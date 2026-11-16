@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tajweed_practice/core/data/surah_names.dart';
 import 'package:tajweed_practice/core/l10n/app_localizations.dart';
 import 'package:tajweed_practice/core/l10n/reader_localizations.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
@@ -31,6 +34,7 @@ Widget page({
   required bool landscape,
   required bool highlighted,
   Set<String> hiddenAyahs = const {},
+  String surahName = 'البقرة',
 }) => MushafPageContent(
   pageNumber: 3,
   ayahs: [
@@ -79,7 +83,8 @@ Widget page({
   isLandscape: landscape,
   textScale: 1,
   highlightEnabled: highlighted,
-  surahNameFor: (_) => 'البقرة',
+  fitToViewport: printed,
+  surahNameFor: (_) => surahName,
   hiddenAyahs: hiddenAyahs,
 );
 
@@ -376,7 +381,98 @@ void main() {
     }
   }
 
+  test('bundled Hafs ayah counts cover all surahs', () {
+    expect(surahAyahCounts, hasLength(114));
+    expect(surahAyahCounts.reduce((a, b) => a + b), 6236);
+    expect(surahAyahCounts[1], 286);
+    expect(surahAyahCounts.sublist(105), [4, 7, 3, 6, 3, 5, 4, 5, 6]);
+  });
+  for (final landscape in [false, true]) {
+    testWidgets('long surah titles stay inside the frame without moving Quran '
+        'lines in ${landscape ? 'landscape' : 'portrait'}', (tester) async {
+      tester.view.physicalSize = landscape
+          ? const Size(844, 330)
+          : const Size(320, 480);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      Rect? originalFrame;
+      Rect? originalQuranLine;
+      for (final name in ['البقرة', 'آل عمران', 'الشعراء', 'المنافقون']) {
+        await tester.pumpWidget(
+          subject(
+            page(
+              printed: true,
+              landscape: landscape,
+              highlighted: true,
+              surahName: name,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final frame = tester.getRect(
+          find.byKey(const ValueKey('mushaf-surah-cartouche')),
+        );
+        final title = tester.getRect(find.text('سُورَةُ $name'));
+        final quranLine = tester.getRect(
+          find.byKey(const ValueKey('mushaf-line-3')),
+        );
+        originalFrame ??= frame;
+        originalQuranLine ??= quranLine;
+        expect(frame, originalFrame);
+        expect(quranLine, originalQuranLine);
+        expect(frame.deflate(1).contains(title.topLeft), isTrue);
+        expect(frame.deflate(1).contains(title.bottomRight), isTrue);
+        expect(
+          title.left,
+          greaterThanOrEqualTo(frame.left + frame.width * 0.21),
+        );
+        expect(title.right, lessThanOrEqualTo(frame.left + frame.width * 0.79));
+        expect(title.overlaps(quranLine), isFalse);
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
+
   for (final locale in AppLocalizations.supportedLocales) {
+    testWidgets('Mushaf page labels are localized in ${locale.languageCode}', (
+      tester,
+    ) async {
+      final l10n = AppLocalizations(locale);
+      await tester.pumpWidget(
+        subject(
+          page(printed: true, landscape: false, highlighted: true),
+          locale: locale,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('${l10n.get('juz')} ${l10n.digits(1)}'), findsOneWidget);
+      expect(find.text(l10n.digits(3)), findsOneWidget);
+      final number = find.byKey(const ValueKey('mushaf-surah-2-number'));
+      final count = find.byKey(const ValueKey('mushaf-surah-2-ayah-count'));
+      expect(tester.widget<Text>(number).data, l10n.digits(2));
+      expect(tester.widget<Text>(count).data, l10n.digits(286));
+      final frame = tester.getRect(
+        find.byKey(const ValueKey('mushaf-surah-cartouche')),
+      );
+      final title = tester.getRect(find.text('سُورَةُ البقرة'));
+      for (final (finder, position) in [(number, 0.83), (count, 0.17)]) {
+        final rect = tester.getRect(finder);
+        expect(
+          rect.center.dx,
+          closeTo(frame.left + frame.width * position, 0.1),
+        );
+        expect(
+          (rect.center.dy - frame.center.dy).abs(),
+          lessThanOrEqualTo(frame.height * 0.06),
+        );
+        expect(rect.width, lessThanOrEqualTo(frame.height * 0.44 + 0.1));
+        expect(rect.height, lessThanOrEqualTo(frame.height * 0.44 + 0.1));
+        expect(rect.overlaps(title), isFalse);
+      }
+      expect(l10n.get('juz'), isNot('juz'));
+      expect(tester.takeException(), isNull);
+    });
     testWidgets('Mushaf palette is localized in ${locale.languageCode}', (
       tester,
     ) async {
@@ -393,6 +489,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text(l10n.get('tajweed_colors')), findsOneWidget);
+      for (final key in ['quran_fullscreen', 'quran_show_controls']) {
+        expect(l10n.get(key), readerTranslations[locale.languageCode]![key]);
+        expect(l10n.get(key), isNot(key));
+      }
       expect(
         find.text(
           readerTranslations[locale
@@ -456,19 +556,84 @@ void main() {
                   : const Color(0xFFFFFCF3),
             );
             final spans = pageSpans(tester);
+            for (final marker
+                in find
+                    .byKey(const ValueKey('mushaf-hizb-boundary'))
+                    .evaluate()) {
+              final markerRect = tester.getRect(
+                find.byElementPredicate(
+                  (element) => identical(element, marker),
+                ),
+              );
+              for (final text
+                  in find
+                      .descendant(
+                        of: find.byKey(const ValueKey('mushaf-content-region')),
+                        matching: find.byType(Text),
+                      )
+                      .evaluate()) {
+                if ((text.widget as Text).textSpan == null) continue;
+                final textRect = tester.getRect(
+                  find.byElementPredicate(
+                    (element) => identical(element, text),
+                  ),
+                );
+                expect(
+                  markerRect.overlaps(textRect),
+                  isFalse,
+                  reason: 'Hizb markers must stay outside Quran text',
+                );
+              }
+            }
             final region = tester.widget<Container>(
               find.byKey(const ValueKey('mushaf-content-region')),
             );
+            final border =
+                (region.decoration! as BoxDecoration).border! as Border;
             expect(
-              ((region.decoration! as BoxDecoration).border! as Border)
-                  .top
-                  .color,
+              (printed ? border.left : border.top).color,
               dark ? scheme.outline : const Color(0xFF5F9584),
             );
             final surahTitle = tester.widget<Text>(find.text('سُورَةُ البقرة'));
+            expect(surahTitle.style!.fontWeight, FontWeight.w700);
+            if (printed) {
+              expect(surahTitle.style!.inherit, isFalse);
+              expect(
+                surahTitle.style!.leadingDistribution,
+                TextLeadingDistribution.even,
+              );
+              final frame = tester.getRect(
+                find.byKey(const ValueKey('mushaf-surah-cartouche')),
+              );
+              final title = tester.getRect(find.text('سُورَةُ البقرة'));
+              expect(frame.deflate(1).contains(title.topLeft), isTrue);
+              expect(frame.deflate(1).contains(title.bottomRight), isTrue);
+              final titleBox = tester.renderObject<RenderBox>(
+                find.text('سُورَةُ البقرة'),
+              );
+              final effectiveFontSize =
+                  surahTitle.style!.fontSize! *
+                  titleBox.getTransformTo(null).getColumn(0).length;
+              final oldFontSize = (frame.height * 0.6 / 2.2).clamp(
+                0,
+                surahTitle.style!.fontSize!,
+              );
+              expect(
+                effectiveFontSize,
+                greaterThanOrEqualTo(
+                  math.min(oldFontSize * 1.3, surahTitle.style!.fontSize!),
+                ),
+              );
+            }
             expect(
               surahTitle.style!.color,
-              dark ? scheme.primary : const Color(0xFF083F31),
+              printed
+                  ? dark
+                        ? AppTheme.darkTheme.colorScheme.onSurface
+                        : const Color(0xFF050807)
+                  : dark
+                  ? scheme.primary
+                  : const Color(0xFF083F31),
             );
             final ayahMarkers = spans.where(
               (span) => span.text?.contains('\u06DD') ?? false,
@@ -508,7 +673,13 @@ void main() {
               highlighted,
             );
             final basmala = tester.widget<Text>(
-              find.text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
+              find.text(
+                printed ? '\uFDFD' : 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+              ),
+            );
+            expect(
+              basmala.style!.fontWeight ?? FontWeight.w400,
+              FontWeight.w400,
             );
             expect(
               basmala.style!.color,

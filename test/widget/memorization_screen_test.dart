@@ -1900,7 +1900,75 @@ void main() {
       expect(find.text('Continue from word: 4'), findsOneWidget);
       await _tap(tester, 'Need a hint?');
       expect(page(tester).hintedWords, {'1:1': 4});
+      await _tap(tester, 'Need a hint?');
+      expect(_hidden(tester), {'1:2'});
+      expect(page(tester).hintedWords['1:2'], 2);
+      expect(find.text('Ayah 2 / 2'), findsOneWidget);
     });
+
+    testWidgets(
+      'Surah Al-Falaq 113 auto-completes across cloud transcripts',
+      (tester) async {
+        final speech = _FakeWindowedSpeech();
+        await startLab(
+          tester,
+          speech,
+          ayahs: [
+            _ayah(1, 'قل أعوذ برب الفلق'),
+            _ayah(2, 'من شر ما خلق'),
+            _ayah(3, 'ومن شر غاسق إذا وقب'),
+            _ayah(4, 'ومن شر النفاثات في العقد'),
+            _ayah(5, 'ومن شر حاسد إذا حسد'),
+          ],
+        );
+        await _tap(tester, 'Live word preview (unverified)');
+        speech.result!(
+          'قل أعوذ برب الفلق من شر ما خلق ومن شر غاسقا إذا وقب',
+          false,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts['1:3'], 5);
+        speech.stopping = () => speech.result!(
+          'قل أعوذ برب الفلق من شر ما خلق ومن شر غاصق إذا وقبة ومن شر النفاثات في العقد ومن شر حاسد إذا حسد',
+          true,
+        );
+        await _tap(tester, 'Pause');
+        expect(_hidden(tester), isEmpty);
+      },
+    );
+
+    testWidgets(
+      'Surah An-Nas 114 auto-completes across cloud transcripts',
+      (tester) async {
+        final nasSpeech = _FakeWindowedSpeech();
+        await startLab(
+          tester,
+          nasSpeech,
+          ayahs: [
+            _ayah(1, 'قل أعوذ برب الناس'),
+            _ayah(2, 'ملك الناس'),
+            _ayah(3, 'إله الناس'),
+            _ayah(4, 'من شر الوسواس الخناس'),
+            _ayah(5, 'الذي يوسوس في صدور الناس'),
+            _ayah(6, 'من الجنة والناس'),
+          ],
+        );
+        await _tap(tester, 'Live word preview (unverified)');
+        nasSpeech.result!(
+          'قل أعوذ برب الناس ملك الناس إله الناس من شر الوسواس الخناس الذي يوسوسوا في سضور الناس من الجنة والناس من الجنة والناس',
+          false,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts['1:5'], 5);
+        expect(page(tester).revealedWordCounts['1:6'], 3);
+        nasSpeech.stopping = () => nasSpeech.result!(
+          'قل أعوذ برب الناس ملك الناس إله الناس من شر الوسواس الخناس الذي يوسوسوا في سضور الناس من الجنة والناس من الجنة والناس',
+          true,
+        );
+        await _tap(tester, 'Pause');
+        expect(_hidden(tester), isEmpty);
+      },
+    );
 
     testWidgets('step practice also hides interim words and raw transcript', (
       tester,

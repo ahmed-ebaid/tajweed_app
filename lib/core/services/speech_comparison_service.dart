@@ -122,6 +122,26 @@ class SpeechComparisonService {
         }
       }
     }
+    if (allowWrittenOpenings &&
+        incoming.length >= 2 &&
+        retained.length > incoming.length) {
+      for (
+        var start = 0;
+        start <= retained.length - incoming.length;
+        start++
+      ) {
+        var matchesSlice = true;
+        for (var i = 0; i < incoming.length; i++) {
+          if (retained[start + i] != incoming[i]) {
+            matchesSlice = false;
+            break;
+          }
+        }
+        if (matchesSlice) {
+          return retained.join(' ');
+        }
+      }
+    }
     final combined = [...retained, ...incoming].join(' ');
     return allowWrittenOpenings
         ? _spokenWords(
@@ -452,16 +472,33 @@ class SpeechComparisonService {
           word++;
           continue;
         }
-        if (nextExpectedSet != null &&
+        final hasRightAnchor =
+            nextExpectedSet != null &&
             offset + 1 < spoken.length &&
             (nextExpectedSet.contains(spoken[offset + 1]) ||
                 (nextExpectedSet.first.length >= 4 &&
                     spoken[offset + 1] == '${nextExpectedSet.first}ا') ||
+                _matchesQalqalahPauseEnding(
+                  nextExpectedSet.first,
+                  spoken[offset + 1],
+                ) ||
                 _matchesAssimilatedMedialSyllable(
                   nextExpectedSet.first,
                   spoken[offset + 1],
-                )) &&
+                ));
+        if (hasRightAnchor &&
             _matchesAssimilatedMedialSyllable(
+              expected[word].first,
+              spoken[offset],
+            )) {
+          expanded.add(expected[word].first);
+          offset++;
+          word++;
+          continue;
+        }
+        if (word == expected.length - 1 &&
+            word > 0 &&
+            _matchesQalqalahPauseEnding(
               expected[word].first,
               spoken[offset],
             )) {
@@ -473,6 +510,25 @@ class SpeechComparisonService {
         return [...expanded, ...spoken.skip(offset)];
       }
       if (word < expected.length) break;
+    }
+    if (offset < spoken.length && expectedAyahs.isNotEmpty) {
+      final lastExpected = _expectedRecitationWords(
+        expectedAyahs.last,
+        keys.last,
+      );
+      final remaining = spoken.length - offset;
+      if (lastExpected.length >= 2 && remaining == lastExpected.length) {
+        var repeatsLastAyah = true;
+        for (var i = 0; i < lastExpected.length; i++) {
+          if (!lastExpected[i].contains(spoken[offset + i])) {
+            repeatsLastAyah = false;
+            break;
+          }
+        }
+        if (repeatsLastAyah) {
+          return expanded;
+        }
+      }
     }
     return [...expanded, ...spoken.skip(offset)];
   }
@@ -487,10 +543,29 @@ class SpeechComparisonService {
         spokenWord.endsWith('ا') &&
         nextExpectedWord.isNotEmpty &&
         (expectedWord.endsWith(nextExpectedWord[0]) ||
-            (expectedWord.length >= 4 && nextExpectedWord.startsWith('ا')))) {
+            (expectedWord.length >= 4 &&
+                (nextExpectedWord.startsWith('ا') ||
+                    nextExpectedWord.startsWith('إ') ||
+                    nextExpectedWord.startsWith('أ'))))) {
+      return true;
+    }
+    if (expectedWord.length >= 5 &&
+        spokenWord == '$expectedWordوا' &&
+        nextExpectedWord.isNotEmpty) {
       return true;
     }
     return false;
+  }
+
+  bool _matchesQalqalahPauseEnding(String expectedWord, String spokenWord) {
+    if (expectedWord.length < 3) return false;
+    final last = expectedWord[expectedWord.length - 1];
+    if (last != 'ب' && last != 'ق' && last != 'ط' && last != 'ج' && last != 'د') {
+      return false;
+    }
+    return spokenWord == '$expectedWordة' ||
+        spokenWord == '$expectedWordه' ||
+        spokenWord == '$expectedWordا';
   }
 
   bool _matchesSplitBoundaryWord(
@@ -561,6 +636,8 @@ class SpeechComparisonService {
   static const _confusableConsonantPairs = {
     ('ق', 'ك'),
     ('ك', 'ق'),
+    ('ق', 'ط'),
+    ('ط', 'ق'),
     ('ط', 'ت'),
     ('ت', 'ط'),
     ('ص', 'س'),
@@ -587,28 +664,49 @@ class SpeechComparisonService {
   ) {
     if (expectedWord.length < 4 || spokenWord.length < 3) return false;
     if (expectedWord.length == spokenWord.length) {
-      var diffIndex = -1;
+      final diffs = <int>[];
       for (var i = 0; i < expectedWord.length; i++) {
         if (expectedWord[i] != spokenWord[i]) {
-          if (diffIndex != -1) return false;
-          diffIndex = i;
+          diffs.add(i);
+          if (diffs.length > 2) return false;
         }
       }
-      if (diffIndex == 0 && expectedWord.length >= 4) {
-        return _confusableInitialConsonantPairs.contains((
-          expectedWord[0],
-          spokenWord[0],
+      if (diffs.isEmpty) return true;
+      if (diffs.length == 1) {
+        final diffIndex = diffs.single;
+        if (diffIndex == 0 && expectedWord.length >= 4) {
+          return _confusableInitialConsonantPairs.contains((
+            expectedWord[0],
+            spokenWord[0],
+          ));
+        }
+        if (diffIndex <= 0 || diffIndex >= expectedWord.length - 1) {
+          return false;
+        }
+        return _confusableConsonantPairs.contains((
+          expectedWord[diffIndex],
+          spokenWord[diffIndex],
         ));
       }
-      if (expectedWord.length < 5 ||
-          diffIndex <= 0 ||
-          diffIndex >= expectedWord.length - 1) {
-        return false;
+      if (diffs.length == 2 &&
+          expectedWord.length >= 4 &&
+          diffs[1] < expectedWord.length - 1) {
+        bool validAt(int idx) {
+          if (idx == 0) {
+            return _confusableInitialConsonantPairs.contains((
+              expectedWord[0],
+              spokenWord[0],
+            ));
+          }
+          return _confusableConsonantPairs.contains((
+            expectedWord[idx],
+            spokenWord[idx],
+          ));
+        }
+
+        return validAt(diffs[0]) && validAt(diffs[1]);
       }
-      return _confusableConsonantPairs.contains((
-        expectedWord[diffIndex],
-        spokenWord[diffIndex],
-      ));
+      return false;
     }
     if (expectedWord.length == spokenWord.length + 1) {
       if (expectedWord.length >= 5 &&

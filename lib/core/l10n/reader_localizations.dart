@@ -1,5 +1,7 @@
 const readerTranslations = <String, Map<String, String>>{
   'en': {
+    'quran_fullscreen': 'Read full screen',
+    'quran_show_controls': 'Show reading controls',
     'retry': 'Retry',
     'tajweed_colors_description': 'Show the same rule colors used in ayah view',
     'reset_page_zoom': 'Reset page zoom',
@@ -8,6 +10,8 @@ const readerTranslations = <String, Map<String, String>>{
     'quran_page': 'Quran page',
   },
   'ar': {
+    'quran_fullscreen': 'قراءة بملء الشاشة',
+    'quran_show_controls': 'إظهار أدوات القراءة',
     'retry': 'إعادة المحاولة',
     'tajweed_colors_description':
         'إظهار ألوان أحكام التجويد نفسها المستخدمة في عرض الآيات',
@@ -17,6 +21,8 @@ const readerTranslations = <String, Map<String, String>>{
     'quran_page': 'صفحة القرآن',
   },
   'ur': {
+    'quran_fullscreen': 'پوری اسکرین پر پڑھیں',
+    'quran_show_controls': 'پڑھنے کے کنٹرول دکھائیں',
     'retry': 'دوبارہ کوشش کریں',
     'tajweed_colors_description':
         'آیت کے منظر میں استعمال ہونے والے تجوید کے وہی رنگ دکھائیں',
@@ -26,6 +32,8 @@ const readerTranslations = <String, Map<String, String>>{
     'quran_page': 'قرآن کا صفحہ',
   },
   'tr': {
+    'quran_fullscreen': 'Tam ekran oku',
+    'quran_show_controls': 'Okuma kontrollerini göster',
     'retry': 'Tekrar dene',
     'tajweed_colors_description':
         'Ayet görünümünde kullanılan aynı tecvit renklerini göster',
@@ -35,6 +43,8 @@ const readerTranslations = <String, Map<String, String>>{
     'quran_page': 'Kur’an sayfası',
   },
   'fr': {
+    'quran_fullscreen': 'Lire en plein écran',
+    'quran_show_controls': 'Afficher les commandes de lecture',
     'retry': 'Réessayer',
     'tajweed_colors_description':
         'Afficher les mêmes couleurs de règles que dans la vue par verset',
@@ -45,6 +55,8 @@ const readerTranslations = <String, Map<String, String>>{
     'quran_page': 'Page du Coran',
   },
   'id': {
+    'quran_fullscreen': 'Baca layar penuh',
+    'quran_show_controls': 'Tampilkan kontrol membaca',
     'retry': 'Coba lagi',
     'tajweed_colors_description':
         'Tampilkan warna hukum tajwid yang sama seperti pada tampilan ayat',
@@ -55,6 +67,8 @@ const readerTranslations = <String, Map<String, String>>{
     'quran_page': 'Halaman Al-Quran',
   },
   'de': {
+    'quran_fullscreen': 'Im Vollbild lesen',
+    'quran_show_controls': 'Lesesteuerung anzeigen',
     'retry': 'Erneut versuchen',
     'tajweed_colors_description':
         'Dieselben Regelfarben wie in der Versansicht anzeigen',
@@ -65,6 +79,8 @@ const readerTranslations = <String, Map<String, String>>{
     'quran_page': 'Koranseite',
   },
   'es': {
+    'quran_fullscreen': 'Leer a pantalla completa',
+    'quran_show_controls': 'Mostrar controles de lectura',
     'retry': 'Reintentar',
     'tajweed_colors_description':
         'Mostrar los mismos colores de reglas que en la vista por aleya',

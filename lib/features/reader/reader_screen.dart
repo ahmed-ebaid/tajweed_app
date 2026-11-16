@@ -10,6 +10,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/data/surah_names.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/providers/bookmark_provider.dart';
@@ -43,12 +44,16 @@ class ReaderScreen extends StatefulWidget {
   final bool isActive;
   final bool suspendAudio;
   final ValueChanged<bool>? onAudioActivityChanged;
+  final bool isPageFullscreen;
+  final ValueChanged<bool>? onPageFullscreenChanged;
 
   const ReaderScreen({
     super.key,
     this.isActive = true,
     this.suspendAudio = false,
     this.onAudioActivityChanged,
+    this.isPageFullscreen = false,
+    this.onPageFullscreenChanged,
   });
 
   @override
@@ -131,6 +136,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _isMushafScrubberDragging = false;
   int? _mushafScrubberPreviewPage;
   Timer? _mushafScrubberHideTimer;
+  Timer? _pageControlsHideTimer;
+  int _pageControlsPointers = 0;
   int? _ayahModeAnchorAyah;
   int? _mushafAnchorSurah;
   int? _mushafCurrentAnchorAyah;
@@ -442,6 +449,32 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
+  void _syncPageControlsTimer({bool restart = false}) {
+    final shouldHide =
+        widget.isActive &&
+        _pageControlsPointers == 0 &&
+        _isAppForeground &&
+        _viewMode == _ReaderViewMode.page &&
+        !widget.isPageFullscreen &&
+        widget.onPageFullscreenChanged != null &&
+        !_loading &&
+        _ayahs.isNotEmpty;
+    if (!shouldHide || restart) {
+      _pageControlsHideTimer?.cancel();
+      _pageControlsHideTimer = null;
+    }
+    if (!shouldHide) return;
+    _pageControlsHideTimer ??= Timer(const Duration(seconds: 6), () {
+      _pageControlsHideTimer = null;
+      if (!mounted) return;
+      if (ModalRoute.of(context)?.isCurrent ?? false) {
+        widget.onPageFullscreenChanged?.call(true);
+      } else {
+        _syncPageControlsTimer();
+      }
+    });
+  }
+
   void _syncReviewReadingTimer({bool? routeCurrent}) {
     if (routeCurrent != null) _isRouteCurrent = routeCurrent;
     final shouldTrack =
@@ -484,6 +517,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     if (!mounted || provider == null) return;
     final request = provider.consumePending();
     if (request == null) return;
+    if (widget.isPageFullscreen) {
+      widget.onPageFullscreenChanged?.call(false);
+    }
 
     // Record lesson progress immediately for direct Today Lesson jumps so
     // completion is not delayed by scroll debounce/visibility heuristics.
@@ -868,6 +904,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _scrollSaveTimer?.cancel();
     _reviewReadingTimer?.cancel();
     _mushafScrubberHideTimer?.cancel();
+    _pageControlsHideTimer?.cancel();
     // Save position one final time before closing
     _saveScrollPosition();
     WidgetsBinding.instance.removeObserver(this);
@@ -883,6 +920,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _isAppForeground = state == AppLifecycleState.resumed;
+    _syncPageControlsTimer(restart: true);
     _syncReviewReadingTimer();
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
@@ -2653,6 +2691,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   Widget build(BuildContext context) {
+    _syncPageControlsTimer();
     _syncReviewReadingTimer(
       routeCurrent: ModalRoute.of(context)?.isCurrent ?? false,
     );
@@ -2677,142 +2716,209 @@ class _ReaderScreenState extends State<ReaderScreen>
       });
     }
 
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: false,
-          titleSpacing: 0,
-          actionsPadding: const EdgeInsets.only(left: 2, right: 8),
-          title: Padding(
-            padding: const EdgeInsets.only(left: 0, right: 10),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: _SurahSelector(
-                surahs: _surahsForSelector(),
-                selected: _selectedSurah,
-                juzStarts: _juzStartReferences(),
-                onBeforeOpen: () => _hideMushafScrubberOverlay(),
-                onChanged: (surah, {ayah}) {
-                  _scrollSaveTimer?.cancel();
-                  _cancelProgrammaticAyahScroll();
-                  _selectedSurah = surah;
-                  _activeLesson = null;
-                  // A plain surah pick opens at its first ayah. Without an
-                  // explicit target the reload kept the previous surah's
-                  // scroll offset, because the controller survives the swap.
-                  final targetAyah = ayah ?? 1;
-                  if (_scrollController.hasClients) {
-                    _scrollController.jumpTo(0.0);
-                  }
-                  _pendingScrollAyah = targetAyah;
-                  _pendingScrollOffset = 0.0;
-                  unawaited(
-                    context.read<BookmarkProvider>().saveLastRead(
-                      surah,
-                      targetAyah,
-                      scrollOffset: 0.0,
-                      caller: ayah == null
-                          ? '[surah-picker]'
-                          : '[surah-picker/juz-jump]',
+    final fullscreen =
+        widget.isPageFullscreen && _viewMode == _ReaderViewMode.page;
+    return PopScope(
+      canPop: !fullscreen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && fullscreen) {
+          widget.onPageFullscreenChanged?.call(false);
+        }
+      },
+      child: Listener(
+        onPointerDown: (_) {
+          _pageControlsPointers++;
+          _syncPageControlsTimer(restart: true);
+        },
+        onPointerUp: (_) {
+          _pageControlsPointers--;
+          _syncPageControlsTimer(restart: true);
+        },
+        onPointerCancel: (_) {
+          _pageControlsPointers--;
+          _syncPageControlsTimer(restart: true);
+        },
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Scaffold(
+            backgroundColor: fullscreen
+                ? _MushafColors.of(context).paper
+                : null,
+            appBar: fullscreen
+                ? null
+                : AppBar(
+                    centerTitle: false,
+                    titleSpacing: 0,
+                    actionsPadding: const EdgeInsets.only(left: 2, right: 8),
+                    title: Padding(
+                      padding: const EdgeInsets.only(left: 0, right: 10),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: _SurahSelector(
+                          surahs: _surahsForSelector(),
+                          selected: _selectedSurah,
+                          juzStarts: _juzStartReferences(),
+                          onBeforeOpen: () => _hideMushafScrubberOverlay(),
+                          onChanged: (surah, {ayah}) {
+                            _scrollSaveTimer?.cancel();
+                            _cancelProgrammaticAyahScroll();
+                            _selectedSurah = surah;
+                            _activeLesson = null;
+                            // A plain surah pick opens at its first ayah. Without an
+                            // explicit target the reload kept the previous surah's
+                            // scroll offset, because the controller survives the swap.
+                            final targetAyah = ayah ?? 1;
+                            if (_scrollController.hasClients) {
+                              _scrollController.jumpTo(0.0);
+                            }
+                            _pendingScrollAyah = targetAyah;
+                            _pendingScrollOffset = 0.0;
+                            unawaited(
+                              context.read<BookmarkProvider>().saveLastRead(
+                                surah,
+                                targetAyah,
+                                scrollOffset: 0.0,
+                                caller: ayah == null
+                                    ? '[surah-picker]'
+                                    : '[surah-picker/juz-jump]',
+                              ),
+                            );
+                            _stopAudio();
+                            _loadSurah(allowFallback: false);
+                          },
+                        ),
+                      ),
                     ),
-                  );
-                  _stopAudio();
-                  _loadSurah(allowFallback: false);
-                },
+                    actions:
+                        [
+                              if (_viewMode == _ReaderViewMode.page &&
+                                  widget.onPageFullscreenChanged != null)
+                                IconButton(
+                                  icon: const Icon(Icons.fullscreen, size: 22),
+                                  tooltip: l10n.get('quran_fullscreen'),
+                                  onPressed: () {
+                                    _hideMushafScrubberOverlay();
+                                    widget.onPageFullscreenChanged!(true);
+                                  },
+                                ),
+                              IconButton(
+                                icon: Icon(
+                                  _viewMode == _ReaderViewMode.page
+                                      ? Icons.view_list_outlined
+                                      : Icons.chrome_reader_mode_outlined,
+                                  size: 22,
+                                ),
+                                tooltip: _viewMode == _ReaderViewMode.page
+                                    ? l10n.get('switch_to_ayah_view')
+                                    : l10n.get('switch_to_page_view'),
+                                onPressed: _toggleReaderViewMode,
+                              ),
+                              // Bookmarks
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.bookmark_border_rounded,
+                                  size: 22,
+                                ),
+                                tooltip: l10n.get('bookmarks'),
+                                onPressed: _showBookmarksList,
+                              ),
+                              // Play all toggle
+                              IconButton(
+                                icon: Icon(
+                                  _isPlayingAll
+                                      ? Icons.stop_circle_outlined
+                                      : Icons.play_circle_outline,
+                                  size: 22,
+                                ),
+                                color: _isPlayingAll
+                                    ? Colors.red
+                                    : const Color(0xFF1D9E75),
+                                tooltip: _isPlayingAll
+                                    ? l10n.get('stop')
+                                    : l10n.get('play_all'),
+                                onPressed: _ayahs.isNotEmpty
+                                    ? _togglePlayAll
+                                    : null,
+                              ),
+                              if (_viewMode == _ReaderViewMode.ayah)
+                                IconButton(
+                                  icon: Icon(_ayahContentModeIcon, size: 22),
+                                  tooltip: _ayahContentModeTooltip,
+                                  onPressed: _cycleAyahContentMode,
+                                ),
+                              if (_viewMode == _ReaderViewMode.page)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.palette_outlined,
+                                    size: 22,
+                                  ),
+                                  tooltip: AppLocalizations.of(
+                                    context,
+                                  ).get('tajweed_colors'),
+                                  onPressed: _showMushafTajweedPalette,
+                                ),
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, size: 22),
+                                onSelected: (value) {
+                                  if (value == 'memorization') {
+                                    unawaited(_openMemorization());
+                                  } else {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const SettingsScreen(),
+                                      ),
+                                    );
+                                  }
+                                },
+                                itemBuilder: (_) => [
+                                  PopupMenuItem(
+                                    value: 'memorization',
+                                    child: Text(l10n.get('mem_title')),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'settings',
+                                    child: Text(l10n.settings),
+                                  ),
+                                ],
+                              ),
+                            ]
+                            .map((action) => SizedBox(width: 44, child: action))
+                            .toList(),
+                  ),
+            body: SafeArea(
+              top: fullscreen,
+              bottom: fullscreen,
+              child: Column(
+                children: [
+                  if (_viewMode == _ReaderViewMode.ayah) ...[
+                    if (_showsArabicText) ...[
+                      TajweedLegend(
+                        rules: TajweedRule.values,
+                        langCode: langCode,
+                      ),
+                      const Divider(height: 0.5),
+                    ],
+                  ],
+                  Expanded(
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _ayahs.isEmpty
+                        ? _EmptyState(onRetry: _loadSurah)
+                        : (_viewMode == _ReaderViewMode.page
+                              ? _buildMushafPageView()
+                              : _buildAyahList(langCode, pageMode: false)),
+                  ),
+                  if (_playingAyahNumber != null && !fullscreen)
+                    AudioPlayerBar(
+                      audioService: _audio,
+                      label:
+                          '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
+                      onClose: _stopAudio,
+                    ),
+                ],
               ),
             ),
           ),
-          actions: [
-            IconButton(
-              icon: Icon(
-                _viewMode == _ReaderViewMode.page
-                    ? Icons.view_list_outlined
-                    : Icons.chrome_reader_mode_outlined,
-                size: 22,
-              ),
-              tooltip: _viewMode == _ReaderViewMode.page
-                  ? l10n.get('switch_to_ayah_view')
-                  : l10n.get('switch_to_page_view'),
-              onPressed: _toggleReaderViewMode,
-            ),
-            // Bookmarks
-            IconButton(
-              icon: const Icon(Icons.bookmark_border_rounded, size: 22),
-              tooltip: l10n.get('bookmarks'),
-              onPressed: _showBookmarksList,
-            ),
-            // Play all toggle
-            IconButton(
-              icon: Icon(
-                _isPlayingAll
-                    ? Icons.stop_circle_outlined
-                    : Icons.play_circle_outline,
-                size: 22,
-              ),
-              color: _isPlayingAll ? Colors.red : const Color(0xFF1D9E75),
-              tooltip: _isPlayingAll ? l10n.get('stop') : l10n.get('play_all'),
-              onPressed: _ayahs.isNotEmpty ? _togglePlayAll : null,
-            ),
-            if (_viewMode == _ReaderViewMode.ayah)
-              IconButton(
-                icon: Icon(_ayahContentModeIcon, size: 22),
-                tooltip: _ayahContentModeTooltip,
-                onPressed: _cycleAyahContentMode,
-              ),
-            if (_viewMode == _ReaderViewMode.page)
-              IconButton(
-                icon: const Icon(Icons.palette_outlined, size: 22),
-                tooltip: AppLocalizations.of(context).get('tajweed_colors'),
-                onPressed: _showMushafTajweedPalette,
-              ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 22),
-              onSelected: (value) {
-                if (value == 'memorization') {
-                  unawaited(_openMemorization());
-                } else {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                }
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'memorization',
-                  child: Text(l10n.get('mem_title')),
-                ),
-                PopupMenuItem(value: 'settings', child: Text(l10n.settings)),
-              ],
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            if (_viewMode == _ReaderViewMode.ayah) ...[
-              if (_showsArabicText) ...[
-                TajweedLegend(rules: TajweedRule.values, langCode: langCode),
-                const Divider(height: 0.5),
-              ],
-            ],
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _ayahs.isEmpty
-                  ? _EmptyState(onRetry: _loadSurah)
-                  : (_viewMode == _ReaderViewMode.page
-                        ? _buildMushafPageView()
-                        : _buildAyahList(langCode, pageMode: false)),
-            ),
-            // Audio player bar when playing
-            if (_playingAyahNumber != null)
-              AudioPlayerBar(
-                audioService: _audio,
-                label:
-                    '$_selectedSurah:$_playingAyahNumber${_isPlayingAll ? ' (All)' : ''}',
-                onClose: _stopAudio,
-              ),
-          ],
         ),
       ),
     );
@@ -3248,7 +3354,13 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (raw.isEmpty) {
         throw StateError('No Quran text was returned for page $safePage');
       }
-      return AyahMapper.fromApiList(raw, requestedLangCode: 'ar');
+      final ayahs = AyahMapper.fromApiList(raw, requestedLangCode: 'ar');
+      if (!_hasMushafLineMetadata(ayahs)) {
+        throw StateError(
+          'Missing printed line metadata for Quran page $safePage',
+        );
+      }
+      return ayahs;
     });
   }
 
@@ -3613,7 +3725,9 @@ class _ReaderScreenState extends State<ReaderScreen>
           padding: EdgeInsets.only(bottom: _showMushafScrubber ? 108 : 0),
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onTap: _showMushafScrubberOverlay,
+            onTap: widget.isPageFullscreen
+                ? () => widget.onPageFullscreenChanged?.call(false)
+                : _showMushafScrubberOverlay,
             onLongPress: _togglePageBookmark,
             child: PageView.builder(
               controller: _mushafPageController,
@@ -3656,6 +3770,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                   surahName: surahName,
                   localizedPageNumber: localizedPageNumber,
                   isBookmarked: isPageBookmarked,
+                  compact: true,
                   onZoomChanged: (zoomed) {
                     if (_mushafPageZoomed == zoomed) return;
                     setState(() => _mushafPageZoomed = zoomed);
@@ -3680,7 +3795,7 @@ class _ReaderScreenState extends State<ReaderScreen>
             ),
           ),
         ),
-        _buildMushafScrubber(),
+        if (!widget.isPageFullscreen) _buildMushafScrubber(),
       ],
     );
   }
@@ -4273,10 +4388,10 @@ class _MushafTextPage extends StatelessWidget {
               final horizontalInset =
                   _MushafBorderMarker.width + _MushafBorderMarker.textGap;
               final heightFactor = isLandscape ? 1.8 : 2.0;
-              final baseFontSize = fitToViewport
-                  ? 25.0
-                  : isLandscape
+              final baseFontSize = isLandscape
                   ? 38.0
+                  : fitToViewport
+                  ? 25.0
                   : 19.0;
               final glyphPadding = isLandscape ? 24.0 : 20.0;
               final scrollTopPadding = fitToViewport
@@ -4290,7 +4405,7 @@ class _MushafTextPage extends StatelessWidget {
                   ? 20.0
                   : 28.0;
               final isOpeningPage = pageNumber <= 2;
-              final availableTextHeight =
+              final viewportTextHeight =
                   (fitToViewport && viewportHeight > 0
                       ? viewportHeight
                       : constraints.maxHeight) -
@@ -4302,27 +4417,32 @@ class _MushafTextPage extends StatelessWidget {
                 inherit: !fitToViewport,
                 fontFamily: 'AmiriQuran',
                 fontSize: baseFontSize,
+                // Amiri's default line box adds leading that shrinks fitted text.
+                // Keep a proportional em box; fixed rows reserve mark clearance.
                 height: fitToViewport && hasPrintedLineLayout
-                    ? 1.5
+                    ? 1.8
                     : heightFactor,
                 leadingDistribution: TextLeadingDistribution.even,
                 color: colors.ink,
-                fontWeight: fitToViewport ? FontWeight.w600 : FontWeight.w700,
+                fontWeight: FontWeight.w700,
               );
 
-              // Keep the text column proportional to the glyph size so lines
-              // stay as tight as the printed page instead of stretching.
               final aspectCap = baseFontSize * 26;
               final contentWidth =
                   !fitToViewport && aspectCap < constraints.maxWidth
                   ? aspectCap
                   : constraints.maxWidth;
+              // Landscape fits a proportional page to the width, not the short
+              // viewport height, keeping larger fixed lines vertically scrollable.
+              final availableTextHeight = fitToViewport && isLandscape
+                  ? math.max(viewportTextHeight, contentWidth / 0.62)
+                  : viewportTextHeight;
 
               return Directionality(
                 textDirection: TextDirection.rtl,
                 child: Scrollbar(
                   child: SingleChildScrollView(
-                    physics: scrollEnabled && !fitToViewport
+                    physics: scrollEnabled && (!fitToViewport || isLandscape)
                         ? const BouncingScrollPhysics()
                         : const NeverScrollableScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(
@@ -4590,14 +4710,8 @@ class _MushafTextPage extends StatelessWidget {
           pageScale,
           math.min(
             math.max(1, availableLineWidth - 1) / metrics.width,
-            math.max(1, slotHeight - 4) / metrics.height,
+            math.max(1, slotHeight - 6) / metrics.height,
           ),
-        );
-      }
-      if (verticalGlyphScale <= 1) {
-        slotHeight = math.min(
-          slotHeight,
-          (scaledStyle.fontSize ?? 25) * pageScale * 2.2 + 4,
         );
       }
     }
@@ -4628,6 +4742,7 @@ class _MushafTextPage extends StatelessWidget {
                 final surahLine = surahLines[lineNumber];
                 if (surahLine != null) {
                   return _MushafSurahHeaderLine(
+                    surahNumber: surahLine,
                     surahName: surahNameFor(surahLine),
                     fontSize: (scaledStyle.fontSize ?? 24) * 0.92,
                     compact: fitHeight != null,
@@ -4648,7 +4763,13 @@ class _MushafTextPage extends StatelessWidget {
                     content: content,
                     style: scaledStyle,
                     horizontalInset: horizontalInset,
-                    centered: pageNumber <= 2 || content.wordGroups.length < 3,
+                    centered:
+                        pageNumber <= 2 ||
+                        (_mushafCenteredTextLines[pageNumber]?.contains(
+                              lineNumber,
+                            ) ??
+                            false) ||
+                        content.wordGroups.length == 1,
                     scale: pageScale,
                     verticalGlyphScale: fittedVerticalGlyphScale,
                   );
@@ -4949,7 +5070,7 @@ class _MushafSurahOpener extends StatelessWidget {
                       color: _MushafColors.of(context).isDark
                           ? _MushafColors.of(context).accent
                           : const Color(0xFF083F31),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -4996,11 +5117,13 @@ class _MushafSurahOrnament extends StatelessWidget {
 }
 
 class _MushafSurahHeaderLine extends StatelessWidget {
+  final int surahNumber;
   final String surahName;
   final double fontSize;
   final bool compact;
 
   const _MushafSurahHeaderLine({
+    required this.surahNumber,
     required this.surahName,
     required this.fontSize,
     this.compact = false,
@@ -5011,38 +5134,44 @@ class _MushafSurahHeaderLine extends StatelessWidget {
     final colors = _MushafColors.of(context);
     if (compact) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: CustomPaint(
           key: const ValueKey('mushaf-surah-cartouche'),
           painter: _MushafSurahCartouchePainter(colors.ink, colors.paper),
-          child: Center(
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              heightFactor: 0.72,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: FractionalTranslation(
-                  // Amiri's visible lettering sits below its line-box center.
-                  translation: const Offset(0, -0.12),
-                  child: Text(
-                    'سُورَةُ ${_mushafSurahName(surahName)}',
-                    textDirection: TextDirection.rtl,
-                    textHeightBehavior: const TextHeightBehavior(
-                      leadingDistribution: TextLeadingDistribution.even,
-                    ),
-                    style: TextStyle(
-                      inherit: false,
-                      fontFamily: 'AmiriQuran',
-                      fontSize: fontSize,
-                      height: 2.2,
-                      leadingDistribution: TextLeadingDistribution.even,
-                      color: colors.ink,
-                      fontWeight: FontWeight.w600,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: FractionallySizedBox(
+                  widthFactor: 0.5,
+                  heightFactor: 0.75,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: FractionalTranslation(
+                      // Amiri's visible lettering sits below its line-box center.
+                      translation: const Offset(0, -0.02),
+                      child: Text(
+                        'سُورَةُ ${_mushafSurahName(surahName)}',
+                        textDirection: TextDirection.rtl,
+                        textHeightBehavior: const TextHeightBehavior(
+                          leadingDistribution: TextLeadingDistribution.even,
+                        ),
+                        style: TextStyle(
+                          inherit: false,
+                          fontFamily: 'AmiriQuran',
+                          fontSize: fontSize,
+                          height: 1.8,
+                          leadingDistribution: TextLeadingDistribution.even,
+                          color: colors.ink,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+              _MushafSurahCircleNumbers(surahNumber: surahNumber),
+            ],
           ),
         ),
       );
@@ -5074,7 +5203,7 @@ class _MushafSurahHeaderLine extends StatelessWidget {
                     color: colors.isDark
                         ? colors.accent
                         : const Color(0xFF083F31),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -5083,6 +5212,62 @@ class _MushafSurahHeaderLine extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MushafSurahCircleNumbers extends StatelessWidget {
+  final int surahNumber;
+
+  const _MushafSurahCircleNumbers({required this.surahNumber});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations(Localizations.localeOf(context));
+    final count = surahAyahCounts[surahNumber - 1];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final diameter = constraints.maxHeight * 0.36;
+        return Stack(
+          children: [
+            for (final (position, value, label, kind) in [
+              (0.83, surahNumber, l10n.get('surah'), 'number'),
+              (0.17, count, l10n.get('verses'), 'ayah-count'),
+            ])
+              Positioned(
+                left: constraints.maxWidth * position - diameter / 2,
+                top: (constraints.maxHeight - diameter) / 2,
+                width: diameter,
+                height: diameter,
+                child: Semantics(
+                  label: '$label ${l10n.digits(value)}',
+                  excludeSemantics: true,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: FractionalTranslation(
+                      translation: const Offset(0, -0.12),
+                      child: Text(
+                        l10n.digits(value),
+                        key: ValueKey('mushaf-surah-$surahNumber-$kind'),
+                        textDirection: TextDirection.ltr,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          inherit: false,
+                          fontFamily: 'AmiriQuran',
+                          fontSize: 20,
+                          height: 1.4,
+                          leadingDistribution: TextLeadingDistribution.even,
+                          fontWeight: FontWeight.w700,
+                          color: _MushafColors.of(context).ink,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -5170,19 +5355,26 @@ class _MushafBasmalaLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          _bismillah,
-          textAlign: TextAlign.center,
-          textDirection: TextDirection.rtl,
-          style: TextStyle(
-            fontFamily: 'AmiriQuran',
-            fontSize: fontSize,
-            height: 1.8,
-            color: _MushafColors.of(context).ink,
-            fontWeight: FontWeight.w400,
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 14 : 0,
+        vertical: compact ? 4 : 0,
+      ),
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            compact ? '\uFDFD' : _bismillah,
+            semanticsLabel: _bismillah,
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'AmiriQuran',
+              fontSize: fontSize,
+              height: compact ? null : 1.8,
+              color: _MushafColors.of(context).ink,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),
@@ -5203,6 +5395,15 @@ class _MushafBoundaryPlacement {
     required this.semanticLabel,
   });
 }
+
+// Centered text lines in the app's Madinah QCF V1 layout, excluding decorations.
+// https://qul.tarteel.ai/resources/mushaf-layout/15
+const _mushafCenteredTextLines = <int, Set<int>>{
+  600: {9},
+  602: {5, 15},
+  603: {10},
+  604: {9, 14, 15},
+};
 
 class _MushafPrintedLineContent {
   final int lineNumber;
@@ -5308,7 +5509,7 @@ class _MushafLineMetrics {
       textDirection: TextDirection.rtl,
       textScaler: TextScaler.noScaling,
     )..layout();
-    final wordSpacing = space.width * 0.5;
+    final wordSpacing = space.width * 0.35;
     space.dispose();
     return _MushafLineMetrics(
       math.max(1, width + wordSpacing * (content.wordGroups.length - 1)),
@@ -5335,6 +5536,41 @@ class _MushafJustifiedLine extends StatelessWidget {
     required this.verticalGlyphScale,
   });
 
+  TextSpan _withPrintedInk(InlineSpan span, TextStyle parentStyle) {
+    if (span is! TextSpan) {
+      throw StateError('Printed Mushaf words must contain only text spans');
+    }
+    final resolvedStyle = parentStyle.merge(span.style);
+    final color = resolvedStyle.color!;
+    // Explicit, sharp ink expansion also works when iOS ignores synthetic bold.
+    // Shadows affect paint only, leaving shaping and measured advances intact.
+    final radius = (resolvedStyle.fontSize ?? 25) * 0.012;
+    return TextSpan(
+      text: span.text,
+      style: resolvedStyle.copyWith(
+        shadows: [
+          for (final offset in [
+            Offset(-radius, 0),
+            Offset(radius, 0),
+            Offset(0, -radius),
+            Offset(0, radius),
+          ])
+            Shadow(color: color, offset: offset),
+        ],
+      ),
+      children: span.children
+          ?.map((child) => _withPrintedInk(child, resolvedStyle))
+          .toList(growable: false),
+      recognizer: span.recognizer,
+      mouseCursor: span.mouseCursor,
+      onEnter: span.onEnter,
+      onExit: span.onExit,
+      semanticsLabel: span.semanticsLabel,
+      locale: span.locale,
+      spellOut: span.spellOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -5342,9 +5578,15 @@ class _MushafJustifiedLine extends StatelessWidget {
         final width = math.max(1.0, constraints.maxWidth - horizontalInset * 2);
         final groups = [
           for (final group in content.wordGroups)
-            TextSpan(style: style, children: group),
+            TextSpan(
+              style: style,
+              children: [
+                for (final span in group) _withPrintedInk(span, style),
+              ],
+            ),
         ];
         final metrics = _MushafLineMetrics.measure(content, style);
+        final lineWidth = centered ? metrics.width : width / scale;
         return Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -5358,13 +5600,13 @@ class _MushafJustifiedLine extends StatelessWidget {
                 textDirection: TextDirection.rtl,
                 excludeSemantics: true,
                 child: SizedBox(
-                  width: width,
+                  width: lineWidth * scale,
                   height: metrics.height * scale,
                   child: Transform.scale(
                     scaleY: verticalGlyphScale,
                     child: FittedBox(
                       child: SizedBox(
-                        width: width / scale,
+                        width: lineWidth,
                         height: metrics.height,
                         child: Row(
                           textDirection: TextDirection.rtl,
@@ -5597,10 +5839,6 @@ class _SurahSelector extends StatelessWidget {
       }
     }
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Reserve room for app bar icons + paddings so title stays balanced.
-    final maxTitleWidth = (screenWidth - 220).clamp(96.0, 280.0);
-
     return GestureDetector(
       onTap: () {
         if (onBeforeOpen?.call() ?? false) return;
@@ -5611,15 +5849,14 @@ class _SurahSelector extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxTitleWidth),
+            Flexible(
               child: Text(
                 arabicName.isNotEmpty ? arabicName : 'Surah $selected',
                 maxLines: 1,
                 textAlign: TextAlign.right,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFamily: arabicName.isNotEmpty ? 'UthmanicHafs' : null,
+                  fontFamily: arabicName.isNotEmpty ? 'AmiriQuran' : null,
                   fontSize: arabicName.isNotEmpty ? 18 : 16,
                 ),
               ),

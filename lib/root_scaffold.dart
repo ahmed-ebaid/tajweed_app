@@ -41,6 +41,7 @@ class _RootScaffoldState extends State<RootScaffold>
   bool _reviewRequestInFlight = false;
   bool _isUpdatingSeasonalIcon = false;
   bool _isReaderAudioActive = false;
+  bool _isReaderFullscreen = false;
   late final bool _reviewEligibleAtLaunch;
 
   @override
@@ -103,6 +104,7 @@ class _RootScaffoldState extends State<RootScaffold>
       _isForeground &&
       !_isUpdatingSeasonalIcon &&
       !_isReaderAudioActive &&
+      !_isReaderFullscreen &&
       _currentIndex != 2 &&
       _currentIndex != 4 &&
       ModalRoute.of(context)?.isCurrent == true;
@@ -201,7 +203,10 @@ class _RootScaffoldState extends State<RootScaffold>
   }
 
   void _switchTab(int index) {
-    setState(() => _currentIndex = index);
+    setState(() {
+      _currentIndex = index;
+      _isReaderFullscreen = false;
+    });
   }
 
   @override
@@ -214,6 +219,10 @@ class _RootScaffoldState extends State<RootScaffold>
         isActive: _currentIndex == 1,
         suspendAudio: _currentIndex == 4,
         onAudioActivityChanged: (active) => _isReaderAudioActive = active,
+        isPageFullscreen: _currentIndex == 1 && _isReaderFullscreen,
+        onPageFullscreenChanged: (fullscreen) {
+          setState(() => _isReaderFullscreen = fullscreen);
+        },
       ),
       const QuizScreen(),
       const RulesScreen(),
@@ -224,10 +233,9 @@ class _RootScaffoldState extends State<RootScaffold>
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         body: IndexedStack(index: _currentIndex, children: screens),
-        bottomNavigationBar: AppBottomNav(
-          currentIndex: _currentIndex,
-          onTap: _switchTab,
-        ),
+        bottomNavigationBar: _currentIndex == 1 && _isReaderFullscreen
+            ? null
+            : AppBottomNav(currentIndex: _currentIndex, onTap: _switchTab),
         // Keep floating settings on other tabs, but hide on reader where
         // settings is shown directly in the app bar actions.
         floatingActionButton: _currentIndex == 1

@@ -24,8 +24,10 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   );
   Timer? _poll;
   double _windowStartSeconds = 0;
+  double _lastDurationSeconds = 0;
   @override
   double get windowStartSeconds => _windowStartSeconds;
+  double get lastDurationSeconds => _lastDurationSeconds;
   Future<void>? _inFlight;
   Future<void>? _finalizing;
   void Function(String, bool)? _onResult;
@@ -222,6 +224,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     }
     final generation = ++_generation;
     _windowStartSeconds = 0;
+    _lastDurationSeconds = 0;
     _onResult = onResult;
     _onError = onError;
     _channel.setMethodCallHandler((call) async {
@@ -362,6 +365,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
       throw const FormatException('Invalid Quran ASR report.');
     }
     _windowStartSeconds = start.toDouble();
+    _lastDurationSeconds = duration.toDouble();
     return transcript.trim();
   }
 }
