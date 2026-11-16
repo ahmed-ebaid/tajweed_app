@@ -776,6 +776,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _comparison
                 .recitationWords(widget.ayahs[startIndex].imlaei ?? '')
                 .length;
+    var completedInRetained = 0;
     if (!startAlreadyCompleted) {
       for (final ayah in ayahs) {
         final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
@@ -792,6 +793,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         final words = _comparison.recitationWords(ayah.imlaei ?? '');
         retained.addAll(words.take(count));
         if (count < words.length) break;
+        completedInRetained++;
       }
     }
     var effectiveSpokenText = text;
@@ -831,6 +833,54 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             if (counts.isNotEmpty && counts.first > 0) {
               effectiveSpokenText = stripped;
               break;
+            }
+          }
+        }
+      }
+    }
+    final activeOffset = completedInRetained < ayahs.length
+        ? completedInRetained
+        : ayahs.length - 1;
+    final activeIndex = startIndex + activeOffset;
+    if (effectiveSpokenText == text && activeIndex > 0) {
+      final prevWords = _comparison.recitationWords(
+        widget.ayahs[activeIndex - 1].imlaei ?? '',
+      );
+      final incomingWords = _comparison.recitationWords(text);
+      if (prevWords.length >= 2 && incomingWords.length > 2) {
+        final activeAyah = widget.ayahs[activeIndex];
+        final activeKey =
+            '${activeAyah.surahNumber}:${activeAyah.ayahNumber}';
+        final directCounts = _comparison.matchingPrefixWordCounts(
+          expectedAyahs: [ayahs.first.imlaei ?? ''],
+          expectedVerseKeys: [startKey],
+          spokenText: text,
+          allowWrittenOpenings: true,
+        );
+        if (directCounts.isEmpty || directCounts.first == 0) {
+          final earlierWords = <String>{
+            for (final earlier in widget.ayahs.take(activeIndex))
+              ..._comparison.recitationWords(earlier.imlaei ?? ''),
+          };
+          final prevTail0 = prevWords[prevWords.length - 2];
+          final prevTail1 = prevWords.last;
+          for (var pos = 1; pos + 2 < incomingWords.length; pos++) {
+            if (incomingWords[pos] == prevTail0 &&
+                incomingWords[pos + 1] == prevTail1 &&
+                incomingWords.take(pos).any(earlierWords.contains)) {
+              final afterPrev = incomingWords.skip(pos + 2).join(' ');
+              final counts = _comparison.matchingPrefixWordCounts(
+                expectedAyahs: [activeAyah.imlaei ?? ''],
+                expectedVerseKeys: [activeKey],
+                spokenText: afterPrev,
+                allowWrittenOpenings: true,
+              );
+              if (counts.isNotEmpty && counts.first > 0) {
+                effectiveSpokenText = retained.isEmpty
+                    ? afterPrev
+                    : incomingWords.skip(pos).join(' ');
+                break;
+              }
             }
           }
         }

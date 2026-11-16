@@ -69,6 +69,24 @@ class SpeechComparisonService {
           break;
         }
       }
+      if (!matches && allowWrittenOpenings) {
+        final candidate = _spokenWords(
+          [...retained.take(retained.length - overlap), ...incoming].join(' '),
+          expectedAyahs,
+          expectedVerseKeys,
+          allowWrittenOpenings,
+        );
+        if (candidate.length >= retained.length) {
+          matches = true;
+          for (var i = 0; i < overlap; i++) {
+            final idx = retained.length - overlap + i;
+            if (candidate[idx] != retained[idx]) {
+              matches = false;
+              break;
+            }
+          }
+        }
+      }
       if (matches) {
         final joined = [...retained, ...incoming.skip(overlap)].join(' ');
         return allowWrittenOpenings
@@ -362,12 +380,24 @@ class SpeechComparisonService {
           word++;
           continue;
         }
-        if (word + 1 < expected.length &&
+        Set<String>? nextExpectedSet;
+        if (word + 1 < expected.length) {
+          nextExpectedSet = expected[word + 1];
+        } else if (ayah + 1 < expectedAyahs.length) {
+          final nextAyahExpected = _expectedRecitationWords(
+            expectedAyahs[ayah + 1],
+            keys[ayah + 1],
+          );
+          if (nextAyahExpected.isNotEmpty) {
+            nextExpectedSet = nextAyahExpected.first;
+          }
+        }
+        if (nextExpectedSet != null &&
             offset + 1 < spoken.length &&
-            expected[word + 1].contains(spoken[offset + 1]) &&
+            nextExpectedSet.contains(spoken[offset + 1]) &&
             _matchesAssimilatedBoundaryWord(
               expected[word].first,
-              expected[word + 1].first,
+              nextExpectedSet.first,
               spoken[offset],
             )) {
           expanded.add(expected[word].first);
@@ -376,8 +406,8 @@ class SpeechComparisonService {
           continue;
         }
         if (offset + 2 < spoken.length &&
-            word + 1 < expected.length &&
-            expected[word + 1].contains(spoken[offset + 2]) &&
+            nextExpectedSet != null &&
+            nextExpectedSet.contains(spoken[offset + 2]) &&
             _matchesSplitBoundaryWord(
               expected[word].first,
               spoken[offset],
@@ -400,11 +430,11 @@ class SpeechComparisonService {
           word += 2;
           continue;
         }
-        if (word + 1 < expected.length &&
+        if (nextExpectedSet != null &&
             offset + 1 < spoken.length &&
             _matchesAssimilatedFinalNoonWord(
               expected[word].first,
-              expected[word + 1].first,
+              nextExpectedSet.first,
               spoken[offset],
               spoken[offset + 1],
             )) {
@@ -422,9 +452,15 @@ class SpeechComparisonService {
           word++;
           continue;
         }
-        if (word + 1 < expected.length &&
+        if (nextExpectedSet != null &&
             offset + 1 < spoken.length &&
-            expected[word + 1].contains(spoken[offset + 1]) &&
+            (nextExpectedSet.contains(spoken[offset + 1]) ||
+                (nextExpectedSet.first.length >= 4 &&
+                    spoken[offset + 1] == '${nextExpectedSet.first}ا') ||
+                _matchesAssimilatedMedialSyllable(
+                  nextExpectedSet.first,
+                  spoken[offset + 1],
+                )) &&
             _matchesAssimilatedMedialSyllable(
               expected[word].first,
               spoken[offset],
@@ -450,7 +486,8 @@ class SpeechComparisonService {
         spokenWord.startsWith(expectedWord) &&
         spokenWord.endsWith('ا') &&
         nextExpectedWord.isNotEmpty &&
-        expectedWord.endsWith(nextExpectedWord[0])) {
+        (expectedWord.endsWith(nextExpectedWord[0]) ||
+            (expectedWord.length >= 4 && nextExpectedWord.startsWith('ا')))) {
       return true;
     }
     return false;
@@ -534,11 +571,21 @@ class SpeechComparisonService {
     ('ذ', 'ظ'),
   };
 
+  static const _confusableInitialConsonantPairs = {
+    ('ص', 'س'),
+    ('س', 'ص'),
+    ('ص', 'ف'),
+    ('ا', 'إ'),
+    ('إ', 'ا'),
+    ('ا', 'أ'),
+    ('أ', 'ا'),
+  };
+
   bool _matchesAssimilatedMedialSyllable(
     String expectedWord,
     String spokenWord,
   ) {
-    if (expectedWord.length < 5 || spokenWord.length < 4) return false;
+    if (expectedWord.length < 4 || spokenWord.length < 3) return false;
     if (expectedWord.length == spokenWord.length) {
       var diffIndex = -1;
       for (var i = 0; i < expectedWord.length; i++) {
@@ -547,13 +594,30 @@ class SpeechComparisonService {
           diffIndex = i;
         }
       }
-      if (diffIndex <= 0 || diffIndex >= expectedWord.length - 1) return false;
+      if (diffIndex == 0 && expectedWord.length >= 4) {
+        return _confusableInitialConsonantPairs.contains((
+          expectedWord[0],
+          spokenWord[0],
+        ));
+      }
+      if (expectedWord.length < 5 ||
+          diffIndex <= 0 ||
+          diffIndex >= expectedWord.length - 1) {
+        return false;
+      }
       return _confusableConsonantPairs.contains((
         expectedWord[diffIndex],
         spokenWord[diffIndex],
       ));
     }
     if (expectedWord.length == spokenWord.length + 1) {
+      if (expectedWord.length >= 5 &&
+          (expectedWord.startsWith('ا') ||
+              expectedWord.startsWith('أ') ||
+              expectedWord.startsWith('إ')) &&
+          expectedWord.substring(1) == spokenWord) {
+        return true;
+      }
       for (var i = 2; i < expectedWord.length - 1; i++) {
         if (expectedWord[i] != 'ا') continue;
         final withoutMedialAlif =

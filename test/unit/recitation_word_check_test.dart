@@ -739,4 +739,67 @@ void main() {
       );
     }
   });
+
+  test('matches Uthmani short-alif iyyaka, connected-speech alif elision, and initial sibilant assimilation in 1:5-1:7', () {
+    const fatihah5 = 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ';
+    const fatihah6 = 'اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ';
+    const fatihah7 =
+        'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ';
+
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [fatihah5, fatihah6],
+            expectedVerseKeys: ['1:5', '1:6'],
+            spokenText:
+                'إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِينُ إِهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [fatihah5, fatihah6],
+            expectedVerseKeys: ['1:5', '1:6'],
+            spokenText:
+                'إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِيِّنَا اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [fatihah7],
+            expectedVerseKeys: ['1:7'],
+            spokenText:
+                'فِرَاطَ الَّذِينَ نَعْمَتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      1,
+    );
+
+    final joined = comparison.joinRecitationSegment(
+      retainedPrefix: '$fatihah5 $fatihah6 صراط الذين',
+      spokenText: 'هِدْنَا السِّرَاطَ الْمُسْتَقِيمَ سِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ',
+      expectedAyahs: [fatihah5, fatihah6, fatihah7],
+      expectedVerseKeys: ['1:5', '1:6', '1:7'],
+      allowWrittenOpenings: true,
+    );
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: [fatihah5, fatihah6, fatihah7],
+        expectedVerseKeys: ['1:5', '1:6', '1:7'],
+        spokenText: joined,
+        allowWrittenOpenings: true,
+      ),
+      [4, 3, 4],
+    );
+  });
 }

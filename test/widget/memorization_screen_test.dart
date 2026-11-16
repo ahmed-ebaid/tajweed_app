@@ -1331,6 +1331,51 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Fatiha full surah sliding windows advance through 1:5-1:7 cloud snapshots',
+      (tester) async {
+        final speech = _FakeSpeech();
+        await startLab(
+          tester,
+          speech,
+          ayahs: [
+            _ayah(1, _first),
+            _ayah(2, _second),
+            _ayah(3, 'الرحمن الرحيم'),
+            _ayah(4, 'مالك يوم الدين'),
+            _ayah(5, 'إياك نعبد وإياك نستعين'),
+            _ayah(6, 'اهدنا الصراط المستقيم'),
+            _ayah(7, 'صراط الذين أنعمت عليهم غير المغضوب عليهم ولا الضالين'),
+          ],
+        );
+        await _tap(tester, 'Live word preview (unverified)');
+        speech.result!('$_first $_second', false);
+        await tester.pumpAndSettle();
+        speech.result!('$_second الرحمن الرحيم مالك يوم الدين', false);
+        await tester.pumpAndSettle();
+        speech.result!(
+          'إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِينُ إِهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
+          false,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts['1:5'], 4);
+        expect(page(tester).revealedWordCounts['1:6'], 3);
+        speech.result!(
+          'وَإِيَّاكَ نَسْتَعِيِّنَ إِهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ فِرَاطَ الَّذِينَ نَعْمَثَ عَلَيْهِمْ غَيْرِ الْمَغْوِ عَلَيْهِمْ',
+          false,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts['1:7'], 2);
+        speech.stopping = () => speech.result!(
+          'الْحَمْدُ لِلَّهِ رَحْمَنِ الرَّحِيمِ مَالِكِ يَوْمِ الدِّينِ إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِيِّنَ إِهْدِيَ الصِّرَاطَ الْمُسْتَقِيمَ فِرَاطَ الَّذِينَ نَعْمَتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ',
+          true,
+        );
+        await _tap(tester, 'Pause');
+        expect(_hidden(tester), isNot(contains('1:7')));
+        expect(find.text('Ayah 7 / 7'), findsOneWidget);
+      },
+    );
+
     testWidgets('pause retains displayed words despite a revised mismatch', (
       tester,
     ) async {
