@@ -107,6 +107,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   int get _hintBaseWordCount {
     var base = widget.localQuranLab ? _nextLabWord - 1 : 0;
+    if (widget.localQuranLab) {
+      final visible = _effectiveWordCount(_index);
+      if (visible > base) base = visible;
+    }
     final hinted = _hintWordCounts[_index] ?? 0;
     if (hinted > base) base = hinted;
     return base;
@@ -191,15 +195,36 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     for (var i = _index; i < widget.ayahs.length; i++) {
       final ayah = widget.ayahs[i];
       final length = _comparison.recitationWords(ayah.imlaei ?? '').length;
-      final count = visible['${ayah.surahNumber}:${ayah.ayahNumber}'] ?? 0;
-      if (!_revealed.contains(i) && count < length) return i;
+      final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
+      final count = visible[key] ?? 0;
+      final navigation = _navigationWordCounts[key] ?? 0;
+      if (!_revealed.contains(i) && count < length && navigation < length) {
+        return i;
+      }
     }
     return widget.ayahs.length;
   }
 
+  int _effectiveWordCount(int index) {
+    final ayah = widget.ayahs[index];
+    final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
+    final visible = _visibleWordCounts[key] ?? 0;
+    final navigation = _navigationWordCounts[key] ?? 0;
+    return visible > navigation ? visible : navigation;
+  }
+
+  int get _actionAyahIndex =>
+      _activeAyahIndex.clamp(0, widget.ayahs.length - 1);
+
   void _checkpointLiveWords() {
     if (widget.localQuranLab && widget.continuous) {
-      _retainPausedWords(_index, _visibleWordCounts);
+      final retained = Map<String, int>.of(_navigationWordCounts);
+      for (final entry in _visibleWordCounts.entries) {
+        if (entry.value > (retained[entry.key] ?? 0)) {
+          retained[entry.key] = entry.value;
+        }
+      }
+      _retainPausedWords(_index, retained);
     }
   }
 
@@ -472,6 +497,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       setState(() {
         _checkpointLiveWords();
         _busy = false;
+        _stopInProgress = false;
         _preview.clear();
         _clearLiveWords();
         _transcript = '';
@@ -514,6 +540,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   Future<void> _listen() async {
+    if (widget.localQuranLab && widget.continuous) {
+      _checkpointLiveWords();
+      _index = _actionAyahIndex;
+    }
     if (widget.continuous && _revealed.contains(_index)) {
       final nextUnrevealed = List<int>.generate(
         widget.ayahs.length,
@@ -608,7 +638,6 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             startIndex,
             text,
           );
-          if (!contradictsPrefix) _continueLivePrefix(startIndex, text);
           final input = _speech;
           if (!contradictsPrefix &&
               _windowed &&
@@ -620,6 +649,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
           final alignment = widget.localQuranLab && input is QuranAsrSpeechInput
               ? _labAlignmentMetrics(startIndex, text)
               : const <String, int>{};
+          if (!contradictsPrefix) _continueLivePrefix(startIndex, text);
           if (!isFinal) {
             final expectedAyahs = widget.continuous
                 ? widget.ayahs.skip(startIndex).toList()
@@ -908,8 +938,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       final incomingWords = _comparison.recitationWords(text);
       if (prevWords.length >= 2 && incomingWords.length > 2) {
         final activeAyah = widget.ayahs[activeIndex];
-        final activeKey =
-            '${activeAyah.surahNumber}:${activeAyah.ayahNumber}';
+        final activeKey = '${activeAyah.surahNumber}:${activeAyah.ayahNumber}';
         final directCounts = _comparison.matchingPrefixWordCounts(
           expectedAyahs: [ayahs.first.imlaei ?? ''],
           expectedVerseKeys: [startKey],
@@ -1195,9 +1224,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         }
       }
     } on PlatformException catch (error) {
-      _inputFailed(_generation, error.code);
+      if (generation == _generation) _inputFailed(generation, error.code);
     } finally {
-      if (mounted && _stopInProgress) {
+      if (mounted && generation == _generation && _stopInProgress) {
         setState(() => _stopInProgress = false);
       }
     }
@@ -1205,6 +1234,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   void _retainPausedWords(int startIndex, Map<String, int> counts) {
     for (var i = startIndex; i < widget.ayahs.length; i++) {
+      if (_revealed.contains(i)) continue;
       final ayah = widget.ayahs[i];
       final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
       final count = counts[key] ?? 0;
@@ -1233,15 +1263,16 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   Future<void> _reference() async {
-    final activeIndex = _activeAyahIndex;
-    final targetIndex = activeIndex < widget.ayahs.length ? activeIndex : _index;
+    final targetIndex = _actionAyahIndex;
     final generation = ++_generation;
     _acceptResults = false;
+    _stopInProgress = false;
+    _viewedPageOverride = null;
     if (!widget.localQuranLab) _pendingText = '';
     _checkpointLiveWords();
     if (widget.localQuranLab &&
         widget.continuous &&
-        targetIndex > _index &&
+        targetIndex != _index &&
         targetIndex < widget.ayahs.length) {
       _index = targetIndex;
       final targetAyah = widget.ayahs[targetIndex];
@@ -1287,12 +1318,13 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   void _hint() {
-    final activeIndex = _activeAyahIndex;
+    final activeIndex = _actionAyahIndex;
     _interrupt();
     setState(() {
+      _viewedPageOverride = null;
       if (widget.localQuranLab &&
           widget.continuous &&
-          activeIndex > _index &&
+          activeIndex != _index &&
           activeIndex < widget.ayahs.length) {
         _index = activeIndex;
         final paused = _pausedWordCounts[_verseKey] ?? 0;
@@ -1343,9 +1375,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   void _reveal() {
-    final activeIndex = _activeAyahIndex;
+    final activeIndex = _actionAyahIndex;
     _interrupt();
     setState(() {
+      _viewedPageOverride = null;
       if (widget.localQuranLab &&
           widget.continuous &&
           activeIndex > _index &&
@@ -1357,20 +1390,25 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       } else if (widget.localQuranLab && widget.continuous) {
         for (var i = 0; i < _index; i++) {
           final ayah = widget.ayahs[i];
-          final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
           final words = _comparison.recitationWords(ayah.imlaei ?? '');
-          final paused = _pausedWordCounts[key] ?? 0;
+          final paused = _effectiveWordCount(i);
           if (words.isNotEmpty && paused >= words.length) {
             _revealed.add(i);
           }
         }
         while (_index < widget.ayahs.length) {
           final ayah = widget.ayahs[_index];
-          final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
           final words = _comparison.recitationWords(ayah.imlaei ?? '');
-          final paused = _pausedWordCounts[key] ?? 0;
-          if (!_revealed.contains(_index) && paused < words.length) break;
+          final paused = _effectiveWordCount(_index);
+          final hinted = _hintWordCounts[_index] ?? 0;
+          if (!_revealed.contains(_index) &&
+              paused < words.length &&
+              hinted < words.length) {
+            break;
+          }
           _revealed.add(_index);
+          _navigationWordCounts.remove(_verseKey);
+          _hintWordCounts.remove(_index);
           _index++;
         }
       }
@@ -1381,6 +1419,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       }
       _assisted.add(_index);
       _revealed.add(_index);
+      _navigationWordCounts.remove(_verseKey);
+      _hintWordCounts.remove(_index);
       _pausedWordCounts.remove(_verseKey);
       _acceptedWordCounts.clear();
       _pendingText = '';
@@ -1388,9 +1428,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       if (widget.localQuranLab && widget.continuous) {
         while (nextIndex < widget.ayahs.length) {
           final ayah = widget.ayahs[nextIndex];
-          final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
           final words = _comparison.recitationWords(ayah.imlaei ?? '');
-          final paused = _pausedWordCounts[key] ?? 0;
+          final paused = _effectiveWordCount(nextIndex);
           if (!_revealed.contains(nextIndex) && paused < words.length) break;
           _revealed.add(nextIndex);
           nextIndex++;
@@ -1455,12 +1494,34 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       return;
     }
     final targetPage = pages[targetPageIndex];
+    if (widget.localQuranLab &&
+        widget.continuous &&
+        (targetPage == _activePageNumber ||
+            _busy ||
+            _revealed.isNotEmpty ||
+            _visibleWordCounts.isNotEmpty ||
+            _navigationWordCounts.isNotEmpty)) {
+      setState(() {
+        _viewedPageOverride = targetPage == _activePageNumber
+            ? null
+            : targetPage;
+      });
+      return;
+    }
     var targetIndex = widget.ayahs.indexWhere(
       (ayah) => ayah.pageNumber == targetPage,
     );
     var hasUnrevealedOnTargetPage = false;
     for (var i = 0; i < widget.ayahs.length; i++) {
-      if (widget.ayahs[i].pageNumber == targetPage && !_revealed.contains(i)) {
+      final ayah = widget.ayahs[i];
+      final complete =
+          widget.localQuranLab &&
+          widget.continuous &&
+          _effectiveWordCount(i) >=
+              _comparison.recitationWords(ayah.imlaei ?? '').length;
+      if (ayah.pageNumber == targetPage &&
+          !_revealed.contains(i) &&
+          !complete) {
         targetIndex = i;
         hasUnrevealedOnTargetPage = true;
         break;
@@ -1469,8 +1530,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     if (targetIndex < 0) return;
     if (targetIndex == _index || !hasUnrevealedOnTargetPage) {
       setState(() {
-        _viewedPageOverride =
-            targetPage == _activePageNumber ? null : targetPage;
+        _viewedPageOverride = targetPage == _activePageNumber
+            ? null
+            : targetPage;
       });
       return;
     }
@@ -1492,16 +1554,18 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     final origin = box != null && box.hasSize && box.size.longestSide > 0
         ? box.localToGlobal(Offset.zero) & box.size
         : const Rect.fromLTWH(1, 1, 1, 1);
-    unawaited(QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey));
+    unawaited(
+      QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
+    );
     final paths = await QuranAsrSpeechInput.exportDiagnostics();
     if (!mounted) return;
     if (dialogContext.mounted) {
       Navigator.pop(dialogContext);
     }
     if (paths.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.get('quran_asr_share_empty'))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.get('quran_asr_share_empty'))),
+      );
       return;
     }
     try {
@@ -1593,7 +1657,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                           builder: (buttonContext) => TextButton.icon(
                             onPressed: () => _shareDiagnostics(buttonContext),
                             icon: const Icon(Icons.ios_share, size: 18),
-                            label: Text(l10n.get('quran_asr_share_diagnostics')),
+                            label: Text(
+                              l10n.get('quran_asr_share_diagnostics'),
+                            ),
                           ),
                         ),
                       TextButton(
@@ -1887,8 +1953,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                         if (!widget.review)
                           TextButton(
                             onPressed:
-                                _stopInProgress ||
-                                    (_busy && !_acceptResults) ||
+                                (_busy &&
+                                        !_acceptResults &&
+                                        !_stopInProgress) ||
                                     _finished ||
                                     _revealed.contains(
                                       _activeAyahIndex < widget.ayahs.length
@@ -1909,8 +1976,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                         if (widget.continuous && !widget.review)
                           TextButton(
                             onPressed:
-                                _stopInProgress ||
-                                    (_busy && !_acceptResults) ||
+                                (_busy &&
+                                        !_acceptResults &&
+                                        !_stopInProgress) ||
                                     _finished
                                 ? null
                                 : _reveal,
@@ -1918,7 +1986,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                           ),
                         TextButton.icon(
                           onPressed:
-                              _stopInProgress || (_busy && !_acceptResults)
+                              _busy && !_acceptResults && !_stopInProgress
                               ? null
                               : _reference,
                           icon: const Icon(Icons.volume_up_outlined),

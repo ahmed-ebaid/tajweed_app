@@ -236,8 +236,11 @@ void main() {
         transcript = 'الرحيم';
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pumpAndSettle();
-        expect(records.last['cursorRawPrefix'], 0);
-        expect(records.last['cursorTailPrefix'], 4);
+        final recovery = records.firstWhere(
+          (record) => record['rawWords'] == 1 && record['cursorWords'] == 3,
+        );
+        expect(recovery['cursorRawPrefix'], 0);
+        expect(recovery['cursorTailPrefix'], 4);
         expect(records.last['visibleWords'], 4);
         transcript = '$_first $_second';
         await _tap(tester, 'Pause');
@@ -501,6 +504,118 @@ void main() {
       expect(find.text('Finishing recognition…'), findsNothing);
     });
 
+    for (final action in [
+      'Need a hint?',
+      'Reveal ayah and continue',
+      'Listen to reference',
+    ]) {
+      testWidgets('$action interrupts pending Pause at the visible frontier', (
+        tester,
+      ) async {
+        final speech = _FakeSpeech();
+        final stopping = Completer<void>();
+        final played = <int>[];
+        speech.pendingStop = stopping.future;
+        await _open(
+          tester,
+          speech,
+          continuous: true,
+          localQuranLab: true,
+          playReference: (ayah) async {
+            played.add(ayah.ayahNumber);
+            return true;
+          },
+          ayahs: [
+            _ayah(1, _first, pageNumber: 1),
+            _ayah(2, _second, pageNumber: 1),
+            _ayah(3, 'مالك يوم الدين', pageNumber: 2),
+            _ayah(4, 'إياك نعبد وإياك نستعين', pageNumber: 2),
+          ],
+        );
+        await _tap(tester, 'Start reciting');
+        await _tap(tester, 'Agree and continue');
+        speech.result!('$_first $_second مالك', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).pageNumber, 2);
+        await tester.fling(
+          find.byType(MushafPageContent),
+          const Offset(-300, 0),
+          1000,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).pageNumber, 1);
+        expect(speech.cancellations, 0);
+
+        await tester.tap(find.text('Pause'));
+        await tester.pump();
+        expect(find.text('Finishing recognition…'), findsOneWidget);
+        await _tap(tester, action);
+        expect(find.text('Finishing recognition…'), findsNothing);
+        expect(page(tester).pageNumber, 2);
+        expect(page(tester).revealedWordCounts['1:1'], 4);
+        expect(page(tester).revealedWordCounts['1:2'], 4);
+        if (action == 'Listen to reference') {
+          expect(played, [3]);
+          expect(find.text('Ayah 3 / 4'), findsOneWidget);
+        } else if (action == 'Reveal ayah and continue') {
+          expect(find.text('Ayah 4 / 4'), findsOneWidget);
+          expect(page(tester).hiddenAyahs, {'1:4'});
+        } else {
+          expect(page(tester).hintedWords['1:3'], 3);
+        }
+
+        // The obsolete stop must not overwrite the action's new cursor.
+        speech.result!('خطأ', true);
+        stopping.complete();
+        await tester.pumpAndSettle();
+        expect(page(tester).pageNumber, 2);
+        expect(played, action == 'Listen to reference' ? [3] : isEmpty);
+      });
+    }
+
+    testWidgets('Reveal skips an ayah already fully visible through hints', (
+      tester,
+    ) async {
+      await _open(
+        tester,
+        _FakeSpeech(),
+        continuous: true,
+        localQuranLab: true,
+        ayahs: [
+          _ayah(1, 'الرحمن الرحيم'),
+          _ayah(2, 'مالك يوم الدين'),
+          _ayah(3, 'إياك نعبد وإياك نستعين'),
+        ],
+      );
+      await _tap(tester, 'Need a hint?');
+      await _tap(tester, 'Reveal ayah and continue');
+      expect(find.text('Ayah 3 / 3'), findsOneWidget);
+      expect(page(tester).hiddenAyahs, {'1:3'});
+    });
+
+    testWidgets('reference uses last ayah when the whole preview is visible', (
+      tester,
+    ) async {
+      final speech = _FakeSpeech();
+      final played = <int>[];
+      await _open(
+        tester,
+        speech,
+        continuous: true,
+        localQuranLab: true,
+        playReference: (ayah) async {
+          played.add(ayah.ayahNumber);
+          return true;
+        },
+      );
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+      speech.result!('$_first $_second', false);
+      await tester.pumpAndSettle();
+      await _tap(tester, 'Listen to reference');
+      expect(played, [2]);
+    });
+
     testWidgets('completed recitation stays highlighted after Pause', (
       tester,
     ) async {
@@ -586,7 +701,8 @@ void main() {
         1000,
       );
       await tester.pumpAndSettle();
-      expect(find.text('Ayah 3 / 4'), findsOneWidget);
+      expect(page(tester).pageNumber, 2);
+      expect(speech.cancellations, 0);
       await tester.fling(
         find.byType(MushafPageContent),
         const Offset(-300, 0),
@@ -594,8 +710,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Ayah 1 / 4'), findsOneWidget);
-      expect(find.text('Continue from word: 1'), findsOneWidget);
+      expect(page(tester).pageNumber, 1);
+      expect(speech.cancellations, 0);
       expect(page(tester).revealedWordCounts, {'1:1': 4, '1:2': 2});
       expect(page(tester).highlightedWordIndices['1:2'], {0, 1});
       expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
@@ -623,11 +739,12 @@ void main() {
       expect(words['لله']?.style?.backgroundColor, isNotNull);
       expect(words['رب']?.style?.color, Colors.transparent);
 
+      await _tap(tester, 'Pause');
       await _tap(tester, 'Resume');
       speech.result!('الله', false);
       await tester.pumpAndSettle();
-      expect(find.text('Ayah 1 / 4'), findsOneWidget);
-      expect(find.text('Continue from word: 1'), findsOneWidget);
+      expect(find.text('Ayah 2 / 4'), findsOneWidget);
+      expect(find.text('Continue from word: 3'), findsOneWidget);
       expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
     });
 
@@ -658,7 +775,8 @@ void main() {
           1000,
         );
         await tester.pumpAndSettle();
-        expect(find.text('Ayah 3 / 3'), findsOneWidget);
+        expect(page(tester).pageNumber, 2);
+        expect(find.text('Ayah 2 / 3'), findsOneWidget);
 
         await tester.fling(
           find.byType(MushafPageContent),
@@ -1039,17 +1157,14 @@ void main() {
       (tester) async {
         const nuh9 =
             'ثُمَّ إِنِّي أَعْلَنتُ لَهُمْ وَأَسْرَرْتُ لَهُمْ إِسْرَارًا';
-        const nuh10 = 'فَقُلْتُ اسْتَغْفِرُوا رَبَّكُمْ إِنَّهُ كَانَ غَفَّارًا';
+        const nuh10 =
+            'فَقُلْتُ اسْتَغْفِرُوا رَبَّكُمْ إِنَّهُ كَانَ غَفَّارًا';
         const nuh11 = 'يُرْسِلِ السَّمَاءَ عَلَيْكُم مِّدْرَارًا';
         final speech = _FakeWindowedSpeech();
         await startLab(
           tester,
           speech,
-          ayahs: [
-            _ayah(9, nuh9),
-            _ayah(10, nuh10),
-            _ayah(11, nuh11),
-          ],
+          ayahs: [_ayah(9, nuh9), _ayah(10, nuh10), _ayah(11, nuh11)],
         );
         await _tap(tester, 'Live word preview (unverified)');
         speech.result!('ثم إني', false);
@@ -1071,17 +1186,12 @@ void main() {
 
         await _tap(tester, 'Resume');
         speech.windowStartSeconds = 0;
-        speech.result!(
-          'إسرارى فقلت استغفروا ربكم إنه كان غفارا',
-          false,
-        );
+        speech.result!('إسرارى فقلت استغفروا ربكم إنه كان غفارا', false);
         await tester.pumpAndSettle();
         expect(page(tester).revealedWordCounts['1:10'], 6);
 
-        speech.stopping = () => speech.result!(
-          'إسرارى فقلت استغفروا ربكم إنه كان غفارا',
-          true,
-        );
+        speech.stopping = () =>
+            speech.result!('إسرارى فقلت استغفروا ربكم إنه كان غفارا', true);
         await _tap(tester, 'Pause');
         expect(find.text('Ayah 3 / 3'), findsOneWidget);
       },
@@ -1907,69 +2017,67 @@ void main() {
       expect(find.text('Ayah 2 / 2'), findsOneWidget);
     });
 
-    testWidgets(
-      'Surah Al-Falaq 113 auto-completes across cloud transcripts',
-      (tester) async {
-        final speech = _FakeWindowedSpeech();
-        await startLab(
-          tester,
-          speech,
-          ayahs: [
-            _ayah(1, 'قل أعوذ برب الفلق'),
-            _ayah(2, 'من شر ما خلق'),
-            _ayah(3, 'ومن شر غاسق إذا وقب'),
-            _ayah(4, 'ومن شر النفاثات في العقد'),
-            _ayah(5, 'ومن شر حاسد إذا حسد'),
-          ],
-        );
-        await _tap(tester, 'Live word preview (unverified)');
-        speech.result!(
-          'قل أعوذ برب الفلق من شر ما خلق ومن شر غاسقا إذا وقب',
-          false,
-        );
-        await tester.pumpAndSettle();
-        expect(page(tester).revealedWordCounts['1:3'], 5);
-        speech.stopping = () => speech.result!(
-          'قل أعوذ برب الفلق من شر ما خلق ومن شر غاصق إذا وقبة ومن شر النفاثات في العقد ومن شر حاسد إذا حسد',
-          true,
-        );
-        await _tap(tester, 'Pause');
-        expect(_hidden(tester), isEmpty);
-      },
-    );
+    testWidgets('Surah Al-Falaq 113 auto-completes across cloud transcripts', (
+      tester,
+    ) async {
+      final speech = _FakeWindowedSpeech();
+      await startLab(
+        tester,
+        speech,
+        ayahs: [
+          _ayah(1, 'قل أعوذ برب الفلق'),
+          _ayah(2, 'من شر ما خلق'),
+          _ayah(3, 'ومن شر غاسق إذا وقب'),
+          _ayah(4, 'ومن شر النفاثات في العقد'),
+          _ayah(5, 'ومن شر حاسد إذا حسد'),
+        ],
+      );
+      await _tap(tester, 'Live word preview (unverified)');
+      speech.result!(
+        'قل أعوذ برب الفلق من شر ما خلق ومن شر غاسقا إذا وقب',
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(page(tester).revealedWordCounts['1:3'], 5);
+      speech.stopping = () => speech.result!(
+        'قل أعوذ برب الفلق من شر ما خلق ومن شر غاصق إذا وقبة ومن شر النفاثات في العقد ومن شر حاسد إذا حسد',
+        true,
+      );
+      await _tap(tester, 'Pause');
+      expect(_hidden(tester), isEmpty);
+    });
 
-    testWidgets(
-      'Surah An-Nas 114 auto-completes across cloud transcripts',
-      (tester) async {
-        final nasSpeech = _FakeWindowedSpeech();
-        await startLab(
-          tester,
-          nasSpeech,
-          ayahs: [
-            _ayah(1, 'قل أعوذ برب الناس'),
-            _ayah(2, 'ملك الناس'),
-            _ayah(3, 'إله الناس'),
-            _ayah(4, 'من شر الوسواس الخناس'),
-            _ayah(5, 'الذي يوسوس في صدور الناس'),
-            _ayah(6, 'من الجنة والناس'),
-          ],
-        );
-        await _tap(tester, 'Live word preview (unverified)');
-        nasSpeech.result!(
-          'قل أعوذ برب الناس ملك الناس إله الناس من شر الوسواس الخناس الذي يوسوسوا في سضور الناس من الجنة والناس من الجنة والناس',
-          false,
-        );
-        await tester.pumpAndSettle();
-        expect(page(tester).revealedWordCounts['1:5'], 5);
-        expect(page(tester).revealedWordCounts['1:6'], 3);
-        nasSpeech.stopping = () => nasSpeech.result!(
-          'قل أعوذ برب الناس ملك الناس إله الناس من شر الوسواس الخناس الذي يوسوسوا في سضور الناس من الجنة والناس من الجنة والناس',
-          true,
-        );
-        await _tap(tester, 'Pause');
-        expect(_hidden(tester), isEmpty);
-      },
-    );
+    testWidgets('Surah An-Nas 114 auto-completes across cloud transcripts', (
+      tester,
+    ) async {
+      final nasSpeech = _FakeWindowedSpeech();
+      await startLab(
+        tester,
+        nasSpeech,
+        ayahs: [
+          _ayah(1, 'قل أعوذ برب الناس'),
+          _ayah(2, 'ملك الناس'),
+          _ayah(3, 'إله الناس'),
+          _ayah(4, 'من شر الوسواس الخناس'),
+          _ayah(5, 'الذي يوسوس في صدور الناس'),
+          _ayah(6, 'من الجنة والناس'),
+        ],
+      );
+      await _tap(tester, 'Live word preview (unverified)');
+      nasSpeech.result!(
+        'قل أعوذ برب الناس ملك الناس إله الناس من شر الوسواس الخناس الذي يوسوسوا في سضور الناس من الجنة والناس من الجنة والناس',
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(page(tester).revealedWordCounts['1:5'], 5);
+      expect(page(tester).revealedWordCounts['1:6'], 3);
+      nasSpeech.stopping = () => nasSpeech.result!(
+        'قل أعوذ برب الناس ملك الناس إله الناس من شر الوسواس الخناس الذي يوسوسوا في سضور الناس من الجنة والناس من الجنة والناس',
+        true,
+      );
+      await _tap(tester, 'Pause');
+      expect(_hidden(tester), isEmpty);
+    });
 
     testWidgets(
       'Listen to reference and Reveal ayah target active live cursor instead of old recited ayah',
@@ -1996,11 +2104,7 @@ void main() {
         await _tap(tester, 'Agree and continue');
         speech.result!('$_first $_second الرحمن', false);
         await tester.pumpAndSettle();
-        expect(page(tester).revealedWordCounts, {
-          '1:1': 4,
-          '1:2': 4,
-          '1:3': 1,
-        });
+        expect(page(tester).revealedWordCounts, {'1:1': 4, '1:2': 4, '1:3': 1});
 
         await _tap(tester, 'Listen to reference');
         expect(playedAyahs, [3]);
@@ -2041,11 +2145,7 @@ void main() {
         speech.result!('$_first $_second الرحمن', false);
         await tester.pumpAndSettle();
         expect(page(tester).pageNumber, 2);
-        expect(page(tester).revealedWordCounts, {
-          '1:1': 4,
-          '1:2': 4,
-          '1:3': 1,
-        });
+        expect(page(tester).revealedWordCounts, {'1:1': 4, '1:2': 4, '1:3': 1});
 
         // Swiping back while still reciting inspects page 1 without cancelling
         await tester.fling(
@@ -2055,11 +2155,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(page(tester).pageNumber, 1);
-        expect(page(tester).revealedWordCounts, {
-          '1:1': 4,
-          '1:2': 4,
-          '1:3': 1,
-        });
+        expect(page(tester).revealedWordCounts, {'1:1': 4, '1:2': 4, '1:3': 1});
         expect(speech.cancellations, 0);
 
         // Swiping forward returns to page 2

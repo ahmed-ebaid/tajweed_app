@@ -185,11 +185,7 @@ class SpeechComparisonService {
     if (allowWrittenOpenings &&
         incoming.length >= 2 &&
         retained.length > incoming.length) {
-      for (
-        var start = 0;
-        start <= retained.length - incoming.length;
-        start++
-      ) {
+      for (var start = 0; start <= retained.length - incoming.length; start++) {
         var matchesSlice = true;
         for (var i = 0; i < incoming.length; i++) {
           if (retained[start + i] != incoming[i]) {
@@ -540,6 +536,43 @@ class SpeechComparisonService {
             nextExpectedSet = nextAyahExpected.first;
           }
         }
+        if (keys[ayah].startsWith('98:') &&
+            nextExpectedSet != null &&
+            offset + 1 < spoken.length &&
+            nextExpectedSet.contains(spoken[offset + 1]) &&
+            (_bayyinahAsrVariants[expected[word].first]?.contains(
+                  spoken[offset],
+                ) ??
+                false)) {
+          expanded.add(expected[word].first);
+          offset++;
+          word++;
+          continue;
+        }
+        if (keys[ayah] == '98:5' &&
+            expected[word].first == 'حنفاء' &&
+            offset + 2 < spoken.length &&
+            spoken[offset] == 'اكل' &&
+            spoken[offset + 1] == 'فاء' &&
+            nextExpectedSet != null &&
+            nextExpectedSet.contains(spoken[offset + 2])) {
+          expanded.add(expected[word].first);
+          offset += 2;
+          word++;
+          continue;
+        }
+        if (keys[ayah] == '98:6' &&
+            word + 2 < expected.length &&
+            expected[word].contains('نار') &&
+            expected[word + 1].contains('جهنم') &&
+            offset + 1 < spoken.length &&
+            spoken[offset] == 'نارج' &&
+            expected[word + 2].contains(spoken[offset + 1])) {
+          expanded.addAll(['نار', 'جهنم']);
+          offset++;
+          word += 2;
+          continue;
+        }
         if (nextExpectedSet != null &&
             offset + 1 < spoken.length &&
             nextExpectedSet.contains(spoken[offset + 1]) &&
@@ -727,6 +760,19 @@ class SpeechComparisonService {
     return [...expanded, ...spoken.skip(offset)];
   }
 
+  static const _bayyinahAsrVariants = {
+    'جاءتهم': {'جاءته', 'جاءتون'},
+    'حنفاء': {'انفاء', 'خلفاء'},
+    'الزكاة': {'تكاد'},
+    'والمشركين': {'والمشفكين'},
+    'جهنم': {'جهن', 'جهمة', 'جهر'},
+    'أولئك': {'الئك', 'ألئك'},
+    'جزاءهم': {'جزاءون'},
+    'جزاؤهم': {'جزاءون'},
+    'رضي': {'ردي', 'فزي'},
+    'خشي': {'خش'},
+  };
+
   bool _matchesAssimilatedBoundaryWord(
     String expectedWord,
     String nextExpectedWord,
@@ -764,7 +810,11 @@ class SpeechComparisonService {
   bool _matchesQalqalahPauseEnding(String expectedWord, String spokenWord) {
     if (expectedWord.length < 3) return false;
     final last = expectedWord[expectedWord.length - 1];
-    if (last != 'ب' && last != 'ق' && last != 'ط' && last != 'ج' && last != 'د') {
+    if (last != 'ب' &&
+        last != 'ق' &&
+        last != 'ط' &&
+        last != 'ج' &&
+        last != 'د') {
       return false;
     }
     return spokenWord == '$expectedWordة' ||
@@ -1098,8 +1148,7 @@ class SpeechComparisonService {
             expectedWord.substring(0, i) + expectedWord.substring(i + 1);
         if (withoutMedial == spokenWord) return true;
       }
-      if (expectedWord.length >= 4 &&
-          expectedWord.startsWith(spokenWord[0])) {
+      if (expectedWord.length >= 4 && expectedWord.startsWith(spokenWord[0])) {
         for (var i = 1; i < expectedWord.length - 1; i++) {
           if (expectedWord[i] != 'ؤ' && expectedWord[i] != 'ئ') continue;
           final withoutMedialHamza =

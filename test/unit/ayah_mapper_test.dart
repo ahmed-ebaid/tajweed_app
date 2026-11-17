@@ -1,8 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tajweed_practice/core/data/mushaf_page_starts.dart';
 import 'package:tajweed_practice/core/models/tajweed_models.dart';
 import 'package:tajweed_practice/core/services/ayah_mapper.dart';
 
 void main() {
+  test('uses canonical page boundaries instead of shifted API metadata', () {
+    for (final (key, upstream, canonical) in [
+      ('96:13', 598, 597),
+      ('96:19', 598, 597),
+      ('98:6', 599, 598),
+      ('98:7', 599, 598),
+      ('98:8', 599, 599),
+      ('100:6', 600, 599),
+      ('100:9', 600, 599),
+      ('100:10', 600, 600),
+    ]) {
+      expect(
+        AyahMapper.fromApi({
+          'verse_key': key,
+          'page_number': upstream,
+        }).pageNumber,
+        canonical,
+        reason: key,
+      );
+    }
+    for (var page = 1; page <= mushafPageStartVerseKeys.length; page++) {
+      expect(
+        mushafPageNumberForVerseKey(mushafPageStartVerseKeys[page - 1]),
+        page,
+      );
+    }
+    expect(mushafPageNumberForVerseKey('114:6'), 604);
+    expect(mushafPageNumberForVerseKey('invalid'), isNull);
+  });
+
   test('restores canonical rounded zero without changing highlight offsets', () {
     for (final sukoon in ['ۡ', 'ْ']) {
       final ayah = AyahMapper.fromApi({

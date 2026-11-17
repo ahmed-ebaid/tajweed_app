@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../data/mushaf_page_starts.dart';
 import '../models/tajweed_models.dart';
 import 'quran_api_service.dart';
 
@@ -69,7 +70,11 @@ class AyahMapper {
     final parts = verseKey.split(':');
     final surahNumber = int.tryParse(parts[0]) ?? 1;
     final ayahNumber = int.tryParse(parts[1]) ?? 1;
-    final pageNumber = json['page_number'] as int? ?? 1;
+    // Upstream page metadata can disagree with the 15-line word layout.
+    final pageNumber =
+        mushafPageNumberForVerseKey(verseKey) ??
+        json['page_number'] as int? ??
+        1;
     final juzNumber = json['juz_number'] as int?;
     final hizbNumber = json['hizb_number'] as int?;
     final rubElHizbNumber = json['rub_el_hizb_number'] as int?;

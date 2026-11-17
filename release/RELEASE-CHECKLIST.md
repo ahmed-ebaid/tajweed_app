@@ -59,6 +59,11 @@ per release for both stores.
 
 ## iOS
 
+- [ ] For Hifz changes, run `test/widget/memorization_screen_test.dart` with
+      `--dart-define=QURAN_ASR_EXPERIMENT=true`. Check Al-Bayyinah 98:6-7 on
+      page 598 and Al-Adiyat 100:6-9 on page 599. Swiping must preserve the
+      recitation cursor; Hint, Reveal and Reference must target that cursor,
+      including while Pause is finalizing.
 - [ ] `flutter build ipa --release`.
 - [ ] On a physical iPhone, start ayah audio, switch to another audio app and
       back, then retry playback. An interrupted iOS audio session should stop

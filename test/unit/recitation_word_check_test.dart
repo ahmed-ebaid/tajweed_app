@@ -8,6 +8,71 @@ void main() {
   final comparison = SpeechComparisonService();
   const expected = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
+  test(
+    'Bayyinah cloud variants require Quran ASR mode and a following anchor',
+    () {
+      for (final (key, reference, transcript) in [
+        ('98:4', 'من بعد ما جاءتهم البينة', 'من بعد ما جاءتون البينة'),
+        (
+          '98:5',
+          'مخلصين له الدين حنفاء ويقيموا',
+          'مخلصين له الدين خلفاء ويقيموا',
+        ),
+        ('98:5', 'حنفاء ويقيموا الصلاة', 'اكل فاء ويقيموا الصلاة'),
+        (
+          '98:5',
+          'ويؤتوا الزكاة وذلك دين القيمة',
+          'ويؤتوا تكاد وذلك دين القيمة',
+        ),
+        (
+          '98:6',
+          'والمشركين في نار جهنم خالدين فيها',
+          'والمشفكين في نار جهر خالدين فيها',
+        ),
+        ('98:6', 'في نار جهنم خالدين فيها', 'في نارج خالدين فيها'),
+        ('98:6', 'أولئك هم شر البرية', 'ألئك هم شر البرية'),
+        ('98:8', 'جزاؤهم عند ربهم', 'جزاءون عند ربهم'),
+        ('98:8', 'رضي الله عنهم', 'فزي الله عنهم'),
+        ('98:8', 'لمن خشي ربه', 'لمن خش ربه'),
+      ]) {
+        expect(
+          comparison
+              .checkEntireAyah(
+                expectedImlaei: reference,
+                expectedVerseKey: key,
+                spokenText: transcript,
+                allowWrittenOpenings: true,
+              )
+              .matched,
+          isTrue,
+          reason: transcript,
+        );
+        expect(
+          comparison
+              .checkEntireAyah(
+                expectedImlaei: reference,
+                expectedVerseKey: key,
+                spokenText: transcript,
+              )
+              .matched,
+          isFalse,
+          reason: 'strict mode: $transcript',
+        );
+      }
+      expect(
+        comparison
+            .checkEntireAyah(
+              expectedImlaei: 'في نار جهنم خالدين فيها',
+              expectedVerseKey: '98:6',
+              spokenText: 'في نارج خطأ فيها',
+              allowWrittenOpenings: true,
+            )
+            .matched,
+        isFalse,
+      );
+    },
+  );
+
   test('pause marks are not counted as recitation words', () {
     expect(
       comparison.recitationWords(
@@ -694,165 +759,182 @@ void main() {
     }
   });
 
-  test('assimilated and split consonant boundaries match when confirmed by following word', () {
-    const baqarah20Tail =
-        'وَلَوْ شَاءَ اللَّهُ لَذَهَبَ بِسَمْعِهِمْ وَأَبْصَارِهِمْ إِنَّ اللَّهَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ';
-    for (final spoken in [
-      'ولو شاء الله لذهب بأبس معهم وأبصارهم إن الله على كل شيء قدير',
-      'ولو شاء الله لذهب بأنبس معهم وأبصارهم إن الله على كل شيء قدير',
-      'ولو شاء الله لذهب بعد سمعهم وأبصارهم إن الله على كل شيء قدير',
-      'ولو شاء الله لذهبا بسمعهم وأبصارهم إن الله على كل شيء قدير',
-    ]) {
-      expect(
-        comparison.matchingPrefixWordCounts(
-          expectedAyahs: [baqarah20Tail],
-          expectedVerseKeys: ['2:20'],
-          spokenText: spoken,
-          allowWrittenOpenings: true,
-        ),
-        [12],
-      );
-      expect(
-        comparison
-            .checkSequence(
-              expectedAyahs: [baqarah20Tail],
-              expectedVerseKeys: ['2:20'],
-              spokenText: spoken,
-              allowWrittenOpenings: true,
-            )
-            .completedAyahs,
-        1,
-      );
-    }
-  });
-
-  test('joinRecitationSegment skips a single clipped leading window token when following words overlap', () {
-    const ayah =
-        'يَكَادُ الْبَرْقُ يَخْطَفُ أَبْصَارَهُمْ كُلَّمَا أَضَاءَ لَهُم مَّشَوْا فِيهِ وَإِذَا أَظْلَمَ عَلَيْهِمْ قَامُوا';
-    final joined = comparison.joinRecitationSegment(
-      retainedPrefix: 'يكاد البرق يخطف أبصارهم كلما أضاء لهم مشوا فيه وإذا أظلم',
-      spokenText: 'فقاموا أظلم عليهم قاموا',
-      expectedAyahs: [ayah],
-      expectedVerseKeys: ['2:20'],
-      allowWrittenOpenings: true,
-    );
-    expect(
-      comparison
-          .checkSequence(
-            expectedAyahs: [ayah],
+  test(
+    'assimilated and split consonant boundaries match when confirmed by following word',
+    () {
+      const baqarah20Tail =
+          'وَلَوْ شَاءَ اللَّهُ لَذَهَبَ بِسَمْعِهِمْ وَأَبْصَارِهِمْ إِنَّ اللَّهَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ';
+      for (final spoken in [
+        'ولو شاء الله لذهب بأبس معهم وأبصارهم إن الله على كل شيء قدير',
+        'ولو شاء الله لذهب بأنبس معهم وأبصارهم إن الله على كل شيء قدير',
+        'ولو شاء الله لذهب بعد سمعهم وأبصارهم إن الله على كل شيء قدير',
+        'ولو شاء الله لذهبا بسمعهم وأبصارهم إن الله على كل شيء قدير',
+      ]) {
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [baqarah20Tail],
             expectedVerseKeys: ['2:20'],
-            spokenText: joined,
+            spokenText: spoken,
             allowWrittenOpenings: true,
-          )
-          .completedAyahs,
-      1,
-    );
-  });
+          ),
+          [12],
+        );
+        expect(
+          comparison
+              .checkSequence(
+                expectedAyahs: [baqarah20Tail],
+                expectedVerseKeys: ['2:20'],
+                spokenText: spoken,
+                allowWrittenOpenings: true,
+              )
+              .completedAyahs,
+          1,
+        );
+      }
+    },
+  );
 
-  test('attached pronoun split, maqsura-to-hamza ending, and final noon assimilation match in 2:13', () {
-    const baqarah13 =
-        'وَإِذَا قِيلَ لَهُمْ آمِنُوا كَمَا آمَنَ النَّاسُ قَالُوا أَنُؤْمِنُ كَمَا آمَنَ السُّفَهَاءُ أَلَا إِنَّهُمْ هُمُ السُّفَهَاءُ وَلَٰكِن لَّا يَعْلَمُونَ';
-    for (final spoken in [
-      'وإذا قيل لهم آمنوا كما آمن الناس قالوا أنؤمنك ما آمن السفهاء ألا إنهم هم السفهاء ولكن لا يعلمون',
-      'وإذا قيل لهم آمنوا كما آمن الناس قالوا أنؤمن كما آمن السفهى ألا إنهم هم السفهاء ولكم لا يعلمون',
-    ]) {
+  test(
+    'joinRecitationSegment skips a single clipped leading window token when following words overlap',
+    () {
+      const ayah =
+          'يَكَادُ الْبَرْقُ يَخْطَفُ أَبْصَارَهُمْ كُلَّمَا أَضَاءَ لَهُم مَّشَوْا فِيهِ وَإِذَا أَظْلَمَ عَلَيْهِمْ قَامُوا';
+      final joined = comparison.joinRecitationSegment(
+        retainedPrefix:
+            'يكاد البرق يخطف أبصارهم كلما أضاء لهم مشوا فيه وإذا أظلم',
+        spokenText: 'فقاموا أظلم عليهم قاموا',
+        expectedAyahs: [ayah],
+        expectedVerseKeys: ['2:20'],
+        allowWrittenOpenings: true,
+      );
       expect(
         comparison
             .checkSequence(
-              expectedAyahs: [baqarah13],
-              expectedVerseKeys: ['2:13'],
-              spokenText: spoken,
+              expectedAyahs: [ayah],
+              expectedVerseKeys: ['2:20'],
+              spokenText: joined,
               allowWrittenOpenings: true,
             )
             .completedAyahs,
         1,
       );
-    }
-  });
+    },
+  );
 
-  test('confusable consonant and medial alif elision match in 2:24 when confirmed by following word', () {
-    const baqarah24 =
-        'فَإِن لَّمْ تَفْعَلُوا وَلَن تَفْعَلُوا فَاتَّقُوا النَّارَ الَّتِي وَقُودُهَا النَّاسُ وَالْحِجَارَةُ أُعِدَّتْ لِلْكَافِرِينَ';
-    for (final spoken in [
-      'فإن لم تفعلوا ولن تفعلوا فاتكوا النار التي وقودها الناس والحجارة أعدت للكافرين',
-      'فإن لم تفعلوا ولن تفعلوا فاتقوا النار التي وقودها الناس والحجرة أعدت للكافرين',
-    ]) {
+  test(
+    'attached pronoun split, maqsura-to-hamza ending, and final noon assimilation match in 2:13',
+    () {
+      const baqarah13 =
+          'وَإِذَا قِيلَ لَهُمْ آمِنُوا كَمَا آمَنَ النَّاسُ قَالُوا أَنُؤْمِنُ كَمَا آمَنَ السُّفَهَاءُ أَلَا إِنَّهُمْ هُمُ السُّفَهَاءُ وَلَٰكِن لَّا يَعْلَمُونَ';
+      for (final spoken in [
+        'وإذا قيل لهم آمنوا كما آمن الناس قالوا أنؤمنك ما آمن السفهاء ألا إنهم هم السفهاء ولكن لا يعلمون',
+        'وإذا قيل لهم آمنوا كما آمن الناس قالوا أنؤمن كما آمن السفهى ألا إنهم هم السفهاء ولكم لا يعلمون',
+      ]) {
+        expect(
+          comparison
+              .checkSequence(
+                expectedAyahs: [baqarah13],
+                expectedVerseKeys: ['2:13'],
+                spokenText: spoken,
+                allowWrittenOpenings: true,
+              )
+              .completedAyahs,
+          1,
+        );
+      }
+    },
+  );
+
+  test(
+    'confusable consonant and medial alif elision match in 2:24 when confirmed by following word',
+    () {
+      const baqarah24 =
+          'فَإِن لَّمْ تَفْعَلُوا وَلَن تَفْعَلُوا فَاتَّقُوا النَّارَ الَّتِي وَقُودُهَا النَّاسُ وَالْحِجَارَةُ أُعِدَّتْ لِلْكَافِرِينَ';
+      for (final spoken in [
+        'فإن لم تفعلوا ولن تفعلوا فاتكوا النار التي وقودها الناس والحجارة أعدت للكافرين',
+        'فإن لم تفعلوا ولن تفعلوا فاتقوا النار التي وقودها الناس والحجرة أعدت للكافرين',
+      ]) {
+        expect(
+          comparison
+              .checkSequence(
+                expectedAyahs: [baqarah24],
+                expectedVerseKeys: ['2:24'],
+                spokenText: spoken,
+                allowWrittenOpenings: true,
+              )
+              .completedAyahs,
+          1,
+        );
+      }
+    },
+  );
+
+  test(
+    'matches Uthmani short-alif iyyaka, connected-speech alif elision, and initial sibilant assimilation in 1:5-1:7',
+    () {
+      const fatihah5 = 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ';
+      const fatihah6 = 'اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ';
+      const fatihah7 =
+          'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ';
+
       expect(
         comparison
             .checkSequence(
-              expectedAyahs: [baqarah24],
-              expectedVerseKeys: ['2:24'],
-              spokenText: spoken,
+              expectedAyahs: [fatihah5, fatihah6],
+              expectedVerseKeys: ['1:5', '1:6'],
+              spokenText:
+                  'إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِينُ إِهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        2,
+      );
+
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [fatihah5, fatihah6],
+              expectedVerseKeys: ['1:5', '1:6'],
+              spokenText:
+                  'إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِيِّنَا اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        2,
+      );
+
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [fatihah7],
+              expectedVerseKeys: ['1:7'],
+              spokenText:
+                  'فِرَاطَ الَّذِينَ نَعْمَتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ',
               allowWrittenOpenings: true,
             )
             .completedAyahs,
         1,
       );
-    }
-  });
 
-  test('matches Uthmani short-alif iyyaka, connected-speech alif elision, and initial sibilant assimilation in 1:5-1:7', () {
-    const fatihah5 = 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ';
-    const fatihah6 = 'اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ';
-    const fatihah7 =
-        'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ';
-
-    expect(
-      comparison
-          .checkSequence(
-            expectedAyahs: [fatihah5, fatihah6],
-            expectedVerseKeys: ['1:5', '1:6'],
-            spokenText:
-                'إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِينُ إِهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
-            allowWrittenOpenings: true,
-          )
-          .completedAyahs,
-      2,
-    );
-
-    expect(
-      comparison
-          .checkSequence(
-            expectedAyahs: [fatihah5, fatihah6],
-            expectedVerseKeys: ['1:5', '1:6'],
-            spokenText:
-                'إِيَكَ نَعْبُدُ وَإِيَّكَ نَسْتَعِيِّنَا اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
-            allowWrittenOpenings: true,
-          )
-          .completedAyahs,
-      2,
-    );
-
-    expect(
-      comparison
-          .checkSequence(
-            expectedAyahs: [fatihah7],
-            expectedVerseKeys: ['1:7'],
-            spokenText:
-                'فِرَاطَ الَّذِينَ نَعْمَتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ',
-            allowWrittenOpenings: true,
-          )
-          .completedAyahs,
-      1,
-    );
-
-    final joined = comparison.joinRecitationSegment(
-      retainedPrefix: '$fatihah5 $fatihah6 صراط الذين',
-      spokenText: 'هِدْنَا السِّرَاطَ الْمُسْتَقِيمَ سِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ',
-      expectedAyahs: [fatihah5, fatihah6, fatihah7],
-      expectedVerseKeys: ['1:5', '1:6', '1:7'],
-      allowWrittenOpenings: true,
-    );
-    expect(
-      comparison.matchingPrefixWordCounts(
+      final joined = comparison.joinRecitationSegment(
+        retainedPrefix: '$fatihah5 $fatihah6 صراط الذين',
+        spokenText:
+            'هِدْنَا السِّرَاطَ الْمُسْتَقِيمَ سِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ',
         expectedAyahs: [fatihah5, fatihah6, fatihah7],
         expectedVerseKeys: ['1:5', '1:6', '1:7'],
-        spokenText: joined,
         allowWrittenOpenings: true,
-      ),
-      [4, 3, 4],
-    );
-  });
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [fatihah5, fatihah6, fatihah7],
+          expectedVerseKeys: ['1:5', '1:6', '1:7'],
+          spokenText: joined,
+          allowWrittenOpenings: true,
+        ),
+        [4, 3, 4],
+      );
+    },
+  );
 
   test('matches cloud recordings for Surahs 90, 102, 104, 105, 106, 107, and 108', () {
     // 90:6 - أَحْلَكْتُوا مَالًا لُبَدًا
@@ -1000,7 +1082,8 @@ void main() {
     const maun7 = 'وَيَمْنَعُونَ الْمَاعُونَ';
     final joinedMidAyah = comparison.joinRecitationSegment(
       retainedPrefix: 'فويل للمصلين الذين هم',
-      spokenText: 'صَاتِهِمْ سَاهُونَ الَّذِينَ هُمْ يُرَاءُونَ وَيَمْنَعُونَ الْمَاعُونَ',
+      spokenText:
+          'صَاتِهِمْ سَاهُونَ الَّذِينَ هُمْ يُرَاءُونَ وَيَمْنَعُونَ الْمَاعُونَ',
       expectedAyahs: [maun4, maun5, maun6, maun7],
       expectedVerseKeys: ['107:4', '107:5', '107:6', '107:7'],
       allowWrittenOpenings: true,
@@ -1107,7 +1190,8 @@ void main() {
           .checkSequence(
             expectedAyahs: [qadr2, qadr3],
             expectedVerseKeys: ['97:2', '97:3'],
-            spokenText: 'وَمَا أَدْرَاكَ مَا لَيْلَةُ الْقَبْرِ خَيْرٌ مِنْ أَلْفِ شَهْرٍ',
+            spokenText:
+                'وَمَا أَدْرَاكَ مَا لَيْلَةُ الْقَبْرِ خَيْرٌ مِنْ أَلْفِ شَهْرٍ',
             allowWrittenOpenings: true,
           )
           .completedAyahs,

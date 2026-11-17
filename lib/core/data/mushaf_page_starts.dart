@@ -605,6 +605,22 @@ const mushafPageStartVerseKeys = <String>[
   '112:1',
 ];
 
+int? mushafPageNumberForVerseKey(String verseKey) {
+  final verse = _verseOrdinal(verseKey);
+  if (verse < 1001 || verse >= 115000) return null;
+  var low = 0;
+  var high = mushafPageStartVerseKeys.length;
+  while (low < high) {
+    final middle = (low + high) ~/ 2;
+    if (_verseOrdinal(mushafPageStartVerseKeys[middle]) <= verse) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low == 0 ? null : low;
+}
+
 bool verseBelongsToMushafPage(String verseKey, int pageNumber) {
   if (pageNumber < 1 || pageNumber > mushafPageStartVerseKeys.length) {
     return false;
