@@ -382,6 +382,26 @@ class SpeechComparisonService {
       final written = _recitationWords(expectedAyahs[ayah]);
       final opening = _disconnectedLetters[keys[ayah]];
       var word = 0;
+      if (word == 0 &&
+          expected.length >= 2 &&
+          offset + 2 <= spoken.length &&
+          !expected[0].contains(spoken[offset]) &&
+          expected[0].contains(spoken[offset + 1])) {
+        var matchesAfterStutter = true;
+        final checkCount = expected.length < 2 ? expected.length : 2;
+        for (var i = 0; i < checkCount && offset + 1 + i < spoken.length; i++) {
+          if (!expected[i].contains(spoken[offset + 1 + i])) {
+            matchesAfterStutter = false;
+            break;
+          }
+        }
+        if (matchesAfterStutter &&
+            offset + 1 + checkCount <= spoken.length &&
+            expected[0].first.length > spoken[offset].length &&
+            expected[0].first.endsWith(spoken[offset])) {
+          offset++;
+        }
+      }
       if (opening != null &&
           written.isNotEmpty &&
           written.first == opening &&
@@ -549,8 +569,13 @@ class SpeechComparisonService {
                     nextExpectedWord.startsWith('أ'))))) {
       return true;
     }
-    if (expectedWord.length >= 5 &&
+    if (expectedWord.length >= 4 &&
         spokenWord == '$expectedWordوا' &&
+        nextExpectedWord.isNotEmpty) {
+      return true;
+    }
+    if (expectedWord.length >= 3 &&
+        (spokenWord == 'و$expectedWord' || spokenWord == 'ف$expectedWord') &&
         nextExpectedWord.isNotEmpty) {
       return true;
     }
@@ -646,6 +671,12 @@ class SpeechComparisonService {
     ('د', 'ض'),
     ('ظ', 'ذ'),
     ('ذ', 'ظ'),
+    ('ه', 'ح'),
+    ('ح', 'ه'),
+    ('ع', 'ح'),
+    ('ح', 'ع'),
+    ('خ', 'غ'),
+    ('غ', 'خ'),
   };
 
   static const _confusableInitialConsonantPairs = {
@@ -656,6 +687,10 @@ class SpeechComparisonService {
     ('إ', 'ا'),
     ('ا', 'أ'),
     ('أ', 'ا'),
+    ('ه', 'ح'),
+    ('ح', 'ه'),
+    ('ع', 'ح'),
+    ('ح', 'ع'),
   };
 
   bool _matchesAssimilatedMedialSyllable(

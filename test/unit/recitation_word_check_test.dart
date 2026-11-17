@@ -620,6 +620,57 @@ void main() {
     },
   );
 
+  test('matches cloud recordings for 90:4, 90:6, 109:2, and 109:3', () {
+    // 90:6: يقول أهلكت مالا لبدا -> ASR: يقول أحلكت مالا لبدا
+    expect(
+      comparison
+          .checkEntireAyah(
+            expectedImlaei: 'يَقُولُ أَهْلَكْتُ مَالًا لُّبَدًا',
+            expectedVerseKey: '90:6',
+            spokenText: 'يَقُولُ أَحْلَكْتُ مَالًا لُبَدًا',
+            allowWrittenOpenings: true,
+          )
+          .matched,
+      isTrue,
+    );
+    // 90:4: لقد خلقنا الإنسان في كبد -> ASR: ولقد خلقنا الإنسان في كبد
+    expect(
+      comparison
+          .checkEntireAyah(
+            expectedImlaei: 'لَقَدْ خَلَقْنَا الْإِنسَانَ فِي كَبَدٍ',
+            expectedVerseKey: '90:4',
+            spokenText: 'وَلَقَدْ خَلَقْنَا الْإِنْسَانَ فِي كَبَدٍ',
+            allowWrittenOpenings: true,
+          )
+          .matched,
+      isTrue,
+    );
+    // 109:2: لا أعبد ما تعبدون -> ASR: لا أعبدوا ما تعبدون
+    expect(
+      comparison
+          .checkEntireAyah(
+            expectedImlaei: 'لَا أَعْبُدُ مَا تَعْبُدُونَ',
+            expectedVerseKey: '109:2',
+            spokenText: 'لَا أَعْبُدُوا مَا تَعْبُدُونَ',
+            allowWrittenOpenings: true,
+          )
+          .matched,
+      isTrue,
+    );
+    // 109:3: ولا أنتم عابدون ما أعبد -> ASR: لا ولا أنتم عابدون ما أعبد
+    expect(
+      comparison
+          .checkEntireAyah(
+            expectedImlaei: 'وَلَا أَنتُمْ عَابِدُونَ مَا أَعْبُدُ',
+            expectedVerseKey: '109:3',
+            spokenText: 'لَا وَلَا أَنْتُمْ عَابِدُونَ مَا أَعْبُدُ',
+            allowWrittenOpenings: true,
+          )
+          .matched,
+      isTrue,
+    );
+  });
+
   test(
     'missing word reference fails closed instead of grading incomplete text',
     () {
