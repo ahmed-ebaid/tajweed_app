@@ -55,8 +55,9 @@ Ayah _ayah(
   String text, {
   bool referenceAvailable = true,
   int pageNumber = 1,
+  int surahNumber = 1,
 }) => Ayah(
-  surahNumber: 1,
+  surahNumber: surahNumber,
   ayahNumber: number,
   pageNumber: pageNumber,
   juzNumber: 1,
@@ -2069,6 +2070,62 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(page(tester).pageNumber, 2);
+      },
+    );
+
+    testWidgets(
+      'Al-Qadr adjacent ليلة القدر boundary and mid-ayah final suffix verify later ayahs',
+      (tester) async {
+        final speech = _FakeWindowedSpeech();
+        const qadr1 = 'إِنَّا أَنزَلْنَاهُ فِي لَيْلَةِ الْقَدْرِ';
+        const qadr2 = 'وَمَا أَدْرَاكَ مَا لَيْلَةُ الْقَدْرِ';
+        const qadr3 = 'لَيْلَةُ الْقَدْرِ خَيْرٌ مِّنْ أَلْفِ شَهْرٍ';
+        const qadr4 =
+            'تَنَزَّلُ الْمَلَائِكَةُ وَالرُّوحُ فِيهَا بِإِذْنِ رَبِّهِم مِّن كُلِّ أَمْرٍ';
+        const qadr5 = 'سَلَامٌ هِيَ حَتَّىٰ مَطْلَعِ الْفَجْرِ';
+        await startLab(
+          tester,
+          speech,
+          ayahs: [
+            _ayah(1, qadr1, surahNumber: 97),
+            _ayah(2, qadr2, surahNumber: 97),
+            _ayah(3, qadr3, surahNumber: 97),
+            _ayah(4, qadr4, surahNumber: 97),
+            _ayah(5, qadr5, surahNumber: 97),
+          ],
+        );
+        await _tap(tester, 'Live word preview (unverified)');
+
+        speech.result!('$qadr1 $qadr2', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'97:1': 5, '97:2': 5});
+
+        speech.windowStartSeconds = 12;
+        speech.result!('لَيْلَةُ الْقَدْرِ خَيْرٌ مِنْ أَلْفِ شَهْرٍ', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {
+          '97:1': 5,
+          '97:2': 5,
+          '97:3': 6,
+        });
+
+        speech.windowStartSeconds = 0;
+        const qadr3to5 =
+            'وَخَيْرٌ مِنْ أَلْفِ شَهْرٍ تَنَزَّلُ الْمَلَائِكَةُ وَالرُّوحُ فِيهَا بِإِذْنِ رَبِّهِمْ مِنْ كُلِّ أَمْحٍ سَلَامٌ هِيَ حَتَّى مَطْلَعِ الْفَجْرِ';
+        speech.result!(qadr3to5, false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {
+          '97:1': 5,
+          '97:2': 5,
+          '97:3': 6,
+          '97:4': 9,
+          '97:5': 5,
+        });
+
+        speech.result!(qadr3to5, true);
+        await tester.pumpAndSettle();
+        expect(_hidden(tester), isEmpty);
+        expect(find.text('Unaided matches: 2 · Assisted: 0'), findsOneWidget);
       },
     );
 

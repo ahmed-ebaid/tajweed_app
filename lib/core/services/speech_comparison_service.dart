@@ -26,6 +26,13 @@ class SpeechComparisonService {
     );
     final retained = words(retainedPrefix);
     final incoming = words(spokenText);
+    final expectedSeq = <Set<String>>[
+      for (var verse = 0; verse < expectedAyahs.length; verse++)
+        ..._expectedRecitationWords(
+          expectedAyahs[verse],
+          expectedVerseKeys[verse],
+        ),
+    ];
     var verseStart = 0;
     for (var verse = 0; verse < expectedAyahs.length; verse++) {
       if (verseStart >= retained.length) break;
@@ -84,6 +91,49 @@ class SpeechComparisonService {
               matches = false;
               break;
             }
+          }
+        }
+      }
+      if (matches &&
+          incoming.length > overlap &&
+          retained.length + overlap < expectedSeq.length) {
+        final directJoined = [...retained, ...incoming].join(' ');
+        final directWords = allowWrittenOpenings
+            ? _spokenWords(
+                directJoined,
+                expectedAyahs,
+                expectedVerseKeys,
+                allowWrittenOpenings,
+              )
+            : [...retained, ...incoming];
+        final strippedJoined = [
+          ...retained,
+          ...incoming.skip(overlap),
+        ].join(' ');
+        final strippedWords = allowWrittenOpenings
+            ? _spokenWords(
+                strippedJoined,
+                expectedAyahs,
+                expectedVerseKeys,
+                allowWrittenOpenings,
+              )
+            : [...retained, ...incoming.skip(overlap)];
+        if (directWords.length > retained.length + overlap &&
+            strippedWords.length > retained.length &&
+            !expectedSeq[retained.length].contains(
+              strippedWords[retained.length],
+            )) {
+          var matchesDirectContinuation = true;
+          for (var i = 0; i <= overlap; i++) {
+            if (!expectedSeq[retained.length + i].contains(
+              directWords[retained.length + i],
+            )) {
+              matchesDirectContinuation = false;
+              break;
+            }
+          }
+          if (matchesDirectContinuation) {
+            matches = false;
           }
         }
       }
@@ -459,6 +509,19 @@ class SpeechComparisonService {
         offset++;
         word = opening.length;
       }
+      if (word == 0 &&
+          ayah > 0 &&
+          expected.length >= 4 &&
+          offset + 1 < spoken.length &&
+          expanded.length >= 2 &&
+          !expected[0].contains(spoken[offset]) &&
+          expected[0].contains(expanded[expanded.length - 2]) &&
+          expected[1].contains(expanded.last) &&
+          expected[2].contains(spoken[offset]) &&
+          expected[3].contains(spoken[offset + 1])) {
+        expanded.addAll([expected[0].first, expected[1].first]);
+        word = 2;
+      }
       while (word < expected.length && offset < spoken.length) {
         if (expected[word].contains(spoken[offset])) {
           expanded.add(spoken[offset++]);
@@ -629,7 +692,10 @@ class SpeechComparisonService {
                 _matchesAssimilatedMedialSyllable(
                   expected[word].first,
                   spoken[offset],
-                ))) {
+                ) ||
+                (expected[word].first == 'أمر' &&
+                    spoken[offset] == 'أمح' &&
+                    (hasRightAnchor || expanded.last == 'كل')))) {
           expanded.add(expected[word].first);
           offset++;
           word++;
@@ -930,6 +996,8 @@ class SpeechComparisonService {
     ('ع', 'ئ'),
     ('ض', 'ب'),
     ('ب', 'ض'),
+    ('د', 'ب'),
+    ('ب', 'د'),
     ('د', 'ر'),
     ('ر', 'د'),
     ('د', 'ل'),

@@ -1078,5 +1078,52 @@ void main() {
           .completedAyahs,
       2,
     );
+
+    // 97:1-5 - Al-Qadr cloud transcripts (adjacent لَيْلَةُ الْقَدْرِ overlap, الْقَبْرِ, أَمْحٍ)
+    const qadr1 = 'إِنَّا أَنزَلْنَاهُ فِي لَيْلَةِ الْقَدْرِ';
+    const qadr2 = 'وَمَا أَدْرَاكَ مَا لَيْلَةُ الْقَدْرِ';
+    const qadr3 = 'لَيْلَةُ الْقَدْرِ خَيْرٌ مِّنْ أَلْفِ شَهْرٍ';
+    const qadr4 =
+        'تَنَزَّلُ الْمَلَائِكَةُ وَالرُّوحُ فِيهَا بِإِذْنِ رَبِّهِم مِّن كُلِّ أَمْرٍ';
+    const qadr5 = 'سَلَامٌ هِيَ حَتَّىٰ مَطْلَعِ الْفَجْرِ';
+    final joinedQadr = comparison.joinRecitationSegment(
+      retainedPrefix: '$qadr1 $qadr2',
+      spokenText: 'لَيْلَةُ الْقَدْرِ خَيْرٌ مِنْ أَلْفِ شَهْرٍ',
+      expectedAyahs: [qadr1, qadr2, qadr3, qadr4, qadr5],
+      expectedVerseKeys: ['97:1', '97:2', '97:3', '97:4', '97:5'],
+      allowWrittenOpenings: true,
+    );
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: [qadr1, qadr2, qadr3, qadr4, qadr5],
+        expectedVerseKeys: ['97:1', '97:2', '97:3', '97:4', '97:5'],
+        spokenText: joinedQadr,
+        allowWrittenOpenings: true,
+      ),
+      [5, 5, 6, 0],
+    );
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [qadr2, qadr3],
+            expectedVerseKeys: ['97:2', '97:3'],
+            spokenText: 'وَمَا أَدْرَاكَ مَا لَيْلَةُ الْقَبْرِ خَيْرٌ مِنْ أَلْفِ شَهْرٍ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [qadr4, qadr5],
+            expectedVerseKeys: ['97:4', '97:5'],
+            spokenText:
+                'تَنَزَّلُ الْمَلَائِكَةُ وَالرُّوحُ فِيهَا بِإِذْنِ رَبِّهِمْ مِنْ كُلِّ أَمْحٍ سَلَامٌ هِيَ حَتَّى مَطْلَعِ الْفَجْرِ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
   });
 }

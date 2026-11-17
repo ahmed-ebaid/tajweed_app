@@ -975,15 +975,18 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       ...counts,
       ...List<int>.filled(ayahs.length - offset - counts.length, 0),
     ];
-    List<int> countsFrom(int offset) => _comparison.matchingPrefixWordCounts(
-      expectedAyahs: [for (final ayah in ayahs.skip(offset)) ayah.imlaei ?? ''],
-      expectedVerseKeys: [
-        for (final ayah in ayahs.skip(offset))
-          '${ayah.surahNumber}:${ayah.ayahNumber}',
-      ],
-      spokenText: text,
-      allowWrittenOpenings: true,
-    );
+    List<int> countsFrom(int offset, [String? customText]) =>
+        _comparison.matchingPrefixWordCounts(
+          expectedAyahs: [
+            for (final ayah in ayahs.skip(offset)) ayah.imlaei ?? '',
+          ],
+          expectedVerseKeys: [
+            for (final ayah in ayahs.skip(offset))
+              '${ayah.surahNumber}:${ayah.ayahNumber}',
+          ],
+          spokenText: customText ?? text,
+          allowWrittenOpenings: true,
+        );
 
     final fromStart = countsFrom(0);
     if (fromStart.isNotEmpty && fromStart.first > 0) {
@@ -993,6 +996,37 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       final fromBoundary = countsFrom(offset);
       if (fromBoundary.isNotEmpty && fromBoundary.first > 0) {
         return [...List<int>.filled(offset, 0), ...pad(offset, fromBoundary)];
+      }
+    }
+    final spokenWords = _comparison.recitationWords(text);
+    for (var offset = 1; offset < ayahs.length; offset++) {
+      final prevWords = _comparison.recitationWords(
+        ayahs[offset - 1].imlaei ?? '',
+      );
+      if (prevWords.isEmpty || spokenWords.length <= 1) continue;
+      final maxTail = prevWords.length < spokenWords.length - 1
+          ? prevWords.length
+          : spokenWords.length - 1;
+      for (var tail = maxTail; tail >= 1; tail--) {
+        var matchesPrevSuffix = true;
+        for (var i = 0; i < tail; i++) {
+          final expectedWord = prevWords[prevWords.length - tail + i];
+          final spokenWord = spokenWords[i];
+          if (spokenWord != expectedWord &&
+              !(i == 0 && spokenWord == 'و$expectedWord')) {
+            matchesPrevSuffix = false;
+            break;
+          }
+        }
+        if (!matchesPrevSuffix) continue;
+        final afterTail = spokenWords.skip(tail).join(' ');
+        final fromAfterTail = countsFrom(offset, afterTail);
+        if (fromAfterTail.isNotEmpty && fromAfterTail.first > 0) {
+          return [
+            ...List<int>.filled(offset, 0),
+            ...pad(offset, fromAfterTail),
+          ];
+        }
       }
     }
     return List<int>.filled(ayahs.length, 0);
