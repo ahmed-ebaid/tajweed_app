@@ -86,6 +86,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   int? _mismatchWord;
   double _pageDragDistance = 0;
 
+  int? _viewedPageOverride;
+
   Ayah get _ayah => widget.ayahs[_index];
   String get _verseKey => '${_ayah.surahNumber}:${_ayah.ayahNumber}';
   int get _nextLabWord {
@@ -128,21 +130,32 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   bool get _windowed =>
       widget.localQuranLab && _speech is WindowedMemorizationSpeechInput;
 
-  int get _visiblePageNumber {
+  int get _activePageNumber {
     var page = _ayah.pageNumber;
-    if (!_windowed || !_acceptResults || !_livePreview) return page;
-    final visible = _visibleWordCounts;
-    for (final ayah in widget.ayahs.skip(_index)) {
-      final count = visible['${ayah.surahNumber}:${ayah.ayahNumber}'] ?? 0;
-      if (count == 0) break;
-      page = ayah.pageNumber;
-      if (!widget.continuous ||
-          count < _comparison.recitationWords(ayah.imlaei ?? '').length) {
-        break;
+    if (!widget.continuous) return page;
+    if (widget.localQuranLab || (_windowed && _acceptResults && _livePreview)) {
+      final visible = _visibleWordCounts;
+      for (var i = _index; i < widget.ayahs.length; i++) {
+        final ayah = widget.ayahs[i];
+        final count = visible['${ayah.surahNumber}:${ayah.ayahNumber}'] ?? 0;
+        if (count == 0) break;
+        page = ayah.pageNumber;
+        final length = _comparison.recitationWords(ayah.imlaei ?? '').length;
+        if (count < length) break;
+        if (i + 1 < widget.ayahs.length) {
+          final nextAyah = widget.ayahs[i + 1];
+          final nextCount =
+              visible['${nextAyah.surahNumber}:${nextAyah.ayahNumber}'] ?? 0;
+          if (nextAyah.pageNumber == page || nextCount > 0) {
+            page = nextAyah.pageNumber;
+          }
+        }
       }
     }
     return page;
   }
+
+  int get _visiblePageNumber => _viewedPageOverride ?? _activePageNumber;
 
   void _clearLiveWords({bool keepRolling = false}) {
     _liveWordCounts.clear();
@@ -170,6 +183,18 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         break;
       }
     }
+  }
+
+  int get _activeAyahIndex {
+    if (!widget.localQuranLab || !widget.continuous) return _index;
+    final visible = _visibleWordCounts;
+    for (var i = _index; i < widget.ayahs.length; i++) {
+      final ayah = widget.ayahs[i];
+      final length = _comparison.recitationWords(ayah.imlaei ?? '').length;
+      final count = visible['${ayah.surahNumber}:${ayah.ayahNumber}'] ?? 0;
+      if (!_revealed.contains(i) && count < length) return i;
+    }
+    return widget.ayahs.length;
   }
 
   void _checkpointLiveWords() {
@@ -211,7 +236,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   Map<String, int> _labAlignmentMetrics(int startIndex, String text) {
     final visible = _visibleWordCounts;
-    var cursor = startIndex;
+    var cursor = _index;
     var cursorCount = 0;
     while (cursor < widget.ayahs.length) {
       final ayah = widget.ayahs[cursor];
@@ -563,6 +588,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       await widget.stopReference();
       if (!mounted || generation != _generation) return;
       setState(() {
+        _viewedPageOverride = null;
         _hasStarted = true;
         _acceptResults = true;
         _preview.clear();
@@ -672,6 +698,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 }
               }
               _liveWordCounts.addAll(_completedLiveWordCounts);
+              if (_viewedPageOverride != null &&
+                  _liveWordCounts.length != previousWords.length) {
+                _viewedPageOverride = null;
+              }
             });
             if (widget.continuous && _livePreview && !widget.localQuranLab) {
               final check = _sequenceCheck(startIndex, text);
@@ -1169,10 +1199,27 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   Future<void> _reference() async {
+    final activeIndex = _activeAyahIndex;
+    final targetIndex = activeIndex < widget.ayahs.length ? activeIndex : _index;
     final generation = ++_generation;
     _acceptResults = false;
     if (!widget.localQuranLab) _pendingText = '';
     _checkpointLiveWords();
+    if (widget.localQuranLab &&
+        widget.continuous &&
+        targetIndex > _index &&
+        targetIndex < widget.ayahs.length) {
+      _index = targetIndex;
+      final targetAyah = widget.ayahs[targetIndex];
+      final targetKey = '${targetAyah.surahNumber}:${targetAyah.ayahNumber}';
+      final paused = _pausedWordCounts[targetKey] ?? 0;
+      _pendingText = paused > 0
+          ? _comparison
+                .recitationWords(targetAyah.imlaei ?? '')
+                .take(paused)
+                .join(' ')
+          : '';
+    }
     _preview.clear();
     _clearLiveWords();
     setState(() => _busy = true);
@@ -1206,8 +1253,22 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   void _hint() {
+    final activeIndex = _activeAyahIndex;
     _interrupt();
     setState(() {
+      if (widget.localQuranLab &&
+          widget.continuous &&
+          activeIndex > _index &&
+          activeIndex < widget.ayahs.length) {
+        _index = activeIndex;
+        final paused = _pausedWordCounts[_verseKey] ?? 0;
+        _pendingText = paused > 0
+            ? _comparison
+                  .recitationWords(_ayah.imlaei ?? '')
+                  .take(paused)
+                  .join(' ')
+            : '';
+      }
       _assisted.add(_index);
       if (widget.localQuranLab) {
         if (widget.continuous &&
@@ -1248,16 +1309,73 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   void _reveal() {
+    final activeIndex = _activeAyahIndex;
     _interrupt();
     setState(() {
+      if (widget.localQuranLab &&
+          widget.continuous &&
+          activeIndex > _index &&
+          activeIndex < widget.ayahs.length) {
+        for (var i = _index; i < activeIndex; i++) {
+          _revealed.add(i);
+        }
+        _index = activeIndex;
+      } else if (widget.localQuranLab && widget.continuous) {
+        for (var i = 0; i < _index; i++) {
+          final ayah = widget.ayahs[i];
+          final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
+          final words = _comparison.recitationWords(ayah.imlaei ?? '');
+          final paused = _pausedWordCounts[key] ?? 0;
+          if (words.isNotEmpty && paused >= words.length) {
+            _revealed.add(i);
+          }
+        }
+        while (_index < widget.ayahs.length) {
+          final ayah = widget.ayahs[_index];
+          final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
+          final words = _comparison.recitationWords(ayah.imlaei ?? '');
+          final paused = _pausedWordCounts[key] ?? 0;
+          if (!_revealed.contains(_index) && paused < words.length) break;
+          _revealed.add(_index);
+          _index++;
+        }
+      }
+      if (_index >= widget.ayahs.length) {
+        _index = widget.ayahs.length - 1;
+        _finished = true;
+        return;
+      }
       _assisted.add(_index);
       _revealed.add(_index);
+      _pausedWordCounts.remove(_verseKey);
       _acceptedWordCounts.clear();
       _pendingText = '';
-      if (_index + 1 < widget.ayahs.length) {
-        _index++;
+      var nextIndex = _index + 1;
+      if (widget.localQuranLab && widget.continuous) {
+        while (nextIndex < widget.ayahs.length) {
+          final ayah = widget.ayahs[nextIndex];
+          final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
+          final words = _comparison.recitationWords(ayah.imlaei ?? '');
+          final paused = _pausedWordCounts[key] ?? 0;
+          if (!_revealed.contains(nextIndex) && paused < words.length) break;
+          _revealed.add(nextIndex);
+          nextIndex++;
+        }
+      }
+      if (nextIndex < widget.ayahs.length) {
+        _index = nextIndex;
+        final nextAyah = widget.ayahs[_index];
+        final nextKey = '${nextAyah.surahNumber}:${nextAyah.ayahNumber}';
+        final paused = _pausedWordCounts[nextKey] ?? 0;
+        _pendingText = paused > 0
+            ? _comparison
+                  .recitationWords(nextAyah.imlaei ?? '')
+                  .take(paused)
+                  .join(' ')
+            : '';
         _message = 'hifz_resume_message';
       } else {
+        _index = widget.ayahs.length - 1;
         _finished = true;
       }
     });
@@ -1267,6 +1385,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     final visibleBeforeInterrupt = _visibleWordCounts;
     _interrupt();
     setState(() {
+      _viewedPageOverride = null;
       if (widget.localQuranLab && widget.continuous) {
         for (final counts in [visibleBeforeInterrupt, _visibleWordCounts]) {
           for (final entry in counts.entries) {
@@ -1305,13 +1424,23 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     var targetIndex = widget.ayahs.indexWhere(
       (ayah) => ayah.pageNumber == targetPage,
     );
+    var hasUnrevealedOnTargetPage = false;
     for (var i = 0; i < widget.ayahs.length; i++) {
       if (widget.ayahs[i].pageNumber == targetPage && !_revealed.contains(i)) {
         targetIndex = i;
+        hasUnrevealedOnTargetPage = true;
         break;
       }
     }
-    if (targetIndex >= 0 && targetIndex != _index) _select(targetIndex);
+    if (targetIndex < 0) return;
+    if (targetIndex == _index || !hasUnrevealedOnTargetPage) {
+      setState(() {
+        _viewedPageOverride =
+            targetPage == _activePageNumber ? null : targetPage;
+      });
+      return;
+    }
+    _select(targetIndex);
   }
 
   void _finishPageSwipe(DragEndDetails details) {
@@ -1727,7 +1856,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                 _stopInProgress ||
                                     (_busy && !_acceptResults) ||
                                     _finished ||
-                                    _revealed.contains(_index) ||
+                                    _revealed.contains(
+                                      _activeAyahIndex < widget.ayahs.length
+                                          ? _activeAyahIndex
+                                          : _index,
+                                    ) ||
                                     (widget.continuous &&
                                         !widget.localQuranLab &&
                                         _hintWordCounts.containsKey(_index))

@@ -253,8 +253,8 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     // Collect at least a second of audio first; subsequent checks only wait
     // for fresh audio after inference, without queuing overlapping work.
     final delay = initial
-        ? const Duration(seconds: 1)
-        : const Duration(milliseconds: 500);
+        ? const Duration(milliseconds: 500)
+        : const Duration(milliseconds: 200);
     _poll = Timer(delay, () {
       if (!_active || _stopping || generation != _generation) return;
       _inFlight = _preview(generation);

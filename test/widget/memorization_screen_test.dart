@@ -1970,6 +1970,108 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Listen to reference and Reveal ayah target active live cursor instead of old recited ayah',
+      (tester) async {
+        final speech = _FakeSpeech();
+        final playedAyahs = <int>[];
+        await _open(
+          tester,
+          speech,
+          continuous: true,
+          localQuranLab: true,
+          playReference: (ayah) async {
+            playedAyahs.add(ayah.ayahNumber);
+            return true;
+          },
+          ayahs: [
+            _ayah(1, _first),
+            _ayah(2, _second),
+            _ayah(3, 'الرحمن الرحيم'),
+            _ayah(4, 'مالك يوم الدين'),
+          ],
+        );
+        await _tap(tester, 'Start reciting');
+        await _tap(tester, 'Agree and continue');
+        speech.result!('$_first $_second الرحمن', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {
+          '1:1': 4,
+          '1:2': 4,
+          '1:3': 1,
+        });
+
+        await _tap(tester, 'Listen to reference');
+        expect(playedAyahs, [3]);
+
+        await _tap(tester, 'Reveal ayah and continue');
+        await tester.pumpAndSettle();
+        expect(_hidden(tester), {'1:4'});
+        expect(find.text('Ayah 4 / 4'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'page holds at page boundary until next page ayah begins and allows swiping back during recitation',
+      (tester) async {
+        final speech = _FakeWindowedSpeech();
+        await _open(
+          tester,
+          speech,
+          continuous: true,
+          localQuranLab: true,
+          ayahs: [
+            _ayah(1, _first, pageNumber: 1),
+            _ayah(2, _second, pageNumber: 1),
+            _ayah(3, 'الرحمن الرحيم', pageNumber: 2),
+            _ayah(4, 'مالك يوم الدين', pageNumber: 2),
+          ],
+        );
+        await _tap(tester, 'Start reciting');
+        await _tap(tester, 'Agree and continue');
+
+        // Completing all ayahs on page 1 stays on page 1 until page 2 begins
+        speech.result!('$_first $_second', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).pageNumber, 1);
+        expect(page(tester).revealedWordCounts, {'1:1': 4, '1:2': 4});
+
+        // Once the first word of page 2 is recited, page advances to 2
+        speech.result!('$_first $_second الرحمن', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).pageNumber, 2);
+        expect(page(tester).revealedWordCounts, {
+          '1:1': 4,
+          '1:2': 4,
+          '1:3': 1,
+        });
+
+        // Swiping back while still reciting inspects page 1 without cancelling
+        await tester.fling(
+          find.byType(MushafPageContent),
+          const Offset(-300, 0),
+          1000,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).pageNumber, 1);
+        expect(page(tester).revealedWordCounts, {
+          '1:1': 4,
+          '1:2': 4,
+          '1:3': 1,
+        });
+        expect(speech.cancellations, 0);
+
+        // Swiping forward returns to page 2
+        await tester.fling(
+          find.byType(MushafPageContent),
+          const Offset(300, 0),
+          1000,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).pageNumber, 2);
+      },
+    );
+
     testWidgets('step practice also hides interim words and raw transcript', (
       tester,
     ) async {

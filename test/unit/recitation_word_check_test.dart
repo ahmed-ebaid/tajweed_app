@@ -853,4 +853,230 @@ void main() {
       [4, 3, 4],
     );
   });
+
+  test('matches cloud recordings for Surahs 90, 102, 104, 105, 106, 107, and 108', () {
+    // 90:6 - أَحْلَكْتُوا مَالًا لُبَدًا
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: ['يَقُولُ أَهْلَكْتُ مَالًا لُّبَدًا'],
+            expectedVerseKeys: ['90:6'],
+            spokenText: 'يَقُولُ أَحْلَكْتُوا مَالًا لُبَدًا',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      1,
+    );
+
+    // 90:7 - أَلَّمْ (idgham of أن لم)
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: ['أَيَحْسَبُ أَن لَّمْ يَرَهُ أَحَدٌ'],
+            expectedVerseKeys: ['90:7'],
+            spokenText: 'أَيَحْسَبُ أَلَّمْ يَرَهُ أَحَدٌ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      1,
+    );
+
+    // 90:11 - فَلَا اقْطَحَ مَلْعَقَبَةٍ
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: ['فَلَا اقْتَحَمَ الْعَقَبَةَ'],
+            expectedVerseKeys: ['90:11'],
+            spokenText: 'فَلَا اقْطَحَ مَلْعَقَبَةٍ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      1,
+    );
+
+    // 90:17 - بِالسَّبْرِ وَطَوَاسَوْا بِالْمَرْحَمَةِ
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'ثُمَّ كَانَ مِنَ الَّذِينَ آمَنُوا وَتَوَاصَوْا بِالصَّبْرِ وَتَوَاصَوْا بِالْمَرْحَمَةِ',
+            ],
+            expectedVerseKeys: ['90:17'],
+            spokenText:
+                'ثُمَّ كَانَ مِنَ الَّذِينَ آمَنُوا وَتَوَاصَوْا بِالسَّبْرِ وَطَوَاسَوْا بِالْمَرْحَمَةِ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      1,
+    );
+
+    // 108:1-3 - Al-Kawthar cloud transcripts
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'إِنَّا أَعْطَيْنَاكَ الْكَوْثَرَ',
+              'فَصَلِّ لِرَبِّكَ وَانْحَرْ',
+              'إِنَّ شَانِئَكَ هُوَ الْأَبْتَرُ',
+            ],
+            expectedVerseKeys: ['108:1', '108:2', '108:3'],
+            spokenText:
+                'إِنَّ عَطَيْنَاكَ الْكَوْثَرَ فَصَلِّي لِرَبِّكَ وَانْحَرْ إِنَّ شَانِعَكَ هُوَ الْأَبْتَرُ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      3,
+    );
+
+    // 105:2, 105:4, 105:5 - Al-Fil cloud transcripts
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'أَلَمْ تَرَ كَيْفَ فَعَلَ رَبُّكَ بِأَصْحَابِ الْفِيلِ',
+              'أَلَمْ يَجْعَلْ كَيْدَهُمْ فِي تَضْلِيلٍ',
+            ],
+            expectedVerseKeys: ['105:1', '105:2'],
+            spokenText:
+                'أَلَمْ تَرَ كَيْفَ فَعَلَ رَبُّكَ بِأَصْحَابِ الْفِيلِ أَلَمْ يَجْعَلْ كَيْدَهُمْ فِي قَضْلِيلٍ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'تَرْمِيهِم بِحِجَارَةٍ مِّن سِجِّيلٍ',
+              'فَجَعَلَهُمْ كَعَصْفٍ مَّأْكُولٍ',
+            ],
+            expectedVerseKeys: ['105:4', '105:5'],
+            spokenText:
+                'فَرْمِيهِمْ بِحِجْرَةٍ مِنْ سِجِّيلٍ فَجَعَلَهُمْ قَاصْفٍ مَأْكُولٍ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+
+    // 104:8-9 - Al-Humazah cloud transcripts
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'إِنَّهَا عَلَيْهِم مُّؤْصَدَةٌ',
+              'فِي عَمَدٍ مُّمَدَّدَةٍ',
+            ],
+            expectedVerseKeys: ['104:8', '104:9'],
+            spokenText: 'إِنَّهَا عَلَيْهِمْ مُصَلَةٌ فِي عَمَدٍ مُمَدَّدَةٍ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+
+    // 106:3-4 - Quraysh cloud transcript
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'فَلْيَعْبُدُوا رَبَّ هَٰذَا الْبَيْتِ',
+              'الَّذِي أَطْعَمَهُم مِّن جُوعٍ وَآمَنَهُم مِّنْ خَوْفٍ',
+            ],
+            expectedVerseKeys: ['106:3', '106:4'],
+            spokenText:
+                'فَلِيَعْبُدُوا رَبَّ هَذَا الْبَيْتِ الَّذِي أَطْعَمُهُمْ مِنْ جُوعٍ وَآمَنَهُمْ مِنْ خَوْفٍ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+
+    // 107:5-7 - Al-Ma'un: repeated prefix الذين هم must not skip 107:5 into 107:6
+    const maun4 = 'فَوَيْلٌ لِّلْمُصَلِّينَ';
+    const maun5 = 'الَّذِينَ هُمْ عَن صَلَاتِهِمْ سَاهُونَ';
+    const maun6 = 'الَّذِينَ هُمْ يُرَاءُونَ';
+    const maun7 = 'وَيَمْنَعُونَ الْمَاعُونَ';
+    final joinedMidAyah = comparison.joinRecitationSegment(
+      retainedPrefix: 'فويل للمصلين الذين هم',
+      spokenText: 'صَاتِهِمْ سَاهُونَ الَّذِينَ هُمْ يُرَاءُونَ وَيَمْنَعُونَ الْمَاعُونَ',
+      expectedAyahs: [maun4, maun5, maun6, maun7],
+      expectedVerseKeys: ['107:4', '107:5', '107:6', '107:7'],
+      allowWrittenOpenings: true,
+    );
+    // Skipping 'صاتهم' when 'الذين هم' is only the 2-word prefix of 107:5 must NOT
+    // truncate 107:5 to 'الذين هم ساهون'; instead 'عمصاتهم' / 'صاتهم' in full 107:5-7 matches:
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: [maun4, maun5, maun6, maun7],
+        expectedVerseKeys: ['107:4', '107:5', '107:6', '107:7'],
+        spokenText: joinedMidAyah,
+        allowWrittenOpenings: true,
+      ),
+      [2, 2],
+    );
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [maun4, maun5, maun6, maun7],
+            expectedVerseKeys: ['107:4', '107:5', '107:6', '107:7'],
+            spokenText:
+                'فَوَيْلٌ لِلْمُصَلِّينَ الَّذِينَ هُمْ عَمْصَاتِهِمْ سَاهُونَ الَّذِينَ هُمْ يُرَاءُونَ وَيَمْنَعُونَ الْمَعُونَ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      4,
+    );
+
+    // 100:5 & 100:9-11 - Al-Adiyat cloud transcripts
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'فَوَسَطْنَ بِهِ جَمْعًا',
+              'إِنَّ الْإِنسَانَ لِرَبِّهِ لَكَنُودٌ',
+            ],
+            expectedVerseKeys: ['100:5', '100:6'],
+            spokenText:
+                'فَاسْتَنْبِيهِ جَمْعًا إِنَّ الْإِنْسَانَ لِرَبِّهِ لَكَنُودٌ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'أَفَلَا يَعْلَمُ إِذَا بُعْثِرَ مَا فِي الْقُبُورِ',
+              'وَحُصِّلَ مَا فِي الصُّدُورِ',
+              'إِنَّ رَبَّهُم بِهِمْ يَوْمَئِذٍ لَّخَبِيرٌ',
+            ],
+            expectedVerseKeys: ['100:9', '100:10', '100:11'],
+            spokenText:
+                'أَفَلَا يَعْلَمُ إِذَا بُعْثِرَ مَا فِي الْقُبُورِ وَحُسُّ لَمَا فِي الصُّدُورِ إِنَّ رَبَّهُمْ بِهِمْ يَوْمَئِذٍ لَخَبِيرٌ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      3,
+    );
+
+    // 99:7-8 - Az-Zalzalah cloud transcript (شَرَّيْرَهُ)
+    expect(
+      comparison
+          .checkSequence(
+            expectedAyahs: [
+              'فَمَن يَعْمَلْ مِثْقَالَ ذَرَّةٍ خَيْرًا يَرَهُ',
+              'وَمَن يَعْمَلْ مِثْقَالَ ذَرَّةٍ شَرًّا يَرَهُ',
+            ],
+            expectedVerseKeys: ['99:7', '99:8'],
+            spokenText:
+                'فَمَنْ يَعْمَلْ مِثْقَالَ ذَرَّةٍ خَيْرًا يَرَهُ وَمَنْ يَعْمَلْ مِثْقَالَ ذَرَّةٍ شَرَّيْرَهُ',
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+  });
 }
