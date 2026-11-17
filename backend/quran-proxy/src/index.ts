@@ -14,7 +14,6 @@ export interface Env extends AttestationEnv {
   QF_CLIENT_SECRET: string;
   QF_ENV: "prelive" | "production";
   SIMULATOR_TEST_TOKEN?: string;
-  ASR_DIAGNOSTICS?: KVNamespace;
 }
 
 interface AccessToken {
@@ -564,60 +563,6 @@ async function handleDiagnosticsRequest(
     }),
   );
   const internalBody: unknown = await internal.json();
-  if (operation === "upload" && internal.ok && env.ASR_DIAGNOSTICS) {
-    const savedId =
-      internalBody &&
-      typeof internalBody === "object" &&
-      typeof (internalBody as Record<string, unknown>).id === "string"
-        ? ((internalBody as Record<string, unknown>).id as string)
-        : typeof body.session_id === "string"
-        ? body.session_id
-        : requestId;
-    const verseSlug =
-      typeof body.verse_key === "string"
-        ? body.verse_key.replaceAll(":", "_")
-        : "unknown";
-    const prefix = `${new Date().toISOString().slice(0, 10)}_${verseSlug}_${savedId}`;
-    const ttl = {expirationTtl: 14 * 24 * 60 * 60};
-    try {
-      if (
-        typeof body.diagnostics_jsonl === "string" &&
-        body.diagnostics_jsonl.length > 0
-      ) {
-        await env.ASR_DIAGNOSTICS.put(
-          `${prefix}/quran-asr-diagnostics.jsonl`,
-          body.diagnostics_jsonl,
-          ttl,
-        );
-      }
-      if (Array.isArray(body.snapshots)) {
-        for (const rawSnap of body.snapshots) {
-          if (!rawSnap || typeof rawSnap !== "object") continue;
-          const snap = rawSnap as Record<string, unknown>;
-          const slot = typeof snap.slot === "number" ? snap.slot : 0;
-          if (typeof snap.json === "string" && snap.json.length > 0) {
-            await env.ASR_DIAGNOSTICS.put(
-              `${prefix}/snapshot-${slot}.json`,
-              snap.json,
-              ttl,
-            );
-          }
-          if (
-            typeof snap.wav_base64 === "string" &&
-            snap.wav_base64.length > 0
-          ) {
-            await env.ASR_DIAGNOSTICS.put(
-              `${prefix}/snapshot-${slot}.wav`,
-              Buffer.from(snap.wav_base64, "base64"),
-              ttl,
-            );
-          }
-        }
-      }
-    } catch (error) {
-      console.warn(`[${requestId}] KV mirror warning: ${String(error)}`);
-    }
-  }
   return json(internalBody, internal.status, requestId);
 }
 
