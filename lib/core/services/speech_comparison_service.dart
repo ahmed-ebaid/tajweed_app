@@ -546,6 +546,7 @@ class SpeechComparisonService {
     required List<String> expectedVerseKeys,
     required String spokenText,
     bool allowWrittenOpenings = false,
+    bool allowDisplayOnlyCorrections = false,
   }) {
     if (expectedVerseKeys.length != expectedAyahs.length) {
       throw ArgumentError('Verse keys must correspond to every expected ayah');
@@ -555,6 +556,7 @@ class SpeechComparisonService {
       expectedAyahs,
       expectedVerseKeys,
       allowWrittenOpenings,
+      allowDisplayOnlyCorrections: allowDisplayOnlyCorrections,
     );
     final counts = <int>[];
     var offset = 0;
@@ -699,6 +701,7 @@ class SpeechComparisonService {
     bool allowWrittenOpenings, {
     bool allowAsrCorrections = true,
     bool trustedPrefix = false,
+    bool allowDisplayOnlyCorrections = false,
   }) {
     final spoken = _recitationWords(text);
     if (!allowWrittenOpenings || keys == null) return spoken;
@@ -861,6 +864,22 @@ class SpeechComparisonService {
           offset += 2;
           word++;
           continue;
+        }
+        // A split consonant plus inserted long ya may improve a lab preview
+        // only when the next two expected words anchor it exactly.
+        if (allowDisplayOnlyCorrections &&
+            word + 2 < expected.length &&
+            offset + 3 < spoken.length &&
+            !quranVocabulary.contains(spoken[offset]) &&
+            _matchesSplitFinalConsonantWithYa(
+              expected[word].first,
+              spoken[offset],
+              spoken[offset + 1],
+            ) &&
+            expected[word + 1].contains(spoken[offset + 2]) &&
+            expected[word + 2].contains(spoken[offset + 3])) {
+          expanded.add(expected[word].first);
+          return [...expanded, ...spoken.skip(offset)];
         }
         if (word + 1 < expected.length &&
             offset < spoken.length &&
@@ -1334,6 +1353,17 @@ class SpeechComparisonService {
       return true;
     }
     return false;
+  }
+
+  bool _matchesSplitFinalConsonantWithYa(
+    String expectedWord,
+    String firstSpoken,
+    String secondSpoken,
+  ) {
+    if (expectedWord.length < 5 || !secondSpoken.endsWith('ي')) return false;
+    final finalConsonant = expectedWord[expectedWord.length - 1];
+    return firstSpoken == expectedWord.substring(0, expectedWord.length - 1) &&
+        secondSpoken == '$finalConsonantي';
   }
 
   bool _matchesMergedNoonAssimilation(

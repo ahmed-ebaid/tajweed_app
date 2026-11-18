@@ -502,22 +502,27 @@ repeated window over a fully retained ayah must repeat those words in order.
 Lab spelling tolerance is limited to hamza seats, taa marbuta, alif maqsura,
 the same letters split differently, and one-letter non-Quran ASR spellings
 followed by the next two expected words.
-An additional, **default-off** recovery experiment is available by adding
-`--dart-define=QURAN_ASR_CONTEXT_RECOVERY=true` to the Flutter configuration
-command alongside `--dart-define=QURAN_ASR_EXPERIMENT=true`. It requires fresh
-visible-progress feedback and more than eight seconds of captured audio.
-After four seconds of audio without progress, it retries with 12 seconds of
-context; a retry that makes no progress escalates the next eligible retry to
-28 seconds. Any visible advance resets recovery to 12 seconds, and attempts
-are separated by at least eight seconds of audio. Inference remains serial,
-ordinary previews remain eight seconds, and the final check remains 30 seconds.
+Context recovery is **enabled by default in experimental lab builds** when
+`--dart-define=QURAN_ASR_EXPERIMENT=true` is set; pass
+`--dart-define=QURAN_ASR_CONTEXT_RECOVERY=false` to disable it. Ordinary builds
+remain unaffected. Recovery starts its no-progress timer on the first valid
+preview, even when it reveals zero words. With no visible words it makes at most
+three attempts (12 seconds, then up to two 28-second contexts); if those do not
+reveal a prefix, it stops retrying until visible progress occurs. After visible
+progress, any advance resets recovery to 12 seconds, and attempts are separated
+by at least eight seconds of audio. Inference remains serial, ordinary previews
+remain eight seconds, and the final check remains 30 seconds.
+Lab previews may also display the first word from a narrowly anchored
+split-final-consonant correction. It is excluded from final matching and Hifz
+credit, and does not advance later words from that transcript.
 Only explicitly requested recovery responses may have an earlier window start;
 their audio end cannot regress. Recovery does not bypass ordered matching,
 contradiction checks, or unverified-credit restrictions, and never supplies
-expected text to the model. This flag remains off pending broader accuracy and
-physical-device latency, memory, heat, and battery validation. A visible reveal
-gap is not itself a speech-to-display latency measurement; pauses and prolonged
-recitation need separate word-aligned audio review.
+expected text to the model. This remains experimental and excluded from
+distribution builds pending broader accuracy and physical-device latency,
+memory, heat, and battery validation. A visible reveal gap is not itself a
+speech-to-display latency measurement; pauses and prolonged recitation need
+separate word-aligned audio review.
 Exploratory paired trials across 213 distinct recordings from the same three
 initial reciters (including 18 audio-omission controls) increased accepted
 completions across the 195 positive fixtures from 55 to 85 with sliding-window

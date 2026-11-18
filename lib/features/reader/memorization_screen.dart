@@ -689,6 +689,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   ],
                   spokenText: spokenText,
                   allowWrittenOpenings: widget.localQuranLab,
+                  allowDisplayOnlyCorrections: widget.localQuranLab,
                 );
             var wordCounts = countsFrom(
               0,

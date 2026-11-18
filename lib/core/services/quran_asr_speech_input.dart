@@ -17,11 +17,12 @@ const quranAsrRetainDebugAudio =
     bool.fromEnvironment('QURAN_ASR_RETAIN_DEBUG_AUDIO');
 const quranAsrContextRecoveryEnabled =
     quranAsrExperimentEnabled &&
-    bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY');
+    bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY', defaultValue: true);
 
 /// Lab-only rolling snapshots, not a streaming ASR model. Capture continues
 /// until stopped; each report covers at most the latest 30 seconds.
 class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
+  static const _maxInitialRecoveryAttemptsWithoutWords = 3;
   static const _channel = MethodChannel(
     'com.ebaidllc.tajweed_practice/quran_asr',
   );
@@ -36,6 +37,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   double? _lastVisibleAdvanceAudioEnd;
   double? _lastRecoveryAudioEnd;
   int _nextRecoveryContextSeconds = 12;
+  int _initialRecoveryAttemptsWithoutWords = 0;
   @override
   double get windowStartSeconds => _windowStartSeconds;
   double get lastDurationSeconds => _lastDurationSeconds;
@@ -209,6 +211,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
         _visibleWordsHighWater = visibleWords;
         _lastVisibleAdvanceAudioEnd = _audioEndSeconds;
         _nextRecoveryContextSeconds = 12;
+        _initialRecoveryAttemptsWithoutWords = 0;
       }
     }
     if (!quranAsrExperimentEnabled ||
@@ -292,6 +295,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     _lastVisibleAdvanceAudioEnd = null;
     _lastRecoveryAudioEnd = null;
     _nextRecoveryContextSeconds = 12;
+    _initialRecoveryAttemptsWithoutWords = 0;
     _onResult = onResult;
     _onError = onError;
     _channel.setMethodCallHandler((call) async {
@@ -337,8 +341,14 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   }
 
   Future<void> _preview(int generation) async {
+    final noVisibleWords = _visibleWordsHighWater == 0;
+    final initialRecoveryExhausted =
+        noVisibleWords &&
+        _initialRecoveryAttemptsWithoutWords >=
+            _maxInitialRecoveryAttemptsWithoutWords;
     final recovery =
         quranAsrContextRecoveryEnabled &&
+        !initialRecoveryExhausted &&
         _audioEndSeconds > 8 &&
         _lastProgressAudioEnd == _audioEndSeconds &&
         _lastVisibleAdvanceAudioEnd != null &&
@@ -347,6 +357,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
             _audioEndSeconds - _lastRecoveryAudioEnd! >= 8);
     final contextSeconds = _nextRecoveryContextSeconds;
     if (recovery) {
+      if (noVisibleWords) _initialRecoveryAttemptsWithoutWords++;
       _lastRecoveryAudioEnd = _audioEndSeconds;
       _nextRecoveryContextSeconds = 28;
     }

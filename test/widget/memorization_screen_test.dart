@@ -163,6 +163,7 @@ void main() {
             'hifz_completed': 0,
             'ui_session_finished': 0,
             'ui_finished_without_accepted_completion': 0,
+            'accepted_text_matches': 0,
             'unaided_text_matches': 0,
             'decoder_error_recordings': 0,
             'stalled_verse_keys': <String>[],
@@ -183,10 +184,14 @@ void main() {
         if (outcome['ui_session_finished'] == true) {
           stats['ui_session_finished'] =
               (stats['ui_session_finished'] as int) + 1;
-          if (outcome['hifz_completed'] != true) {
+          if (outcome['accepted_text_match'] != true) {
             stats['ui_finished_without_accepted_completion'] =
                 (stats['ui_finished_without_accepted_completion'] as int) + 1;
           }
+        }
+        if (outcome['accepted_text_match'] == true) {
+          stats['accepted_text_matches'] =
+              (stats['accepted_text_matches'] as int) + 1;
         }
         if (outcome['unaided_text_match'] == true) {
           stats['unaided_text_matches'] =
@@ -202,9 +207,8 @@ void main() {
           'replay_complete': expectedPairs == failedAudio + outcomes.length,
           'by_reciter': byReciter,
           'notice':
-              'Completion and text-match credit from isolated-ayah Hifz widget replay. '
-              'Accepted completion and UI session ending are separate: '
-              'UI completion is measured independently from accepted ayah state. '
+              'Word visibility, accepted text-match credit, and UI session ending '
+              'are measured separately in isolated-ayah Hifz widget replay. '
               'Not WER, pronunciation accuracy, natural-error detection, microphone trials, '
               'or evidence of reliable between-ayah transitions.',
         }),
@@ -261,6 +265,8 @@ void main() {
         double? lastAdvance;
         var lastRetry = double.negativeInfinity;
         var context = 12;
+        int? visibleWordsHighWater;
+        var initialRecoveryAttemptsWithoutWords = 0;
         var maxVisibleWords = 0;
         Future<void> deliver(Map<String, dynamic> snapshot) async {
           speech.windowStartSeconds = (snapshot['start_seconds'] as num)
@@ -278,17 +284,23 @@ void main() {
 
         for (final snapshot
             in (row['snapshots'] as List).cast<Map<String, dynamic>>()) {
-          final before = recoverySnapshots.isEmpty ? 0 : visibleWords();
           await deliver(snapshot);
           // ignore: avoid_print
           if (recoverySnapshots.isNotEmpty && snapshot['final'] == false) {
             final end = (snapshot['end_seconds'] as num).toDouble();
             final current = visibleWords();
-            if (current > before) {
+            if (visibleWordsHighWater == null ||
+                current > visibleWordsHighWater) {
+              visibleWordsHighWater = current;
               lastAdvance = end;
               context = 12;
+              initialRecoveryAttemptsWithoutWords = 0;
             }
-            if (end > 8 &&
+            final canRetryWithoutWords =
+                visibleWordsHighWater > 0 ||
+                initialRecoveryAttemptsWithoutWords < 3;
+            if (canRetryWithoutWords &&
+                end > 8 &&
                 lastAdvance != null &&
                 end - lastAdvance >= 4 &&
                 end - lastRetry >= 8) {
@@ -297,6 +309,9 @@ void main() {
                 throw StateError('Missing ${context}s retry at ${end}s');
               }
               lastRetry = end;
+              if (visibleWordsHighWater == 0) {
+                initialRecoveryAttemptsWithoutWords++;
+              }
               await deliver(retry);
               final recovered = visibleWords();
               recoveryEvents.add({
@@ -305,8 +320,14 @@ void main() {
                 'before': current,
                 'after': recovered,
               });
-              if (recovered > current) lastAdvance = end;
-              context = recovered > current ? 12 : 28;
+              if (recovered > visibleWordsHighWater) {
+                visibleWordsHighWater = recovered;
+                lastAdvance = end;
+                initialRecoveryAttemptsWithoutWords = 0;
+                context = 12;
+              } else {
+                context = 28;
+              }
             }
           }
           if (recordRevealTiming && snapshot['final'] == false) {
@@ -329,6 +350,10 @@ void main() {
             .text('Unaided matches: 1 · Assisted: 0')
             .evaluate()
             .isNotEmpty;
+        final assisted = find
+            .text('Unaided matches: 0 · Assisted: 1')
+            .evaluate()
+            .isNotEmpty;
         final result = File(
           '$corpusDirectory/hifz-results/${row['reciter_id']}/${input.uri.pathSegments.last}',
         );
@@ -339,6 +364,7 @@ void main() {
           'reciter_id': row['reciter_id'],
           'hifz_completed': complete,
           'ui_session_finished': uiFinished,
+          'accepted_text_match': unaided || assisted,
           'unaided_text_match': unaided,
           'decoder_error_recording': row['status'] == 'decoder_error',
           if (recordRevealTiming) 'preview_reveal_timing': revealTiming,

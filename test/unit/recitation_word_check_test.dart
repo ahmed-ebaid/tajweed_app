@@ -67,6 +67,61 @@ void main() {
     );
   });
 
+  test(
+    'split final consonant recovery is display-only and needs two anchors',
+    () {
+      const expected = 'وليستعفف الذين لا يجدون نكاحا';
+      const split = 'وليستعف في الذين لا يجدون نكاحا';
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [expected],
+          expectedVerseKeys: ['24:33'],
+          spokenText: split,
+          allowWrittenOpenings: true,
+        ),
+        [0],
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [expected],
+          expectedVerseKeys: ['24:33'],
+          spokenText: split,
+          allowWrittenOpenings: true,
+          allowDisplayOnlyCorrections: true,
+        ),
+        [1],
+      );
+      expect(
+        comparison
+            .checkEntireAyah(
+              expectedImlaei: expected,
+              expectedVerseKey: '24:33',
+              spokenText: split,
+              allowWrittenOpenings: true,
+            )
+            .matched,
+        isFalse,
+      );
+      for (final unsafeSplit in [
+        'وليستعف في الذين نكاحا',
+        'وليستعف في زيادة الذين لا يجدون نكاحا',
+        'وليستعف في الذين زيادة يجدون نكاحا',
+      ]) {
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [expected],
+            expectedVerseKeys: ['24:33'],
+            spokenText: unsafeSplit,
+            allowWrittenOpenings: true,
+            allowDisplayOnlyCorrections: true,
+          ),
+          [0],
+          reason: unsafeSplit,
+        );
+      }
+    },
+  );
+
   test('joined and split Imlaei spellings must account for every letter', () {
     const expected =
         'ضرب لكم مثلا من أنفسكم هل لكم من ما ملكت أيمانكم من شركاء في ما رزقناكم فأنتم فيه سواء تخافونهم كخيفتكم أنفسكم كذلك نفصل الآيات لقوم يعقلون';

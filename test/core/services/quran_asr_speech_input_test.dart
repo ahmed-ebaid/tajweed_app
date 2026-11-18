@@ -58,7 +58,7 @@ void main() {
     return;
   }
 
-  group('opt-in context recovery', () {
+  group('experimental context recovery', () {
     late double audioEnd;
     late int visible;
     late bool feedback;
@@ -143,9 +143,7 @@ void main() {
       };
     });
 
-    testWidgets('recovery requires the compile-time opt-in and actual stall', (
-      tester,
-    ) async {
+    testWidgets('recovery requires an actual stall', (tester) async {
       await begin();
       await sample(tester, 4);
       await sample(tester, 8);
@@ -220,6 +218,23 @@ void main() {
         await sample(tester, 20.3);
         expect(recoveryRequests.where((value) => value), hasLength(2));
         expect(errors, isEmpty);
+        await input.cancel();
+      });
+
+      testWidgets('limits retries until a zero-word prefix advances', (
+        tester,
+      ) async {
+        visible = 0;
+        await stall(tester);
+        await sample(tester, 20.2);
+        await sample(tester, 20.4);
+        expect(requestedContexts, [12, 28]);
+        await sample(tester, 28.5);
+        await sample(tester, 28.6);
+        expect(requestedContexts, [12, 28, 28]);
+        await sample(tester, 36.8);
+        await sample(tester, 37);
+        expect(requestedContexts, [12, 28, 28]);
         await input.cancel();
       });
 
