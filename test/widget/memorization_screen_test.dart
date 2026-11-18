@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -132,6 +134,161 @@ Set<String> _hidden(WidgetTester tester) => tester
     .hiddenAyahs;
 
 void main() {
+  const corpusDirectory = String.fromEnvironment('ASR_CORPUS_DIR');
+  if (corpusDirectory.isNotEmpty) {
+    final inputs = Directory('$corpusDirectory/results')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.json'))
+        .toList();
+    final manifestFile = File('$corpusDirectory/manifest.json');
+    final manifest = manifestFile.existsSync()
+        ? jsonDecode(manifestFile.readAsStringSync()) as Map<String, dynamic>
+        : null;
+    final expectedPairs = manifest == null
+        ? inputs.length
+        : (manifest['verse_keys'] as List).length *
+              (manifest['reciters'] as List).length;
+    final outcomes = <Map<String, dynamic>>[];
+    var failedAudio = 0;
+    tearDownAll(() {
+      final byReciter = <String, Map<String, dynamic>>{};
+      for (final outcome in outcomes) {
+        final reciter = '${outcome['reciter_id']}';
+        final stats = byReciter.putIfAbsent(
+          reciter,
+          () => <String, dynamic>{
+            'replayed': 0,
+            'hifz_completed': 0,
+            'ui_session_finished': 0,
+            'ui_finished_without_accepted_completion': 0,
+            'unaided_text_matches': 0,
+            'decoder_error_recordings': 0,
+            'stalled_verse_keys': <String>[],
+          },
+        );
+        stats['replayed'] = (stats['replayed'] as int) + 1;
+        if (outcome['decoder_error_recording'] == true) {
+          stats['decoder_error_recordings'] =
+              (stats['decoder_error_recordings'] as int) + 1;
+        }
+        if (outcome['hifz_completed'] == true) {
+          stats['hifz_completed'] = (stats['hifz_completed'] as int) + 1;
+        } else {
+          (stats['stalled_verse_keys'] as List<String>).add(
+            outcome['verse_key'] as String,
+          );
+        }
+        if (outcome['ui_session_finished'] == true) {
+          stats['ui_session_finished'] =
+              (stats['ui_session_finished'] as int) + 1;
+          if (outcome['hifz_completed'] != true) {
+            stats['ui_finished_without_accepted_completion'] =
+                (stats['ui_finished_without_accepted_completion'] as int) + 1;
+          }
+        }
+        if (outcome['unaided_text_match'] == true) {
+          stats['unaided_text_matches'] =
+              (stats['unaided_text_matches'] as int) + 1;
+        }
+      }
+      File('$corpusDirectory/hifz-summary.json').writeAsStringSync(
+        const JsonEncoder.withIndent('  ').convert({
+          'input_results': inputs.length,
+          'expected_pairs': expectedPairs,
+          'failed_audio_evaluations': failedAudio,
+          'replayed': outcomes.length,
+          'replay_complete': expectedPairs == failedAudio + outcomes.length,
+          'by_reciter': byReciter,
+          'notice':
+              'Completion and text-match credit from isolated-ayah Hifz widget replay. '
+              'Accepted completion and UI session ending are separate: '
+              'UI completion is measured independently from accepted ayah state. '
+              'Not WER, pronunciation accuracy, natural-error detection, microphone trials, '
+              'or evidence of reliable between-ayah transitions.',
+        }),
+      );
+    });
+    for (final input in inputs) {
+      final reciter = input.parent.uri.pathSegments
+          .where((part) => part.isNotEmpty)
+          .last;
+      testWidgets('corpus replay $reciter ${input.uri.pathSegments.last}', (
+        tester,
+      ) async {
+        final row =
+            jsonDecode(input.readAsStringSync()) as Map<String, dynamic>;
+        if (row['status'] != 'ok' && row['status'] != 'decoder_error') {
+          failedAudio++;
+          markTestSkipped('Audio evaluation failed: ${row['error']}');
+          return;
+        }
+        final key = row['verse_key'] as String;
+        final parts = key.split(':').map(int.parse).toList();
+        final speech = _FakeWindowedSpeech();
+        await _open(
+          tester,
+          speech,
+          continuous: true,
+          localQuranLab: true,
+          ayahs: [
+            _ayah(
+              parts[1],
+              row['expected_text'] as String,
+              surahNumber: parts[0],
+            ),
+          ],
+        );
+        await _tap(tester, 'Start reciting');
+        await _tap(tester, 'Agree and continue');
+        for (final snapshot in row['snapshots'] as List<dynamic>) {
+          speech.windowStartSeconds = (snapshot['start_seconds'] as num)
+              .toDouble();
+          if (snapshot['decoder_error'] != null) {
+            speech.error!('quran_asr_invalid_result');
+          } else {
+            speech.result!(
+              snapshot['transcript'] as String,
+              snapshot['final'] as bool,
+            );
+          }
+          await tester.pumpAndSettle();
+        }
+        final complete = _hidden(tester).isEmpty;
+        final uiFinished = find
+            .text(AppLocalizations(const Locale('en')).get('mem_done'))
+            .evaluate()
+            .isNotEmpty;
+        final unaided = find
+            .text('Unaided matches: 1 · Assisted: 0')
+            .evaluate()
+            .isNotEmpty;
+        final result = File(
+          '$corpusDirectory/hifz-results/${row['reciter_id']}/${input.uri.pathSegments.last}',
+        );
+        result.parent.createSync(recursive: true);
+        final outcome = {
+          'verse_key': key,
+          'reciter_id': row['reciter_id'],
+          'hifz_completed': complete,
+          'ui_session_finished': uiFinished,
+          'unaided_text_match': unaided,
+          'decoder_error_recording': row['status'] == 'decoder_error',
+          'revealed_word_counts': tester
+              .widget<MushafPageContent>(find.byType(MushafPageContent))
+              .revealedWordCounts,
+          'notice':
+              'Actual Hifz widget replay of stored transcripts, not a microphone or pronunciation test.',
+        };
+        result.writeAsStringSync(
+          const JsonEncoder.withIndent('  ').convert(outcome),
+        );
+        outcomes.add(outcome);
+        expect(unaided && !complete, isFalse);
+      });
+    }
+  }
+
   if (quranAsrExperimentEnabled) {
     for (final locale in [const Locale('ar'), const Locale('en')]) {
       testWidgets(
@@ -262,6 +419,7 @@ void main() {
             'com.ebaidllc.tajweed_practice/quran_asr',
           );
           final calls = <String>[];
+          final recoveryContexts = <int>[];
           var text = '$_first الحمد لله';
           var windowStart = 0.0;
           final binding = TestDefaultBinaryMessengerBinding.instance;
@@ -269,14 +427,36 @@ void main() {
             call,
           ) async {
             calls.add(call.method);
+            if (call.method == 'preview' || call.method == 'check') {
+              final arguments = call.arguments as Map<dynamic, dynamic>?;
+              final recovery = call.method == 'preview' && arguments != null;
+              final context = recovery
+                  ? arguments['contextSeconds'] as int
+                  : null;
+              if (recovery) {
+                expectSync(quranAsrContextRecoveryEnabled, isTrue);
+                expectSync(context, anyOf(12, 28));
+                expectSync(arguments, {
+                  'recovery': true,
+                  'contextSeconds': context,
+                });
+                recoveryContexts.add(context!);
+              }
+              final duration = call.method == 'check'
+                  ? 30.0
+                  : (context ?? 8).toDouble();
+              final audioEnd = windowStart + 8;
+              return {
+                'transcript': text,
+                'durationSeconds': duration,
+                'inferenceSeconds': 0.3,
+                'windowStartSeconds': audioEnd - duration,
+                if (recovery) 'recovery': true,
+                if (recovery) 'contextSeconds': context,
+              };
+            }
             return switch (call.method) {
               'available' => true,
-              'preview' || 'check' => {
-                'transcript': text,
-                'durationSeconds': 30.0,
-                'inferenceSeconds': 0.3,
-                'windowStartSeconds': windowStart,
-              },
               _ => null,
             };
           });
@@ -352,6 +532,10 @@ void main() {
             expect(calls, isNot(contains('check')));
           }
           expect(calls.where((method) => method == 'start'), hasLength(1));
+          expect(
+            recoveryContexts,
+            quranAsrContextRecoveryEnabled ? isNotEmpty : isEmpty,
+          );
           await _tap(tester, 'Pause');
           expect(
             tester
@@ -483,6 +667,120 @@ void main() {
       await _tap(tester, 'Start reciting');
       await _tap(tester, 'Agree and continue');
     }
+
+    for (final continuous in [true, false]) {
+      for (final corrected in [true, false]) {
+        testWidgets(
+          'literal credit requires raw words: continuous=$continuous corrected=$corrected',
+          (tester) async {
+            final speech = _FakeSpeech();
+            await _open(
+              tester,
+              speech,
+              continuous: continuous,
+              localQuranLab: true,
+              ayahs: [_ayah(4, 'من بعد ما جاءتهم البينة', surahNumber: 98)],
+            );
+            await _tap(tester, 'Live word preview (unverified)');
+            await _tap(tester, continuous ? 'Start reciting' : 'Recite ayah');
+            await _tap(tester, 'Agree and continue');
+            speech.result!(
+              corrected ? 'من بعد ما جاءتون البينة' : 'من بعد ما جاءتهم البينة',
+              true,
+            );
+            await tester.pumpAndSettle();
+            expect(_hidden(tester), isEmpty);
+            if (continuous) {
+              expect(
+                find.text(
+                  'Unaided matches: ${corrected ? 0 : 1} · Assisted: 0',
+                ),
+                findsOneWidget,
+              );
+            }
+          },
+        );
+      }
+    }
+
+    for (final continuous in [true, false]) {
+      testWidgets(
+        'exact split words complete without literal credit: continuous=$continuous',
+        (tester) async {
+          final speech = _FakeSpeech();
+          await _open(
+            tester,
+            speech,
+            continuous: continuous,
+            localQuranLab: true,
+            ayahs: [_ayah(181, 'فمن بدله بعدما سمعه', surahNumber: 2)],
+          );
+          await _tap(tester, 'Live word preview (unverified)');
+          await _tap(tester, continuous ? 'Start reciting' : 'Recite ayah');
+          await _tap(tester, 'Agree and continue');
+          speech.result!('فمن بدله بعد ما سمعه', true);
+          await tester.pumpAndSettle();
+          expect(_hidden(tester), isEmpty);
+          if (continuous) {
+            expect(
+              find.text('Unaided matches: 0 · Assisted: 0'),
+              findsOneWidget,
+            );
+          }
+        },
+      );
+    }
+
+    testWidgets('corrected partial prefix cannot regain credit on Resume', (
+      tester,
+    ) async {
+      final speech = _FakeSpeech();
+      await startLab(
+        tester,
+        speech,
+        ayahs: [
+          _ayah(
+            5,
+            'وما أمروا إلا ليعبدوا الله مخلصين له الدين حنفاء ويقيموا الصلاة ويؤتوا الزكاة وذلك دين القيمة',
+            surahNumber: 98,
+          ),
+        ],
+      );
+      speech.result!(
+        'وما أمروا إلا ليعبدوا الله مخلصين له الدين خلفاء ويقيموا الصلاة',
+        true,
+      );
+      await tester.pumpAndSettle();
+      expect(_hidden(tester), {'98:5'});
+      await _tap(tester, 'Resume');
+      speech.result!('ويؤتوا الزكاة وذلك دين القيمة', true);
+      await tester.pumpAndSettle();
+      expect(_hidden(tester), isEmpty);
+      expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
+    });
+
+    testWidgets(
+      'a corrected ayah does not taint the next exact retained prefix',
+      (tester) async {
+        final speech = _FakeSpeech();
+        await startLab(
+          tester,
+          speech,
+          ayahs: [
+            _ayah(4, 'من بعد ما جاءتهم البينة', surahNumber: 98),
+            _ayah(5, 'وما أمروا إلا ليعبدوا الله', surahNumber: 98),
+          ],
+        );
+        speech.result!('من بعد ما جاءتون البينة وما أمروا إلا', true);
+        await tester.pumpAndSettle();
+        expect(_hidden(tester), {'98:5'});
+        await _tap(tester, 'Resume');
+        speech.result!('ليعبدوا الله', true);
+        await tester.pumpAndSettle();
+        expect(_hidden(tester), isEmpty);
+        expect(find.text('Unaided matches: 1 · Assisted: 0'), findsOneWidget);
+      },
+    );
 
     testWidgets('Pause immediately shows finalizing while ASR completes', (
       tester,
@@ -1089,6 +1387,45 @@ void main() {
       );
     }
 
+    for (final finalText in <String?>['بسم الله الرحمن العليم', null]) {
+      testWidgets(
+        'a full unverified preview stays resumable after final $finalText',
+        (tester) async {
+          final speech = _FakeWindowedSpeech();
+          await startLab(tester, speech, ayahs: [_ayah(1, _first)]);
+          await _tap(tester, 'Live word preview (unverified)');
+          speech.result!(_first, false);
+          await tester.pumpAndSettle();
+          if (finalText != null) {
+            speech.stopping = () => speech.result!(finalText, true);
+          }
+          await _tap(tester, 'Pause');
+          expect(_hidden(tester), contains('1:1'));
+          expect(
+            find.text(AppLocalizations(const Locale('en')).get('mem_done')),
+            findsNothing,
+          );
+          expect(
+            find.text('Not verified. Recite this ayah again.'),
+            findsOneWidget,
+          );
+          expect(find.text('Continue from word: 5'), findsNothing);
+          expect(page(tester).revealedWordCounts, {'1:1': 4});
+          expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
+
+          await _tap(tester, 'Resume');
+          speech.result!(_first, true);
+          await tester.pumpAndSettle();
+          expect(_hidden(tester), isEmpty);
+          expect(
+            find.text(AppLocalizations(const Locale('en')).get('mem_done')),
+            findsOneWidget,
+          );
+          expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
+        },
+      );
+    }
+
     testWidgets(
       'rolling contradictions keep old words but cannot reveal new later words',
       (tester) async {
@@ -1149,6 +1486,37 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(page(tester).revealedWordCounts, {'1:24': 11});
+      },
+    );
+
+    testWidgets(
+      'sliding 30s final window starting with same word as ayah word 0 completes when joined with retained prefix',
+      (tester) async {
+        const nahl97 =
+            'من عمل صالحا من ذكر أو أنثى وهو مؤمن فلنحيينه حياة طيبة ولنجزينهم أجرهم بأحسن ما كانوا يعملون';
+        final speech = _FakeWindowedSpeech();
+        await startLab(
+          tester,
+          speech,
+          ayahs: [_ayah(97, nahl97)],
+        );
+        await _tap(tester, 'Live word preview (unverified)');
+        speech.result!(nahl97, false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'1:97': 18});
+
+        speech.windowStartSeconds = 6.0;
+        speech.stopping = () => speech.result!(
+          'من ذكر أو أنثى وهو مؤمن فلنحيينه حياة طيبة ولنجزينهم أجرهم بأحسن ما كانوا يعملون',
+          true,
+        );
+        await _tap(tester, 'Pause');
+        expect(_hidden(tester), isEmpty);
+        expect(
+          find.text(AppLocalizations(const Locale('en')).get('mem_done')),
+          findsOneWidget,
+        );
+        expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
       },
     );
 
@@ -2221,7 +2589,8 @@ void main() {
         speech.result!(qadr3to5, true);
         await tester.pumpAndSettle();
         expect(_hidden(tester), isEmpty);
-        expect(find.text('Unaided matches: 2 · Assisted: 0'), findsOneWidget);
+        // أمح is accepted for display, not as literal evidence for أمر.
+        expect(find.text('Unaided matches: 1 · Assisted: 0'), findsOneWidget);
       },
     );
 

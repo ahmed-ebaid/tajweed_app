@@ -9,6 +9,201 @@ void main() {
   const expected = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
   test(
+    'Quran ASR joins exact split words without adding or removing letters',
+    () {
+      for (final (reference, transcript) in [
+        ('فمن بدله بعدما سمعه', 'فمن بدله بعد ما سمعه'),
+        ('فمن بدله بعدما', 'فمن بدله بعد ما'),
+        ('وكذلك أنزلناه حكما عربيا', 'وك ذلك أنزلناه حكما عربيا'),
+      ]) {
+        expect(
+          comparison
+              .checkEntireAyah(
+                expectedImlaei: reference,
+                expectedVerseKey: '2:181',
+                spokenText: transcript,
+                allowWrittenOpenings: true,
+              )
+              .matched,
+          isTrue,
+          reason: transcript,
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [reference],
+            expectedVerseKeys: ['2:181'],
+            spokenText: transcript,
+            allowWrittenOpenings: true,
+          ),
+          [comparison.recitationWords(reference).length],
+        );
+        for (final literal in [true, false]) {
+          expect(
+            comparison
+                .checkEntireAyah(
+                  expectedImlaei: reference,
+                  expectedVerseKey: '2:181',
+                  spokenText: transcript,
+                  allowWrittenOpenings: literal,
+                  allowAsrCorrections: !literal,
+                )
+                .matched,
+            isFalse,
+            reason: 'Literal and platform matching remain unchanged',
+          );
+        }
+        expect(
+          comparison.literalAyahEvidence(
+            expectedAyahs: [reference],
+            expectedVerseKeys: ['2:181'],
+            spokenText: transcript,
+          ),
+          [false],
+        );
+      }
+    },
+  );
+
+  test('split-word recovery cannot bridge missing, wrong, or extra words', () {
+    for (final transcript in [
+      'فمن بدله بعد سمعه',
+      'فمن بدله بعد نا سمعه',
+      'فمن بدله بعد خطأ ما سمعه',
+      'فمن بدله بعد ماا سمعه',
+      'فمن بدله بعد ما سمعه خطأ',
+    ]) {
+      expect(
+        comparison
+            .checkEntireAyah(
+              expectedImlaei: 'فمن بدله بعدما سمعه',
+              expectedVerseKey: '2:181',
+              spokenText: transcript,
+              allowWrittenOpenings: true,
+            )
+            .matched,
+        isFalse,
+        reason: transcript,
+      );
+    }
+  });
+
+  test(
+    'literal ASR verification rejects corrections used for display recovery',
+    () {
+      const text = 'من بعد ما جاءتهم البينة';
+      const spoken = 'من بعد ما جاءتون البينة';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [text],
+              expectedVerseKeys: ['98:4'],
+              spokenText: spoken,
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+      final strict = comparison.checkSequence(
+        expectedAyahs: [text],
+        expectedVerseKeys: ['98:4'],
+        spokenText: spoken,
+        allowWrittenOpenings: true,
+        allowAsrCorrections: false,
+      );
+      expect(strict.completedAyahs, 0);
+      expect(strict.wordIndex, 3);
+      expect(strict.mismatch, isTrue);
+      expect(
+        comparison
+            .checkEntireAyah(
+              expectedImlaei: text,
+              expectedVerseKey: '98:4',
+              spokenText: spoken,
+              allowWrittenOpenings: true,
+              allowAsrCorrections: false,
+            )
+            .matched,
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'literal ASR verification supports written and spoken disconnected letters',
+    () {
+      for (final opening in ['الم', 'ألف لام ميم']) {
+        expect(
+          comparison
+              .checkEntireAyah(
+                expectedImlaei: 'الم',
+                expectedVerseKey: '2:1',
+                spokenText: opening,
+                allowWrittenOpenings: true,
+                allowAsrCorrections: false,
+              )
+              .matched,
+          isTrue,
+        );
+      }
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: ['من بعد ما جاءتهم البينة', 'الم'],
+              expectedVerseKeys: ['98:4', '2:1'],
+              spokenText: 'من بعد ما جاءتهم البينة الم',
+              allowWrittenOpenings: true,
+              allowAsrCorrections: false,
+            )
+            .completedAyahs,
+        2,
+      );
+    },
+  );
+
+  test(
+    'literal evidence finds later exact ayahs without correcting earlier ones',
+    () {
+      expect(
+        comparison.literalAyahEvidence(
+          expectedAyahs: ['من بعد ما جاءتهم البينة', 'الحمد لله رب العالمين'],
+          expectedVerseKeys: ['98:4', '1:2'],
+          spokenText: 'من بعد ما جاءتون البينة الحمد لله رب العالمين',
+        ),
+        [false, true],
+      );
+      expect(
+        comparison.literalAyahEvidence(
+          expectedAyahs: ['الحمد لله رب العالمين', 'بسم الله الرحمن الرحيم'],
+          expectedVerseKeys: ['1:2', '1:1'],
+          spokenText: 'بسم الله الرحمن الرحيم الحمد لله رب العالمين',
+        ),
+        [true, false],
+      );
+    },
+  );
+
+  test('literal evidence consumes repeated ayahs only once', () {
+    expect(
+      comparison.literalAyahEvidence(
+        expectedAyahs: ['ولا أنتم عابدون ما أعبد', 'ولا أنتم عابدون ما أعبد'],
+        expectedVerseKeys: ['109:3', '109:5'],
+        spokenText: 'ولا أنتم عابدون ما أعبد',
+      ),
+      [true, false],
+    );
+    for (final opening in ['الم', 'ألف لام ميم']) {
+      expect(
+        comparison.literalAyahEvidence(
+          expectedAyahs: ['الم', 'الحمد لله رب العالمين'],
+          expectedVerseKeys: ['2:1', '1:2'],
+          spokenText: '$opening الحمد لله رب العالمين',
+        ),
+        [true, true],
+      );
+    }
+  });
+
+  test(
     'Bayyinah cloud variants require Quran ASR mode and a following anchor',
     () {
       for (final (key, reference, transcript) in [
@@ -212,6 +407,34 @@ void main() {
       expect(check.matchedPrefixText, 'بسم الله');
     }
   });
+
+  test(
+    'sliding window overlap skips up to four clipped boundary tokens when anchored by a suffix',
+    () {
+      const baqarah83 =
+          'وإذ أخذنا ميثاق بني إسرائيل لا تعبدون إلا الله وبالوالدين إحسانا وذي القربى واليتامى والمساكين وقولوا للناس حسنا وأقيموا الصلاة وآتوا الزكاة ثم توليتم إلا قليلا منكم وأنتم معرضون';
+      const clippedFinalWindow =
+          'والناس حسنا وقولوا للناس حسنا وأقيموا الصلاة وآتوا الزكاة ثم توليتم إلا قليلا منكم وأنتم معرضون';
+      final joined = comparison.joinRecitationSegment(
+        retainedPrefix: baqarah83,
+        spokenText: clippedFinalWindow,
+        expectedAyahs: [baqarah83],
+        expectedVerseKeys: ['2:83'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison
+            .checkEntireAyah(
+              expectedImlaei: baqarah83,
+              expectedVerseKey: '2:83',
+              spokenText: joined,
+              allowWrittenOpenings: true,
+            )
+            .matched,
+        isTrue,
+      );
+    },
+  );
 
   test('resume overlap recognizes printed openings only when opted in', () {
     for (final enabled in [false, true]) {

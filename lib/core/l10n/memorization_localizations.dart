@@ -1,5 +1,6 @@
 const hifzTranslations = <String, Map<String, String>>{
   'en': {
+    'quran_asr_repeat_unverified': 'Not verified. Recite this ayah again.',
     'quran_asr_share_diagnostics': 'Share recordings & diagnostics',
     'quran_asr_share_empty': 'No diagnostic recordings saved yet.',
     'quran_asr_retained_preview':
@@ -44,6 +45,7 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_assisted': 'Hint-assisted',
   },
   'ar': {
+    'quran_asr_repeat_unverified': 'لم يتم التحقق. أعد تلاوة هذه الآية.',
     'quran_asr_share_diagnostics': 'مشاركة التسجيلات والتشخيص',
     'quran_asr_share_empty': 'لا توجد تسجيلات تشخيصية محفوظة بعد.',
     'quran_asr_retained_preview':
@@ -87,6 +89,7 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_assisted': 'بمساعدة تلميح',
   },
   'ur': {
+    'quran_asr_repeat_unverified': 'تصدیق نہیں ہوئی۔ یہ آیت دوبارہ پڑھیں۔',
     'quran_asr_share_diagnostics': 'ریکارڈنگز اور تشخیص شیئر کریں',
     'quran_asr_share_empty': 'ابھی تک کوئی تشخیصی ریکارڈنگ محفوظ نہیں۔',
     'quran_asr_retained_preview':
@@ -130,6 +133,7 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_assisted': 'اشارے کی مدد سے',
   },
   'tr': {
+    'quran_asr_repeat_unverified': 'Doğrulanmadı. Bu ayeti tekrar okuyun.',
     'quran_asr_share_diagnostics': 'Kayıtları ve tanılamayı paylaş',
     'quran_asr_share_empty': 'Henüz kaydedilmiş tanılama kaydı yok.',
     'quran_asr_retained_preview':
@@ -175,7 +179,9 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_assisted': 'İpucuyla',
   },
   'fr': {
-    'quran_asr_share_diagnostics': 'Partager les enregistrements et diagnostics',
+    'quran_asr_repeat_unverified': 'Non vérifié. Récitez à nouveau ce verset.',
+    'quran_asr_share_diagnostics':
+        'Partager les enregistrements et diagnostics',
     'quran_asr_share_empty': 'Aucun enregistrement de diagnostic sauvegardé.',
     'quran_asr_retained_preview':
         'Mots conservés — non vérifiés, sans crédit de correspondance',
@@ -220,6 +226,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_assisted': 'Avec indice',
   },
   'id': {
+    'quran_asr_repeat_unverified':
+        'Belum terverifikasi. Bacakan ayat ini lagi.',
     'quran_asr_share_diagnostics': 'Bagikan rekaman & diagnostik',
     'quran_asr_share_empty': 'Belum ada rekaman diagnostik yang disimpan.',
     'quran_asr_retained_preview':
@@ -264,6 +272,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_assisted': 'Dengan petunjuk',
   },
   'de': {
+    'quran_asr_repeat_unverified':
+        'Nicht bestätigt. Rezitiere diesen Vers erneut.',
     'quran_asr_share_diagnostics': 'Aufnahmen & Diagnose teilen',
     'quran_asr_share_empty': 'Noch keine Diagnoseaufnahmen gespeichert.',
     'quran_asr_retained_preview':
@@ -309,6 +319,7 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_assisted': 'Mit Hinweis',
   },
   'es': {
+    'quran_asr_repeat_unverified': 'Sin verificar. Recita esta aleya de nuevo.',
     'quran_asr_share_diagnostics': 'Compartir grabaciones y diagnóstico',
     'quran_asr_share_empty': 'Aún no hay grabaciones de diagnóstico guardadas.',
     'quran_asr_retained_preview':

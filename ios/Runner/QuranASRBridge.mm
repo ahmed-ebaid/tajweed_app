@@ -125,15 +125,34 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
     params.abort_callback_user_data = (__bridge void *)cancellation;
   }
   const auto started = [NSDate timeIntervalSinceReferenceDate];
-  int status = whisper_full(ctx, params, samples, (int)buffer.frameLength);
+  int status = 0;
+  NSUInteger invalidTextRetries = 0;
   NSMutableString *text = [NSMutableString string];
-  if (status == 0) {
+  for (int attempt = 0; attempt < 2; attempt++) {
+    if (cancellation.isCancelled) return fail(@"Recognition was cancelled.", 5);
+    status = whisper_full(ctx, params, samples, (int)buffer.frameLength);
+    if (cancellation.isCancelled) return fail(@"Recognition was cancelled.", 5);
+    if (status != 0) break;
+    [text setString:@""];
+    bool validText = true;
     for (int i = 0; i < whisper_full_n_segments(ctx); i++) {
       const char *segment = whisper_full_get_segment_text(ctx, i);
-      if (segment) [text appendString:[NSString stringWithUTF8String:segment]];
+      NSString *decoded = segment ? [NSString stringWithUTF8String:segment] : nil;
+      if (!decoded) {
+        validText = false;
+        break;
+      }
+      [text appendString:decoded];
     }
+    if (validText) break;
+    if (attempt != 0) {
+      return fail(@"Experimental recognition returned invalid text. Please record again.");
+    }
+    NSLog(@"QuranASR: invalid native text; retrying once with beam size 3.");
+    params.strategy = WHISPER_SAMPLING_BEAM_SEARCH;
+    params.beam_search.beam_size = 3;
+    invalidTextRetries++;
   }
-  if (status != 0 && cancellation.isCancelled) return fail(@"Recognition was cancelled.", 5);
   if (status != 0) {
     whisper_free(gWhisperContext);
     gWhisperContext = nullptr;
@@ -145,7 +164,8 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
   return @{
     @"transcript": transcript,
     @"durationSeconds": @(buffer.frameLength / 16000.0),
-    @"inferenceSeconds": @([NSDate timeIntervalSinceReferenceDate] - started)
+    @"inferenceSeconds": @([NSDate timeIntervalSinceReferenceDate] - started),
+    @"invalidTextRetries": @(invalidTextRetries)
   };
 }
 #endif

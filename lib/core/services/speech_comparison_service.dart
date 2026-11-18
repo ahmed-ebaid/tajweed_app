@@ -150,34 +150,42 @@ class SpeechComparisonService {
       }
     }
     if (allowWrittenOpenings && incoming.length >= 2 && retained.isNotEmpty) {
-      final skipped = incoming.skip(1).toList();
-      final maxSkippedOverlap = retained.length < skipped.length
-          ? retained.length
-          : skipped.length;
-      for (var overlap = maxSkippedOverlap; overlap > 0; overlap--) {
-        var matches = true;
-        for (var i = 0; i < overlap; i++) {
-          if (retained[retained.length - overlap + i] != skipped[i]) {
-            matches = false;
-            break;
+      final maxBoundarySkip = incoming.length - 1 < 4 ? incoming.length - 1 : 4;
+      for (var skip = 1; skip <= maxBoundarySkip; skip++) {
+        final skipped = incoming.skip(skip).toList();
+        final maxSkippedOverlap = retained.length < skipped.length
+            ? retained.length
+            : skipped.length;
+        final minOverlap = skip == 1 ? 1 : 2;
+        for (
+          var overlap = maxSkippedOverlap;
+          overlap >= minOverlap;
+          overlap--
+        ) {
+          var matches = true;
+          for (var i = 0; i < overlap; i++) {
+            if (retained[retained.length - overlap + i] != skipped[i]) {
+              matches = false;
+              break;
+            }
           }
-        }
-        if (matches) {
-          final isMidAyahAnchor =
-              overlap <= 2 &&
-              _isRepeatedAyahPrefixAnchor(
-                retainedLength: retained.length,
-                overlap: overlap,
-                expectedAyahs: expectedAyahs,
-                expectedVerseKeys: expectedVerseKeys,
-              );
-          if (!isMidAyahAnchor) {
-            return _spokenWords(
-              [...retained, ...skipped.skip(overlap)].join(' '),
-              expectedAyahs,
-              expectedVerseKeys,
-              allowWrittenOpenings,
-            ).join(' ');
+          if (matches) {
+            final isMidAyahAnchor =
+                overlap <= 2 &&
+                _isRepeatedAyahPrefixAnchor(
+                  retainedLength: retained.length,
+                  overlap: overlap,
+                  expectedAyahs: expectedAyahs,
+                  expectedVerseKeys: expectedVerseKeys,
+                );
+            if (!isMidAyahAnchor) {
+              return _spokenWords(
+                [...retained, ...skipped.skip(overlap)].join(' '),
+                expectedAyahs,
+                expectedVerseKeys,
+                allowWrittenOpenings,
+              ).join(' ');
+            }
           }
         }
       }
@@ -251,6 +259,7 @@ class SpeechComparisonService {
     required String spokenText,
     List<String>? expectedVerseKeys,
     bool allowWrittenOpenings = false,
+    bool allowAsrCorrections = true,
   }) {
     if (expectedVerseKeys != null &&
         expectedVerseKeys.length != expectedAyahs.length) {
@@ -261,6 +270,7 @@ class SpeechComparisonService {
       expectedAyahs,
       expectedVerseKeys,
       allowWrittenOpenings,
+      allowAsrCorrections: allowAsrCorrections,
     );
     var offset = 0;
     var completed = 0;
@@ -303,6 +313,54 @@ class SpeechComparisonService {
       offset += word;
     }
     return RecitationSequenceCheck(completed, '', false, 0);
+  }
+
+  /// Finds literal passage evidence in order, consuming each occurrence once.
+  /// A passage may be a whole ayah or its retained prefix.
+  /// This only gates credit; it must never be used to skip recitation progress.
+  List<bool> literalAyahEvidence({
+    required List<String> expectedAyahs,
+    required List<String> expectedVerseKeys,
+    required String spokenText,
+  }) {
+    if (expectedAyahs.length != expectedVerseKeys.length) {
+      throw ArgumentError('Verse keys must correspond to every expected ayah');
+    }
+    final spoken = _recitationWords(spokenText);
+    final evidence = <bool>[];
+    var consumed = 0;
+    for (var ayah = 0; ayah < expectedAyahs.length; ayah++) {
+      final expected = _expectedRecitationWords(
+        expectedAyahs[ayah],
+        expectedVerseKeys[ayah],
+      );
+      final written = _recitationWords(expectedAyahs[ayah]);
+      final opening = _disconnectedLetters[expectedVerseKeys[ayah]];
+      var found = false;
+      for (var start = consumed; start < spoken.length && !found; start++) {
+        var word = 0;
+        var end = start;
+        if (opening != null &&
+            written.isNotEmpty &&
+            written.first == opening &&
+            spoken[end] == opening) {
+          word = opening.length;
+          end++;
+        }
+        while (word < expected.length &&
+            end < spoken.length &&
+            expected[word].contains(spoken[end])) {
+          word++;
+          end++;
+        }
+        if (expected.isNotEmpty && word == expected.length) {
+          found = true;
+          consumed = end;
+        }
+      }
+      evidence.add(found);
+    }
+    return evidence;
   }
 
   /// Counts complete printed words in an exact, ordered transcript prefix.
@@ -364,6 +422,7 @@ class SpeechComparisonService {
     required String spokenText,
     String? expectedVerseKey,
     bool allowWrittenOpenings = false,
+    bool allowAsrCorrections = true,
   }) {
     final expected = _expectedRecitationWords(expectedImlaei, expectedVerseKey);
     final spoken = _spokenWords(
@@ -371,6 +430,7 @@ class SpeechComparisonService {
       [expectedImlaei],
       expectedVerseKey == null ? null : [expectedVerseKey],
       allowWrittenOpenings,
+      allowAsrCorrections: allowAsrCorrections,
     );
     var prefix = 0;
     while (prefix < expected.length &&
@@ -459,8 +519,9 @@ class SpeechComparisonService {
     String text,
     List<String> expectedAyahs,
     List<String>? keys,
-    bool allowWrittenOpenings,
-  ) {
+    bool allowWrittenOpenings, {
+    bool allowAsrCorrections = true,
+  }) {
     final spoken = _recitationWords(text);
     if (!allowWrittenOpenings || keys == null) return spoken;
     final expanded = <String>[];
@@ -473,7 +534,8 @@ class SpeechComparisonService {
       final written = _recitationWords(expectedAyahs[ayah]);
       final opening = _disconnectedLetters[keys[ayah]];
       var word = 0;
-      if (word == 0 &&
+      if (allowAsrCorrections &&
+          word == 0 &&
           expected.length >= 2 &&
           offset + 2 <= spoken.length &&
           !expected[0].contains(spoken[offset]) &&
@@ -505,7 +567,8 @@ class SpeechComparisonService {
         offset++;
         word = opening.length;
       }
-      if (word == 0 &&
+      if (allowAsrCorrections &&
+          word == 0 &&
           ayah > 0 &&
           expected.length >= 4 &&
           offset + 1 < spoken.length &&
@@ -521,6 +584,14 @@ class SpeechComparisonService {
       while (word < expected.length && offset < spoken.length) {
         if (expected[word].contains(spoken[offset])) {
           expanded.add(spoken[offset++]);
+          word++;
+          continue;
+        }
+        if (!allowAsrCorrections) return [...expanded, ...spoken.skip(offset)];
+        if (offset + 1 < spoken.length &&
+            expected[word].contains('${spoken[offset]}${spoken[offset + 1]}')) {
+          expanded.add('${spoken[offset]}${spoken[offset + 1]}');
+          offset += 2;
           word++;
           continue;
         }
@@ -738,7 +809,9 @@ class SpeechComparisonService {
       }
       if (word < expected.length) break;
     }
-    if (offset < spoken.length && expectedAyahs.isNotEmpty) {
+    if (allowAsrCorrections &&
+        offset < spoken.length &&
+        expectedAyahs.isNotEmpty) {
       final lastExpected = _expectedRecitationWords(
         expectedAyahs.last,
         keys.last,

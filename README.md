@@ -344,6 +344,11 @@ CI enforcement:
 - The optional **Live ayah preview (unconfirmed)** switch shows fully matching ayahs from the current partial transcript in place while listening. Previews are explicitly labelled, may disappear when recognition revises its text, and never advance the confirmed position or counters. Final results confirm matching ayahs; stopping, errors, hints, and interruptions discard unconfirmed previews. The switch is off by default.
 - Recognition failures show **Retry**, not Resume. Retrying preserves confirmed ayahs, the current page/ayah, and any valid unfinished prefix from earlier final segments; it does not turn a failed or provisional transcript into a confirmed match.
 - A separate local Quran-ASR prototype is available in `tool/quran_asr_eval.py`. Install `tool/quran_asr_requirements.txt` in an isolated Python virtualenv, then run `python tool/quran_asr_eval.py /path/to/clip.wav --cache-dir /private/model-cache` (add `--offline` after the initial download). It accepts only explicit mono PCM16 WAV clips at 16 kHz, up to 30 seconds; it never uploads audio or updates app progress. It defaults to Tarteel AI's [Whisper tiny Quran model](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran), with the base model also selectable. The model cards declare Apache-2.0 but leave training-data and limitations details incomplete; reported benchmark scores are not evidence of mistake-detection accuracy. Actual offline inference on synthetic silence produced nonempty Arabic text, confirming the need for silence filtering and independent evaluation before any app integration. This is a short-clip research tool, not streaming recognition or Tajweed grading. Input checks run with `python -m unittest discover -s tool -p test_quran_asr_eval.py`.
+- To replay an existing whisper.cpp model without Python inference dependencies, use `python3 tool/quran_asr_eval.py /path/to/clip.wav --native-cli /path/to/whisper-cli --native-model /path/to/model.bin --beam-size 1`. The decoder runs locally on CPU without reference prompting, temperature fallback, or context carryover. Optional `--reference 'Arabic target'` reports target edit distance, not recognition accuracy; only independently checked audio transcripts qualify for `--reference-kind transcribed` and WER. Desktop timings include model loading and do not predict iPhone latency.
+- `tool/quran_asr_corpus_eval.py` downloads public Quran.com ayah recordings and saves raw local decoder snapshots. On macOS, run `python3 tool/quran_asr_corpus_eval.py --native-cli /path/to/whisper-cli --native-model /path/to/model.bin --output-dir /private/corpus-run`. The default covers all 6,236 ayahs for Al-Husary, Alafasy, and Al-Minshawi (recitation IDs 6, 7, 9); `--verse-keys 1:1 2:255 91:11 91:13` selects a smaller pilot. Cached downloads and atomic per-ayah reports allow the identical command to resume; changed model/CLI hashes or inference settings require another output directory. Network/conversion/decoder failures are explicit error reports and a nonzero exit, not recognition misses. This can take hours and uses macOS `afconvert`, disk space for downloaded MP3s, and four CPU threads per worker. Optional `--workers 2` runs independent ayahs concurrently with isolated WAV work files, using up to eight CPU threads without changing inference settings. It performs evaluation, not training, and never uploads recordings.
+- Corpus previews use the app's eight-second window at a configurable four-second sampling hop, followed by its final bounded 30-second tail. This approximates window shape, not real-device inference cadence, microphone capture, or between-ayah transitions. To measure actual Hifz screen completion from the stored transcripts, run `flutter test --no-pub --dart-define=QURAN_ASR_EXPERIMENT=true --dart-define=ASR_CORPUS_DIR=/private/corpus-run test/widget/memorization_screen_test.dart --plain-name 'corpus replay'`. Per-ayah outcomes in `hifz-results/` and aggregate counts/stalled verse keys in `hifz-summary.json` distinguish accepted ayah completion (`hifz_completed`), UI session ending (`ui_session_finished`), and unaided text-match credit. The UI-ending metric is recorded separately to detect false completion (`ui_finished_without_accepted_completion`); a full retained preview alone must not end the session or disable Resume. If final recognition does not verify that preview, its words remain visible and unverified, and the user is asked to recite the ayah again. Test success means replay executed, not that every recording completed Hifz. Training-set overlap for these reciters is unknown. Studio recordings do not establish mistake-detection accuracy; independently reviewed omission/error recordings and phone microphone trials remain necessary. Tool checks run with `python3 -m unittest discover -s tool -p 'test_quran_asr*_eval.py'`.
+- Invalid UTF-8 output is never silently replaced or turned into matchable text. Corpus replay records the raw stdout bytes as hex, labels that snapshot with `decoder_error`, and continues transcribing the rest of the recording. Such recordings have status `decoder_error`, are counted separately in progress, and cause a nonzero corpus exit. Hifz replay forwards stored recognition errors rather than granting credit from later snapshots; it does not retroactively simulate the native bridge's separate malformed-text retry.
+- A complete paired replay of all 18,708 recordings increased accepted Hifz completions from 17,378 to 17,389 with exact split-word matching, and to 17,680 (+291 additional long-ayah recoveries across the 1,253 >30-second unaccepted cases) after sliding-window boundary reconciliation, with no accepted regressions. False UI completion fell from 144 to zero; unaided text-match credit stayed at 7,067. All 15,350 recordings with a normalized-exact final transcript completed, while 1,028 recordings remain unaccepted (962 over 30 seconds and 66 at or under 30 seconds, including three flagged decoder-error recordings). These are isolated-ayah replay results, not pronunciation accuracy or phone latency measurements; default-off context recovery was not part of this comparison.
 - Native microphone startup can be checked independently of Quran content and playback with `flutter test integration_test/memorization_microphone_test.dart -d <device-id> --dart-define=RUN_NATIVE_MICROPHONE_TEST=true`. This opt-in check uses real microphone/speech permissions, discards transcripts, and checks two starts; it does not verify recognition accuracy. On the current iOS 26.4 simulator, the isolated first session still fails with native `error_unknown (300)` even after selecting the Mac microphone. The corresponding local speech service log reports failure to create its recognizer from an installed model asset (`_EARSpeechRecognizer is nil`). The live-preview feature does not resolve that native failure.
 - Loading checks the full surah's verse count and consecutive ayah numbers. Complete-page loading checks every expected verse key against the Mushaf page boundaries and requires word and end-token line metadata. Incomplete neighboring-surah caches or missing line metadata show an explicit error/retry state instead of a partial or reflowed page. Full-Quran downloads are needed for complete shared pages offline.
 - Comparison uses complete Quran.Foundation `text_imlaei`, not stripped Uthmani display glyphs. Missing references, omitted/extra/reordered words, and similar-looking substitutions cannot pass. Recognition uncertainty is not presented as a definitive recitation error.
@@ -390,7 +395,23 @@ after an error) continues at the next unrevealed word, including within an ayah.
 Retained words remain labeled unverified; any ayah containing such words is
 excluded from unaided-match credit. Turning off new live previews does not erase
 this paused cursor. Disabling the switch discards only active, unsaved live
-guesses, not earlier retained or final progress. The raw transcript remains hidden. The microphone
+guesses, not earlier retained or final progress.
+
+ASR spelling/phonetic recovery may reveal words, but cannot supply **unaided
+matches**. Both continuous and ayah-by-ayah lab practice also check literal
+transcript evidence, retaining support for disconnected-letter openings.
+Two transcript tokens can recover one expected word only when their normalized
+letters concatenate exactly, such as `بعد ما` for `بعدما`; neither missing
+letters nor intervening words are discarded. This remains display recovery,
+not literal match credit, and does not change ordinary platform recognition.
+An ayah or unfinished prefix that needed correction remains unverified across
+Resume; an exact retained prefix and a later exact suffix can still earn credit.
+Ordered whole-ayah evidence can verify later exact ayahs without crediting an
+earlier corrected one or counting a repeated ayah occurrence twice. Literal
+transcript agreement is still not proof of correct pronunciation: the model
+itself can hallucinate or fill in words.
+
+The raw transcript remains hidden. The microphone
 keeps capturing until **Pause**, an input error, or an app interruption, with no
 session time cap. Only the latest 30 seconds of mono PCM16 audio are retained
 in memory (at most 960,000 PCM bytes); older audio is discarded while the
@@ -459,6 +480,32 @@ preview. Already completed previews remain unverified word progress; an unfinish
 preview is cancelled to start the final check sooner, but its result is retained
 if it finishes before cancellation takes effect. Missing or incorrect words still
 block ordered matching.
+An additional, **default-off** recovery experiment is available by adding
+`--dart-define=QURAN_ASR_CONTEXT_RECOVERY=true` to the Flutter configuration
+command alongside `--dart-define=QURAN_ASR_EXPERIMENT=true`. It requires fresh
+visible-progress feedback and more than eight seconds of captured audio.
+After four seconds of audio without progress, it retries with 12 seconds of
+context; a retry that makes no progress escalates the next eligible retry to
+28 seconds. Any visible advance resets recovery to 12 seconds, and attempts
+are separated by at least eight seconds of audio. Inference remains serial,
+ordinary previews remain eight seconds, and the final check remains 30 seconds.
+Only explicitly requested recovery responses may have an earlier window start;
+their audio end cannot regress. Recovery does not bypass ordered matching,
+contradiction checks, or unverified-credit restrictions, and never supplies
+expected text to the model. This flag remains off pending broader accuracy and
+physical-device latency, memory, heat, and battery validation. A visible reveal
+gap is not itself a speech-to-display latency measurement; pauses and prolonged
+recitation need separate word-aligned audio review.
+Exploratory paired trials across 213 distinct recordings from the same three
+initial reciters (including 18 audio-omission controls) increased accepted
+completions across the 195 positive fixtures from 55 to 85 with sliding-window
+boundary reconciliation alone (recovery off), and from 85 to 135 (+50 additional
+recoveries) with progressive 12→28-second context recovery enabled, without
+losing an existing completion. The 18 retained audio-omission controls (12 short
+and 6 strict long) remained unaccepted and UI-unfinished. These selected trials
+do not estimate the recovery rate for all remaining full-corpus failures or
+replace natural-error and live-microphone validation; strict long controls may
+remove multiple words because public timing boundaries are ambiguous.
 When changing pages, the lab keeps previously displayed partial words highlighted
 as unverified. Returning to a page still starts at its first ayah; those saved
 highlights do not skip words or grant match credit.
@@ -493,7 +540,28 @@ This opt-in screen is separate from Hifz scoring: **Hifz → DEBUG: On-device Qu
 
 The transcript is **unverified**, not a pronunciation/Tajweed assessment or proof of correct memorization. The near-silence RMS check rejects essentially inaudible input; it is not validated voice-activity detection and cannot prevent hallucinations from noise. Real microphone capture, interruptions, thermal behavior, and accuracy still require physical-iPhone trials.
 
-The experimental native decoder uses single-beam greedy decoding (`best_of = 1`, `beam_size = 1`) with temperature fallback disabled to reduce preview and Stop latency. Local replay comparisons showed unchanged transcripts on the tested clips, but this may reduce recovery on difficult audio; validate accuracy and latency on an iPhone before relying on it.
+The experimental native decoder normally uses single-beam greedy decoding (`best_of = 1`, `beam_size = 1`) with temperature fallback disabled to reduce preview and Stop latency. Local replay comparisons showed unchanged transcripts on the tested clips, but this may reduce recovery on difficult audio; validate accuracy and latency on an iPhone before relying on it.
+
+Malformed or null native text segments trigger one logged, cancellable retry on
+the same audio using beam size 3, without expected-text prompting. Partial text
+from the failed attempt is discarded. The report's `invalidTextRetries` records
+whether a retry occurred, and inference time includes both attempts. A second
+malformed result or decoder failure remains an explicit error; invalid bytes are
+never repaired or replaced. Counterfactual replay recovered one of the three
+flagged corpus recordings, not all three. A macOS regression harness exercises
+the actual bridge with stubbed model output and generated non-silent PCM audio:
+
+```bash
+mkdir -p build/native-tests
+clang++ -std=c++17 -fobjc-arc -DQURAN_ASR_NATIVE=1 -DDEBUG=1 \
+  -DQURAN_ASR_USE_METAL=0 \
+  -I /absolute/whisper.cpp-1.9.5/include \
+  -I /absolute/whisper.cpp-1.9.5/ggml/include \
+  ios/Runner/QuranASRBridge.mm test/native/quran_asr_bridge_utf8_test.mm \
+  -framework Foundation -framework AVFoundation \
+  -o build/native-tests/quran-asr-utf8-test
+build/native-tests/quran-asr-utf8-test
+```
 
 Prepare external artifacts, not repository assets:
 
@@ -534,7 +602,7 @@ flutter test --no-pub --dart-define=QURAN_ASR_EXPERIMENT=true \
   test/widget/quran_asr_experiment_screen_test.dart
 ```
 
-Native tests use an explicitly supplied Alafasy 1:2 mono PCM16 16 kHz WAV, not a personal recording. Set `QURAN_ASR_BUILD_ACTION=build-for-testing` and `QURAN_ASR_REFERENCE_WAV=/absolute/reference.wav` for the build script, then run `xcodebuild test-without-building -xctestrun <external-build>/app/Build/Products/Runner_<sdk>-arm64.xctestrun -destination 'platform=iOS Simulator,id=<device-id>' -only-testing:RunnerTests/QuranASRTests -only-testing:RunnerTests/QuranASRChannelTests -parallel-testing-enabled NO`. Read the test count: all five tests must actually execute, covering the reference transcript, silence/invalid input, repeat checks, malformed-input recovery, and cancellation/concurrent-work rejection. The channel exposes debug-only `checkWav` for typed WAV bytes, not arbitrary filesystem paths.
+Native channel tests use an explicitly supplied Alafasy 1:2 mono PCM16 16 kHz WAV, not a personal recording. Set `QURAN_ASR_BUILD_ACTION=build-for-testing` and `QURAN_ASR_REFERENCE_WAV=/absolute/reference.wav` for the build script. For a physical phone, configure Flutter with `--profile` as above and pass `ENABLE_TESTABILITY=YES` to the build script; do not use Debug for unattended device tests, whose host can exit before XCTest starts because no Flutter debugger is attached. Then run `xcodebuild test-without-building -xctestrun <external-build>/app/Build/Products/Runner_<sdk>-arm64.xctestrun -destination 'platform=iOS,id=<device-id>' -only-testing:RunnerTests/QuranASRChannelTests -parallel-testing-enabled NO`. For a simulator, use the Debug build and an `iOS Simulator` destination instead. Read the actual test count: all nine channel tests must execute, covering bounded diagnostics, audio capture/conversion and 12/28-second recovery-window bounds, recovery request validation, repeat reference decoding, 12-second and 28-second repeated-reference decode latency checks (~1.22s on iPhone 15 Pro), malformed-input recovery, and cancellation/concurrent-work rejection. These are not live-microphone or thermal/battery benchmarks. The lab-only `checkWav` channel accepts typed WAV bytes, not arbitrary filesystem paths.
 
 If signing reports **No Accounts** or **No profiles** for the lab identifier, add the Apple developer account in **Xcode → Settings → Accounts**, then create/download a development provisioning profile for `com.ebaidllc.tajweedpractice.quranailab`. The ordinary app's profile cannot sign a different identifier. Do not change the lab back to the ordinary identifier to bypass this requirement.
 

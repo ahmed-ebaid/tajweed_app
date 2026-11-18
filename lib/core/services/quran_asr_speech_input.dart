@@ -15,6 +15,9 @@ const quranAsrExperimentEnabled = bool.fromEnvironment('QURAN_ASR_EXPERIMENT');
 const quranAsrRetainDebugAudio =
     quranAsrExperimentEnabled &&
     bool.fromEnvironment('QURAN_ASR_RETAIN_DEBUG_AUDIO');
+const quranAsrContextRecoveryEnabled =
+    quranAsrExperimentEnabled &&
+    bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY');
 
 /// Lab-only rolling snapshots, not a streaming ASR model. Capture continues
 /// until stopped; each report covers at most the latest 30 seconds.
@@ -25,6 +28,13 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   Timer? _poll;
   double _windowStartSeconds = 0;
   double _lastDurationSeconds = 0;
+  double _ordinaryWindowStartSeconds = 0;
+  double _audioEndSeconds = 0;
+  int? _visibleWordsHighWater;
+  double? _lastProgressAudioEnd;
+  double? _lastVisibleAdvanceAudioEnd;
+  double? _lastRecoveryAudioEnd;
+  int _nextRecoveryContextSeconds = 12;
   @override
   double get windowStartSeconds => _windowStartSeconds;
   double get lastDurationSeconds => _lastDurationSeconds;
@@ -110,9 +120,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
         }
       }
 
-      if (diagnosticsJsonl.isEmpty &&
-          jsonBySlot.isEmpty &&
-          wavBySlot.isEmpty) {
+      if (diagnosticsJsonl.isEmpty && jsonBySlot.isEmpty && wavBySlot.isEmpty) {
         return false;
       }
 
@@ -151,7 +159,8 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
           final attestation = QuranAttestationService.forContentApi(
             QuranApiService.contentApiBaseUrl,
           );
-          headers['authorization'] = 'Bearer ${await attestation.accessToken()}';
+          headers['authorization'] =
+              'Bearer ${await attestation.accessToken()}';
         } catch (error) {
           debugPrint('Quran ASR diagnostics token skipped: $error');
         }
@@ -187,6 +196,20 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     required bool contradictsPrefix,
     Map<String, int> alignment = const {},
   }) async {
+    if (quranAsrContextRecoveryEnabled &&
+        _active &&
+        !_stopping &&
+        !isFinal &&
+        visibleWords >= 0 &&
+        _audioEndSeconds > 0) {
+      _lastProgressAudioEnd = _audioEndSeconds;
+      if (_visibleWordsHighWater == null ||
+          visibleWords > _visibleWordsHighWater!) {
+        _visibleWordsHighWater = visibleWords;
+        _lastVisibleAdvanceAudioEnd = _audioEndSeconds;
+        _nextRecoveryContextSeconds = 12;
+      }
+    }
     if (!quranAsrExperimentEnabled ||
         defaultTargetPlatform != TargetPlatform.iOS) {
       return;
@@ -225,6 +248,13 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     final generation = ++_generation;
     _windowStartSeconds = 0;
     _lastDurationSeconds = 0;
+    _ordinaryWindowStartSeconds = 0;
+    _audioEndSeconds = 0;
+    _visibleWordsHighWater = null;
+    _lastProgressAudioEnd = null;
+    _lastVisibleAdvanceAudioEnd = null;
+    _lastRecoveryAudioEnd = null;
+    _nextRecoveryContextSeconds = 12;
     _onResult = onResult;
     _onError = onError;
     _channel.setMethodCallHandler((call) async {
@@ -250,8 +280,8 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   }
 
   void _schedulePreview(int generation, {bool initial = false}) {
-    // Collect at least a second of audio first; subsequent checks only wait
-    // for fresh audio after inference, without queuing overlapping work.
+    // Probe capture after 500ms; native returns no report until 1s of audio.
+    // Subsequent checks wait for fresh audio after inference without overlap.
     final delay = initial
         ? const Duration(milliseconds: 500)
         : const Duration(milliseconds: 200);
@@ -270,10 +300,37 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   }
 
   Future<void> _preview(int generation) async {
+    final recovery =
+        quranAsrContextRecoveryEnabled &&
+        _audioEndSeconds > 8 &&
+        _lastProgressAudioEnd == _audioEndSeconds &&
+        _lastVisibleAdvanceAudioEnd != null &&
+        _audioEndSeconds - _lastVisibleAdvanceAudioEnd! >= 4 &&
+        (_lastRecoveryAudioEnd == null ||
+            _audioEndSeconds - _lastRecoveryAudioEnd! >= 8);
+    final contextSeconds = _nextRecoveryContextSeconds;
+    if (recovery) {
+      _lastRecoveryAudioEnd = _audioEndSeconds;
+      _nextRecoveryContextSeconds = 28;
+    }
     try {
-      final report = await _channel.invokeMapMethod<String, dynamic>('preview');
-      if (!_active || generation != _generation) return;
-      _onResult?.call(report == null ? '' : _readReport(report), false);
+      final report = await _channel.invokeMapMethod<String, dynamic>(
+        'preview',
+        recovery ? {'recovery': true, 'contextSeconds': contextSeconds} : null,
+      );
+      if (!_active || generation != _generation || (recovery && _stopping)) {
+        return;
+      }
+      final transcript = report == null && !recovery
+          ? ''
+          : _readReport(
+              report,
+              isRecovery: recovery,
+              recoveryContextSeconds: contextSeconds,
+            );
+      // The response identifies the captured audio end at actual dispatch.
+      if (recovery) _lastRecoveryAudioEnd = _audioEndSeconds;
+      _onResult?.call(transcript, false);
     } on PlatformException catch (error) {
       if (_stopping && error.code == 'preview_cancelled') return;
       _fail(generation, error.code);
@@ -341,7 +398,12 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     await _finalizing;
   }
 
-  String _readReport(Map<String, dynamic>? report, {bool isFinal = false}) {
+  String _readReport(
+    Map<String, dynamic>? report, {
+    bool isFinal = false,
+    bool isRecovery = false,
+    int recoveryContextSeconds = 12,
+  }) {
     if (report == null) {
       throw const FormatException('Missing Quran ASR report.');
     }
@@ -361,11 +423,26 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
         start is! num ||
         !start.isFinite ||
         start < 0 ||
-        (!isFinal && start < _windowStartSeconds)) {
+        (!isFinal &&
+            (isRecovery
+                ? report['recovery'] != true ||
+                      report['contextSeconds'] is! int ||
+                      report['contextSeconds'] != recoveryContextSeconds ||
+                      duration > recoveryContextSeconds ||
+                      !(start + duration).isFinite ||
+                      start + duration + 0.5 / 16000 < _audioEndSeconds
+                : (report['recovery'] != null && report['recovery'] != false) ||
+                      report['contextSeconds'] != null ||
+                      start < _ordinaryWindowStartSeconds))) {
       throw const FormatException('Invalid Quran ASR report.');
     }
     _windowStartSeconds = start.toDouble();
     _lastDurationSeconds = duration.toDouble();
+    if (!isFinal) {
+      if (!isRecovery) _ordinaryWindowStartSeconds = start.toDouble();
+      final end = (start + duration).toDouble();
+      if (end > _audioEndSeconds) _audioEndSeconds = end;
+    }
     return transcript.trim();
   }
 }

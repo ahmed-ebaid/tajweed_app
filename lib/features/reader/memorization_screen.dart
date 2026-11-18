@@ -90,6 +90,12 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   Ayah get _ayah => widget.ayahs[_index];
   String get _verseKey => '${_ayah.surahNumber}:${_ayah.ayahNumber}';
+  bool get _hasFullUnverifiedPreview =>
+      widget.localQuranLab &&
+      widget.continuous &&
+      !_revealed.contains(_index) &&
+      (_pausedWordCounts[_verseKey] ?? 0) >= _currentAyahWordCount;
+
   int get _nextLabWord {
     final accepted = _acceptedWordCounts[_verseKey] ?? 0;
     final paused = _pausedWordCounts[_verseKey] ?? 0;
@@ -439,7 +445,12 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               allowWrittenOpenings: true,
             )
             .first;
-        if (continuedCount > retainedCount) return false;
+        if (continuedCount > retainedCount ||
+            (continuedCount == firstWords.length &&
+                _comparison.recitationWords(continued).length ==
+                    firstWords.length)) {
+          return false;
+        }
       }
     }
     // Invalidate this snapshot's alignment, not words already displayed.
@@ -787,6 +798,18 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _acceptResults = false;
             _clearLiveWords();
             if (check.matched) {
+              if (widget.localQuranLab &&
+                  !_comparison
+                      .checkEntireAyah(
+                        expectedImlaei: _ayah.imlaei!,
+                        expectedVerseKey: _verseKey,
+                        spokenText: text,
+                        allowWrittenOpenings: true,
+                        allowAsrCorrections: false,
+                      )
+                      .matched) {
+                _unverifiedAyahs.add(_index);
+              }
               if (!_assisted.contains(_index) &&
                   !_unverifiedAyahs.contains(_index)) {
                 _matched.add(_index);
@@ -1087,6 +1110,40 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     final rawCounts = widget.localQuranLab
         ? _rawPrefixCounts(startIndex, text)
         : const <int>[];
+    final strictText = widget.localQuranLab
+        ? _comparison.joinRecitationSegment(
+            retainedPrefix: _pendingText,
+            spokenText: text,
+            expectedAyahs: [
+              for (final ayah in widget.ayahs.skip(startIndex))
+                ayah.imlaei ?? '',
+            ],
+            expectedVerseKeys: [
+              for (final ayah in widget.ayahs.skip(startIndex))
+                '${ayah.surahNumber}:${ayah.ayahNumber}',
+            ],
+          )
+        : text;
+    final retainedPrefix = check.mismatch
+        ? check.matchedPrefixText
+        : check.remainingText;
+    final evidenceAyahs = [
+      for (final ayah
+          in widget.ayahs.skip(startIndex).take(check.completedAyahs))
+        ayah.imlaei ?? '',
+      if (retainedPrefix.isNotEmpty) retainedPrefix,
+    ];
+    final literalEvidence = widget.localQuranLab
+        ? _comparison.literalAyahEvidence(
+            expectedAyahs: evidenceAyahs,
+            expectedVerseKeys: [
+              for (final ayah
+                  in widget.ayahs.skip(startIndex).take(evidenceAyahs.length))
+                '${ayah.surahNumber}:${ayah.ayahNumber}',
+            ],
+            spokenText: strictText,
+          )
+        : const <bool>[];
     final previewWords = <String, int>{};
     for (final counts in [
       _liveWordCounts,
@@ -1128,6 +1185,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       _acceptResults = false;
       for (var i = startIndex; i < startIndex + check.completedAyahs; i++) {
         _revealed.add(i);
+        if (widget.localQuranLab && !literalEvidence[i - startIndex]) {
+          _unverifiedAyahs.add(i);
+        }
         if (!_assisted.contains(i) && !_unverifiedAyahs.contains(i)) {
           _matched.add(i);
         }
@@ -1136,6 +1196,13 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       _finished = next == widget.ayahs.length;
       _index = _finished ? widget.ayahs.length - 1 : next;
       if (widget.localQuranLab) {
+        final offset = _index - startIndex;
+        if (!_finished &&
+            retainedPrefix.isNotEmpty &&
+            !literalEvidence[offset]) {
+          // A recovered partial prefix must not become credit on Resume.
+          _unverifiedAyahs.add(_index);
+        }
         // Keep only the exact prefix before the first mismatch. A new
         // recording starts at the blocked word, not after the wrong words.
         if (_finished) {
@@ -1219,7 +1286,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _stopInProgress = false;
             _preview.clear();
             _clearLiveWords();
-            _message = 'hifz_resume_message';
+            _message = _hasFullUnverifiedPreview
+                ? 'quran_asr_repeat_unverified'
+                : 'hifz_resume_message';
           });
         }
       }
@@ -1253,8 +1322,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
           _message = 'hifz_resume_message';
           if (count == words.length) {
             _pendingText = '';
-            _finished = i + 1 == widget.ayahs.length;
-            if (!_finished) _index++;
+            if (i + 1 < widget.ayahs.length) {
+              _index++;
+            } else {
+              _message = 'quran_asr_repeat_unverified';
+            }
           }
         }
       }
@@ -1836,7 +1908,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                     if (widget.localQuranLab &&
                         widget.continuous &&
                         !widget.review &&
-                        !_finished)
+                        !_finished &&
+                        !_hasFullUnverifiedPreview)
                       Text(
                         '${l10n.get('quran_asr_next_word')}: '
                         '${l10n.digits(_nextLabWord)}',

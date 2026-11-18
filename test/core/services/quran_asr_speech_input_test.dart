@@ -58,9 +58,332 @@ void main() {
     return;
   }
 
+  group('opt-in context recovery', () {
+    late double audioEnd;
+    late int visible;
+    late bool feedback;
+    late List<bool> recoveryRequests;
+    late List<int> requestedContexts;
+    FutureOr<Object?> Function(bool)? previewReply;
+
+    Map<String, Object> frame(bool recovery) {
+      final duration = recovery
+          ? requestedContexts.last.toDouble()
+          : (audioEnd < 8 ? audioEnd : 8.0);
+      return {
+        ...report('بسم الله'),
+        'windowStartSeconds': audioEnd > duration ? audioEnd - duration : 0.0,
+        'durationSeconds': audioEnd < duration ? audioEnd : duration,
+        if (recovery) 'recovery': true,
+        if (recovery) 'contextSeconds': requestedContexts.last,
+      };
+    }
+
+    Future<void> begin() => input.start(
+      onResult: (text, finalResult) {
+        results.add((text, finalResult));
+        if (feedback) {
+          unawaited(
+            input.recordProgress(
+              expectedIndex: 0,
+              rawWords: 2,
+              visibleWords: visible,
+              isFinal: finalResult,
+              contradictsPrefix: false,
+            ),
+          );
+        }
+      },
+      onDone: () => fail('Unexpected completion'),
+      onError: errors.add,
+    );
+
+    Future<void> sample(WidgetTester tester, double end) async {
+      audioEnd = end;
+      await tester.pump(
+        Duration(milliseconds: recoveryRequests.isEmpty ? 500 : 200),
+      );
+    }
+
+    Future<void> stall(WidgetTester tester) async {
+      await begin();
+      await sample(tester, 8);
+      await sample(tester, 12);
+      await sample(tester, 12.2);
+    }
+
+    setUp(() {
+      audioEnd = 8;
+      visible = 2;
+      feedback = true;
+      recoveryRequests = [];
+      requestedContexts = [];
+      previewReply = null;
+      handler = (call) async {
+        if (call.method == 'available') return true;
+        if (call.method == 'check') return report('بسم الله');
+        if (call.method == 'preview') {
+          final recovery = call.arguments != null;
+          if (recovery) {
+            final arguments = call.arguments as Map<dynamic, dynamic>;
+            final contextSeconds = arguments['contextSeconds'] as int;
+            expectSync(contextSeconds, anyOf(12, 28));
+            expectSync(arguments, {
+              'recovery': true,
+              'contextSeconds': contextSeconds,
+            });
+            requestedContexts.add(contextSeconds);
+          }
+          recoveryRequests.add(recovery);
+          return previewReply == null
+              ? frame(recovery)
+              : await previewReply!(recovery);
+        }
+        return null;
+      };
+    });
+
+    testWidgets('recovery requires the compile-time opt-in and actual stall', (
+      tester,
+    ) async {
+      await begin();
+      await sample(tester, 4);
+      await sample(tester, 8);
+      await sample(tester, 8);
+      expect(recoveryRequests, everyElement(false));
+      await sample(tester, 8.1);
+      expect(recoveryRequests, everyElement(false));
+      await sample(tester, 8.2);
+      expect(recoveryRequests.last, quranAsrContextRecoveryEnabled);
+      expect(errors, isEmpty);
+      await input.cancel();
+    });
+
+    testWidgets('wall time without advancing captured audio cannot trigger', (
+      tester,
+    ) async {
+      await begin();
+      await sample(tester, 8);
+      await tester.pump(const Duration(seconds: 10));
+      expect(recoveryRequests, everyElement(false));
+      await input.cancel();
+    });
+
+    testWidgets(
+      'advancing visible progress or absent feedback never triggers',
+      (tester) async {
+        await begin();
+        for (final end in [8.0, 12.0, 20.0, 30.0]) {
+          visible++;
+          await sample(tester, end);
+        }
+        expect(recoveryRequests, everyElement(false));
+        feedback = false;
+        await sample(tester, 38);
+        await sample(tester, 46);
+        expect(recoveryRequests, everyElement(false));
+        await input.cancel();
+        recoveryRequests.clear();
+        feedback = false;
+        await begin();
+        for (final end in [8.0, 12.0, 20.0, 30.0]) {
+          await sample(tester, end);
+        }
+        expect(recoveryRequests, everyElement(false));
+        await input.cancel();
+      },
+    );
+
+    testWidgets('unsolicited recovery responses remain invalid', (
+      tester,
+    ) async {
+      previewReply = (_) => {...frame(false), 'recovery': true};
+      await begin();
+      await sample(tester, 8);
+      expect(errors, ['quran_asr_invalid_result']);
+      expect(results, isEmpty);
+    });
+
+    if (quranAsrContextRecoveryEnabled) {
+      testWidgets('cooldown uses eight audio seconds from attempt dispatch', (
+        tester,
+      ) async {
+        await stall(tester);
+        expect(recoveryRequests, [false, false, true]);
+        expect(input.windowStartSeconds, closeTo(0.2, 1e-9));
+        await sample(tester, 19.9);
+        await sample(tester, 20);
+        expect(recoveryRequests.where((value) => value), hasLength(1));
+        await sample(tester, 20.1);
+        await sample(tester, 20.2);
+        expect(recoveryRequests.where((value) => value), hasLength(1));
+        await sample(tester, 20.3);
+        expect(recoveryRequests.where((value) => value), hasLength(2));
+        expect(errors, isEmpty);
+        await input.cancel();
+      });
+
+      testWidgets('recovery does not lower ordinary start watermark', (
+        tester,
+      ) async {
+        await stall(tester);
+        await sample(tester, 11);
+        expect(errors, ['quran_asr_invalid_result']);
+      });
+
+      testWidgets(
+        'unsuccessful recovery escalates, any advance resets context',
+        (tester) async {
+          await stall(tester);
+          expect(requestedContexts, [12]);
+          await sample(tester, 20.2);
+          await sample(tester, 20.4);
+          expect(requestedContexts, [12, 28]);
+          await sample(tester, 28.5);
+          await sample(tester, 28.6);
+          expect(requestedContexts, [12, 28, 28]);
+          visible++;
+          await sample(tester, 30);
+          await sample(tester, 38);
+          await sample(tester, 38.2);
+          expect(requestedContexts, [12, 28, 28, 12]);
+          await input.cancel();
+        },
+      );
+
+      testWidgets('a recovery visible advance resets its next context to 12', (
+        tester,
+      ) async {
+        await begin();
+        await sample(tester, 8);
+        await sample(tester, 12);
+        visible++;
+        await sample(tester, 12.2);
+        await sample(tester, 20.2);
+        await sample(tester, 20.4);
+        expect(requestedContexts, [12, 12]);
+        await input.cancel();
+      });
+
+      testWidgets(
+        'progress feedback takes effect before pending iOS diagnostics finish',
+        (tester) async {
+          final pending = Completer<Object?>();
+          final native = handler;
+          handler = (call) async =>
+              call.method == 'traceProgress' ? pending.future : native(call);
+          await stall(tester);
+          expect(requestedContexts, [12]);
+          pending.complete(null);
+          await tester.pump();
+          await input.cancel();
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      );
+
+      for (final invalid in [
+        'missing marker',
+        'wrong context',
+        'stale end',
+        'oversize',
+        'null',
+      ]) {
+        testWidgets('recovery rejects $invalid explicitly', (tester) async {
+          previewReply = (recovery) {
+            if (!recovery) return frame(false);
+            return switch (invalid) {
+              'missing marker' => frame(true)..remove('recovery'),
+              'wrong context' => {...frame(true), 'contextSeconds': 28},
+              'stale end' => {
+                ...frame(true),
+                'windowStartSeconds': 0.0,
+                'durationSeconds': 11.9,
+              },
+              'oversize' => {
+                ...frame(true),
+                'windowStartSeconds': 0.0,
+                'durationSeconds': 12.2,
+              },
+              _ => null,
+            };
+          };
+          await stall(tester);
+          expect(errors, ['quran_asr_invalid_result']);
+          expect(results, hasLength(2));
+          await tester.pump(const Duration(seconds: 10));
+          expect(recoveryRequests, [false, false, true]);
+        });
+      }
+
+      testWidgets('recovery accepts sub-sample end rounding only', (
+        tester,
+      ) async {
+        previewReply = (recovery) => recovery
+            ? {
+                ...frame(true),
+                'windowStartSeconds': 0.0,
+                'durationSeconds': 12.0 - 1e-8,
+              }
+            : frame(false);
+        await stall(tester);
+        expect(errors, isEmpty);
+        expect(results, hasLength(3));
+        await input.cancel();
+      });
+
+      testWidgets(
+        'recovery platform errors stop explicitly and reset on start',
+        (tester) async {
+          previewReply = (recovery) {
+            if (recovery) throw PlatformException(code: 'recovery_failed');
+            return frame(false);
+          };
+          await stall(tester);
+          expect(errors, ['recovery_failed']);
+          await tester.pump(const Duration(seconds: 10));
+          expect(recoveryRequests, [false, false, true]);
+          await input.cancel();
+          recoveryRequests.clear();
+          previewReply = null;
+          await begin();
+          await sample(tester, 30);
+          expect(recoveryRequests, [false]);
+          expect(errors, ['recovery_failed']);
+          await input.cancel();
+        },
+      );
+
+      for (final stopping in [false, true]) {
+        testWidgets(
+          '${stopping ? 'stop' : 'cancel'} discards pending recovery without overlap',
+          (tester) async {
+            final pending = Completer<Object?>();
+            previewReply = (recovery) =>
+                recovery ? pending.future : frame(false);
+            await stall(tester);
+            await tester.pump(const Duration(seconds: 10));
+            expect(recoveryRequests, [false, false, true]);
+            final finishing = stopping ? input.stop() : input.cancel();
+            await tester.pump();
+            pending.complete(frame(true));
+            await finishing;
+            await tester.pump(const Duration(seconds: 10));
+            expect(results.where((result) => !result.$2), hasLength(2));
+            expect(
+              results.where((result) => result.$2),
+              hasLength(stopping ? 1 : 0),
+            );
+            expect(recoveryRequests, [false, false, true]);
+            expect(errors, isEmpty);
+          },
+        );
+      }
+    }
+  });
+
   testWidgets('cumulative previews stay interim until stop', (tester) async {
     await start();
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 500));
     expect(results, [('بسم الله', false)]);
     await input.stop();
     expect(results.last, ('بسم الله الرحمن الرحيم', true));
@@ -128,15 +451,15 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
 
-  testWidgets('first preview waits one second then refreshes after 500ms', (
+  testWidgets('first preview probes at 500ms then refreshes after 200ms', (
     tester,
   ) async {
     await start();
-    await tester.pump(const Duration(milliseconds: 999));
+    await tester.pump(const Duration(milliseconds: 499));
     expect(results, isEmpty);
     await tester.pump(const Duration(milliseconds: 1));
     expect(results, [('بسم الله', false)]);
-    await tester.pump(const Duration(milliseconds: 499));
+    await tester.pump(const Duration(milliseconds: 199));
     expect(results, hasLength(1));
     await tester.pump(const Duration(milliseconds: 1));
     expect(results, hasLength(2));
@@ -161,7 +484,7 @@ void main() {
     expect(calls.where((method) => method == 'preview'), hasLength(1));
     pending.complete(report('بسم الله'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 499));
+    await tester.pump(const Duration(milliseconds: 199));
     expect(calls.where((method) => method == 'preview'), hasLength(1));
     await tester.pump(const Duration(milliseconds: 1));
     expect(calls.where((method) => method == 'preview'), hasLength(2));
@@ -318,9 +641,9 @@ void main() {
     tester,
   ) async {
     await start();
-    await tester.pump(const Duration(seconds: 1));
-    handler = (call) async => report('بسم الكريم');
     await tester.pump(const Duration(milliseconds: 500));
+    handler = (call) async => report('بسم الكريم');
+    await tester.pump(const Duration(milliseconds: 200));
     expect(results, [('بسم الله', false), ('بسم الكريم', false)]);
     await input.cancel();
   });
@@ -446,7 +769,7 @@ void main() {
 
   test('uploadDiagnosticsToCloud includes native snapshot-N.json and .wav files', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    final tempDir = await Directory.systemTemp.createTemp('asr_diag_test');
+    final tempDir = await Directory('build').createTemp('asr_diag_test_');
     addTearDown(() async {
       debugDefaultTargetPlatformOverride = null;
       await tempDir.delete(recursive: true);

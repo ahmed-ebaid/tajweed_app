@@ -180,14 +180,17 @@ final class QuranASRCapture {
     }
   }
 
-  func snapshot(forPreview: Bool = false) throws -> Snapshot? {
+  func snapshot(forPreview: Bool = false, recoveryContextSeconds: Int? = nil) throws -> Snapshot? {
     lock.lock()
     defer { lock.unlock() }
     if let captureError { throw captureError }
+    if let seconds = recoveryContextSeconds, seconds != 12 && seconds != 28 {
+      throw NSError(domain: "QuranASR", code: 5)
+    }
     guard !pcm.isEmpty else { return nil }
     // Long hypotheses can omit whole earlier ayahs; live checks use an
     // overlapping short tail while final checks keep the full bounded buffer.
-    let audio = pcm.suffix(forPreview ? 16000 * 2 * 8 : maximumBytes)
+    let audio = pcm.suffix(forPreview ? 16000 * 2 * (recoveryContextSeconds ?? 8) : maximumBytes)
     var wav = Data()
     func ascii(_ text: String) { wav.append(contentsOf: text.utf8) }
     func integer<T: FixedWidthInteger>(_ value: T) {
@@ -274,7 +277,18 @@ final class QuranASRChannel {
       case "check":
         check(result)
       case "preview":
-        preview(result)
+        if let arguments = call.arguments {
+          guard let fields = arguments as? [String: Any],
+                fields.count == 2, fields["recovery"] as? Bool == true,
+                let contextSeconds = fields["contextSeconds"] as? Int,
+                contextSeconds == 12 || contextSeconds == 28 else {
+            result(FlutterError(code: "invalid_preview", message: "Expected explicit 12s or 28s recovery.", details: nil))
+            return
+          }
+          preview(result, recoveryContextSeconds: contextSeconds)
+        } else {
+          preview(result)
+        }
       case "finishCapture":
         diagnostics.record("pause", metrics: ["processing": processing ? 1 : 0])
         previewCancellation?.cancel()
@@ -430,14 +444,14 @@ final class QuranASRChannel {
     }
   }
 
-  private func preview(_ result: @escaping FlutterResult) {
+  private func preview(_ result: @escaping FlutterResult, recoveryContextSeconds: Int? = nil) {
     guard !processing, !starting, engine != nil, let capture,
           let model = Bundle.main.path(forResource: "quran-tiny", ofType: "bin") else {
       result(FlutterError(code: "busy", message: "No available live recording.", details: nil))
       return
     }
     do {
-      guard let snapshot = try capture.snapshot(forPreview: true), snapshot.wav.count >= 32044 else {
+      guard let snapshot = try capture.snapshot(forPreview: true, recoveryContextSeconds: recoveryContextSeconds), snapshot.wav.count >= 32044 else {
         result(nil)
         return
       }
@@ -446,7 +460,7 @@ final class QuranASRChannel {
       transcribe(
         url, model: model, provisional: true,
         windowStartSeconds: snapshot.startSeconds,
-        retainDebugAudio: retainDebugAudio, result: result
+        retainDebugAudio: retainDebugAudio, recoveryContextSeconds: recoveryContextSeconds, result: result
       )
     } catch {
       result(failure(error))
@@ -506,6 +520,7 @@ final class QuranASRChannel {
   private func transcribe(
     _ url: URL, model: String, provisional: Bool,
     windowStartSeconds: Double, retainDebugAudio: Bool,
+    recoveryContextSeconds: Int? = nil,
     result: @escaping FlutterResult
   ) {
     processing = true
@@ -513,9 +528,14 @@ final class QuranASRChannel {
     previewCancellation = cancellation
     let current = generation
     let requested = Date()
-    diagnostics.record("inference_requested", metrics: [
+    var requestMetrics: [String: Double] = [
       "preview": provisional ? 1 : 0, "windowStart": windowStartSeconds
-    ])
+    ]
+    if let seconds = recoveryContextSeconds {
+      requestMetrics["recovery"] = 1
+      requestMetrics["contextSeconds"] = Double(seconds)
+    }
+    diagnostics.record("inference_requested", metrics: requestMetrics)
     worker.async { [self] in
       var error: NSError?
       let report = QuranASRTranscribeCancellable(model, url.path, cancellation, &error)
@@ -551,6 +571,10 @@ final class QuranASRChannel {
         } else if let report {
           var response = report
           response["windowStartSeconds"] = windowStartSeconds
+          if let seconds = recoveryContextSeconds {
+            response["recovery"] = true
+            response["contextSeconds"] = seconds
+          }
           result(response)
         } else {
           result(self.failure(error ?? NSError(domain: "QuranASR", code: 3)))

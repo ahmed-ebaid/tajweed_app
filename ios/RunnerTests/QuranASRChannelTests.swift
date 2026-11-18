@@ -1,4 +1,4 @@
-#if QURAN_ASR_NATIVE && DEBUG
+#if QURAN_ASR_NATIVE && (DEBUG || QURAN_ASR_PROFILE)
 import Flutter
 import AVFoundation
 import XCTest
@@ -102,6 +102,7 @@ final class QuranASRChannelTests: XCTestCase {
     XCTAssertLessThanOrEqual(first.count, 32044)
     XCTAssertEqual(String(data: first.prefix(4), encoding: .ascii), "RIFF")
     XCTAssertEqual(String(data: first[8..<12], encoding: .ascii), "WAVE")
+    XCTAssertEqual(try capture.snapshot(forPreview: true, recoveryContextSeconds: 12)?.wav, first)
     for _ in 0..<31 { capture.append(buffer) }
     let window = try XCTUnwrap(capture.snapshot())
     let bounded = window.wav
@@ -119,6 +120,15 @@ final class QuranASRChannelTests: XCTestCase {
     XCTAssertEqual(preview.wav.count, 256044)
     XCTAssertEqual(preview.startSeconds - window.startSeconds, 22, accuracy: 0.001)
     XCTAssertEqual(Data(preview.wav.dropFirst(44)), Data(bounded.suffix(256000)))
+    let recovery = try XCTUnwrap(capture.snapshot(forPreview: true, recoveryContextSeconds: 12))
+    XCTAssertEqual(recovery.wav.count, 384044)
+    XCTAssertEqual(recovery.startSeconds - window.startSeconds, 18, accuracy: 0.001)
+    XCTAssertEqual(Data(recovery.wav.dropFirst(44)), Data(bounded.suffix(384000)))
+    let longer = try XCTUnwrap(capture.snapshot(forPreview: true, recoveryContextSeconds: 28))
+    XCTAssertEqual(longer.wav.count, 896044)
+    XCTAssertEqual(longer.startSeconds - window.startSeconds, 2, accuracy: 0.001)
+    XCTAssertEqual(Data(longer.wav.dropFirst(44)), Data(bounded.suffix(896000)))
+    XCTAssertThrowsError(try capture.snapshot(forPreview: true, recoveryContextSeconds: 13))
     XCTAssertEqual(try capture.snapshot()?.wav, bounded)
     for channel in 0..<2 {
       for frame in 0..<48000 { samples[channel][frame] = 0.6 }
@@ -140,9 +150,93 @@ final class QuranASRChannelTests: XCTestCase {
     XCTAssertNotEqual(Data(first.suffix(1000)), Data(later.wav.suffix(1000)))
   }
 
+  func testPreviewRejectsArbitraryContextAndTextArguments() {
+    let channel = QuranASRChannel()
+    for arguments: [String: Any] in [
+      ["contextSeconds": 28],
+      ["recovery": true, "expectedText": "not permitted"],
+      ["recovery": "true"],
+      ["recovery": true, "contextSeconds": 8],
+      ["recovery": true, "contextSeconds": 13],
+      ["recovery": true, "contextSeconds": 30],
+      ["recovery": true, "contextSeconds": 12.5]
+    ] {
+      channel.handle(FlutterMethodCall(methodName: "preview", arguments: arguments)) { value in
+        XCTAssertEqual((value as? FlutterError)?.code, "invalid_preview")
+      }
+    }
+    for seconds in [12, 28] {
+      channel.handle(FlutterMethodCall(
+        methodName: "preview", arguments: ["recovery": true, "contextSeconds": seconds]
+      )) { value in
+        XCTAssertEqual((value as? FlutterError)?.code, "busy")
+      }
+    }
+  }
+
   private func reference() throws -> FlutterStandardTypedData {
     let url = try XCTUnwrap(Bundle.main.url(forResource: "quran-asr-reference", withExtension: "wav"))
     return FlutterStandardTypedData(bytes: try Data(contentsOf: url))
+  }
+
+  private func repeatedReference(durationSeconds: Int) throws -> FlutterStandardTypedData {
+    let url = try XCTUnwrap(Bundle.main.url(forResource: "quran-asr-reference", withExtension: "wav"))
+    let source = try Data(contentsOf: url)
+    XCTAssertGreaterThan(source.count, 44)
+    let pcm = Data(source.dropFirst(44))
+    let targetBytes = 16000 * 2 * durationSeconds
+    var repeated = Data()
+    repeated.reserveCapacity(targetBytes)
+    while repeated.count < targetBytes {
+      let remaining = targetBytes - repeated.count
+      repeated.append(pcm.prefix(remaining))
+    }
+    var wav = Data()
+    func ascii(_ text: String) { wav.append(contentsOf: text.utf8) }
+    func integer<T: FixedWidthInteger>(_ value: T) {
+      var little = value.littleEndian
+      withUnsafeBytes(of: &little) { wav.append(contentsOf: $0) }
+    }
+    ascii("RIFF")
+    integer(UInt32(36 + repeated.count))
+    ascii("WAVEfmt ")
+    integer(UInt32(16))
+    integer(UInt16(1))
+    integer(UInt16(1))
+    integer(UInt32(16000))
+    integer(UInt32(32000))
+    integer(UInt16(2))
+    integer(UInt16(16))
+    ascii("data")
+    integer(UInt32(repeated.count))
+    wav.append(repeated)
+    return FlutterStandardTypedData(bytes: wav)
+  }
+
+  func testRecoveryWindowDecodeLatency12And28Seconds() throws {
+    let channel = QuranASRChannel()
+    for durationSeconds in [12, 28] {
+      let audio = try repeatedReference(durationSeconds: durationSeconds)
+      let finished = expectation(description: "Local \(durationSeconds)s recognition completes")
+      channel.handle(FlutterMethodCall(methodName: "checkWav", arguments: audio)) { value in
+        guard let report = value as? [String: Any] else {
+          XCTFail("\(durationSeconds)s recognition must return a report")
+          finished.fulfill()
+          return
+        }
+        let transcript = report["transcript"] as? String ?? ""
+        let reportedDuration = report["durationSeconds"] as? Double ?? 0
+        let inferenceSeconds = report["inferenceSeconds"] as? Double ?? 0
+        NSLog("QuranASRBenchmark duration=%ds reportedDuration=%.3f inferenceSeconds=%.3f chars=%d",
+              durationSeconds, reportedDuration, inferenceSeconds, transcript.count)
+        XCTAssertFalse(transcript.isEmpty)
+        XCTAssertEqual(reportedDuration, Double(durationSeconds), accuracy: 0.05)
+        XCTAssertGreaterThan(inferenceSeconds, 0)
+        XCTAssertLessThan(inferenceSeconds, 8.0)
+        finished.fulfill()
+      }
+      wait(for: [finished], timeout: 30)
+    }
   }
 
   func testReferenceResultAndRepeatCheck() throws {
