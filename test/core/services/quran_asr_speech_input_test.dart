@@ -387,8 +387,64 @@ void main() {
     expect(results, [('بسم الله', false)]);
     await input.stop();
     expect(results.last, ('بسم الله الرحمن الرحيم', true));
-    expect(calls, ['available', 'start', 'preview', 'finishCapture', 'check']);
+    expect(calls, [
+      'available',
+      'start',
+      'preview',
+      'finishCapture',
+      'tailPreview',
+      'check',
+    ]);
     expect(errors, isEmpty);
+  });
+
+  testWidgets('stop decodes the stopped tail before the final check', (
+    tester,
+  ) async {
+    Object? tailArguments;
+    handler = (call) async => switch (call.method) {
+      'available' => true,
+      'preview' => report('بسم الله'),
+      'tailPreview' => () {
+        tailArguments = call.arguments;
+        return {...report('الرحمن الرحيم'), 'windowStartSeconds': 1.0};
+      }(),
+      'check' => report('بسم الله الرحمن'),
+      _ => null,
+    };
+    await start();
+    await tester.pump(const Duration(milliseconds: 500));
+    await input.stop();
+    expect(tailArguments, {'afterSeconds': 4.0});
+    expect(results, [
+      ('بسم الله', false),
+      ('الرحمن الرحيم', false),
+      ('بسم الله الرحمن', true),
+    ]);
+    expect(errors, isEmpty);
+  });
+
+  testWidgets('a failed or empty tail still reaches the final check', (
+    tester,
+  ) async {
+    for (final tail in <Object? Function()>[
+      () => throw PlatformException(code: 'busy'),
+      () => {...report(' '), 'windowStartSeconds': 1.0},
+    ]) {
+      results.clear();
+      handler = (call) async => switch (call.method) {
+        'available' => true,
+        'preview' => report('بسم الله'),
+        'tailPreview' => tail(),
+        'check' => report('بسم الله الرحمن الرحيم'),
+        _ => null,
+      };
+      await start();
+      await tester.pump(const Duration(milliseconds: 500));
+      await input.stop();
+      expect(results, [('بسم الله', false), ('بسم الله الرحمن الرحيم', true)]);
+      expect(errors, isEmpty);
+    }
   });
 
   testWidgets('audio retention requires the explicit lab build flag', (
@@ -428,6 +484,67 @@ void main() {
       expect(recorded?['contradiction'], 1);
       expect(recorded?.values, everyElement(isA<num>()));
       expect(recorded?.keys, isNot(contains('transcript')));
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+
+  testWidgets(
+    'preview reveal reports numeric audio position and latency after the frame',
+    (tester) async {
+      Map<dynamic, dynamic>? recorded;
+      handler = (call) async {
+        switch (call.method) {
+          case 'available':
+            return true;
+          case 'preview':
+            return {
+              ...report('بسم الله'),
+              'windowStartSeconds': 4.0,
+              'durationSeconds': 8.0,
+              'snapshotRequestedAtUnixMs':
+                  DateTime.now().millisecondsSinceEpoch - 250,
+            };
+          case 'tracePreviewReveal':
+            recorded = call.arguments as Map<dynamic, dynamic>;
+        }
+        return null;
+      };
+      await start();
+      await tester.pump(const Duration(milliseconds: 500));
+      final frame = Completer<void>();
+      final pendingReveal = input.recordPreviewReveal(
+        newVisibleWords: 2,
+        visibleWords: 9,
+        frame: frame.future,
+      );
+      expect(recorded, isNull);
+      frame.complete();
+      await pendingReveal;
+      expect(recorded, {
+        'generation': 1,
+        'audioEndSeconds': 12.0,
+        'newVisibleWords': 2,
+        'visibleWords': 9,
+        'snapshotToRevealMs': greaterThanOrEqualTo(250),
+      });
+
+      recorded = null;
+      await input.recordPreviewReveal(
+        newVisibleWords: 0,
+        visibleWords: 9,
+        frame: Future.value(),
+      );
+      expect(recorded, isNull);
+      final staleFrame = Completer<void>();
+      final staleReveal = input.recordPreviewReveal(
+        newVisibleWords: 1,
+        visibleWords: 10,
+        frame: staleFrame.future,
+      );
+      await input.cancel();
+      staleFrame.complete();
+      await staleReveal;
+      expect(recorded, isNull);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
@@ -562,7 +679,14 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await input.stop();
     expect(results, [('بسم الله الرحمن الرحيم', true)]);
-    expect(calls, ['available', 'start', 'preview', 'finishCapture', 'check']);
+    expect(calls, [
+      'available',
+      'start',
+      'preview',
+      'finishCapture',
+      'tailPreview',
+      'check',
+    ]);
     expect(errors, isEmpty);
   });
 
@@ -767,49 +891,63 @@ void main() {
     expect(results, isEmpty);
   });
 
-  test('uploadDiagnosticsToCloud includes native snapshot-N.json and .wav files', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    final tempDir = await Directory('build').createTemp('asr_diag_test_');
-    addTearDown(() async {
-      debugDefaultTargetPlatformOverride = null;
-      await tempDir.delete(recursive: true);
-    });
-    final jsonl = File('${tempDir.path}/quran-asr-diagnostics.jsonl')
-      ..writeAsStringSync('{"event":"progress"}\n');
-    final snapJson = File('${tempDir.path}/snapshot-0.json')
-      ..writeAsStringSync('{"slot":0,"transcript":"بسم الله"}');
-    final snapWav = File('${tempDir.path}/snapshot-0.wav')
-      ..writeAsBytesSync([82, 73, 70, 70, 1, 2, 3, 4]);
+  test(
+    'cloud diagnostics include complete snapshot pairs only when enabled',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final tempDir = await Directory('build').createTemp('asr_diag_test_');
+      addTearDown(() async {
+        debugDefaultTargetPlatformOverride = null;
+        await tempDir.delete(recursive: true);
+      });
+      final jsonl = File('${tempDir.path}/quran-asr-diagnostics.jsonl')
+        ..writeAsStringSync('{"event":"progress"}\n');
+      final snapJson = File('${tempDir.path}/snapshot-0.json')
+        ..writeAsStringSync('{"slot":0,"transcript":"بسم الله"}');
+      final snapWav = File('${tempDir.path}/snapshot-0.wav')
+        ..writeAsBytesSync([82, 73, 70, 70, 1, 2, 3, 4]);
+      final orphanWav = File('${tempDir.path}/snapshot-1.wav')
+        ..writeAsBytesSync([82, 73, 70, 70]);
 
-    Map<String, dynamic>? uploadedBody;
-    final dio = Dio();
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          uploadedBody = Map<String, dynamic>.from(options.data as Map);
-          handler.resolve(
-            Response<Map<String, dynamic>>(
-              requestOptions: options,
-              statusCode: 201,
-              data: {'status': 'saved'},
-            ),
-          );
-        },
-      ),
-    );
+      Map<String, dynamic>? uploadedBody;
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            uploadedBody = Map<String, dynamic>.from(options.data as Map);
+            handler.resolve(
+              Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: 201,
+                data: {'status': 'saved'},
+              ),
+            );
+          },
+        ),
+      );
 
-    final ok = await QuranAsrSpeechInput.uploadDiagnosticsToCloud(
-      verseKey: '2:14',
-      client: dio,
-      exportPaths: () async => [jsonl.path, snapJson.path, snapWav.path],
-    );
-    expect(ok, isTrue);
-    expect(uploadedBody?['verse_key'], '2:14');
-    final snapshots = uploadedBody?['snapshots'] as List?;
-    expect(snapshots, hasLength(1));
-    final first = Map<String, dynamic>.from(snapshots!.single as Map);
-    expect(first['slot'], 0);
-    expect(first['json'], '{"slot":0,"transcript":"بسم الله"}');
-    expect(first['wav_base64'], isNotEmpty);
-  });
+      final ok = await QuranAsrSpeechInput.uploadDiagnosticsToCloud(
+        verseKey: '2:14',
+        client: dio,
+        exportPaths: () async => [
+          jsonl.path,
+          snapJson.path,
+          snapWav.path,
+          orphanWav.path,
+        ],
+      );
+      expect(ok, isTrue);
+      expect(uploadedBody?['verse_key'], '2:14');
+      final snapshots = uploadedBody?['snapshots'] as List?;
+      if (!quranAsrRetainDebugAudio) {
+        expect(snapshots, isEmpty);
+        return;
+      }
+      expect(snapshots, hasLength(1));
+      final first = Map<String, dynamic>.from(snapshots!.single as Map);
+      expect(first['slot'], 0);
+      expect(first['json'], '{"slot":0,"transcript":"بسم الله"}');
+      expect(first['wav_base64'], isNotEmpty);
+    },
+  );
 }

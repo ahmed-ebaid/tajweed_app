@@ -6,6 +6,435 @@ import 'package:tajweed_practice/core/services/speech_comparison_service.dart';
 
 void main() {
   final comparison = SpeechComparisonService();
+
+  test(
+    '2:255 ASR spelling recovery requires the word and its continuation',
+    () {
+      const expected = 'ولا يئوده حفظهما وهو العلي العظيم';
+      const alternate = 'ولا يأوده حفظهما وهو العلي العظيم';
+
+      bool matches(
+        String spoken, {
+        String key = '2:255',
+        bool corrections = true,
+      }) => comparison
+          .checkEntireAyah(
+            expectedImlaei: expected,
+            expectedVerseKey: key,
+            spokenText: spoken,
+            allowWrittenOpenings: true,
+            allowAsrCorrections: corrections,
+          )
+          .matched;
+
+      expect(matches(alternate), isTrue);
+      expect(matches(alternate, corrections: false), isFalse);
+      // يؤده is itself a Quran word (3:75), so it is a substitution, not ASR.
+      expect(matches('ولا يؤده حفظهما وهو العلي العظيم'), isFalse);
+      expect(matches('ولا حفظهما وهو العلي العظيم'), isFalse);
+      expect(matches('ولا يأوده وهو العلي العظيم'), isFalse);
+    },
+  );
+
+  bool ayahMatches(String key, String expected, String spoken) => comparison
+      .checkEntireAyah(
+        expectedImlaei: expected,
+        expectedVerseKey: key,
+        spokenText: spoken,
+        allowWrittenOpenings: true,
+      )
+      .matched;
+
+  test('non-Quran ASR near misses need two right anchors and no omission', () {
+    const expected =
+        'يا بني إسرائيل اذكروا نعمتي التي أنعمت عليكم وأوفوا بعهدي أوف بعهدكم وإياي فارهبون';
+    expect(
+      ayahMatches(
+        '2:40',
+        expected,
+        expected.replaceFirst('إسرائيل', 'السرائيل'),
+      ),
+      isTrue,
+    );
+    expect(
+      ayahMatches('2:40', expected, expected.replaceFirst('إسرائيل ', '')),
+      isFalse,
+    );
+    expect(
+      ayahMatches('2:40', expected, expected.replaceFirst('وإياي', 'وإيياي')),
+      isFalse,
+      reason: 'a near miss needs two following words',
+    );
+  });
+
+  test('joined and split Imlaei spellings must account for every letter', () {
+    const expected =
+        'ضرب لكم مثلا من أنفسكم هل لكم من ما ملكت أيمانكم من شركاء في ما رزقناكم فأنتم فيه سواء تخافونهم كخيفتكم أنفسكم كذلك نفصل الآيات لقوم يعقلون';
+    final joined = expected
+        .replaceFirst('من ما', 'مما')
+        .replaceFirst('في ما', 'فيما');
+    expect(ayahMatches('30:28', expected, joined), isTrue);
+    expect(
+      ayahMatches('30:28', expected, joined.replaceFirst('مما ', 'من ')),
+      isFalse,
+    );
+    expect(
+      ayahMatches('30:28', expected, joined.replaceFirst('فيما', 'في')),
+      isFalse,
+    );
+  });
+
+  test('a retained prefix covering the ayah ignores trailing audio', () {
+    const expected = 'والله على كل شيء قدير';
+    for (final (retained, words) in [(expected, 5), ('والله على كل', 3)]) {
+      final joined = comparison.joinRecitationSegment(
+        retainedPrefix: retained,
+        spokenText: 'يسلط رسله على من يشاء',
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['59:6'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: const [expected],
+          expectedVerseKeys: const ['59:6'],
+          spokenText: joined,
+          allowWrittenOpenings: true,
+        ),
+        [words],
+        reason: retained,
+      );
+    }
+  });
+
+  test('a window over a covered ayah may be cut only at its edges', () {
+    const key = '3:156';
+    const expected =
+        'يَا أَيُّهَا الَّذِينَ آمَنُوا لَا تَكُونُوا كَالَّذِينَ كَفَرُوا '
+        'وَقَالُوا لِإِخْوَانِهِمْ إِذَا ضَرَبُوا فِي الْأَرْضِ أَوْ كَانُوا '
+        'غُزًّى لَّوْ كَانُوا عِندَنَا مَا مَاتُوا وَمَا قُتِلُوا';
+    final retained = comparison.recitationWords(expected).join(' ');
+    String join(String spoken) => comparison.joinRecitationSegment(
+      retainedPrefix: retained,
+      spokenText: spoken,
+      expectedAyahs: const [expected],
+      expectedVerseKeys: const [key],
+      allowWrittenOpenings: true,
+    );
+    for (final spoken in [
+      'قالوا لإخوانهم إذا ضربوا في الأرض أو كانوا غزا لو كانوا عندنا ما ماتوا وما قتلوا',
+      'إذا ضربوا في الأرض أو كا',
+    ]) {
+      expect(join(spoken), retained, reason: spoken);
+    }
+    for (final spoken in [
+      'لهم لإخوانهم إذا ضربوا في الأرض',
+      'قالوا لإخوانهم إذا ضربوا في السماء أو كانوا',
+      'قالوا لإخوانهم إذا ضربوا الأرض أو كانوا',
+    ]) {
+      expect(join(spoken), isNot(retained), reason: spoken);
+    }
+  });
+
+  int joinedWords(String key, String expected, int kept, String spoken) {
+    final retained = comparison.recitationWords(expected).take(kept).join(' ');
+    final joined = comparison.joinRecitationSegment(
+      retainedPrefix: retained,
+      spokenText: spoken,
+      expectedAyahs: [expected],
+      expectedVerseKeys: [key],
+      allowWrittenOpenings: true,
+    );
+    return comparison
+        .matchingPrefixWordCounts(
+          expectedAyahs: [expected],
+          expectedVerseKeys: [key],
+          spokenText: joined,
+          allowWrittenOpenings: true,
+        )
+        .single;
+  }
+
+  test('live windows rejoin at the verified cursor, never past a gap', () {
+    const fear =
+        'واتقوا يوما لا تجزي نفس عن نفس شيئا ولا يقبل منها عدل ولا تنفعها شفاعة ولا هم ينصرون';
+    expect(
+      joinedWords('2:123', fear, 12, 'ولا تنفعها شفاعة ولا هم ينصرون'),
+      18,
+    );
+    expect(
+      joinedWords('2:123', fear, 12, 'منها عدل ولا تنفعها شفاعة ولا هم ينصرون'),
+      18,
+    );
+    expect(joinedWords('2:123', fear, 12, 'ولا شفاعة ولا هم ينصرون'), 13);
+    expect(joinedWords('2:123', fear, 9, 'ولا تنفعها شفاعة ولا هم ينصرون'), 9);
+
+    const spend =
+        'ها أنتم هؤلاء تدعون لتنفقوا في سبيل الله فمنكم من يبخل ومن يبخل فإنما يبخل عن نفسه والله الغني وأنتم الفقراء وإن تتولوا يستبدل قوما غيركم ثم لا يكونوا أمثالكم';
+    expect(
+      joinedWords('47:38', spend, 28, 'غيركم ثم لا يكونوا أمثالكم مسلمين'),
+      30,
+      reason: 'a hallucinated word after the ayah is dropped',
+    );
+    expect(
+      joinedWords('47:38', spend, 26, 'لا يكونوا أمثالكم مسلمين'),
+      lessThan(30),
+    );
+  });
+
+  test('folded or resegmented ASR spellings keep every expected letter', () {
+    const tied =
+        'وقالت اليهود يد الله مغلولة غلت أيديهم ولعنوا بما قالوا بل يداه مبسوطتان';
+    expect(
+      ayahMatches('5:64', tied, tied.replaceFirst('مغلولة', 'مغلوله')),
+      isTrue,
+    );
+    expect(
+      ayahMatches('5:64', tied, tied.replaceFirst('مغلولة غلت', 'مغلوله')),
+      isFalse,
+    );
+    const usury =
+        'الذين يأكلون الربا لا يقومون إلا كما يقوم الذي يتخبطه الشيطان من المس';
+    expect(
+      ayahMatches(
+        '2:275',
+        usury,
+        usury.replaceFirst('الربا لا يقومون', 'الربال ايقومون'),
+      ),
+      isTrue,
+    );
+    for (final wrong in ['الربال يقومون', 'الربال ايقوم']) {
+      expect(
+        ayahMatches(
+          '2:275',
+          usury,
+          usury.replaceFirst('الربا لا يقومون', wrong),
+        ),
+        isFalse,
+        reason: wrong,
+      );
+    }
+  });
+
+  test('verified verse spelling variants require two following words', () {
+    for (final fixture in [
+      (
+        key: '2:196',
+        expected: 'وأتموا الحج والعمرة لله',
+        spoken: 'وأتم الحج والعمرة لله',
+      ),
+      (
+        key: '2:286',
+        expected: 'إن نسينا أو أخطأنا ربنا',
+        spoken: 'إن سينا أو أخطأنا ربنا',
+      ),
+      (
+        key: '9:36',
+        expected: 'منها اثنا عشر شهرا في',
+        spoken: 'منها اثنى عشر شهرا في',
+      ),
+      (
+        key: '24:35',
+        expected: 'نوره كمشكاة فيها مصباح المصباح',
+        spoken: 'نوره كمشكات فيها مصباح المصباح',
+      ),
+      (
+        key: '48:25',
+        expected: 'الهدي أن يبلغ محله ولولا رجال',
+        spoken: 'الهدي أن يبلغ محلة ولولا رجال',
+      ),
+    ]) {
+      expect(
+        comparison
+            .checkEntireAyah(
+              expectedImlaei: fixture.expected,
+              expectedVerseKey: fixture.key,
+              spokenText: fixture.spoken,
+              allowWrittenOpenings: true,
+            )
+            .matched,
+        isTrue,
+        reason: fixture.key,
+      );
+      final words = comparison.recitationWords(fixture.spoken);
+      expect(
+        comparison
+            .checkEntireAyah(
+              expectedImlaei: fixture.expected,
+              expectedVerseKey: fixture.key,
+              spokenText: words.take(words.length - 1).join(' '),
+              allowWrittenOpenings: true,
+            )
+            .matched,
+        isFalse,
+        reason: '${fixture.key} needs its second right anchor',
+      );
+    }
+  });
+
+  test(
+    'rolling ASR can resume at the exact hidden cursor after noisy context',
+    () {
+      const expected =
+          'لا تقربوا الصلاة وأنتم سكارى حتى تعلموا ما تقولون ولا جنبا';
+      final retained = comparison.recitationWords(expected).take(6).join(' ');
+      final joined = comparison.joinRecitationSegment(
+        retainedPrefix: retained,
+        spokenText: 'وأمسكا راحتا تعلموا ما تقولون ولا جنبا',
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['4:43'],
+        allowWrittenOpenings: true,
+      );
+
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: const [expected],
+          expectedVerseKeys: const ['4:43'],
+          spokenText: joined,
+          allowWrittenOpenings: true,
+        ),
+        [11],
+      );
+      final missingCursor = comparison.joinRecitationSegment(
+        retainedPrefix: retained,
+        spokenText: 'وأمسكا راحتا ما تقولون ولا جنبا',
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['4:43'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: const [expected],
+          expectedVerseKeys: const ['4:43'],
+          spokenText: missingCursor,
+          allowWrittenOpenings: true,
+        ),
+        [6],
+      );
+    },
+  );
+
+  test('rolling ASR requires both remaining terminal words after noise', () {
+    const expected = 'والله على كل شيء قدير';
+    const retained = 'والله على كل';
+    final joined = comparison.joinRecitationSegment(
+      retainedPrefix: retained,
+      spokenText: 'يسلت رسله شيء قدير',
+      expectedAyahs: const [expected],
+      expectedVerseKeys: const ['59:6'],
+      allowWrittenOpenings: true,
+    );
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['59:6'],
+        spokenText: joined,
+        allowWrittenOpenings: true,
+      ),
+      [5],
+    );
+    final missing = comparison.joinRecitationSegment(
+      retainedPrefix: retained,
+      spokenText: 'يسلت رسله قدير',
+      expectedAyahs: const [expected],
+      expectedVerseKeys: const ['59:6'],
+      allowWrittenOpenings: true,
+    );
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['59:6'],
+        spokenText: missing,
+        allowWrittenOpenings: true,
+      ),
+      [3],
+    );
+  });
+
+  test('rolling ASR confirms the last word with its retained predecessor', () {
+    const expected = 'والله على كل شيء قدير';
+    const retained = 'والله على كل شيء';
+    final joined = comparison.joinRecitationSegment(
+      retainedPrefix: retained,
+      spokenText: 'ولكن الله يسلط رسله على كل شيء قدير',
+      expectedAyahs: const [expected],
+      expectedVerseKeys: const ['59:6'],
+      allowWrittenOpenings: true,
+    );
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['59:6'],
+        spokenText: joined,
+        allowWrittenOpenings: true,
+      ),
+      [5],
+    );
+    final missingPredecessor = comparison.joinRecitationSegment(
+      retainedPrefix: retained,
+      spokenText: 'ولكن الله يسلط رسله قدير',
+      expectedAyahs: const [expected],
+      expectedVerseKeys: const ['59:6'],
+      allowWrittenOpenings: true,
+    );
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['59:6'],
+        spokenText: missingPredecessor,
+        allowWrittenOpenings: true,
+      ),
+      [4],
+    );
+  });
+
+  test('Hifz does not advance past an ambiguous Alif Lam Meem', () {
+    const strict = SpeechComparisonService(requireExplicitAlifLamMeem: true);
+    const ayahs = ['الم', 'ذلك الكتاب'];
+    const keys = ['2:1', '2:2'];
+    for (final opening in ['ألف لام', 'الٓمٓ']) {
+      final text = '$opening ذلك الكتاب';
+      expect(
+        strict.matchingPrefixWordCounts(
+          expectedAyahs: ayahs,
+          expectedVerseKeys: keys,
+          spokenText: text,
+          allowWrittenOpenings: true,
+        ),
+        [0],
+      );
+      expect(
+        strict
+            .checkSequence(
+              expectedAyahs: ayahs,
+              expectedVerseKeys: keys,
+              spokenText: text,
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        0,
+      );
+    }
+
+    final joined = strict.joinRecitationSegment(
+      retainedPrefix: 'ألف لام',
+      spokenText: 'ميم ذلك الكتاب',
+      expectedAyahs: ayahs,
+      expectedVerseKeys: keys,
+      allowWrittenOpenings: true,
+    );
+    expect(
+      strict
+          .checkSequence(
+            expectedAyahs: ayahs,
+            expectedVerseKeys: keys,
+            spokenText: joined,
+            allowWrittenOpenings: true,
+          )
+          .completedAyahs,
+      2,
+    );
+  });
   const expected = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
   test(

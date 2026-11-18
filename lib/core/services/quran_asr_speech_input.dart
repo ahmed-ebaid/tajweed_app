@@ -30,6 +30,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   double _lastDurationSeconds = 0;
   double _ordinaryWindowStartSeconds = 0;
   double _audioEndSeconds = 0;
+  double? _snapshotRequestedAtUnixMs;
   int? _visibleWordsHighWater;
   double? _lastProgressAudioEnd;
   double? _lastVisibleAdvanceAudioEnd;
@@ -77,11 +78,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
         defaultTargetPlatform != TargetPlatform.iOS) {
       return false;
     }
-    if (_uploadInFlight != null) {
-      try {
-        await _uploadInFlight;
-      } catch (_) {}
-    }
+    final previousUpload = _uploadInFlight;
     final completer = Completer<void>();
     _uploadInFlight = completer.future;
     try {
@@ -105,6 +102,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
           }
           continue;
         }
+        if (!quranAsrRetainDebugAudio) continue;
         final match = slotPattern.firstMatch(path);
         if (match == null) continue;
         final slot = int.tryParse(match.group(1) ?? '');
@@ -120,21 +118,23 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
         }
       }
 
-      if (diagnosticsJsonl.isEmpty && jsonBySlot.isEmpty && wavBySlot.isEmpty) {
+      final slots = jsonBySlot.keys.where(wavBySlot.containsKey).toList()
+        ..sort();
+      if (diagnosticsJsonl.isEmpty && slots.isEmpty) {
         return false;
       }
 
-      final slots = <int>{...jsonBySlot.keys, ...wavBySlot.keys}.toList()
-        ..sort();
       final snapshots = <Map<String, Object>>[
         for (final slot in slots)
           {
             'slot': slot,
-            'json': jsonBySlot[slot] ?? '{}',
-            if (wavBySlot[slot] != null) 'wav_base64': wavBySlot[slot]!,
+            'json': jsonBySlot[slot]!,
+            'wav_base64': wavBySlot[slot]!,
           },
       ];
 
+      // Capture the files before waiting for an earlier HTTP upload.
+      await previousUpload;
       final origin = Uri.parse(QuranApiService.contentApiBaseUrl).origin;
       final dio =
           client ??
@@ -181,6 +181,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
       debugPrint('Quran ASR cloud diagnostics upload skipped: $error');
       return false;
     } finally {
+      await previousUpload;
       completer.complete();
       if (identical(_uploadInFlight, completer.future)) {
         _uploadInFlight = null;
@@ -233,6 +234,41 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     }
   }
 
+  Future<void> recordPreviewReveal({
+    required int newVisibleWords,
+    required int visibleWords,
+    required Future<void> frame,
+  }) async {
+    final requestedAt = _snapshotRequestedAtUnixMs;
+    if (!quranAsrExperimentEnabled ||
+        defaultTargetPlatform != TargetPlatform.iOS ||
+        !_active ||
+        newVisibleWords <= 0 ||
+        requestedAt == null) {
+      return;
+    }
+    final generation = _generation;
+    final audioEndSeconds = _windowStartSeconds + _lastDurationSeconds;
+    await frame;
+    if (!_active || generation != _generation) return;
+    final milliseconds =
+        DateTime.now().microsecondsSinceEpoch / 1000 - requestedAt;
+    if (milliseconds < 0) return;
+    try {
+      await _channel.invokeMethod<void>('tracePreviewReveal', {
+        'generation': generation,
+        'audioEndSeconds': audioEndSeconds,
+        'newVisibleWords': newVisibleWords,
+        'visibleWords': visibleWords,
+        'snapshotToRevealMs': milliseconds,
+      });
+    } on PlatformException catch (error) {
+      debugPrint('Quran ASR reveal diagnostics failed: ${error.code}');
+    } on MissingPluginException {
+      debugPrint('Quran ASR reveal diagnostics are unavailable.');
+    }
+  }
+
   @override
   Future<void> start({
     required void Function(String, bool) onResult,
@@ -250,6 +286,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     _lastDurationSeconds = 0;
     _ordinaryWindowStartSeconds = 0;
     _audioEndSeconds = 0;
+    _snapshotRequestedAtUnixMs = null;
     _visibleWordsHighWater = null;
     _lastProgressAudioEnd = null;
     _lastVisibleAdvanceAudioEnd = null;
@@ -321,6 +358,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
       if (!_active || generation != _generation || (recovery && _stopping)) {
         return;
       }
+      _snapshotRequestedAtUnixMs = null;
       final transcript = report == null && !recovery
           ? ''
           : _readReport(
@@ -356,6 +394,8 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
       await _channel.invokeMethod<void>('finishCapture');
       await _inFlight;
       if (!_active || generation != _generation) return;
+      await _previewTail(generation);
+      if (!_active || generation != _generation) return;
       final report = await _channel.invokeMapMethod<String, dynamic>('check');
       if (!_active || generation != _generation) return;
       final transcript = _readReport(report, isFinal: true);
@@ -368,6 +408,25 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
       _fail(generation, 'quran_asr_invalid_result');
     } finally {
       if (generation == _generation) _stopping = false;
+    }
+  }
+
+  /// Live previews can miss the last seconds before stop, and long final
+  /// transcripts can truncate, so decode the trailing window once.
+  Future<void> _previewTail(int generation) async {
+    try {
+      final report = await _channel.invokeMapMethod<String, dynamic>(
+        'tailPreview',
+        {'afterSeconds': _audioEndSeconds},
+      );
+      if (report == null || !_active || generation != _generation) return;
+      _onResult?.call(_readReport(report), false);
+    } on PlatformException catch (error) {
+      debugPrint('Quran ASR tail preview skipped: ${error.code}');
+    } on MissingPluginException {
+      // Older native builds have no tail preview.
+    } on FormatException {
+      // An empty tail adds nothing before the final check.
     }
   }
 
@@ -439,6 +498,10 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     _windowStartSeconds = start.toDouble();
     _lastDurationSeconds = duration.toDouble();
     if (!isFinal) {
+      final requestedAt = report['snapshotRequestedAtUnixMs'];
+      if (requestedAt is num && requestedAt.isFinite && requestedAt > 0) {
+        _snapshotRequestedAtUnixMs = requestedAt.toDouble();
+      }
       if (!isRecovery) _ordinaryWindowStartSeconds = start.toDouble();
       final end = (start + duration).toDouble();
       if (end > _audioEndSeconds) _audioEndSeconds = end;

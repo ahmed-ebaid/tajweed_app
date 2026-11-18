@@ -7,7 +7,14 @@ final class QuranASRDiagnostics {
   private let fileURL: URL
   private let maximumBytes: Int
   private let lock = NSLock()
+  private var debugCaptureID: UUID?
   private var snapshotSequence = 0
+  private var completeSlots = Set<Int>()
+
+  private var snapshotRoot: URL {
+    fileURL.deletingLastPathComponent()
+      .appendingPathComponent("quran-asr-debug", isDirectory: true)
+  }
 
   init(
     fileURL: URL = FileManager.default.temporaryDirectory
@@ -44,17 +51,37 @@ final class QuranASRDiagnostics {
     }
   }
 
+  func beginCapture(retainDebugAudio: Bool) -> UUID? {
+    lock.lock()
+    defer { lock.unlock() }
+    debugCaptureID = retainDebugAudio ? UUID() : nil
+    snapshotSequence = 0
+    completeSlots.removeAll()
+    do {
+      try FileManager.default.removeItem(at: snapshotRoot)
+    } catch let error as NSError where error.domain == NSCocoaErrorDomain
+        && error.code == NSFileNoSuchFileError {
+      // No previous snapshots.
+    } catch {
+      NSLog("Quran ASR debug snapshots could not be removed: %@", error.localizedDescription)
+    }
+    return debugCaptureID
+  }
+
   func retainSnapshot(
     _ source: URL, report: [String: Any]?, provisional: Bool,
-    windowStart: Double, requested: Date, errorCode: Int
+    windowStart: Double, requested: Date, errorCode: Int, captureID: UUID
   ) {
+    let savedSlot: Int
     do {
+      lock.lock()
+      defer { lock.unlock() }
+      guard debugCaptureID == captureID else { return }
       let audio = try Data(contentsOf: source)
       guard audio.count <= 960044 else {
         throw NSError(domain: "QuranASRDiagnostics", code: 1)
       }
-      let directory = fileURL.deletingLastPathComponent()
-        .appendingPathComponent("quran-asr-debug", isDirectory: true)
+      let directory = snapshotRoot.appendingPathComponent(captureID.uuidString, isDirectory: true)
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
       let slot = snapshotSequence % 6
       snapshotSequence += 1
@@ -68,22 +95,26 @@ final class QuranASRDiagnostics {
       guard json.count <= 65536 else {
         throw NSError(domain: "QuranASRDiagnostics", code: 2)
       }
+      completeSlots.remove(slot)
       try audio.write(
         to: directory.appendingPathComponent("snapshot-\(slot).wav"), options: .atomic
       )
       try json.write(
         to: directory.appendingPathComponent("snapshot-\(slot).json"), options: .atomic
       )
-      record("debug_snapshot_saved", metrics: [
-        "slot": Double(slot), "requested": requested.timeIntervalSince1970
-      ])
+      completeSlots.insert(slot)
+      savedSlot = slot
     } catch {
       NSLog("Quran ASR debug snapshot could not be saved: %@", error.localizedDescription)
       record("debug_snapshot_failed")
+      return
     }
+    record("debug_snapshot_saved", metrics: [
+      "slot": Double(savedSlot), "requested": requested.timeIntervalSince1970
+    ])
   }
 
-  func exportedFilePaths() -> [String] {
+  func exportedFilePaths(includeSnapshots: Bool = true) -> [String] {
     lock.lock()
     defer { lock.unlock() }
     var paths: [String] = []
@@ -91,14 +122,13 @@ final class QuranASRDiagnostics {
     if fm.fileExists(atPath: fileURL.path) {
       paths.append(fileURL.path)
     }
-    let directory = fileURL.deletingLastPathComponent()
-      .appendingPathComponent("quran-asr-debug", isDirectory: true)
-    for slot in 0..<6 {
-      for ext in ["json", "wav"] {
-        let candidate = directory.appendingPathComponent("snapshot-\(slot).\(ext)")
-        if fm.fileExists(atPath: candidate.path) {
-          paths.append(candidate.path)
-        }
+    guard includeSnapshots, let debugCaptureID else { return paths }
+    let directory = snapshotRoot.appendingPathComponent(debugCaptureID.uuidString, isDirectory: true)
+    for slot in completeSlots.sorted() {
+      let json = directory.appendingPathComponent("snapshot-\(slot).json").path
+      let wav = directory.appendingPathComponent("snapshot-\(slot).wav").path
+      if fm.fileExists(atPath: json), fm.fileExists(atPath: wav) {
+        paths.append(contentsOf: [json, wav])
       }
     }
     return paths
@@ -180,6 +210,12 @@ final class QuranASRCapture {
     }
   }
 
+  var capturedSeconds: Double {
+    lock.lock()
+    defer { lock.unlock() }
+    return Double(capturedSamples) / 16000
+  }
+
   func snapshot(forPreview: Bool = false, recoveryContextSeconds: Int? = nil) throws -> Snapshot? {
     lock.lock()
     defer { lock.unlock() }
@@ -226,7 +262,7 @@ final class QuranASRChannel {
   private var processing = false
   private var previewCancellation: QuranASRCancellation?
   private var starting = false
-  private var retainDebugAudio = false
+  private var debugCaptureID: UUID?
   private var generation = 0
   private var previousCategory: AVAudioSession.Category?
   private var previousMode: AVAudioSession.Mode?
@@ -289,6 +325,14 @@ final class QuranASRChannel {
         } else {
           preview(result)
         }
+      case "tailPreview":
+        guard let fields = call.arguments as? [String: Any], fields.count == 1,
+              let after = (fields["afterSeconds"] as? NSNumber)?.doubleValue,
+              after.isFinite, after >= 0 else {
+          result(FlutterError(code: "invalid_preview", message: "Expected afterSeconds.", details: nil))
+          return
+        }
+        tailPreview(result, afterSeconds: after)
       case "finishCapture":
         diagnostics.record("pause", metrics: ["processing": processing ? 1 : 0])
         previewCancellation?.cancel()
@@ -324,8 +368,22 @@ final class QuranASRChannel {
         }
         diagnostics.record("progress", metrics: fields.mapValues(\.doubleValue))
         result(nil)
+      case "tracePreviewReveal":
+        let required: Set<String> = [
+          "generation", "audioEndSeconds", "newVisibleWords", "visibleWords", "snapshotToRevealMs"
+        ]
+        guard let fields = call.arguments as? [String: NSNumber],
+              Set(fields.keys) == required,
+              fields.values.allSatisfy({ $0.doubleValue.isFinite && $0.doubleValue >= 0 }),
+              let newVisibleWords = fields["newVisibleWords"]?.doubleValue,
+              newVisibleWords > 0 else {
+          result(FlutterError(code: "invalid_diagnostics", message: "Expected numeric preview reveal metrics.", details: nil))
+          return
+        }
+        diagnostics.record("preview_reveal", metrics: fields.mapValues(\.doubleValue))
+        result(nil)
       case "exportDiagnostics":
-        result(diagnostics.exportedFilePaths())
+        result(diagnostics.exportedFilePaths(includeSnapshots: engine == nil && !processing))
       case "checkWav":
         guard !processing, !starting, engine == nil, audioURL == nil,
               let bytes = call.arguments as? FlutterStandardTypedData,
@@ -396,7 +454,7 @@ final class QuranASRChannel {
           }
           engine.prepare()
           try engine.start()
-          self.retainDebugAudio = retainDebugAudio
+          self.debugCaptureID = self.diagnostics.beginCapture(retainDebugAudio: retainDebugAudio)
           self.diagnostics.record("capture_started")
           result(nil)
         } catch {
@@ -460,7 +518,36 @@ final class QuranASRChannel {
       transcribe(
         url, model: model, provisional: true,
         windowStartSeconds: snapshot.startSeconds,
-        retainDebugAudio: retainDebugAudio, recoveryContextSeconds: recoveryContextSeconds, result: result
+        debugCaptureID: debugCaptureID, recoveryContextSeconds: recoveryContextSeconds, result: result
+      )
+    } catch {
+      result(failure(error))
+    }
+  }
+
+  /// Decodes the final 8s after capture stops so trailing words missed by the
+  /// last live preview are recognized before the bounded final check.
+  private func tailPreview(_ result: @escaping FlutterResult, afterSeconds: Double) {
+    guard !processing, !starting, engine == nil, let capture,
+          let model = Bundle.main.path(forResource: "quran-tiny", ofType: "bin") else {
+      result(FlutterError(code: "busy", message: "No stopped recording.", details: nil))
+      return
+    }
+    guard capture.capturedSeconds - afterSeconds >= 0.25 else {
+      result(nil)
+      return
+    }
+    do {
+      guard let snapshot = try capture.snapshot(forPreview: true), snapshot.wav.count >= 32044 else {
+        result(nil)
+        return
+      }
+      let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".wav")
+      try snapshot.wav.write(to: url, options: .atomic)
+      transcribe(
+        url, model: model, provisional: true,
+        windowStartSeconds: snapshot.startSeconds,
+        debugCaptureID: debugCaptureID, result: result
       )
     } catch {
       result(failure(error))
@@ -473,7 +560,7 @@ final class QuranASRChannel {
       return
     }
     var windowStartSeconds = 0.0
-    let retainSnapshot = capture != nil && retainDebugAudio
+    let snapshotCaptureID = capture == nil ? nil : debugCaptureID
     do {
       stopCapture()
       if let capture {
@@ -513,13 +600,13 @@ final class QuranASRChannel {
     audioURL = nil
     transcribe(
       url, model: model, provisional: false,
-      windowStartSeconds: windowStartSeconds, retainDebugAudio: retainSnapshot, result: result
+      windowStartSeconds: windowStartSeconds, debugCaptureID: snapshotCaptureID, result: result
     )
   }
 
   private func transcribe(
     _ url: URL, model: String, provisional: Bool,
-    windowStartSeconds: Double, retainDebugAudio: Bool,
+    windowStartSeconds: Double, debugCaptureID: UUID?,
     recoveryContextSeconds: Int? = nil,
     result: @escaping FlutterResult
   ) {
@@ -539,10 +626,11 @@ final class QuranASRChannel {
     worker.async { [self] in
       var error: NSError?
       let report = QuranASRTranscribeCancellable(model, url.path, cancellation, &error)
-      if retainDebugAudio {
+      if let debugCaptureID {
         diagnostics.retainSnapshot(
           url, report: report as? [String: Any], provisional: provisional,
-          windowStart: windowStartSeconds, requested: requested, errorCode: error?.code ?? 0
+          windowStart: windowStartSeconds, requested: requested, errorCode: error?.code ?? 0,
+          captureID: debugCaptureID
         )
       }
       var cleanupError: Error?
@@ -571,6 +659,9 @@ final class QuranASRChannel {
         } else if let report {
           var response = report
           response["windowStartSeconds"] = windowStartSeconds
+          if provisional {
+            response["snapshotRequestedAtUnixMs"] = requested.timeIntervalSince1970 * 1000
+          }
           if let seconds = recoveryContextSeconds {
             response["recovery"] = true
             response["contextSeconds"] = seconds

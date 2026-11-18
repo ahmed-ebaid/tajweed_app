@@ -135,6 +135,7 @@ Set<String> _hidden(WidgetTester tester) => tester
 
 void main() {
   const corpusDirectory = String.fromEnvironment('ASR_CORPUS_DIR');
+  const recordRevealTiming = bool.fromEnvironment('ASR_CORPUS_REVEAL_TIMING');
   if (corpusDirectory.isNotEmpty) {
     final inputs = Directory('$corpusDirectory/results')
         .listSync(recursive: true)
@@ -241,7 +242,27 @@ void main() {
         );
         await _tap(tester, 'Start reciting');
         await _tap(tester, 'Agree and continue');
-        for (final snapshot in row['snapshots'] as List<dynamic>) {
+        final revealTiming = <Map<String, num>>[];
+        final recoveryEvents = <Map<String, num>>[];
+        final recoverySnapshots = <(num, num), Map<String, dynamic>>{
+          for (final snapshot
+              in (row['recovery_snapshots'] as List? ?? const [])
+                  .cast<Map<String, dynamic>>())
+            (
+              snapshot['end_seconds'] as num,
+              snapshot['context_seconds'] as num,
+            ): snapshot,
+        };
+        int visibleWords() =>
+            tester
+                .widget<MushafPageContent>(find.byType(MushafPageContent))
+                .revealedWordCounts[key] ??
+            0;
+        double? lastAdvance;
+        var lastRetry = double.negativeInfinity;
+        var context = 12;
+        var maxVisibleWords = 0;
+        Future<void> deliver(Map<String, dynamic> snapshot) async {
           speech.windowStartSeconds = (snapshot['start_seconds'] as num)
               .toDouble();
           if (snapshot['decoder_error'] != null) {
@@ -253,6 +274,51 @@ void main() {
             );
           }
           await tester.pumpAndSettle();
+        }
+
+        for (final snapshot
+            in (row['snapshots'] as List).cast<Map<String, dynamic>>()) {
+          final before = recoverySnapshots.isEmpty ? 0 : visibleWords();
+          await deliver(snapshot);
+          // ignore: avoid_print
+          if (recoverySnapshots.isNotEmpty && snapshot['final'] == false) {
+            final end = (snapshot['end_seconds'] as num).toDouble();
+            final current = visibleWords();
+            if (current > before) {
+              lastAdvance = end;
+              context = 12;
+            }
+            if (end > 8 &&
+                lastAdvance != null &&
+                end - lastAdvance >= 4 &&
+                end - lastRetry >= 8) {
+              final retry = recoverySnapshots[(end, context)];
+              if (retry == null) {
+                throw StateError('Missing ${context}s retry at ${end}s');
+              }
+              lastRetry = end;
+              await deliver(retry);
+              final recovered = visibleWords();
+              recoveryEvents.add({
+                'end_seconds': end,
+                'context_seconds': context,
+                'before': current,
+                'after': recovered,
+              });
+              if (recovered > current) lastAdvance = end;
+              context = recovered > current ? 12 : 28;
+            }
+          }
+          if (recordRevealTiming && snapshot['final'] == false) {
+            final visible = visibleWords();
+            if (visible > maxVisibleWords) {
+              revealTiming.add({
+                'audio_end_seconds': snapshot['end_seconds'] as num,
+                'visible_words': visible,
+              });
+              maxVisibleWords = visible;
+            }
+          }
         }
         final complete = _hidden(tester).isEmpty;
         final uiFinished = find
@@ -268,12 +334,14 @@ void main() {
         );
         result.parent.createSync(recursive: true);
         final outcome = {
+          if (recoverySnapshots.isNotEmpty) 'recovery_events': recoveryEvents,
           'verse_key': key,
           'reciter_id': row['reciter_id'],
           'hifz_completed': complete,
           'ui_session_finished': uiFinished,
           'unaided_text_match': unaided,
           'decoder_error_recording': row['status'] == 'decoder_error',
+          if (recordRevealTiming) 'preview_reveal_timing': revealTiming,
           'revealed_word_counts': tester
               .widget<MushafPageContent>(find.byType(MushafPageContent))
               .revealedWordCounts,
@@ -562,11 +630,15 @@ void main() {
           'com.ebaidllc.tajweed_practice/quran_asr',
         );
         final calls = <String>[];
+        final revealEvents = <Object?>[];
         final binding = TestDefaultBinaryMessengerBinding.instance;
         binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
           call,
         ) async {
           calls.add(call.method);
+          if (call.method == 'tracePreviewReveal') {
+            revealEvents.add(call.arguments);
+          }
           return switch (call.method) {
             'available' => true,
             'preview' => {
@@ -574,6 +646,8 @@ void main() {
               'durationSeconds': 3.0,
               'inferenceSeconds': 0.3,
               'windowStartSeconds': 0.0,
+              'snapshotRequestedAtUnixMs':
+                  DateTime.now().millisecondsSinceEpoch - 300,
             },
             'check' => {
               'transcript': _first,
@@ -633,9 +707,19 @@ void main() {
           '1:1': {0, 1},
         });
         expect(page.hiddenAyahs, {'1:1', '1:2'});
+        expect(revealEvents, [
+          {
+            'generation': 1,
+            'audioEndSeconds': 3.0,
+            'newVisibleWords': 2,
+            'visibleWords': 2,
+            'snapshotToRevealMs': greaterThanOrEqualTo(300),
+          },
+        ]);
         expect(find.textContaining('Recognized words:'), findsNothing);
         expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
         await _tap(tester, 'Pause');
+        expect(revealEvents, hasLength(1));
         expect(find.text('Unaided matches: 1 · Assisted: 0'), findsOneWidget);
         expect(
           calls,
@@ -644,6 +728,7 @@ void main() {
         await tester.pumpWidget(const SizedBox());
         await tester.pump();
       },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     );
   }
 
@@ -1183,6 +1268,41 @@ void main() {
       expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
     });
 
+    group('stopped tail after a truncated final', () {
+      const last = 'صراط الذين أنعمت عليهم غير المغضوب عليهم ولا الضالين';
+
+      Future<_FakeWindowedSpeech> stopWith(
+        WidgetTester tester,
+        String finalText,
+      ) async {
+        final speech = _FakeWindowedSpeech();
+        await startLab(tester, speech, ayahs: [_ayah(7, last)]);
+        await _tap(tester, 'Live word preview (unverified)');
+        speech.result!('صراط الذي', false);
+        await tester.pumpAndSettle();
+        speech.stopping = () {
+          speech.windowStartSeconds = 20;
+          speech.result!('عليهم ولا الضالين', false);
+          speech.windowStartSeconds = 0;
+          speech.result!(finalText, true);
+        };
+        await _tap(tester, 'Pause');
+        return speech;
+      }
+
+      testWidgets('completes at the cursor the final verified', (tester) async {
+        await stopWith(tester, 'صراط الذين أنعمت عليهم غير المغضوب عليهم');
+        expect(_hidden(tester), isNot(contains('1:7')));
+      });
+
+      testWidgets('cannot complete when the final verified nothing', (
+        tester,
+      ) async {
+        await stopWith(tester, 'إهدنا الصراط المستقيم');
+        expect(_hidden(tester), contains('1:7'));
+      });
+    });
+
     testWidgets(
       'basmala last word continues a live partial prefix without skipping',
       (tester) async {
@@ -1495,11 +1615,7 @@ void main() {
         const nahl97 =
             'من عمل صالحا من ذكر أو أنثى وهو مؤمن فلنحيينه حياة طيبة ولنجزينهم أجرهم بأحسن ما كانوا يعملون';
         final speech = _FakeWindowedSpeech();
-        await startLab(
-          tester,
-          speech,
-          ayahs: [_ayah(97, nahl97)],
-        );
+        await startLab(tester, speech, ayahs: [_ayah(97, nahl97)]);
         await _tap(tester, 'Live word preview (unverified)');
         speech.result!(nahl97, false);
         await tester.pumpAndSettle();
@@ -2305,7 +2421,7 @@ void main() {
       expect(_hidden(tester), isEmpty);
     });
 
-    testWidgets('disconnected opening stays masked until every name matches', (
+    testWidgets('Alif Lam Meem needs all three names for reveal and credit', (
       tester,
     ) async {
       final speech = _FakeSpeech();
@@ -2331,12 +2447,66 @@ void main() {
       expect(_hidden(tester), {'2:1'});
       await _tap(tester, 'Resume');
       await _tap(tester, 'Live word preview (unverified)');
-      speech.result!('الٓمٓ', false);
+      for (final incomplete in ['ألف لام', 'الٓمٓ']) {
+        speech.result!(incomplete, false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, isEmpty);
+        expect(_hidden(tester), {'2:1'});
+      }
+      speech.result!('الٓمٓ', true);
       await tester.pumpAndSettle();
-      expect(page(tester).revealedWordCounts, {'2:1': 1});
+      expect(page(tester).revealedWordCounts, isEmpty);
       expect(_hidden(tester), {'2:1'});
       expect(find.text('Unaided matches: 0 · Assisted: 0'), findsOneWidget);
-      speech.result!('الٓمٓ', true);
+      expect(find.text('Done'), findsNothing);
+      await _tap(tester, 'Resume');
+      speech.result!('ألف لام ميم', true);
+      await tester.pumpAndSettle();
+      expect(_hidden(tester), isEmpty);
+      expect(find.text('Unaided matches: 1 · Assisted: 0'), findsOneWidget);
+    });
+
+    testWidgets('Alif Lam Meem can resume from the unheard letter', (
+      tester,
+    ) async {
+      final speech = _FakeSpeech();
+      await startLab(tester, speech, ayahs: [_ayah(1, 'الم', surahNumber: 2)]);
+      speech.result!('ألف لام', true);
+      await tester.pumpAndSettle();
+      expect(_hidden(tester), {'2:1'});
+      expect(page(tester).revealedWordCounts, isEmpty);
+      await _tap(tester, 'Resume');
+      speech.result!('ميم', true);
+      await tester.pumpAndSettle();
+      expect(_hidden(tester), isEmpty);
+      expect(find.text('Unaided matches: 1 · Assisted: 0'), findsOneWidget);
+    });
+
+    testWidgets('Baqarah 2:21 resumes at قبلكم and does not skip it', (
+      tester,
+    ) async {
+      final speech = _FakeSpeech();
+      await startLab(
+        tester,
+        speech,
+        ayahs: [
+          _ayah(
+            21,
+            'يا أيها الناس اعبدوا ربكم الذي خلقكم والذين من قبلكم لعلكم تتقون',
+            surahNumber: 2,
+          ),
+        ],
+      );
+      speech.result!('يا أيها الناس اعبدوا ربكم الذي خلقكم والذين من', true);
+      await tester.pumpAndSettle();
+      expect(page(tester).revealedWordCounts, {'2:21': 9});
+      await _tap(tester, 'Resume');
+      speech.result!('لعلكم تتقون', true);
+      await tester.pumpAndSettle();
+      expect(_hidden(tester), {'2:21'});
+      expect(page(tester).revealedWordCounts, {'2:21': 9});
+      await _tap(tester, 'Resume');
+      speech.result!('قبلكم لعلكم تتقون', true);
       await tester.pumpAndSettle();
       expect(_hidden(tester), isEmpty);
     });

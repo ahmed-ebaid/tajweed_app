@@ -1,8 +1,15 @@
+import 'quran_vocabulary.g.dart';
+
 /// Provides word-by-word comparison between the user's spoken text
 /// (from speech-to-text) and the expected Quranic text for an ayah.
 ///
 /// Text matching does not assess pronunciation or Tajweed.
 class SpeechComparisonService {
+  const SpeechComparisonService({this.requireExplicitAlifLamMeem = false});
+
+  /// The compact ASR token does not show whether Meem was recited.
+  final bool requireExplicitAlifLamMeem;
+
   /// Recitation words without Quranic pause marks or Arabic diacritics.
   List<String> recitationWords(String text) => _recitationWords(text);
 
@@ -18,13 +25,116 @@ class SpeechComparisonService {
     if (expectedAyahs.length != expectedVerseKeys.length) {
       throw ArgumentError('Verse keys must correspond to every expected ayah');
     }
+    final joined = _joinRecitationSegmentOnce(
+      retainedPrefix: retainedPrefix,
+      spokenText: spokenText,
+      expectedAyahs: expectedAyahs,
+      expectedVerseKeys: expectedVerseKeys,
+      allowWrittenOpenings: allowWrittenOpenings,
+    );
+    if (!allowWrittenOpenings) return joined;
+    final cursor = _cursorAnchoredJoin(
+      retainedPrefix,
+      spokenText,
+      expectedAyahs,
+      expectedVerseKeys,
+    );
+    if (cursor == null) return joined;
+    int verified(String text) => matchingPrefixWordCounts(
+      expectedAyahs: expectedAyahs,
+      expectedVerseKeys: expectedVerseKeys,
+      spokenText: text,
+      allowWrittenOpenings: true,
+    ).fold(0, (a, b) => a + b);
+    // A short overlap on a common word (e.g. ولا) or a repeated phrase can
+    // anchor the join too early; the exact next expected words win instead.
+    final cursorVerified = verified(cursor);
+    var total = 0;
+    for (var verse = 0; verse < expectedAyahs.length; verse++) {
+      total += _expectedRecitationWords(
+        expectedAyahs[verse],
+        expectedVerseKeys[verse],
+      ).length;
+    }
+    if (cursorVerified > verified(joined)) return cursor;
+    // Both reach the end: the cursor join drops trailing noise.
+    return cursorVerified >= total ? cursor : joined;
+  }
+
+  /// Continues the retained prefix at the first place the incoming words
+  /// recite exactly the next expected words: three of them, or every
+  /// remaining word near the end. Words after the final expected word are
+  /// dropped, so trailing noise cannot fail a completed recitation.
+  String? _cursorAnchoredJoin(
+    String retainedPrefix,
+    String spokenText,
+    List<String> expectedAyahs,
+    List<String> expectedVerseKeys,
+  ) {
+    final retained = _spokenWords(
+      retainedPrefix,
+      expectedAyahs,
+      expectedVerseKeys,
+      true,
+      trustedPrefix: true,
+    );
+    if (retained.isEmpty) return null;
+    final expectedSeq = <Set<String>>[
+      for (var verse = 0; verse < expectedAyahs.length; verse++)
+        ..._expectedRecitationWords(
+          expectedAyahs[verse],
+          expectedVerseKeys[verse],
+        ),
+    ];
+    for (var i = 0; i < retained.length; i++) {
+      if (i >= expectedSeq.length || !expectedSeq[i].contains(retained[i])) {
+        return null;
+      }
+    }
+    final remaining = expectedSeq.length - retained.length;
+    if (remaining < 2) return null;
+    final incoming = _spokenWords(
+      spokenText,
+      expectedAyahs,
+      expectedVerseKeys,
+      true,
+    );
+    final confirmation = remaining < 3 ? remaining : 3;
+    for (var start = 0; start + confirmation <= incoming.length; start++) {
+      if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
+      var matches = true;
+      for (var i = 0; i < confirmation; i++) {
+        if (!expectedSeq[retained.length + i].contains(incoming[start + i])) {
+          matches = false;
+          break;
+        }
+      }
+      if (!matches) continue;
+      return [...retained, ...incoming.skip(start)].join(' ');
+    }
+    return null;
+  }
+
+  String _joinRecitationSegmentOnce({
+    required String retainedPrefix,
+    required String spokenText,
+    required List<String> expectedAyahs,
+    required List<String> expectedVerseKeys,
+    bool allowWrittenOpenings = false,
+  }) {
     List<String> words(String text) => _spokenWords(
       text,
       expectedAyahs,
       expectedVerseKeys,
       allowWrittenOpenings,
     );
-    final retained = words(retainedPrefix);
+    final retained = _spokenWords(
+      retainedPrefix,
+      expectedAyahs,
+      expectedVerseKeys,
+      allowWrittenOpenings,
+      trustedPrefix: true,
+    );
     final incoming = words(spokenText);
     final expectedSeq = <Set<String>>[
       for (var verse = 0; verse < expectedAyahs.length; verse++)
@@ -33,6 +143,30 @@ class SpeechComparisonService {
           expectedVerseKeys[verse],
         ),
     ];
+    if (allowWrittenOpenings &&
+        retained.isNotEmpty &&
+        retained.length == expectedSeq.length) {
+      var coversAll = true;
+      for (var i = 0; i < retained.length; i++) {
+        if (!expectedSeq[i].contains(retained[i])) {
+          coversAll = false;
+          break;
+        }
+      }
+      // A later window repeating recited words cannot add expected words,
+      // but every word it heard must repeat them in order (only its first and
+      // last words may be cut by the window), so a wrong word keeps the ayah
+      // open.
+      if (coversAll &&
+          _repeatsRetainedRun(
+            retained,
+            incoming,
+            expectedAyahs,
+            expectedVerseKeys,
+          )) {
+        return retained.join(' ');
+      }
+    }
     var verseStart = 0;
     for (var verse = 0; verse < expectedAyahs.length; verse++) {
       if (verseStart >= retained.length) break;
@@ -70,6 +204,7 @@ class SpeechComparisonService {
         : incoming.length;
     for (var overlap = maxOverlap; overlap > 0; overlap--) {
       var matches = true;
+      List<String>? expandedCandidate;
       for (var i = 0; i < overlap; i++) {
         if (retained[retained.length - overlap + i] != incoming[i]) {
           matches = false;
@@ -92,6 +227,9 @@ class SpeechComparisonService {
               break;
             }
           }
+          // The overlap was confirmed on expanded words (e.g. merged
+          // مما -> من ما), so raw incoming tokens cannot be skipped 1:1.
+          if (matches) expandedCandidate = candidate;
         }
       }
       if (matches &&
@@ -138,6 +276,12 @@ class SpeechComparisonService {
         }
       }
       if (matches) {
+        if (expandedCandidate != null) {
+          return [
+            ...retained,
+            ...expandedCandidate.skip(retained.length),
+          ].join(' ');
+        }
         final joined = [...retained, ...incoming.skip(overlap)].join(' ');
         return allowWrittenOpenings
             ? _spokenWords(
@@ -203,6 +347,35 @@ class SpeechComparisonService {
         }
         if (matchesSlice) {
           return retained.join(' ');
+        }
+      }
+    }
+    final remainingExpected = expectedSeq.length - retained.length;
+    if (allowWrittenOpenings && remainingExpected >= 2) {
+      final confirmationWords = remainingExpected < 3 ? remainingExpected : 3;
+      for (
+        var start = 1;
+        start + confirmationWords <= incoming.length;
+        start++
+      ) {
+        if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
+        var matchesCursor = true;
+        for (var i = 0; i < confirmationWords; i++) {
+          if (!expectedSeq[retained.length + i].contains(incoming[start + i])) {
+            matchesCursor = false;
+            break;
+          }
+        }
+        if (matchesCursor) {
+          return [...retained, ...incoming.skip(start)].join(' ');
+        }
+      }
+    }
+    if (allowWrittenOpenings && remainingExpected == 1 && retained.isNotEmpty) {
+      for (var cursor = 1; cursor < incoming.length; cursor++) {
+        if (incoming[cursor - 1] == retained.last &&
+            expectedSeq[retained.length].contains(incoming[cursor])) {
+          return [...retained, incoming[cursor]].join(' ');
         }
       }
     }
@@ -341,6 +514,7 @@ class SpeechComparisonService {
         var word = 0;
         var end = start;
         if (opening != null &&
+            _acceptWrittenOpening(opening) &&
             written.isNotEmpty &&
             written.first == opening &&
             spoken[end] == opening) {
@@ -499,6 +673,9 @@ class SpeechComparisonService {
     'ن': {'نون'},
   };
 
+  bool _acceptWrittenOpening(String opening) =>
+      !requireExplicitAlifLamMeem || opening != 'الم';
+
   List<Set<String>> _expectedRecitationWords(String text, String? verseKey) {
     final words = _recitationWords(text);
     final opening = _disconnectedLetters[verseKey];
@@ -521,6 +698,7 @@ class SpeechComparisonService {
     List<String>? keys,
     bool allowWrittenOpenings, {
     bool allowAsrCorrections = true,
+    bool trustedPrefix = false,
   }) {
     final spoken = _recitationWords(text);
     if (!allowWrittenOpenings || keys == null) return spoken;
@@ -556,6 +734,7 @@ class SpeechComparisonService {
         }
       }
       if (opening != null &&
+          (trustedPrefix || _acceptWrittenOpening(opening)) &&
           written.isNotEmpty &&
           written.first == opening &&
           offset < spoken.length &&
@@ -588,6 +767,19 @@ class SpeechComparisonService {
           continue;
         }
         if (!allowAsrCorrections) return [...expanded, ...spoken.skip(offset)];
+        final verseVariants = _verifiedVerseAsrVariants[keys[ayah]];
+        if (verseVariants != null &&
+            word + 2 < expected.length &&
+            offset + 2 < spoken.length &&
+            (verseVariants[expected[word].first]?.contains(spoken[offset]) ??
+                false) &&
+            expected[word + 1].contains(spoken[offset + 1]) &&
+            expected[word + 2].contains(spoken[offset + 2])) {
+          expanded.add(expected[word].first);
+          offset++;
+          word++;
+          continue;
+        }
         if (offset + 1 < spoken.length &&
             expected[word].contains('${spoken[offset]}${spoken[offset + 1]}')) {
           expanded.add('${spoken[offset]}${spoken[offset + 1]}');
@@ -668,6 +860,18 @@ class SpeechComparisonService {
           expanded.add(expected[word].first);
           offset += 2;
           word++;
+          continue;
+        }
+        if (word + 1 < expected.length &&
+            offset < spoken.length &&
+            expected[word].first.length >= 2 &&
+            expected[word + 1].first.length >= 2 &&
+            spoken[offset] ==
+                '${expected[word].first}${expected[word + 1].first}') {
+          // Imla'i spelling joins words the mushaf writes apart (فيما).
+          expanded.addAll([expected[word].first, expected[word + 1].first]);
+          offset++;
+          word += 2;
           continue;
         }
         if (word + 1 < expected.length &&
@@ -787,6 +991,54 @@ class SpeechComparisonService {
           word++;
           continue;
         }
+        // Hamza seat, taa marbuta or alif maqsura spellings of exactly the
+        // expected letters (مغلوله, اسراييل) cannot hide a skipped word.
+        if (!quranVocabulary.contains(spoken[offset]) &&
+            _foldNearMiss(spoken[offset]).length >= 3 &&
+            _foldNearMiss(spoken[offset]) ==
+                _foldNearMiss(expected[word].first)) {
+          expanded.add(expected[word].first);
+          offset++;
+          word++;
+          continue;
+        }
+        // The same letters split at a different place (الربال ايقومون).
+        if (offset + 1 < spoken.length) {
+          final heard = '${spoken[offset]}${spoken[offset + 1]}';
+          var consumed = 0;
+          for (final count in const [2, 3]) {
+            if (word + count > expected.length) break;
+            final written = [
+              for (var i = 0; i < count; i++) expected[word + i].first,
+            ];
+            if (written.join() == heard &&
+                written.every((w) => w.length >= 2)) {
+              consumed = count;
+              break;
+            }
+          }
+          if (consumed > 0) {
+            for (var i = 0; i < consumed; i++) {
+              expanded.add(expected[word + i].first);
+            }
+            offset += 2;
+            word += consumed;
+            continue;
+          }
+        }
+        // A non-Quran ASR spelling close to the expected word, followed by the
+        // next two expected words, is a misrecognition rather than a skip.
+        if (word + 2 < expected.length &&
+            offset + 2 < spoken.length &&
+            expected[word + 1].contains(spoken[offset + 1]) &&
+            expected[word + 2].contains(spoken[offset + 2]) &&
+            !quranVocabulary.contains(spoken[offset]) &&
+            _isOrthographicNearMiss(expected[word].first, spoken[offset])) {
+          expanded.add(expected[word].first);
+          offset++;
+          word++;
+          continue;
+        }
         if (word == expected.length - 1 &&
             word > 0 &&
             (_matchesQalqalahPauseEnding(
@@ -833,6 +1085,141 @@ class SpeechComparisonService {
     return [...expanded, ...spoken.skip(offset)];
   }
 
+  /// Words skipped before [start] may be garbled overlap context, but once a
+  /// skipped word is an exact retained word, the rest must repeat the retained
+  /// suffix exactly, so a new wrong word is never skipped.
+  bool _repeatsRetainedSuffix(
+    List<String> retained,
+    List<String> incoming,
+    int start,
+  ) {
+    if (start == 0) return true;
+    if (retained.isEmpty || start > retained.length) return false;
+    final known = retained.toSet();
+    for (var k = 0; k < start; k++) {
+      if (!known.contains(incoming[k])) continue;
+      final length = start - k;
+      if (length > retained.length) return false;
+      for (var i = 0; i < length; i++) {
+        if (incoming[k + i] != retained[retained.length - length + i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return true;
+  }
+
+  bool _repeatsRetainedRun(
+    List<String> retained,
+    List<String> incoming,
+    List<String> expectedAyahs,
+    List<String> expectedVerseKeys,
+  ) {
+    if (incoming.isEmpty) return false;
+    bool repeatsFrom(List<String> heard, int at) {
+      if (heard.isEmpty || at + heard.length > retained.length) return false;
+      for (var i = 0; i < heard.length; i++) {
+        final word = _foldNearMiss(heard[i]);
+        final kept = _foldNearMiss(retained[at + i]);
+        final cutShort =
+            i == heard.length - 1 &&
+            word.length >= 2 &&
+            word.length < kept.length &&
+            kept.startsWith(word);
+        if (word != kept && !cutShort) return false;
+      }
+      return true;
+    }
+
+    // Applies the same anchored ASR spelling corrections as a recitation that
+    // starts at the ayah opening, to a window that starts at expected word [at].
+    List<String>? correctedFrom(List<String> heard, int at) {
+      var start = 0;
+      for (var verse = 0; verse < expectedAyahs.length; verse++) {
+        final expected = _expectedRecitationWords(
+          expectedAyahs[verse],
+          expectedVerseKeys[verse],
+        );
+        if (at < start + expected.length) {
+          final written = _recitationWords(expectedAyahs[verse]);
+          final local = at - start - (expected.length - written.length);
+          if (local < 0 || (at > start && local == 0)) return null;
+          return _spokenWords(
+            heard.join(' '),
+            [written.skip(local).join(' '), ...expectedAyahs.skip(verse + 1)],
+            [expectedVerseKeys[verse], ...expectedVerseKeys.skip(verse + 1)],
+            true,
+          );
+        }
+        start += expected.length;
+      }
+      return null;
+    }
+
+    for (final leadingCut in [false, true]) {
+      final run = leadingCut ? incoming.skip(1).toList() : incoming;
+      if (run.isEmpty || run.length > retained.length) continue;
+      if (leadingCut && run.length < 3) continue;
+      for (var at = leadingCut ? 1 : 0; at < retained.length; at++) {
+        if (leadingCut) {
+          // The window started inside the previous word, so only its ending
+          // was heard.
+          final cut = _foldNearMiss(incoming.first);
+          final previous = _foldNearMiss(retained[at - 1]);
+          if (cut.length < 2 ||
+              cut.length >= previous.length ||
+              !previous.endsWith(cut)) {
+            continue;
+          }
+        }
+        if (repeatsFrom(run, at)) return true;
+        final corrected = correctedFrom(run, at);
+        if (corrected != null && repeatsFrom(corrected, at)) return true;
+      }
+    }
+    return false;
+  }
+
+  static const _nearMissFolding = {
+    'ة': 'ه',
+    'ى': 'ي',
+    'أ': 'ا',
+    'إ': 'ا',
+    'آ': 'ا',
+    'ؤ': 'و',
+    'ئ': 'ي',
+    'ء': '',
+  };
+
+  String _foldNearMiss(String word) =>
+      word.split('').map((c) => _nearMissFolding[c] ?? c).join();
+
+  bool _isOrthographicNearMiss(String expectedWord, String spokenWord) {
+    String fold(String word) => _foldNearMiss(word);
+    final a = fold(expectedWord);
+    final b = fold(spokenWord);
+    if (b.length < 2) return false;
+    if (a == b) return true;
+    final longest = a.length > b.length ? a.length : b.length;
+    final allowed = longest >= 4 ? 1 : 0;
+    if ((a.length - b.length).abs() > allowed) return false;
+    var previous = List<int>.generate(b.length + 1, (i) => i);
+    for (var i = 1; i <= a.length; i++) {
+      final current = <int>[i];
+      for (var j = 1; j <= b.length; j++) {
+        final substitution = previous[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1);
+        final deletion = previous[j] + 1;
+        final insertion = current[j - 1] + 1;
+        current.add(
+          [substitution, deletion, insertion].reduce((x, y) => x < y ? x : y),
+        );
+      }
+      previous = current;
+    }
+    return previous.last <= allowed;
+  }
+
   static const _bayyinahAsrVariants = {
     'جاءتهم': {'جاءته', 'جاءتون'},
     'حنفاء': {'انفاء', 'خلفاء'},
@@ -844,6 +1231,39 @@ class SpeechComparisonService {
     'جزاؤهم': {'جزاءون'},
     'رضي': {'ردي', 'فزي'},
     'خشي': {'خش'},
+  };
+
+  static const _verifiedVerseAsrVariants = {
+    '2:196': {
+      'وأتموا': {'وأتم'},
+    },
+    '2:255': {
+      'يئوده': {'يأوده'},
+    },
+    '2:286': {
+      'نسينا': {'سينا'},
+    },
+    '3:156': {
+      'غزى': {'غزا'},
+    },
+    '4:92': {
+      'خطأ': {'خطئا'},
+    },
+    '9:36': {
+      'اثنا': {'اثنى'},
+    },
+    '24:35': {
+      'كمشكاة': {'كمشكات'},
+    },
+    '47:15': {
+      'مصفى': {'مصفا'},
+    },
+    '48:25': {
+      'محله': {'محلة'},
+    },
+    '60:4': {
+      'برآء': {'براء'},
+    },
   };
 
   bool _matchesAssimilatedBoundaryWord(

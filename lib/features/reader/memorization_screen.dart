@@ -55,7 +55,9 @@ class MemorizationScreen extends StatefulWidget {
 class _MemorizationScreenState extends State<MemorizationScreen>
     with WidgetsBindingObserver {
   late final _speech = widget.speechInput ?? MemorizationSpeechService.instance;
-  final _comparison = SpeechComparisonService();
+  final _comparison = const SpeechComparisonService(
+    requireExplicitAlifLamMeem: true,
+  );
   final _revealed = <int>{};
   final _matched = <int>{};
   final _assisted = <int>{};
@@ -71,6 +73,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   bool _livePreview = false;
   final _pageLoads = <int, Future<List<Ayah>>>{};
   String _pendingText = '';
+  String? _lastPreviewText;
   bool _hasStarted = false;
   Future<void> _lastCancellation = Future.value();
   int _index = 0;
@@ -242,11 +245,23 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }) {
     final speech = _speech;
     if (!widget.localQuranLab || speech is! QuranAsrSpeechInput) return;
+    final visibleWords = _displayedLabWords;
+    final newVisibleWords =
+        visibleWords - (alignment['displayedBefore'] ?? visibleWords);
+    if (!isFinal && newVisibleWords > 0) {
+      unawaited(
+        speech.recordPreviewReveal(
+          newVisibleWords: newVisibleWords,
+          visibleWords: visibleWords,
+          frame: WidgetsBinding.instance.endOfFrame,
+        ),
+      );
+    }
     unawaited(
       speech.recordProgress(
         expectedIndex: _index,
         rawWords: _comparison.recitationWords(text).length,
-        visibleWords: _displayedLabWords,
+        visibleWords: visibleWords,
         isFinal: isFinal,
         contradictsPrefix: contradictsPrefix,
         alignment: alignment,
@@ -411,12 +426,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         )
         .first;
     if (counts.first < pendingCount) return false;
-    final input = _speech;
-    final hasSlidWindow =
-        _windowed &&
-        input is WindowedMemorizationSpeechInput &&
-        input.windowStartSeconds > 0;
-    if (hasSlidWindow) {
+    if (_windowed) {
       var retainedCount = pendingCount;
       for (final map in [
         _liveWordCounts,
@@ -428,7 +438,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         final value = map[keys.first] ?? 0;
         if (value > retainedCount) retainedCount = value;
       }
-      if (counts.first < retainedCount) {
+      if (retainedCount > 0 && counts.first <= retainedCount) {
         final firstWords = _comparison.recitationWords(expected.first);
         final continued = _comparison.joinRecitationSegment(
           retainedPrefix: firstWords.take(retainedCount).join(' '),
@@ -639,6 +649,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _mismatchWord = null;
       });
       _startingSpeechGeneration = generation;
+      _lastPreviewText = null;
       await _speech.start(
         onResult: (text, isFinal) {
           if (!mounted || generation != _generation || !_acceptResults) return;
@@ -662,6 +673,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               : const <String, int>{};
           if (!contradictsPrefix) _continueLivePrefix(startIndex, text);
           if (!isFinal) {
+            _lastPreviewText = text;
             final expectedAyahs = widget.continuous
                 ? widget.ayahs.skip(startIndex).toList()
                 : [_ayah];
@@ -732,7 +744,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   _liveWordCounts[key] = wordCounts[i];
                 }
                 if (widget.localQuranLab && widget.continuous) {
-                  final fullCount = countsFrom(i, ayah.imlaei ?? '').first;
+                  final fullCount = _comparison
+                      .recitationWords(ayah.imlaei ?? '')
+                      .length;
                   if (fullCount > 0 && wordCounts[i] == fullCount) {
                     _completedLiveWordCounts[key] = fullCount;
                   }
@@ -766,12 +780,18 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             return;
           }
           if (widget.continuous) {
+            final tail = _lastPreviewText;
+            _lastPreviewText = null;
+            final previewCounts = Map<String, int>.of(_visibleWordCounts);
             _checkContinuous(
               startIndex,
               text,
               reconcilePreview: !contradictsPrefix,
               contradictsPrefix: contradictsPrefix,
             );
+            if (widget.localQuranLab && tail != null) {
+              _reconcileStoppedTail(tail, text, previewCounts);
+            }
             _recordLabProgress(
               text,
               isFinal: true,
@@ -1225,8 +1245,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               .single;
           if (count > 0) {
             _acceptedWordCounts[_verseKey] = count;
-          } else {
-            // Repeat an incomplete disconnected opening as one printed word.
+          } else if (retainedPrefix.isEmpty || !literalEvidence[offset]) {
+            // Keep explicit letter names across Resume, but never render a
+            // partially matched opening as its whole printed word.
             _pendingText = '';
           }
         }
@@ -1252,6 +1273,62 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       return;
     }
     unawaited(_cancelInputs());
+  }
+
+  /// A long final transcript can truncate its last words while the stopped
+  /// tail preview (decoded just before it) holds them. Join that tail only at
+  /// the cursor the final itself verified, through the same anchored checks.
+  void _reconcileStoppedTail(
+    String tail,
+    String finalText,
+    Map<String, int> previewCounts,
+  ) {
+    // The final must verify beyond the previews so they never finish alone,
+    // and must end at its verified cursor: a truncated final, not a wrong word.
+    final finalWords = _acceptedWordCounts[_verseKey] ?? 0;
+    final heard = _comparison.recitationWords(finalText);
+    final kept = _comparison.recitationWords(_pendingText);
+    if (_finished ||
+        kept.isEmpty ||
+        heard.isEmpty ||
+        finalWords == 0 ||
+        finalWords <= (previewCounts[_verseKey] ?? 0)) {
+      return;
+    }
+    if (heard.last != kept.last) {
+      final ayahWords = _comparison.recitationWords(
+        widget.ayahs[_index].imlaei ?? '',
+      );
+      final cutMidWord =
+          heard.length >= 2 &&
+          heard[heard.length - 2] == kept.last &&
+          finalWords < ayahWords.length &&
+          heard.last.length < ayahWords[finalWords].length &&
+          ayahWords[finalWords].startsWith(heard.last);
+      if (!cutMidWord) return;
+    }
+    final ayahs = widget.ayahs.skip(_index).toList();
+    final expected = [for (final ayah in ayahs) ayah.imlaei ?? ''];
+    final keys = [
+      for (final ayah in ayahs) '${ayah.surahNumber}:${ayah.ayahNumber}',
+    ];
+    int verified(String text) => _comparison
+        .matchingPrefixWordCounts(
+          expectedAyahs: expected,
+          expectedVerseKeys: keys,
+          spokenText: text,
+          allowWrittenOpenings: true,
+        )
+        .fold(0, (sum, count) => sum + count);
+    final joined = _comparison.joinRecitationSegment(
+      retainedPrefix: _pendingText,
+      spokenText: tail,
+      expectedAyahs: expected,
+      expectedVerseKeys: keys,
+      allowWrittenOpenings: true,
+    );
+    if (verified(joined) <= verified(_pendingText)) return;
+    _checkContinuous(_index, tail, reconcilePreview: false);
   }
 
   void _inputFailed(int generation, String code) {

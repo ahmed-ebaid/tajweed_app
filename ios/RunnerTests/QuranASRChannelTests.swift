@@ -11,15 +11,18 @@ final class QuranASRChannelTests: XCTestCase {
     defer { try? FileManager.default.removeItem(at: root) }
     let source = root.appendingPathComponent("source.wav")
     let diagnostics = QuranASRDiagnostics(fileURL: root.appendingPathComponent("diagnostics.jsonl"))
+    let captureID = try XCTUnwrap(diagnostics.beginCapture(retainDebugAudio: true))
     for index in 0..<8 {
       try Data(repeating: UInt8(index), count: 100).write(to: source)
       diagnostics.retainSnapshot(
         source, report: ["transcript": "fixture-\(index)"],
         provisional: index < 7, windowStart: Double(index),
-        requested: Date(timeIntervalSince1970: Double(index)), errorCode: 0
+        requested: Date(timeIntervalSince1970: Double(index)), errorCode: 0,
+        captureID: captureID
       )
     }
     let directory = root.appendingPathComponent("quran-asr-debug")
+      .appendingPathComponent(captureID.uuidString)
     XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: directory.path).count, 12)
     for index in 2..<8 {
       let slot = index % 6
@@ -34,9 +37,26 @@ final class QuranASRChannelTests: XCTestCase {
     try Data(repeating: 0, count: 960045).write(to: source)
     diagnostics.retainSnapshot(
       source, report: nil, provisional: true, windowStart: 0,
-      requested: Date(), errorCode: 0
+      requested: Date(), errorCode: 0, captureID: captureID
     )
     XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: directory.path).count, 12)
+    XCTAssertEqual(diagnostics.exportedFilePaths().count, 13)
+
+    let nextCaptureID = try XCTUnwrap(diagnostics.beginCapture(retainDebugAudio: true))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+    try Data(repeating: 1, count: 100).write(to: source)
+    diagnostics.retainSnapshot(
+      source, report: nil, provisional: false, windowStart: 0,
+      requested: Date(), errorCode: 0, captureID: captureID
+    )
+    XCTAssertEqual(diagnostics.exportedFilePaths().count, 1)
+    diagnostics.retainSnapshot(
+      source, report: nil, provisional: false, windowStart: 0,
+      requested: Date(), errorCode: 0, captureID: nextCaptureID
+    )
+    XCTAssertEqual(diagnostics.exportedFilePaths().count, 3)
+    XCTAssertNil(diagnostics.beginCapture(retainDebugAudio: false))
+    XCTAssertEqual(diagnostics.exportedFilePaths().count, 1)
   }
 
   func testDiagnosticsRetainBoundedCompleteNumericRecords() throws {

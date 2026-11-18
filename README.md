@@ -441,8 +441,11 @@ wrong new word or skips an unmatched position. Spoken
 disconnected-letter names must complete their single printed opening word before
 it is revealed. The local Quran model also transcribes spoken letter names as
 their printed opening (verified with the preserved Alafasy 2:1 clip returning
-`الم`). Lab matching accepts either representation only at the authoritative
-opening position; ordinary platform recognition still requires spoken names.
+`الم`). Hifz requires explicit Alif, Lam, and Meem names for `الم` openings:
+the compact token alone cannot reveal the opening or earn completion credit.
+For other openings, lab matching accepts either representation only at the
+authoritative opening position; ordinary platform recognition still requires
+spoken names.
 Standalone Quranic pause marks do not count as words when retaining a prefix,
 and a pause mark attached to a printed word does not prevent its reveal.
 This accommodates model spelling, not proof that every letter was pronounced
@@ -473,6 +476,11 @@ raw mismatch position, and prefix counts for cumulative and exact-tail alignment
 Displayed totals include fully revealed ayahs, so committing a preview on Pause
 does not look like deletion in diagnostics. These counters explain where matching
 stops, not whether the learner actually pronounced a word correctly.
+When a live preview reveals new words, the numeric `preview_reveal` diagnostic
+records the audio position, the number of newly visible words, and
+`snapshotToRevealMs`: time from requesting recognition to the end of the
+Flutter frame that shows the words. It includes decoding and frame processing,
+but not the time between speaking a word and requesting that snapshot.
 Live recognition uses overlapping eight-second audio tails to reduce latency
 and whole-ayah omissions in long hypotheses; Stop retains the last 30 seconds
 for final recognition, so its audio window may start earlier than the latest
@@ -480,6 +488,20 @@ preview. Already completed previews remain unverified word progress; an unfinish
 preview is cancelled to start the final check sooner, but its result is retained
 if it finishes before cancellation takes effect. Missing or incorrect words still
 block ordered matching.
+Before that final check, Stop also decodes the last eight seconds of audio as a
+tail preview when at least 0.25 seconds were recorded after the latest preview
+window, because long finals can truncate their last words. The tail can only
+extend a final that itself verified more words than the previews and ended at
+its verified cursor (its last heard word is the last verified word or a
+truncated start of the next word); it is joined at that cursor through the
+same anchored checks, so a final that heard a wrong or missing word stays open.
+Live windows may rejoin the retained prefix only at the verified cursor:
+skipped window words must be garbled overlap context, and once a skipped word
+exactly repeats a retained word the rest must repeat the retained suffix. A
+repeated window over a fully retained ayah must repeat those words in order.
+Lab spelling tolerance is limited to hamza seats, taa marbuta, alif maqsura,
+the same letters split differently, and one-letter non-Quran ASR spellings
+followed by the next two expected words.
 An additional, **default-off** recovery experiment is available by adding
 `--dart-define=QURAN_ASR_CONTEXT_RECOVERY=true` to the Flutter configuration
 command alongside `--dart-define=QURAN_ASR_EXPERIMENT=true`. It requires fresh
@@ -506,6 +528,15 @@ and 6 strict long) remained unaccepted and UI-unfinished. These selected trials
 do not estimate the recovery rate for all remaining full-corpus failures or
 replace natural-error and live-microphone validation; strict long controls may
 remove multiple words because public timing boundaries are ambiguous.
+
+On the three held-out reciters for 2:255 and 2:282, progressive recovery
+advanced one preview earlier but did not complete any of the six recordings.
+Al-Shatri's 2:255 completed with recovery off after recognizing the exact
+alternate ASR spelling `يأوده` for `يئوده` when followed by the expected word.
+This lab-only correction does not count as literal unaided evidence. The other
+five recordings remained unaccepted, and all 18 audio-omission controls stayed
+blocked.
+
 When changing pages, the lab keeps previously displayed partial words highlighted
 as unverified. Returning to a page still starts at its first ayah; those saved
 highlights do not skip words or grant match credit.
@@ -527,11 +558,11 @@ For explicitly consented speech debugging only, the additional Dart define
 `QURAN_ASR_RETAIN_DEBUG_AUDIO=true` enables retention in the separate lab app.
 The consent dialog then explicitly discloses audio retention instead of claiming
 all snapshots are deleted. Only the latest six inference snapshots (up to 30
-seconds each) and their recognized text/timing metadata are kept in
-`tmp/quran-asr-debug/`, overwriting older pairs. Nothing is uploaded; remove those
-local debug files after investigation. This is off by default, is unavailable in
-Release, and does not retain audio supplied through the standalone `checkWav`
-diagnostic path.
+seconds each) and their recognized text/timing metadata are kept for the latest
+capture under `tmp/quran-asr-debug/`. Starting another capture clears those
+snapshots; Hifz diagnostic uploads attach complete pairs only when debug audio
+retention is enabled. This is off by default and does not retain audio supplied
+through the standalone `checkWav` diagnostic path.
 The near-silence filter is not full voice-activity detection. Human-recitation
 accuracy, false matches, omissions, repetitions, timing, heat, and battery use
 still need physical-device evaluation; text matches are not validated Hifz scores.
