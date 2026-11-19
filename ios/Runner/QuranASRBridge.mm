@@ -138,6 +138,13 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
     for (int i = 0; i < whisper_full_n_segments(ctx); i++) {
       const char *segment = whisper_full_get_segment_text(ctx, i);
       NSString *decoded = segment ? [NSString stringWithUTF8String:segment] : nil;
+      if (!decoded && segment) {
+        size_t len = strlen(segment);
+        for (size_t trim = 1; trim <= 3 && trim < len && !decoded; trim++) {
+          std::string prefix(segment, len - trim);
+          decoded = [NSString stringWithUTF8String:prefix.c_str()];
+        }
+      }
       if (!decoded) {
         validText = false;
         break;

@@ -271,7 +271,8 @@ void main() {
         Future<void> deliver(Map<String, dynamic> snapshot) async {
           speech.windowStartSeconds = (snapshot['start_seconds'] as num)
               .toDouble();
-          if (snapshot['decoder_error'] != null) {
+          if (snapshot['decoder_error'] != null &&
+              snapshot['transcript'] == null) {
             speech.error!('quran_asr_invalid_result');
           } else {
             speech.result!(

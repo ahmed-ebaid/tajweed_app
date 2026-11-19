@@ -1917,4 +1917,83 @@ void main() {
       2,
     );
   });
+
+  test(
+    'recovers multi-reciter boundary consonant shifts, split/merged overlaps, and window-cut third anchor without skipping omitted words',
+    () {
+      // 2:228: ثلاثة قروء -> ثلاث تقروا / ثلاث تقروع
+      const baqarah228Prefix = 'والمطلقات يتربصن بأنفسهن ثلاثة قروء ولا يحل لهن';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [baqarah228Prefix],
+              expectedVerseKeys: ['2:228'],
+              spokenText: 'والمطلقات يتربصن بأنفسهن ثلاث تقروا ولا يحل لهن',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [baqarah228Prefix],
+              expectedVerseKeys: ['2:228'],
+              spokenText: 'والمطلقات يتربصن بأنفسهن ثلاث ولا يحل لهن',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        0,
+      );
+
+      // 5:12: وبعثنا منهم اثني عشر نقيبا -> وبعثنا منه مثني عشر نقيبا
+      const maidah12Clause = 'وبعثنا منهم اثني عشر نقيبا وقال الله إني معكم';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [maidah12Clause],
+              expectedVerseKeys: ['5:12'],
+              spokenText: 'وبعثنا منه مثني عشر نقيبا وقال الله إني معكم',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // 47:4: فإذا لقيتم الذين كفروا فضرب الرقاب -> فضربر رقاب
+      const muhammad4Clause =
+          'فإذا لقيتم الذين كفروا فضرب الرقاب حتى إذا أثخنتموهم';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [muhammad4Clause],
+              expectedVerseKeys: ['47:4'],
+              spokenText: 'فإذا لقيتم الذين كفروا فضربر رقاب حتى إذا أثخنتموهم',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // 4:23: window-cut 3rd confirmation word ('اللات' prefix of 'اللاتي') advances the 2 exact words
+      const nisa23Clause =
+          'وأمهات نسائكم وربائبكم اللاتي في حجوركم من نسائكم اللاتي دخلتم بهن';
+      final joinedNisa23 = comparison.joinRecitationSegment(
+        retainedPrefix: 'وأمهات',
+        spokenText: 'وأمهات نسائكم وربائبكم اللات',
+        expectedAyahs: [nisa23Clause],
+        expectedVerseKeys: ['4:23'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [nisa23Clause],
+          expectedVerseKeys: ['4:23'],
+          spokenText: joinedNisa23,
+          allowWrittenOpenings: true,
+        ),
+        [3],
+      );
+    },
+  );
 }
