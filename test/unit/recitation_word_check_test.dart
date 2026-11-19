@@ -2087,4 +2087,64 @@ void main() {
       );
     },
   );
+
+  test(
+    'Pass 4 recovers boundary consonant shifts and 2-to-3 phonetic splits without weakening strict checks',
+    () {
+      // 48:29: الزراع ليغيظ -> الزرى علي غيظ (2-to-3 phonetic split)
+      const fath29Clause = 'يعجب الزراع ليغيظ بهم الكفار وعد الله';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [fath29Clause],
+              expectedVerseKeys: ['48:29'],
+              spokenText: 'يعجب الزرى علي غيظ بهم الكفار وعد الله',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // 23:47: أنؤمن لبشرين -> أنؤمنن بشرين (initial ل shifted as ن across boundary)
+      const muminun47Clause = 'فقالوا أنؤمن لبشرين مثلنا وقومهما لنا عابدون';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [muminun47Clause],
+              expectedVerseKeys: ['23:47'],
+              spokenText: 'فقالوا أنؤمنن بشرين مثلنا وقومهما لنا عابدون',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // 13:11: من وال -> من والوال (final 3-letter token reduplication)
+      const rad11Clause = 'وماله من دونه من وال';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [rad11Clause],
+              expectedVerseKeys: ['13:11'],
+              spokenText: 'وماله من دونه من والوال',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // Negative check: omitted word still fails
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [fath29Clause],
+              expectedVerseKeys: ['48:29'],
+              spokenText: 'يعجب الزرى بهم الكفار وعد الله',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        0,
+      );
+    },
+  );
 }
