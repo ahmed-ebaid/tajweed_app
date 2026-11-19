@@ -43,6 +43,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'Recognition paused. Resume to continue from here.',
     'hifz_unaided': 'Unaided matches',
     'hifz_assisted': 'Hint-assisted',
+    'hifz_mistakes': 'Mistakes',
+    'hifz_mistakes_empty': 'No mistakes recorded in this session yet.',
   },
   'ar': {
     'quran_asr_repeat_unverified': 'لم يتم التحقق. أعد تلاوة هذه الآية.',
@@ -87,6 +89,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'توقف التعرف مؤقتًا. تابع من هنا.',
     'hifz_unaided': 'تطابق دون مساعدة',
     'hifz_assisted': 'بمساعدة تلميح',
+    'hifz_mistakes': 'الأخطاء',
+    'hifz_mistakes_empty': 'لا توجد أخطاء مسجلة في هذه الجلسة بعد.',
   },
   'ur': {
     'quran_asr_repeat_unverified': 'تصدیق نہیں ہوئی۔ یہ آیت دوبارہ پڑھیں۔',
@@ -131,6 +135,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'آواز کی پہچان رک گئی۔ یہاں سے جاری رکھیں۔',
     'hifz_unaided': 'بغیر مدد مطابقت',
     'hifz_assisted': 'اشارے کی مدد سے',
+    'hifz_mistakes': 'غلطیاں',
+    'hifz_mistakes_empty': 'اس نشست میں ابھی کوئی غلطی ریکارڈ نہیں ہوئی۔',
   },
   'tr': {
     'quran_asr_repeat_unverified': 'Doğrulanmadı. Bu ayeti tekrar okuyun.',
@@ -177,6 +183,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'Tanıma durakladı. Buradan devam et.',
     'hifz_unaided': 'İpucusuz eşleşmeler',
     'hifz_assisted': 'İpucuyla',
+    'hifz_mistakes': 'Hatalar',
+    'hifz_mistakes_empty': 'Bu oturumda henüz kaydedilmiş hata yok.',
   },
   'fr': {
     'quran_asr_repeat_unverified': 'Non vérifié. Récitez à nouveau ce verset.',
@@ -224,6 +232,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'Reconnaissance en pause. Reprenez ici.',
     'hifz_unaided': 'Correspondances sans aide',
     'hifz_assisted': 'Avec indice',
+    'hifz_mistakes': 'Erreurs',
+    'hifz_mistakes_empty': 'Aucune erreur enregistrée dans cette session.',
   },
   'id': {
     'quran_asr_repeat_unverified':
@@ -270,6 +280,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'Pengenalan dijeda. Lanjutkan dari sini.',
     'hifz_unaided': 'Kecocokan tanpa bantuan',
     'hifz_assisted': 'Dengan petunjuk',
+    'hifz_mistakes': 'Kesalahan',
+    'hifz_mistakes_empty': 'Belum ada kesalahan tercatat di sesi ini.',
   },
   'de': {
     'quran_asr_repeat_unverified':
@@ -317,6 +329,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'Erkennung pausiert. Setze hier fort.',
     'hifz_unaided': 'Treffer ohne Hilfe',
     'hifz_assisted': 'Mit Hinweis',
+    'hifz_mistakes': 'Fehler',
+    'hifz_mistakes_empty': 'Noch keine Fehler in dieser Sitzung aufgezeichnet.',
   },
   'es': {
     'quran_asr_repeat_unverified': 'Sin verificar. Recita esta aleya de nuevo.',
@@ -364,6 +378,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'hifz_resume_message': 'Reconocimiento en pausa. Continúa desde aquí.',
     'hifz_unaided': 'Coincidencias sin ayuda',
     'hifz_assisted': 'Con pista',
+    'hifz_mistakes': 'Errores',
+    'hifz_mistakes_empty': 'Aún no hay errores registrados en esta sesión.',
   },
 };
 

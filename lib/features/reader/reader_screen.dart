@@ -4156,6 +4156,7 @@ class MushafPageContent extends StatelessWidget {
   final Map<String, int> revealedWordCounts;
   final Map<String, Set<int>> highlightedWordIndices;
   final (String, int)? activeCursorWord;
+  final bool activeCursorHasError;
 
   const MushafPageContent({
     super.key,
@@ -4172,6 +4173,7 @@ class MushafPageContent extends StatelessWidget {
     this.revealedWordCounts = const {},
     this.highlightedWordIndices = const {},
     this.activeCursorWord,
+    this.activeCursorHasError = false,
   });
 
   @override
@@ -4207,6 +4209,7 @@ class MushafPageContent extends StatelessWidget {
         revealedWordCounts: revealedWordCounts,
         highlightedWordIndices: highlightedWordIndices,
         activeCursorWord: activeCursorWord,
+        activeCursorHasError: activeCursorHasError,
         onRetry: () {},
       ),
     );
@@ -4250,6 +4253,7 @@ class _MushafTextPage extends StatelessWidget {
   final Map<String, int> revealedWordCounts;
   final Map<String, Set<int>> highlightedWordIndices;
   final (String, int)? activeCursorWord;
+  final bool activeCursorHasError;
 
   const _MushafTextPage({
     super.key,
@@ -4271,6 +4275,7 @@ class _MushafTextPage extends StatelessWidget {
     this.revealedWordCounts = const {},
     this.highlightedWordIndices = const {},
     this.activeCursorWord,
+    this.activeCursorHasError = false,
   });
 
   @override
@@ -4935,18 +4940,21 @@ class _MushafTextPage extends StatelessWidget {
         hiddenAyahs.contains(key) &&
         wordIndex >= revealedCount &&
         wordIndex < hintedCount;
+    final cursorColor = activeCursorHasError
+        ? const Color(0xFFD32F2F)
+        : const Color(0xFF1D9E75);
     return TajweedText.buildStyledWordSpans(
       word,
       baseStyle: style,
       highlightEnabled: highlightEnabled,
       maskColor: hidden
           ? (isActiveCursorWord
-                ? const Color(0xFF1D9E75).withValues(alpha: 0.30)
+                ? cursorColor.withValues(alpha: activeCursorHasError ? 0.36 : 0.30)
                 : _MushafColors.of(context).gold.withValues(alpha: 0.15))
           : null,
       highlightBackground: !hidden
           ? (isActiveCursorWord
-                ? const Color(0xFF1D9E75).withValues(alpha: 0.28)
+                ? cursorColor.withValues(alpha: activeCursorHasError ? 0.34 : 0.28)
                 : isUnspokenHintWord
                 ? _MushafColors.of(context).gold.withValues(alpha: 0.22)
                 : (highlightedWordIndices[key]?.contains(wordIndex) ?? false)

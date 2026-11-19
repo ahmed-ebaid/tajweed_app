@@ -52,6 +52,22 @@ class MemorizationScreen extends StatefulWidget {
   State<MemorizationScreen> createState() => _MemorizationScreenState();
 }
 
+class _HifzMistakeRecord {
+  final int ayahIndex;
+  final int surahNumber;
+  final int ayahNumber;
+  final int wordNumber;
+  final String expectedWord;
+
+  const _HifzMistakeRecord({
+    required this.ayahIndex,
+    required this.surahNumber,
+    required this.ayahNumber,
+    required this.wordNumber,
+    required this.expectedWord,
+  });
+}
+
 class _MemorizationScreenState extends State<MemorizationScreen>
     with WidgetsBindingObserver {
   late final _speech = widget.speechInput ?? MemorizationSpeechService.instance;
@@ -62,6 +78,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   final _matched = <int>{};
   final _assisted = <int>{};
   final _hintWordCounts = <int, int>{};
+  final _mistakes = <_HifzMistakeRecord>[];
   final _preview = <int>{};
   final _liveWordCounts = <String, int>{};
   final _completedLiveWordCounts = <String, int>{};
@@ -225,6 +242,118 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   int get _actionAyahIndex =>
       _activeAyahIndex.clamp(0, widget.ayahs.length - 1);
+
+  void _recordMistake(int ayahIndex, int wordNumber) {
+    if (ayahIndex < 0 || ayahIndex >= widget.ayahs.length) return;
+    final ayah = widget.ayahs[ayahIndex];
+    final words = _comparison.recitationWords(ayah.imlaei ?? ayah.arabic);
+    final clampedWordNumber = wordNumber.clamp(
+      1,
+      words.isEmpty ? 1 : words.length,
+    );
+    final expectedWord = words.isEmpty ? '' : words[clampedWordNumber - 1];
+    final existingIndex = _mistakes.indexWhere(
+      (item) =>
+          item.surahNumber == ayah.surahNumber &&
+          item.ayahNumber == ayah.ayahNumber &&
+          item.wordNumber == clampedWordNumber,
+    );
+    final record = _HifzMistakeRecord(
+      ayahIndex: ayahIndex,
+      surahNumber: ayah.surahNumber,
+      ayahNumber: ayah.ayahNumber,
+      wordNumber: clampedWordNumber,
+      expectedWord: expectedWord,
+    );
+    if (existingIndex >= 0) {
+      _mistakes[existingIndex] = record;
+    } else {
+      _mistakes.add(record);
+    }
+    unawaited(HapticFeedback.mediumImpact());
+  }
+
+  void _showMistakesSheet() {
+    final l10n = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        if (_mistakes.isEmpty) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              child: Text(
+                l10n.get('hifz_mistakes_empty'),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  '${l10n.get('hifz_mistakes')} (${l10n.digits(_mistakes.length)})',
+                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _mistakes.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final item = _mistakes[_mistakes.length - 1 - index];
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: const Color(
+                          0xFFD32F2F,
+                        ).withValues(alpha: 0.14),
+                        child: const Icon(
+                          Icons.error_outline,
+                          size: 16,
+                          color: Color(0xFFD32F2F),
+                        ),
+                      ),
+                      title: Text(
+                        '${widget.surahNameFor(item.surahNumber)} — '
+                        '${l10n.get('ayah')} ${l10n.digits(item.ayahNumber)} · '
+                        '${l10n.get('quran_asr_next_word')} ${l10n.digits(item.wordNumber)}',
+                      ),
+                      subtitle: item.expectedWord.isEmpty
+                          ? null
+                          : Text(
+                              item.expectedWord,
+                              textDirection: TextDirection.rtl,
+                              style: const TextStyle(
+                                fontFamily: 'Amiri',
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        _select(item.ayahIndex);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   void _checkpointLiveWords() {
     if (widget.localQuranLab && widget.continuous) {
@@ -996,6 +1125,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             } else {
               _message = 'mem_mismatch';
               _mismatchWord = check.firstMismatch + 1;
+              _recordMistake(_index, _mismatchWord!);
             }
           });
           unawaited(_cancelInputs());
@@ -1500,6 +1630,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       final finalIndex = _index;
       final finalPrefix = _pendingText;
       _retainPausedWords(startIndex, visibleWords);
+      if (check.mismatch) {
+        final mistakeWord = _mismatchWord ??
+            (widget.localQuranLab ? _nextLabWord : check.wordIndex + 1);
+        _recordMistake(_index, mistakeWord);
+      }
       retainedFurther =
           !_finished && (_index != finalIndex || _pendingText != finalPrefix);
     });
@@ -1736,6 +1871,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
           if (_index + 1 < widget.ayahs.length) {
             _index++;
             _assisted.add(_index);
+            _recordMistake(_index, 1);
             final maxWords = _currentAyahWordCount;
             _hintWordCounts[_index] = maxWords > 0 && 2 > maxWords
                 ? maxWords
@@ -1744,13 +1880,16 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _finished = true;
           }
         } else {
-          final nextCount = _hintBaseWordCount + 2;
+          final baseBeforeHint = _hintBaseWordCount;
+          _recordMistake(_index, baseBeforeHint + 1);
+          final nextCount = baseBeforeHint + 2;
           final maxWords = _currentAyahWordCount;
           _hintWordCounts[_index] = maxWords > 0 && nextCount > maxWords
               ? maxWords
               : nextCount;
         }
       } else {
+        _recordMistake(_index, 1);
         _hintWordCounts[_index] = 2;
         _pendingText = '';
       }
@@ -1986,13 +2125,6 @@ class _MemorizationScreenState extends State<MemorizationScreen>
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
         );
-    final compactFilledButtonStyle = FilledButton.styleFrom(
-      visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      minimumSize: const Size(0, 28),
-      textStyle: buttonLabelStyle,
-    );
     final compactTextButtonStyle = TextButton.styleFrom(
       visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -2178,6 +2310,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       activeCursorWord: showActiveWordCursor
                           ? (cursorKey, cursorWordIndex)
                           : null,
+                      activeCursorHasError:
+                          showActiveWordCursor && _message == 'mem_mismatch',
                       highlightedWordIndices: {
                         for (final entry in displayWordCounts.entries)
                           entry.key: {
@@ -2387,35 +2521,201 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                     const SizedBox(height: 3),
                     Wrap(
                       spacing: 6,
-                      runSpacing: 2,
+                      runSpacing: 4,
+                      alignment: WrapAlignment.spaceBetween,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (!widget.review) ...[
-                          FilledButton.icon(
-                            style: compactFilledButtonStyle,
-                            onPressed: _acceptResults
-                                ? (_stopInProgress ? null : _stop)
-                                : _stopInProgress ||
-                                      _busy ||
-                                      _finished ||
-                                      (!widget.continuous &&
-                                          _revealed.contains(_index))
-                                ? null
-                                : _listen,
-                            icon: _stopInProgress
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    _acceptResults ? Icons.stop : Icons.mic,
+                        if (!widget.review)
+                          OutlinedButton.icon(
+                            key: const ValueKey('hifz-mistakes-pill'),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: const VisualDensity(
+                                horizontal: -2,
+                                vertical: -3,
+                              ),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 3,
+                              ),
+                              minimumSize: const Size(0, 28),
+                              shape: const StadiumBorder(),
+                              side: BorderSide(
+                                color: _mistakes.isNotEmpty
+                                    ? const Color(
+                                        0xFFD32F2F,
+                                      ).withValues(alpha: 0.50)
+                                    : Theme.of(context).dividerColor,
+                              ),
+                              foregroundColor: _mistakes.isNotEmpty
+                                  ? const Color(0xFFD32F2F)
+                                  : null,
+                              textStyle: buttonLabelStyle,
+                            ),
+                            onPressed: _showMistakesSheet,
+                            icon: Icon(
+                              _mistakes.isNotEmpty
+                                  ? Icons.error_outline
+                                  : Icons.history,
+                              size: 14,
+                            ),
+                            label: Text(
+                              _mistakes.isEmpty
+                                  ? l10n.get('hifz_mistakes')
+                                  : '${l10n.get('hifz_mistakes')} (${l10n.digits(_mistakes.length)})',
+                            ),
+                          ),
+                        Container(
+                          key: const ValueKey('hifz-floating-control-pill'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF1D9E75,
+                              ).withValues(alpha: 0.28),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF1D9E75,
+                                ).withValues(alpha: 0.12),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (!widget.review)
+                                TextButton.icon(
+                                  style: compactTextButtonStyle,
+                                  onPressed:
+                                      (_busy &&
+                                              !_acceptResults &&
+                                              !_stopInProgress) ||
+                                          _finished ||
+                                          _revealed.contains(
+                                            _activeAyahIndex <
+                                                    widget.ayahs.length
+                                                ? _activeAyahIndex
+                                                : _index,
+                                          ) ||
+                                          (widget.continuous &&
+                                              !widget.localQuranLab &&
+                                              _hintWordCounts.containsKey(
+                                                _index,
+                                              ))
+                                      ? null
+                                      : _hint,
+                                  icon: const Icon(
+                                    Icons.chevron_left,
                                     size: 16,
                                   ),
-                            label: Text(
-                              l10n.get(
+                                  label: Text(
+                                    l10n.get(
+                                      widget.continuous
+                                          ? 'hifz_hint'
+                                          : 'mem_hint',
+                                    ),
+                                  ),
+                                ),
+                              if (widget.continuous && !widget.review)
+                                TextButton.icon(
+                                  style: compactTextButtonStyle,
+                                  onPressed:
+                                      (_busy &&
+                                              !_acceptResults &&
+                                              !_stopInProgress) ||
+                                          _finished
+                                      ? null
+                                      : _reveal,
+                                  icon: const Icon(
+                                    Icons.keyboard_double_arrow_left,
+                                    size: 16,
+                                  ),
+                                  label: Text(l10n.get('hifz_reveal')),
+                                ),
+                              TextButton.icon(
+                                style: compactTextButtonStyle,
+                                onPressed:
+                                    _loadingReference ||
+                                        (_busy &&
+                                            !_acceptResults &&
+                                            !_stopInProgress)
+                                    ? null
+                                    : _reference,
+                                icon: _loadingReference
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.menu_book_outlined,
+                                        size: 15,
+                                      ),
+                                label: Text(l10n.get('mem_replay')),
+                              ),
+                              if (!widget.continuous || widget.review)
+                                TextButton(
+                                  style: compactTextButtonStyle,
+                                  onPressed:
+                                      _stopInProgress ||
+                                          _busy ||
+                                          (!widget.review &&
+                                              !_revealed.contains(_index)) ||
+                                          _finished
+                                      ? null
+                                      : () {
+                                          if (_index + 1 <
+                                              widget.ayahs.length) {
+                                            _select(_index + 1);
+                                          } else {
+                                            if (widget.review) {
+                                              _interrupt();
+                                              setState(
+                                                () => _finished = true,
+                                              );
+                                              return;
+                                            }
+                                            final remaining = [
+                                              for (
+                                                var i = 0;
+                                                i < widget.ayahs.length;
+                                                i++
+                                              )
+                                                if (!_revealed.contains(i)) i,
+                                            ];
+                                            if (remaining.isNotEmpty) {
+                                              _select(remaining.first);
+                                            } else {
+                                              _interrupt();
+                                              setState(
+                                                () => _finished = true,
+                                              );
+                                            }
+                                          }
+                                        },
+                                  child: Text(l10n.get('mem_next')),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (!widget.review)
+                          Builder(
+                            builder: (context) {
+                              final micLabel = l10n.get(
                                 _stopInProgress
                                     ? 'hifz_finalizing'
                                     : _acceptResults
@@ -2429,114 +2729,80 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                           ? 'hifz_resume'
                                           : 'hifz_start')
                                     : 'mem_listen',
-                              ),
-                            ),
-                          ),
-                          TextButton.icon(
-                            style: compactTextButtonStyle,
-                            onPressed:
-                                (_busy &&
-                                        !_acceptResults &&
-                                        !_stopInProgress) ||
-                                    _finished ||
-                                    _revealed.contains(
-                                      _activeAyahIndex < widget.ayahs.length
-                                          ? _activeAyahIndex
-                                          : _index,
-                                    ) ||
-                                    (widget.continuous &&
-                                        !widget.localQuranLab &&
-                                        _hintWordCounts.containsKey(_index))
-                                ? null
-                                : _hint,
-                            icon: const Icon(
-                              Icons.lightbulb_outline,
-                              size: 15,
-                            ),
-                            label: Text(
-                              l10n.get(
-                                widget.continuous
-                                    ? 'hifz_hint'
-                                    : 'mem_hint',
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (widget.continuous && !widget.review)
-                          TextButton.icon(
-                            style: compactTextButtonStyle,
-                            onPressed:
-                                (_busy &&
-                                        !_acceptResults &&
-                                        !_stopInProgress) ||
-                                    _finished
-                                ? null
-                                : _reveal,
-                            icon: const Icon(
-                              Icons.visibility_outlined,
-                              size: 15,
-                            ),
-                            label: Text(l10n.get('hifz_reveal')),
-                          ),
-                        TextButton.icon(
-                          style: compactTextButtonStyle,
-                          onPressed:
-                              _loadingReference ||
-                                  (_busy &&
-                                      !_acceptResults &&
-                                      !_stopInProgress)
-                              ? null
-                              : _reference,
-                          icon: _loadingReference
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.volume_up_outlined,
-                                  size: 15,
+                              );
+                              final onMicPressed = _acceptResults
+                                  ? (_stopInProgress ? null : _stop)
+                                  : _stopInProgress ||
+                                        _busy ||
+                                        _finished ||
+                                        (!widget.continuous &&
+                                            _revealed.contains(_index))
+                                  ? null
+                                  : _listen;
+                              final isError = _message == 'mem_mismatch';
+                              final baseColor = isError && !_acceptResults
+                                  ? const Color(0xFFD32F2F)
+                                  : const Color(0xFF1D9E75);
+                              return DecoratedBox(
+                                key: const ValueKey('hifz-glowing-mic-fab'),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: onMicPressed == null
+                                      ? const []
+                                      : [
+                                          BoxShadow(
+                                            color: baseColor.withValues(
+                                              alpha: _acceptResults
+                                                  ? 0.48
+                                                  : 0.30,
+                                            ),
+                                            blurRadius: _acceptResults
+                                                ? 16
+                                                : 10,
+                                            spreadRadius: _acceptResults
+                                                ? 2
+                                                : 0.5,
+                                          ),
+                                        ],
                                 ),
-                          label: Text(l10n.get('mem_replay')),
-                        ),
-                        if (!widget.continuous || widget.review)
-                          TextButton(
-                            style: compactTextButtonStyle,
-                            onPressed:
-                                _stopInProgress ||
-                                    _busy ||
-                                    (!widget.review &&
-                                        !_revealed.contains(_index)) ||
-                                    _finished
-                                ? null
-                                : () {
-                                    if (_index + 1 < widget.ayahs.length) {
-                                      _select(_index + 1);
-                                    } else {
-                                      if (widget.review) {
-                                        _interrupt();
-                                        setState(() => _finished = true);
-                                        return;
-                                      }
-                                      final remaining = [
-                                        for (
-                                          var i = 0;
-                                          i < widget.ayahs.length;
-                                          i++
+                                child: FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: baseColor,
+                                    foregroundColor: Colors.white,
+                                    visualDensity: const VisualDensity(
+                                      horizontal: -1,
+                                      vertical: -2,
+                                    ),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 5,
+                                    ),
+                                    minimumSize: const Size(44, 34),
+                                    shape: const StadiumBorder(),
+                                    textStyle: buttonLabelStyle,
+                                  ),
+                                  onPressed: onMicPressed,
+                                  icon: _stopInProgress
+                                      ? const SizedBox(
+                                          width: 15,
+                                          height: 15,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
                                         )
-                                          if (!_revealed.contains(i)) i,
-                                      ];
-                                      if (remaining.isNotEmpty) {
-                                        _select(remaining.first);
-                                      } else {
-                                        _interrupt();
-                                        setState(() => _finished = true);
-                                      }
-                                    }
-                                  },
-                            child: Text(l10n.get('mem_next')),
+                                      : Icon(
+                                          _acceptResults
+                                              ? Icons.stop_rounded
+                                              : Icons.mic_rounded,
+                                          size: 18,
+                                        ),
+                                  label: Text(micLabel),
+                                ),
+                              );
+                            },
                           ),
                       ],
                     ),

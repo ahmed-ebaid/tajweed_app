@@ -3969,4 +3969,50 @@ void main() {
       expect(page().activeCursorWord, ('2:13', 0));
     },
   );
+
+  testWidgets(
+    'floating controls, red mistake alert, and Mistakes review sheet work end-to-end',
+    (tester) async {
+      final speech = _FakeSpeech();
+      await _open(
+        tester,
+        speech,
+        continuous: true,
+        localQuranLab: true,
+      );
+
+      MushafPageContent page() =>
+          tester.widget<MushafPageContent>(find.byType(MushafPageContent));
+
+      expect(find.byKey(const ValueKey('hifz-mistakes-pill')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('hifz-floating-control-pill')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('hifz-glowing-mic-fab')),
+        findsOneWidget,
+      );
+      expect(find.text('Mistakes'), findsOneWidget);
+      expect(page().activeCursorHasError, isFalse);
+
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+
+      // Speak a mismatch on word 3 of 1:1 ('بسم الله الكريم').
+      speech.result!('بسم الله الكريم', true);
+      await tester.pumpAndSettle();
+
+      // Active cursor word is highlighted in error state and mistake count increments.
+      expect(page().activeCursorWord, ('1:1', 2));
+      expect(page().activeCursorHasError, isTrue);
+      expect(find.text('Mistakes (1)'), findsOneWidget);
+
+      // Tapping the Mistakes pill opens the bottom sheet showing the exact missed word.
+      await tester.tap(find.byKey(const ValueKey('hifz-mistakes-pill')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Continue from word 3'), findsOneWidget);
+      expect(find.text('الرحمن'), findsOneWidget);
+    },
+  );
 }
