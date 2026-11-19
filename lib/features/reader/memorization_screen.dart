@@ -702,8 +702,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             if (widget.localQuranLab &&
                 input is QuranAsrSpeechInput &&
                 expectedAyahs.isNotEmpty &&
-                wordCounts.length == 1 &&
-                wordCounts.first == 1) {
+                wordCounts.isNotEmpty &&
+                wordCounts.first == 1 &&
+                wordCounts.skip(1).every((count) => count == 0)) {
               final firstAyah = expectedAyahs.first;
               final firstKey =
                   '${firstAyah.surahNumber}:${firstAyah.ayahNumber}';
@@ -711,11 +712,14 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 firstAyah.imlaei ?? '',
               );
               final spokenWords = _comparison.recitationWords(text);
+              final minOpeningSeconds = firstWords.first.length >= 3
+                  ? firstWords.first.length * 1.3
+                  : firstWords.first.length * 1.1;
               if (firstWords.length == 1 &&
                   firstWords.first.length >= 2 &&
                   spokenWords.length == 1 &&
                   input.windowStartSeconds + input.lastDurationSeconds <
-                      firstWords.first.length * 1.1 &&
+                      minOpeningSeconds &&
                   _comparison
                           .matchingPrefixWordCounts(
                             expectedAyahs: [firstAyah.imlaei ?? ''],

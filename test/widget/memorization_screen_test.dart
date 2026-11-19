@@ -757,6 +757,109 @@ void main() {
       },
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     );
+
+    testWidgets(
+      'QuranAsrSpeechInput holds single-word Muqattaat preview until full duration in multi-ayah surahs',
+      (tester) async {
+        const channel = MethodChannel(
+          'com.ebaidllc.tajweed_practice/quran_asr',
+        );
+        var previewStep = 0;
+        final binding = TestDefaultBinaryMessengerBinding.instance;
+        binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+          call,
+        ) async {
+          return switch (call.method) {
+            'available' => true,
+            'preview' => switch (previewStep++) {
+              0 => {
+                'transcript': 'الم',
+                'durationSeconds': 2.8,
+                'inferenceSeconds': 0.14,
+                'windowStartSeconds': 0.0,
+                'snapshotRequestedAtUnixMs':
+                    DateTime.now().millisecondsSinceEpoch - 140,
+              },
+              1 => {
+                'transcript': 'الم',
+                'durationSeconds': 3.5,
+                'inferenceSeconds': 0.14,
+                'windowStartSeconds': 0.0,
+                'snapshotRequestedAtUnixMs':
+                    DateTime.now().millisecondsSinceEpoch - 140,
+              },
+              _ => {
+                'transcript': 'الم',
+                'durationSeconds': 4.2,
+                'inferenceSeconds': 0.14,
+                'windowStartSeconds': 0.0,
+                'snapshotRequestedAtUnixMs':
+                    DateTime.now().millisecondsSinceEpoch - 140,
+              },
+            },
+            'check' => {
+              'transcript': 'الم',
+              'durationSeconds': 6.5,
+              'inferenceSeconds': 0.14,
+              'windowStartSeconds': 0.0,
+            },
+            _ => null,
+          };
+        });
+        addTearDown(() {
+          binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            channel,
+            null,
+          );
+        });
+        await _open(
+          tester,
+          QuranAsrSpeechInput(),
+          continuous: true,
+          localQuranLab: true,
+          ayahs: [
+            _ayah(1, 'الم', surahNumber: 2, pageNumber: 2),
+            _ayah(
+              2,
+              'ذلك الكتاب لا ريب فيه هدى للمتقين',
+              surahNumber: 2,
+              pageNumber: 2,
+            ),
+          ],
+        );
+        await _tap(tester, 'Start reciting');
+        await tester.tap(find.text('Agree and continue'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump();
+        expect(
+          tester
+              .widget<MushafPageContent>(find.byType(MushafPageContent))
+              .revealedWordCounts,
+          isEmpty,
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump();
+        expect(
+          tester
+              .widget<MushafPageContent>(find.byType(MushafPageContent))
+              .revealedWordCounts,
+          isEmpty,
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump();
+        expect(
+          tester
+              .widget<MushafPageContent>(find.byType(MushafPageContent))
+              .revealedWordCounts,
+          {'2:1': 1},
+        );
+        await _tap(tester, 'Pause');
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
   }
 
   group('strict local lab practice', () {
