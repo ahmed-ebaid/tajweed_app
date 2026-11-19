@@ -55,8 +55,8 @@ class MemorizationScreen extends StatefulWidget {
 class _MemorizationScreenState extends State<MemorizationScreen>
     with WidgetsBindingObserver {
   late final _speech = widget.speechInput ?? MemorizationSpeechService.instance;
-  final _comparison = const SpeechComparisonService(
-    requireExplicitAlifLamMeem: true,
+  late final _comparison = SpeechComparisonService(
+    requireExplicitAlifLamMeem: _speech is! WindowedMemorizationSpeechInput,
   );
   final _revealed = <int>{};
   final _matched = <int>{};
