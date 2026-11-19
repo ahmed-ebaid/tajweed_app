@@ -2147,4 +2147,50 @@ void main() {
       );
     },
   );
+
+  test(
+    'Pass 5 recovers hamza-folded splits and 24:35 Light Verse phonetic shifts without allowing omissions',
+    () {
+      // 24:35: الزجاجة كأنها كوكب دري يوقد من شجرة
+      const nur35Clause = 'المصباح في زجاجة الزجاجة كأنها كوكب دري يوقد من شجرة';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [nur35Clause],
+              expectedVerseKeys: ['24:35'],
+              spokenText: 'المصباح في زجاجة أز زجاجتك أنها كوكب ذري يوقد من شجرة',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // 2:221: ولعبد مؤمن -> ولعبدوا انمؤمن (boundary shift)
+      const baqarah221Clause = 'حتى يؤمنوا ولعبد مؤمن خير من مشرك';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [baqarah221Clause],
+              expectedVerseKeys: ['2:221'],
+              spokenText: 'حتى يؤمنوا ولعبدوا انمؤمن خير من مشرك',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // Negative check: omitting كوكب still fails
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [nur35Clause],
+              expectedVerseKeys: ['24:35'],
+              spokenText: 'المصباح في زجاجة أز زجاجتك أنها ذري يوقد من شجرة',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        0,
+      );
+    },
+  );
 }
