@@ -1748,6 +1748,37 @@ void main() {
     );
 
     testWidgets(
+      'sliding window mid-ayah starting with shared word (وإذا) continues second ayah instead of contradicting first ayah',
+      (tester) async {
+        const baqarah13 =
+            'وإذا قيل لهم آمنوا كما آمن الناس قالوا أنؤمن كما آمن السفهاء ألا إنهم هم السفهاء ولكن لا يعلمون';
+        const baqarah14 =
+            'وإذا لقوا الذين آمنوا قالوا آمنا وإذا خلوا إلى شياطينهم قالوا إنا معكم إنما نحن مستهزئون';
+        final speech = _FakeWindowedSpeech();
+        await startLab(
+          tester,
+          speech,
+          ayahs: [_ayah(13, baqarah13), _ayah(14, baqarah14)],
+        );
+        await _tap(tester, 'Live word preview (unverified)');
+        speech.result!(
+          '$baqarah13 وإذا لقوا الذين آمنوا قالوا آمنا وإذا خلوا إلى شياطينهم قالوا',
+          false,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'1:13': 19, '1:14': 11});
+
+        speech.windowStartSeconds = 41.7;
+        speech.result!(
+          'وإذا خلوا إلى شياطينهم قالوا إنا معكم',
+          false,
+        );
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'1:13': 19, '1:14': 13});
+      },
+    );
+
+    testWidgets(
       'sliding 30s final window starting with same word as ayah word 0 completes when joined with retained prefix',
       (tester) async {
         const nahl97 =

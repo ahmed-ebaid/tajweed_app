@@ -2293,4 +2293,54 @@ void main() {
       );
     },
   );
+
+  test(
+    '2-word ayah boundary does not throw RangeError on non-matching second word and reveals next ayah after 2-word suffix',
+    () {
+      // Surah 74:20 -> 74:21 ('ثم قتل كيف قدر' -> 'ثم نظر'):
+      // When 74:20 is completed and 74:21 has 2 words, a non-matching second
+      // word after 'ثم' must not index expected[word - 2] at word == 1.
+      const muddaththir20 = 'ثم قتل كيف قدر';
+      const muddaththir21 = 'ثم نظر';
+      final joined74 = comparison.joinRecitationSegment(
+        retainedPrefix: muddaththir20,
+        spokenText: 'ثم قتل كيف قدر ثم قتل كيف قدر',
+        expectedAyahs: [muddaththir20, muddaththir21],
+        expectedVerseKeys: ['74:20', '74:21'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [muddaththir20, muddaththir21],
+          expectedVerseKeys: ['74:20', '74:21'],
+          spokenText: joined74,
+          allowWrittenOpenings: true,
+        ),
+        [4, 1],
+      );
+
+      // Crossing an ayah boundary with a 2-word suffix of the completed ayah
+      // plus 1 matching word of the next ayah reveals the first word of the
+      // next ayah immediately without waiting for 3 words of the new ayah.
+      const baqarah14 =
+          'وإذا لقوا الذين آمنوا قالوا آمنا وإذا خلوا إلى شياطينهم قالوا إنا معكم إنما نحن مستهزئون';
+      const baqarah15 = 'الله يستهزئ بهم ويمدهم في طغيانهم يعمهون';
+      final joinedBoundary = comparison.joinRecitationSegment(
+        retainedPrefix: baqarah14,
+        spokenText: 'قالوا إنا معكم إنما نحن مستهزئون الله',
+        expectedAyahs: [baqarah14, baqarah15],
+        expectedVerseKeys: ['2:14', '2:15'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [baqarah14, baqarah15],
+          expectedVerseKeys: ['2:14', '2:15'],
+          spokenText: joinedBoundary,
+          allowWrittenOpenings: true,
+        ),
+        [16, 1],
+      );
+    },
+  );
 }

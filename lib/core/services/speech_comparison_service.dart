@@ -99,7 +99,30 @@ class SpeechComparisonService {
       expectedVerseKeys,
       true,
     );
-    final confirmation = remaining < 3 ? remaining : 3;
+    var endsAtAyahBoundary = false;
+    var verseWordsTotal = 0;
+    for (var verse = 0; verse < expectedAyahs.length; verse++) {
+      verseWordsTotal += _expectedRecitationWords(
+        expectedAyahs[verse],
+        expectedVerseKeys[verse],
+      ).length;
+      if (verseWordsTotal >= retained.length) {
+        endsAtAyahBoundary = verseWordsTotal == retained.length;
+        break;
+      }
+    }
+    int confirmationFor(int start) {
+      if (endsAtAyahBoundary &&
+          start >= 2 &&
+          retained.length >= 2 &&
+          _foldAlifMaqsuraToAlif(incoming[start - 2]) ==
+              _foldAlifMaqsuraToAlif(retained[retained.length - 2]) &&
+          _foldAlifMaqsuraToAlif(incoming[start - 1]) ==
+              _foldAlifMaqsuraToAlif(retained.last)) {
+        return 1;
+      }
+      return remaining < 3 ? remaining : 3;
+    }
     // If the incoming window begins with an exact suffix of the retained
     // prefix, it is already anchored and must not skip past an immediate
     // wrong word after that suffix.
@@ -123,6 +146,7 @@ class SpeechComparisonService {
     for (var start = 0; start < incoming.length; start++) {
       if (anchoredAtStart && start > 0) break;
       if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
+      final confirmation = confirmationFor(start);
       if (start + confirmation <= incoming.length) {
         var matches = true;
         for (var i = 0; i < confirmation; i++) {
@@ -466,7 +490,30 @@ class SpeechComparisonService {
     }
     final remainingExpected = expectedSeq.length - retained.length;
     if (allowWrittenOpenings && remainingExpected >= 2) {
-      final confirmationWords = remainingExpected < 3 ? remainingExpected : 3;
+      var endsAtAyahBoundary = false;
+      var verseWordsTotal = 0;
+      for (var verse = 0; verse < expectedAyahs.length; verse++) {
+        verseWordsTotal += _expectedRecitationWords(
+          expectedAyahs[verse],
+          expectedVerseKeys[verse],
+        ).length;
+        if (verseWordsTotal >= retained.length) {
+          endsAtAyahBoundary = verseWordsTotal == retained.length;
+          break;
+        }
+      }
+      int confirmationWordsFor(int start) {
+        if (endsAtAyahBoundary &&
+            start >= 2 &&
+            retained.length >= 2 &&
+            _foldAlifMaqsuraToAlif(incoming[start - 2]) ==
+                _foldAlifMaqsuraToAlif(retained[retained.length - 2]) &&
+            _foldAlifMaqsuraToAlif(incoming[start - 1]) ==
+                _foldAlifMaqsuraToAlif(retained.last)) {
+          return 1;
+        }
+        return remainingExpected < 3 ? remainingExpected : 3;
+      }
       var anchoredAtStart = false;
       final maxStartOverlap = retained.length < incoming.length
           ? retained.length
@@ -491,6 +538,7 @@ class SpeechComparisonService {
           start++
         ) {
           if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
+          final confirmationWords = confirmationWordsFor(start);
           if (start + confirmationWords <= incoming.length) {
             var matchesCursor = true;
             for (var i = 0; i < confirmationWords; i++) {
@@ -2464,6 +2512,7 @@ class SpeechComparisonService {
     final expanded = <String>[];
     var offset = 0;
     for (var ayah = 0; ayah < expectedAyahs.length; ayah++) {
+      if (offset >= spoken.length) break;
       final expected = _expectedRecitationWords(
         expectedAyahs[ayah],
         keys[ayah],
@@ -4139,6 +4188,7 @@ class SpeechComparisonService {
                   spoken[offset],
                 ) ||
                 (expected[word].first.length == 3 &&
+                    word >= 2 &&
                     expanded.length >= 2 &&
                     expected[word - 1].contains(expanded.last) &&
                     expected[word - 2].contains(

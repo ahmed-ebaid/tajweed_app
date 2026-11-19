@@ -281,7 +281,23 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     });
   }
 
-  Map<String, int> _labAlignmentMetrics(int startIndex, String text) {
+  List<Ayah> _windowedExpectedAyahs(int startIndex, {int lookahead = 6}) {
+    if (!widget.continuous) return [widget.ayahs[startIndex]];
+    if (!widget.localQuranLab) return widget.ayahs.skip(startIndex).toList();
+    final active = _activeAyahIndex;
+    final end = (active + lookahead + 1).clamp(
+      startIndex + 1,
+      widget.ayahs.length,
+    );
+    return widget.ayahs.sublist(startIndex, end);
+  }
+
+  Map<String, int> _labAlignmentMetrics(
+    int startIndex,
+    String text, {
+    String? precomputedContinuousText,
+    List<int>? precomputedCombinedCounts,
+  }) {
     final visible = _visibleWordCounts;
     var cursor = _index;
     var cursorCount = 0;
@@ -293,7 +309,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       cursor++;
       cursorCount = 0;
     }
-    final ayahs = widget.ayahs.skip(startIndex).toList();
+    final ayahs = _windowedExpectedAyahs(startIndex);
     final raw = _comparison.checkSequence(
       expectedAyahs: [for (final ayah in ayahs) ayah.imlaei ?? ''],
       expectedVerseKeys: [
@@ -302,14 +318,17 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       spokenText: text,
       allowWrittenOpenings: true,
     );
-    final combined = _comparison.matchingPrefixWordCounts(
-      expectedAyahs: [for (final ayah in ayahs) ayah.imlaei ?? ''],
-      expectedVerseKeys: [
-        for (final ayah in ayahs) '${ayah.surahNumber}:${ayah.ayahNumber}',
-      ],
-      spokenText: _continuousText(startIndex, text),
-      allowWrittenOpenings: true,
-    );
+    final combined =
+        precomputedCombinedCounts ??
+        _comparison.matchingPrefixWordCounts(
+          expectedAyahs: [for (final ayah in ayahs) ayah.imlaei ?? ''],
+          expectedVerseKeys: [
+            for (final ayah in ayahs) '${ayah.surahNumber}:${ayah.ayahNumber}',
+          ],
+          spokenText:
+              precomputedContinuousText ?? _continuousText(startIndex, text),
+          allowWrittenOpenings: true,
+        );
     final metrics = <String, int>{
       'schemaVersion': 2,
       'recordingIndex': startIndex,
@@ -353,7 +372,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     if (!widget.localQuranLab || !widget.continuous) return;
     final incoming = _comparison.recitationWords(text);
     if (incoming.isEmpty) return;
-    for (final ayah in widget.ayahs.skip(startIndex)) {
+    for (final ayah in _windowedExpectedAyahs(startIndex)) {
       final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
       final words = _comparison.recitationWords(ayah.imlaei ?? '');
       var count = _liveWordCounts[key] ?? 0;
@@ -397,7 +416,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   bool _restrictContradictorySnapshot(int startIndex, String text) {
     if (!widget.localQuranLab || !widget.continuous) return false;
-    final ayahs = widget.ayahs.skip(startIndex).toList();
+    final ayahs = _windowedExpectedAyahs(startIndex);
     final expected = [for (final ayah in ayahs) ayah.imlaei ?? ''];
     final keys = [
       for (final ayah in ayahs) '${ayah.surahNumber}:${ayah.ayahNumber}',
@@ -418,17 +437,20 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       spokenText: text,
       allowWrittenOpenings: true,
     );
-    final pendingCount = _comparison
-        .matchingPrefixWordCounts(
-          expectedAyahs: [expected.first],
-          expectedVerseKeys: [keys.first],
-          spokenText: _pendingText,
-          allowWrittenOpenings: true,
-        )
-        .first;
-    if (counts.first < pendingCount) return false;
+    final pendingCounts = _comparison.matchingPrefixWordCounts(
+      expectedAyahs: expected,
+      expectedVerseKeys: keys,
+      spokenText: _pendingText,
+      allowWrittenOpenings: true,
+    );
+    final totalCounts = counts.fold(0, (a, b) => a + b);
+    final totalPending = pendingCounts.fold(0, (a, b) => a + b);
+    if (totalCounts < totalPending) return false;
     if (_windowed) {
-      var retainedCount = pendingCount;
+      final retainedWords = <String>[];
+      var firstRetainedCount = pendingCounts.isNotEmpty
+          ? pendingCounts.first
+          : 0;
       for (final map in [
         _liveWordCounts,
         _completedLiveWordCounts,
@@ -437,30 +459,135 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _acceptedWordCounts,
       ]) {
         final value = map[keys.first] ?? 0;
-        if (value > retainedCount) retainedCount = value;
+        if (value > firstRetainedCount) firstRetainedCount = value;
       }
-      if (retainedCount > 0 && counts.first <= retainedCount) {
-        final firstWords = _comparison.recitationWords(expected.first);
-        final continued = _comparison.joinRecitationSegment(
-          retainedPrefix: firstWords.take(retainedCount).join(' '),
-          spokenText: text,
-          expectedAyahs: [expected.first],
-          expectedVerseKeys: [keys.first],
-          allowWrittenOpenings: true,
-        );
-        final continuedCount = _comparison
-            .matchingPrefixWordCounts(
-              expectedAyahs: [expected.first],
-              expectedVerseKeys: [keys.first],
+      for (var i = 0; i < ayahs.length; i++) {
+        final key = keys[i];
+        var count = i < pendingCounts.length ? pendingCounts[i] : 0;
+        for (final map in [
+          _liveWordCounts,
+          _completedLiveWordCounts,
+          _rollingWordCounts,
+          _pausedWordCounts,
+          _acceptedWordCounts,
+        ]) {
+          final value = map[key] ?? 0;
+          if (value > count) count = value;
+        }
+        if (count == 0) break;
+        final ayahWords = _comparison.recitationWords(expected[i]);
+        retainedWords.addAll(ayahWords.take(count));
+        if (count < ayahWords.length) break;
+      }
+      final retainedTotal = retainedWords.length;
+      final firstWords = _comparison.recitationWords(expected.first);
+      final firstCompleted =
+          firstWords.isNotEmpty && firstRetainedCount >= firstWords.length;
+      if (retainedTotal > 0 && totalCounts <= retainedTotal) {
+        if (!firstCompleted) {
+          final continued = _comparison.joinRecitationSegment(
+            retainedPrefix: firstWords.take(firstRetainedCount).join(' '),
+            spokenText: text,
+            expectedAyahs: [expected.first],
+            expectedVerseKeys: [keys.first],
+            allowWrittenOpenings: true,
+          );
+          final continuedCount = _comparison
+              .matchingPrefixWordCounts(
+                expectedAyahs: [expected.first],
+                expectedVerseKeys: [keys.first],
+                spokenText: continued,
+                allowWrittenOpenings: true,
+              )
+              .first;
+          if (continuedCount > firstRetainedCount ||
+              (continuedCount == firstWords.length &&
+                  _comparison.recitationWords(continued).length ==
+                      firstWords.length)) {
+            return false;
+          }
+        } else {
+          final activeOffset = ayahs.indexWhere((ayah) {
+            final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
+            final length = _comparison.recitationWords(ayah.imlaei ?? '').length;
+            var count = 0;
+            for (final map in [
+              _liveWordCounts,
+              _completedLiveWordCounts,
+              _rollingWordCounts,
+              _pausedWordCounts,
+              _acceptedWordCounts,
+            ]) {
+              final value = map[key] ?? 0;
+              if (value > count) count = value;
+            }
+            return count < length;
+          });
+          if (activeOffset < 0) {
+            final continued = _comparison.joinRecitationSegment(
+              retainedPrefix: retainedWords.join(' '),
+              spokenText: text,
+              expectedAyahs: expected,
+              expectedVerseKeys: keys,
+              allowWrittenOpenings: true,
+            );
+            final continuedCounts = _comparison.matchingPrefixWordCounts(
+              expectedAyahs: expected,
+              expectedVerseKeys: keys,
               spokenText: continued,
               allowWrittenOpenings: true,
-            )
-            .first;
-        if (continuedCount > retainedCount ||
-            (continuedCount == firstWords.length &&
-                _comparison.recitationWords(continued).length ==
-                    firstWords.length)) {
-          return false;
+            );
+            final continuedTotal = continuedCounts.fold(0, (a, b) => a + b);
+            final allExpectedCount = expected.fold(
+              0,
+              (sum, ayahText) =>
+                  sum + _comparison.recitationWords(ayahText).length,
+            );
+            if (continuedTotal > retainedTotal ||
+                (continuedTotal == allExpectedCount &&
+                    _comparison.recitationWords(continued).length ==
+                        allExpectedCount)) {
+              return false;
+            }
+          } else if (activeOffset > 0) {
+            final activeExpected = expected[activeOffset];
+            final activeKey = keys[activeOffset];
+            final activeWords = _comparison.recitationWords(activeExpected);
+            var activeRetained = 0;
+            for (final map in [
+              _liveWordCounts,
+              _completedLiveWordCounts,
+              _rollingWordCounts,
+              _pausedWordCounts,
+              _acceptedWordCounts,
+            ]) {
+              final value = map[activeKey] ?? 0;
+              if (value > activeRetained) activeRetained = value;
+            }
+            if (activeRetained > 0) {
+              final continued = _comparison.joinRecitationSegment(
+                retainedPrefix: activeWords.take(activeRetained).join(' '),
+                spokenText: text,
+                expectedAyahs: [activeExpected],
+                expectedVerseKeys: [activeKey],
+                allowWrittenOpenings: true,
+              );
+              final continuedCount = _comparison
+                  .matchingPrefixWordCounts(
+                    expectedAyahs: [activeExpected],
+                    expectedVerseKeys: [activeKey],
+                    spokenText: continued,
+                    allowWrittenOpenings: true,
+                  )
+                  .first;
+              if (continuedCount > activeRetained ||
+                  (continuedCount == activeWords.length &&
+                      _comparison.recitationWords(continued).length ==
+                          activeWords.length)) {
+                return false;
+              }
+            }
+          }
         }
       }
     }
@@ -670,14 +797,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _retainRollingWords(startIndex);
           }
           if (!widget.localQuranLab) setState(() => _transcript = text);
-          final alignment = widget.localQuranLab && input is QuranAsrSpeechInput
-              ? _labAlignmentMetrics(startIndex, text)
-              : const <String, int>{};
           if (!contradictsPrefix) _continueLivePrefix(startIndex, text);
           if (!isFinal) {
             _lastPreviewText = text;
             final expectedAyahs = widget.continuous
-                ? widget.ayahs.skip(startIndex).toList()
+                ? _windowedExpectedAyahs(startIndex)
                 : [_ayah];
             List<int> countsFrom(int offset, String spokenText) =>
                 _comparison.matchingPrefixWordCounts(
@@ -693,14 +817,22 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   allowWrittenOpenings: widget.localQuranLab,
                   allowDisplayOnlyCorrections: widget.localQuranLab,
                 );
-            var wordCounts = countsFrom(
-              0,
-              widget.localQuranLab && widget.continuous && contradictsPrefix
-                  ? text
-                  : widget.continuous || _windowed
-                  ? _continuousText(startIndex, text)
-                  : text,
-            );
+            final effectivePreviewText =
+                widget.localQuranLab && widget.continuous && contradictsPrefix
+                ? text
+                : widget.continuous || _windowed
+                ? _continuousText(startIndex, text)
+                : text;
+            var wordCounts = countsFrom(0, effectivePreviewText);
+            final alignment =
+                widget.localQuranLab && input is QuranAsrSpeechInput
+                ? _labAlignmentMetrics(
+                    startIndex,
+                    text,
+                    precomputedContinuousText: effectivePreviewText,
+                    precomputedCombinedCounts: wordCounts,
+                  )
+                : const <String, int>{};
             if (widget.localQuranLab &&
                 input is QuranAsrSpeechInput &&
                 expectedAyahs.isNotEmpty &&
@@ -787,6 +919,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             return;
           }
           if (widget.continuous) {
+            final alignment =
+                widget.localQuranLab && input is QuranAsrSpeechInput
+                ? _labAlignmentMetrics(startIndex, text)
+                : const <String, int>{};
             final tail = _lastPreviewText;
             _lastPreviewText = null;
             final previewCounts = Map<String, int>.of(_visibleWordCounts);
@@ -904,7 +1040,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   String _continuousText(int startIndex, String text) {
     if (!widget.localQuranLab) return '$_pendingText $text';
     final ayahs = widget.continuous
-        ? widget.ayahs.skip(startIndex).toList()
+        ? _windowedExpectedAyahs(startIndex)
         : [widget.ayahs[startIndex]];
     final retained = <String>[];
     final startKey =
