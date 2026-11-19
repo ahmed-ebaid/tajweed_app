@@ -877,8 +877,20 @@ class SpeechComparisonService {
           continue;
         }
         if (offset + 1 < spoken.length &&
-            expected[word].contains('${spoken[offset]}${spoken[offset + 1]}')) {
-          expanded.add('${spoken[offset]}${spoken[offset + 1]}');
+            (expected[word].contains('${spoken[offset]}${spoken[offset + 1]}') ||
+                (expected[word].contains('ألا') &&
+                    spoken[offset] == 'أن' &&
+                    spoken[offset + 1] == 'لا') ||
+                (expected[word].contains('إلا') &&
+                    spoken[offset] == 'إن' &&
+                    spoken[offset + 1] == 'لا') ||
+                (expected[word].contains('عما') &&
+                    spoken[offset] == 'عن' &&
+                    spoken[offset + 1] == 'ما') ||
+                (expected[word].contains('مما') &&
+                    spoken[offset] == 'من' &&
+                    spoken[offset + 1] == 'ما'))) {
+          expanded.add(expected[word].first);
           offset += 2;
           word++;
           continue;
@@ -987,6 +999,31 @@ class SpeechComparisonService {
                     expected[word].first.endsWith('ا') &&
                     spoken[offset] ==
                         '${expected[word].first.substring(0, expected[word].first.length - 1)}${expected[word + 1].first}') ||
+                (expected[word].first.length >= 3 &&
+                    expected[word + 1].first.length >= 3 &&
+                    expected[word].first[expected[word].first.length - 1] ==
+                        expected[word + 1].first[0] &&
+                    spoken[offset] ==
+                        '${expected[word].first.substring(0, expected[word].first.length - 1)}${expected[word + 1].first}') ||
+                (expected[word].first.length >= 4 &&
+                    (expected[word].first.endsWith('ى') ||
+                        expected[word].first.endsWith('ا')) &&
+                    expected[word + 1].first.startsWith('ائ') &&
+                    _foldAlifMaqsuraToAlif(spoken[offset]) ==
+                        _foldAlifMaqsuraToAlif(
+                          '${expected[word].first.substring(0, expected[word].first.length - 1)}أ${expected[word + 1].first.substring(2)}',
+                        )) ||
+                (expected[word].first.length >= 3 &&
+                    expected[word + 1].first.startsWith('اثن') &&
+                    (spoken[offset] ==
+                            '${expected[word].first}${expected[word + 1].first.substring(1)}' ||
+                        spoken[offset] ==
+                            '${expected[word].first}س${expected[word + 1].first.substring(2)}' ||
+                        spoken[offset] ==
+                            '${expected[word].first}ف${expected[word + 1].first.substring(2)}')) ||
+                (expected[word].first == 'مائة' &&
+                    expected[word + 1].first == 'عام' &&
+                    spoken[offset] == 'بأتعام') ||
                 (expected[word].first.length >= 4 &&
                     expected[word].first.endsWith('ى') &&
                     expected[word + 1].first == 'أو' &&
@@ -1156,8 +1193,10 @@ class SpeechComparisonService {
           continue;
         }
         if (hasRightAnchor &&
-            expected[word].first == 'وازينت' &&
-            spoken[offset] == 'والزينة') {
+            ((expected[word].first == 'وازينت' &&
+                    spoken[offset] == 'والزينة') ||
+                (expected[word].first == 'الاسم' &&
+                    spoken[offset] == 'للسم'))) {
           expanded.add(expected[word].first);
           offset++;
           word++;
@@ -1171,8 +1210,10 @@ class SpeechComparisonService {
                         spoken[offset] ==
                             '${expected[word].first.substring(0, expected[word].first.length - 1)}ه')) ||
                 (expected[word].first.endsWith('ة') &&
-                    spoken[offset] ==
-                        '${expected[word].first.substring(0, expected[word].first.length - 1)}ت') ||
+                    (spoken[offset] ==
+                            '${expected[word].first.substring(0, expected[word].first.length - 1)}ت' ||
+                        spoken[offset] ==
+                            '${expected[word].first.substring(0, expected[word].first.length - 1)}تن')) ||
                 (expected[word].first.length >= 4 &&
                     expected[word].first.endsWith('يا') &&
                     spoken[offset] ==
@@ -1186,7 +1227,8 @@ class SpeechComparisonService {
             word > 0 &&
             ((expected[word].first.length >= 5 &&
                     expected[word].first.startsWith('ال') &&
-                    spoken[offset] == expected[word].first.substring(2)) ||
+                    _foldNearMiss(spoken[offset]) ==
+                        _foldNearMiss(expected[word].first.substring(2))) ||
                 (expected[word].first.length >= 4 &&
                     !expected[word].first.startsWith('ال') &&
                     (_foldAlifMaqsuraToAlif(spoken[offset]) ==
@@ -1194,13 +1236,17 @@ class SpeechComparisonService {
                 (expected[word].first.length >= 5 &&
                     expected[word].first.startsWith('و') &&
                     !expected[word].first.startsWith('وال') &&
-                    spoken[offset] ==
-                        'وال${expected[word].first.substring(1)}') ||
+                    _foldNearMiss(spoken[offset]) ==
+                        _foldNearMiss(
+                          'وال${expected[word].first.substring(1)}',
+                        )) ||
                 (expected[word].first.length >= 5 &&
                     expected[word].first.startsWith('ب') &&
                     !expected[word].first.startsWith('بال') &&
-                    spoken[offset] ==
-                        'بال${expected[word].first.substring(1)}'))) {
+                    _foldNearMiss(spoken[offset]) ==
+                        _foldNearMiss(
+                          'بال${expected[word].first.substring(1)}',
+                        )))) {
           expanded.add(expected[word].first);
           offset++;
           word++;
@@ -1268,10 +1314,58 @@ class SpeechComparisonService {
                 (word > 0 &&
                     expanded.isNotEmpty &&
                     expected[word - 1].contains(expanded.last) &&
-                    expected[word].first.length >= 4 &&
-                    (expected[word].first.startsWith('و') ||
-                        expected[word].first.startsWith('ف')) &&
-                    spoken[offset] == expected[word].first.substring(1)) ||
+                    ((expected[word].first.length >= 4 &&
+                            (expected[word].first.startsWith('و') ||
+                                expected[word].first.startsWith('ف')) &&
+                            spoken[offset] ==
+                                expected[word].first.substring(1)) ||
+                        (expected[word].first.length >= 3 &&
+                            expected[word + 1].first.isNotEmpty &&
+                            expected[word].first.endsWith(
+                              expected[word + 1].first[0],
+                            ) &&
+                            spoken[offset] ==
+                                expected[word].first.substring(
+                                  0,
+                                  expected[word].first.length - 1,
+                                )) ||
+                        (expected[word].first.length >= 5 &&
+                            expected[word].first.endsWith('هن') &&
+                            spoken[offset] ==
+                                '${expected[word].first.substring(0, expected[word].first.length - 2)}هم') ||
+                        (expected[word].first.length >= 5 &&
+                            expected[word].first.endsWith('ه') &&
+                            spoken[offset] ==
+                                expected[word].first.substring(
+                                  0,
+                                  expected[word].first.length - 1,
+                                )) ||
+                        (expected[word].first.length >= 5 &&
+                            expected[word].first.startsWith('فا') &&
+                            spoken[offset] ==
+                                'ت${expected[word].first.substring(2)}') ||
+                        (expected[word].first.length >= 4 &&
+                            expected[word].first.startsWith('ي') &&
+                            spoken[offset] ==
+                                expected[word].first.substring(1)) ||
+                        (expected[word].first == 'بنو' &&
+                            expected[word + 1].first == 'إسرائيل' &&
+                            (spoken[offset] == 'بل' ||
+                                spoken[offset] == 'بلوا')) ||
+                        (expected[word].first == 'عمك' &&
+                            (spoken[offset] == 'عنك' ||
+                                spoken[offset] == 'أنك')) ||
+                        (expected[word].first == 'آمين' &&
+                            spoken[offset] == 'آمنين') ||
+                        (expected[word].first == 'عدل' &&
+                            expected[word + 1].first == 'لا' &&
+                            spoken[offset] == 'عدن') ||
+                        (expected[word].first == 'لم' &&
+                            spoken[offset] == 'لن') ||
+                        (expected[word].first == 'مما' &&
+                            spoken[offset] == 'منا') ||
+                        (expected[word].first == 'قمتم' &&
+                            spoken[offset] == 'قلتم'))) ||
                 (word > 0 &&
                     expanded.isNotEmpty &&
                     expected[word - 1].contains(expanded.last) &&
@@ -1345,6 +1439,10 @@ class SpeechComparisonService {
     if (retained.isEmpty) return false;
     final lastFolded = _foldAlifMaqsuraToAlif(retained.last);
     if (_foldAlifMaqsuraToAlif(incoming[start - 1]) == lastFolded) {
+      if (start == 2 &&
+          _foldAlifMaqsuraToAlif(incoming[0]) == lastFolded) {
+        return true;
+      }
       if (start >= 3 &&
           retained.length >= 2 &&
           _foldAlifMaqsuraToAlif(incoming[start - 2]) == lastFolded &&
@@ -1392,6 +1490,22 @@ class SpeechComparisonService {
                 _foldAlifMaqsuraToAlif(
                   '${retained[retained.length - 2]}${retained.last}',
                 ) ||
+            (retained[retained.length - 2].length >= 3 &&
+                retained[retained.length - 2].endsWith('ا') &&
+                _foldAlifMaqsuraToAlif(incoming[start - 1]) ==
+                    _foldAlifMaqsuraToAlif(
+                      '${retained[retained.length - 2].substring(0, retained[retained.length - 2].length - 1)}${retained.last}',
+                    )) ||
+            (start >= 2 &&
+                retained.length >= 3 &&
+                retained.last.length >= 2 &&
+                retained.last.endsWith('ا') &&
+                _foldAlifMaqsuraToAlif(incoming[start - 2]) ==
+                    _foldAlifMaqsuraToAlif(retained[retained.length - 3]) &&
+                _foldAlifMaqsuraToAlif(incoming[start - 1]) ==
+                    _foldAlifMaqsuraToAlif(
+                      '${retained[retained.length - 2]}${retained.last.substring(0, retained.last.length - 1)}',
+                    )) ||
             _matchesMergedNoonAssimilation(
               retained[retained.length - 2],
               retained.last,
@@ -1406,7 +1520,22 @@ class SpeechComparisonService {
               retained.last,
               incoming[start - 2],
               incoming[start - 1],
+            ) ||
+            _matchesSplitFinalConsonantWithYa(
+              retained.last,
+              incoming[start - 2],
+              incoming[start - 1],
             ))) {
+      return true;
+    }
+    if (start >= 3 &&
+        retained.length >= 3 &&
+        retained.last.length >= 5 &&
+        _foldAlifMaqsuraToAlif(incoming[start - 3]) ==
+            _foldAlifMaqsuraToAlif(retained[retained.length - 3]) &&
+        _foldAlifMaqsuraToAlif(incoming[start - 2]) ==
+            _foldAlifMaqsuraToAlif(retained[retained.length - 2]) &&
+        _isOrthographicNearMiss(retained.last, incoming[start - 1])) {
       return true;
     }
     if (start >= 2 &&
@@ -1526,7 +1655,13 @@ class SpeechComparisonService {
                 retained[j],
                 heard[i],
                 heard[i + 1],
-              )) {
+              ) ||
+              (i + 2 == heard.length &&
+                  heard.length >= 7 &&
+                  _foldAlifMaqsuraToAlif(
+                        '${heard[i]}${heard[i + 1]}',
+                      ) ==
+                      _foldAlifMaqsuraToAlif(retained[j]))) {
             i += 2;
             j++;
             continue;
@@ -1698,12 +1833,8 @@ class SpeechComparisonService {
   String _foldNearMiss(String word) =>
       word.split('').map((c) => _nearMissFolding[c] ?? c).join();
 
-  String _foldAlifMaqsuraToAlif(String word) {
-    final normalized = word.endsWith('ى')
-        ? '${word.substring(0, word.length - 1)}ا'
-        : word;
-    return _foldNearMiss(normalized);
-  }
+  String _foldAlifMaqsuraToAlif(String word) =>
+      _foldNearMiss(word.replaceAll('ى', 'ا'));
 
   bool _isThreeLetterFlankedNearMiss(String expectedWord, String spokenWord) {
     final a = _foldAlifMaqsuraToAlif(expectedWord);
@@ -1720,13 +1851,24 @@ class SpeechComparisonService {
   }
 
   bool _isOrthographicNearMiss(String expectedWord, String spokenWord) {
-    String fold(String word) => _foldNearMiss(word);
+    final fold =
+        (expectedWord.endsWith('ى') && spokenWord.endsWith('ا')) ||
+            (expectedWord.endsWith('ا') && spokenWord.endsWith('ى'))
+        ? _foldAlifMaqsuraToAlif
+        : _foldNearMiss;
     final a = fold(expectedWord);
     final b = fold(spokenWord);
     if (b.length < 2) return false;
     if (a == b) return true;
     final longest = a.length > b.length ? a.length : b.length;
-    final allowed = longest >= 4 ? 1 : 0;
+    final allowed =
+        (longest >= 8 &&
+                a.length >= 7 &&
+                b.length >= 7 &&
+                a.substring(0, 3) == b.substring(0, 3) &&
+                a.substring(a.length - 2) == b.substring(b.length - 2))
+        ? 2
+        : (longest >= 4 ? 1 : 0);
     if ((a.length - b.length).abs() > allowed) return false;
     var previous = List<int>.generate(b.length + 1, (i) => i);
     for (var i = 1; i <= a.length; i++) {
@@ -1867,6 +2009,18 @@ class SpeechComparisonService {
     }
     // Prosthetic alif/article inserted across a split word boundary
     // (e.g. لهدمت -> له الدمت, أنبنا -> أنا ابنى, ولبئس -> ولا بئس, اداركوا -> الدار كوا).
+    if (firstSpoken.length >= 2 &&
+        firstSpoken.endsWith('ن') &&
+        secondSpoken.startsWith('م') &&
+        '${firstSpoken.substring(0, firstSpoken.length - 1)}$secondSpoken' ==
+            expectedWord) {
+      return true;
+    }
+    if (expectedWord.contains('ؤ') &&
+        firstSpoken.contains('ئ') &&
+        '${firstSpoken.replaceAll('ئ', 'ؤ')}$secondSpoken' == expectedWord) {
+      return true;
+    }
     final foldedFirst = _foldAlifMaqsuraToAlif(firstSpoken);
     final foldedSecond = _foldAlifMaqsuraToAlif(secondSpoken);
     final foldedExpected = _foldAlifMaqsuraToAlif(expectedWord);
@@ -1877,7 +2031,12 @@ class SpeechComparisonService {
                   foldedFirst.endsWith('ل') &&
                   foldedSecond.startsWith('ل')
               ? foldedFirst.substring(0, foldedFirst.length - 1)
-              : foldedFirst);
+              : (foldedFirst.length >= 4 &&
+                        foldedFirst.startsWith('ال') &&
+                        foldedExpected.startsWith('ا') &&
+                        !foldedExpected.startsWith('ال')
+                    ? 'ا${foldedFirst.substring(2)}'
+                    : foldedFirst));
     final strippedSecond =
         foldedSecond.length >= 3 && foldedSecond.startsWith('ال')
         ? foldedSecond.substring(2)
@@ -1887,6 +2046,21 @@ class SpeechComparisonService {
     if ('$strippedFirst$strippedSecond' == foldedExpected ||
         '$strippedFirst$foldedSecond' == foldedExpected ||
         '$foldedFirst$strippedSecond' == foldedExpected) {
+      return true;
+    }
+    if (expectedWord.length >= 6 &&
+        firstSpoken.length >= 2 &&
+        secondSpoken.length >= 2 &&
+        !_matchesSplitFinalConsonantWithYa(
+          expectedWord,
+          firstSpoken,
+          secondSpoken,
+        ) &&
+        '$strippedFirst$strippedSecond'.length == foldedExpected.length &&
+        _matchesAssimilatedMedialSyllable(
+          foldedExpected,
+          '$strippedFirst$strippedSecond',
+        )) {
       return true;
     }
     if (foldedExpected.length >= 3 &&
@@ -2014,14 +2188,37 @@ class SpeechComparisonService {
     // Reverse boundary consonant shift: the first consonant of nextExpectedWord
     // attaches to the end of expectedWord (e.g. استقر مكانه -> استقرم كانه,
     // or across elided 'ال' in فضرب الرقاب -> فضربر رقاب, يتم الرضاعة -> يتمر ضاعة).
+    if (lastChar == 'ة' &&
+        expectedWord.length >= 4 &&
+        firstSpoken == expectedWord.substring(0, expectedWord.length - 2)) {
+      final prevConsonant = expectedWord[expectedWord.length - 2];
+      for (final tChar in const ['ت', 'ث']) {
+        final shifted = '$prevConsonant$tChar$nextExpectedWord';
+        if (_foldAlifMaqsuraToAlif(secondSpoken) ==
+                _foldAlifMaqsuraToAlif(shifted) ||
+            _matchesAssimilatedMedialSyllable(shifted, secondSpoken) ||
+            _isOrthographicNearMiss(shifted, secondSpoken)) {
+          return true;
+        }
+      }
+    }
     if (nextExpectedWord.length >= 3) {
       final nextFirst = nextExpectedWord[0];
       final nextRemainder = nextExpectedWord.substring(1);
       final shiftedFirst = '$expectedWord$nextFirst';
-      if ((_foldNearMiss(firstSpoken) == _foldNearMiss(shiftedFirst) ||
+      if ((_foldAlifMaqsuraToAlif(firstSpoken) ==
+                  _foldAlifMaqsuraToAlif(shiftedFirst) ||
               _matchesAssimilatedMedialSyllable(shiftedFirst, firstSpoken)) &&
-          (_foldNearMiss(secondSpoken) == _foldNearMiss(nextRemainder) ||
+          (_foldAlifMaqsuraToAlif(secondSpoken) ==
+                  _foldAlifMaqsuraToAlif(nextRemainder) ||
               _matchesQalqalahPauseEnding(nextRemainder, secondSpoken))) {
+        return true;
+      }
+      if (nextExpectedWord.length >= 4 &&
+          nextExpectedWord.startsWith('اث') &&
+          secondSpoken == nextExpectedWord.substring(2) &&
+          (firstSpoken == '$expectedWordث' ||
+              firstSpoken == '$expectedWordت')) {
         return true;
       }
       if (nextExpectedWord.length >= 4 && nextExpectedWord.startsWith('ال')) {

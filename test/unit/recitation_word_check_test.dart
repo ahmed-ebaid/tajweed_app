@@ -1996,4 +1996,95 @@ void main() {
       );
     },
   );
+
+  test(
+    'recovers Pass 3 split-ya overlap, taa-marbuta syllable shift, and wasl merges without accepting omissions',
+    () {
+      // 24:33: retained 'وليستعفف' advances across 'وليستعف في الذين لا يجدون'
+      const nur33Clause = 'وليستعفف الذين لا يجدون نكاحا حتى يغنيهم الله';
+      final joinedNur33 = comparison.joinRecitationSegment(
+        retainedPrefix: 'وليستعفف',
+        spokenText: 'وليستعف في الذين لا يجدون نكاحا حتى يغنيهم الله',
+        expectedAyahs: [nur33Clause],
+        expectedVerseKeys: ['24:33'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [nur33Clause],
+          expectedVerseKeys: ['24:33'],
+          spokenText: joinedNur33,
+          allowWrittenOpenings: true,
+        ),
+        [8],
+      );
+
+      // 2:264: والأذى كالذي -> والأذاك الذي
+      const baqarah264Clause = 'لا تبطلوا صدقاتكم بالمن والأذى كالذي ينفق ماله';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [baqarah264Clause],
+              expectedVerseKeys: ['2:264'],
+              spokenText: 'لا تبطلوا صدقاتكم بالمن والأذاك الذي ينفق ماله',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // 5:54: لومة لائم -> لو متلائم
+      const maidah54Clause = 'ولا يخافون لومة لائم ذلك فضل الله';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [maidah54Clause],
+              expectedVerseKeys: ['5:54'],
+              spokenText: 'ولا يخافون لو متلائم ذلك فضل الله',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // 6:71 & 6:144: الهدى ائتنا -> الهدأتنا, الإبل اثنين -> الإبلسنين
+      const anam71Clause = 'أصحابهم إلى الهدى ائتنا قل إن هدى الله';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [anam71Clause],
+              expectedVerseKeys: ['6:71'],
+              spokenText: 'أصحابهم إلى الهدأتنا قل إن هدى الله',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+      const anam144Clause = 'ومن الإبل اثنين ومن البقر اثنين قل آلذكرين';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [anam144Clause],
+              expectedVerseKeys: ['6:144'],
+              spokenText: 'ومن الإبلسنين ومن البقرسنين قل آلذكرين',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+
+      // Negative check: omitted word still fails
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [anam144Clause],
+              expectedVerseKeys: ['6:144'],
+              spokenText: 'ومن الإبل ومن البقرسنين قل آلذكرين',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        0,
+      );
+    },
+  );
 }
