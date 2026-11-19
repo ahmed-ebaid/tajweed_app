@@ -100,7 +100,28 @@ class SpeechComparisonService {
       true,
     );
     final confirmation = remaining < 3 ? remaining : 3;
+    // If the incoming window begins with an exact suffix of the retained
+    // prefix, it is already anchored and must not skip past an immediate
+    // wrong word after that suffix.
+    var anchoredAtStart = false;
+    final maxStartOverlap = retained.length < incoming.length
+        ? retained.length
+        : incoming.length;
+    for (var overlap = maxStartOverlap; overlap >= 1; overlap--) {
+      var exact = true;
+      for (var i = 0; i < overlap; i++) {
+        if (retained[retained.length - overlap + i] != incoming[i]) {
+          exact = false;
+          break;
+        }
+      }
+      if (exact) {
+        anchoredAtStart = true;
+        break;
+      }
+    }
     for (var start = 0; start < incoming.length; start++) {
+      if (anchoredAtStart && start > 0) break;
       if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
       if (start + confirmation <= incoming.length) {
         var matches = true;
@@ -320,48 +341,67 @@ class SpeechComparisonService {
           }
         }
       }
-      if (matches) {
-        if (expandedCandidate != null) {
-          return [
-            ...retained,
-            ...expandedCandidate.skip(retained.length),
-          ].join(' ');
+        if (matches) {
+          final isMidAyahAnchor =
+              overlap <= 2 &&
+              _isRepeatedAyahPrefixAnchor(
+                retainedLength: retained.length,
+                overlap: overlap,
+                expectedAyahs: expectedAyahs,
+                expectedVerseKeys: expectedVerseKeys,
+              );
+          if (!isMidAyahAnchor) {
+            if (expandedCandidate != null) {
+              return [
+                ...retained,
+                ...expandedCandidate.skip(retained.length),
+              ].join(' ');
+            }
+            var rest = incoming.skip(overlap).toList();
+            if (allowWrittenOpenings &&
+                overlap >= 2 &&
+                rest.length >= 2 &&
+                retained.length < expectedSeq.length &&
+                _foldNearMiss(rest.first) == _foldNearMiss(retained.last) &&
+                !expectedSeq[retained.length].contains(rest.first) &&
+                expectedSeq[retained.length].contains(rest[1])) {
+              rest = rest.skip(1).toList();
+            }
+            final joined = [...retained, ...rest].join(' ');
+            return allowWrittenOpenings
+                ? _spokenWords(
+                    joined,
+                    expectedAyahs,
+                    expectedVerseKeys,
+                    allowWrittenOpenings,
+                  ).join(' ')
+                : joined;
+          }
         }
-        var rest = incoming.skip(overlap).toList();
-        if (allowWrittenOpenings &&
-            overlap >= 2 &&
-            rest.length >= 2 &&
-            retained.length < expectedSeq.length &&
-            _foldNearMiss(rest.first) == _foldNearMiss(retained.last) &&
-            !expectedSeq[retained.length].contains(rest.first) &&
-            expectedSeq[retained.length].contains(rest[1])) {
-          rest = rest.skip(1).toList();
-        }
-        final joined = [...retained, ...rest].join(' ');
-        return allowWrittenOpenings
-            ? _spokenWords(
-                joined,
-                expectedAyahs,
-                expectedVerseKeys,
-                allowWrittenOpenings,
-              ).join(' ')
-            : joined;
       }
-    }
-    if (allowWrittenOpenings && incoming.length >= 2 && retained.isNotEmpty) {
-      final maxBoundarySkip = incoming.length - 1 < 6 ? incoming.length - 1 : 6;
-      for (var skip = 1; skip <= maxBoundarySkip; skip++) {
-        final skipped = incoming.skip(skip).toList();
-        final maxSkippedOverlap = retained.length < skipped.length
-            ? retained.length
-            : skipped.length;
-        final minOverlap = skip == 1 ? 1 : (skip <= 4 ? 2 : 3);
-        for (
-          var overlap = maxSkippedOverlap;
-          overlap >= minOverlap;
-          overlap--
-        ) {
-          var matches = true;
+      if (allowWrittenOpenings && incoming.length >= 2 && retained.isNotEmpty) {
+        final maxBoundarySkip = incoming.length - 1 < 6 ? incoming.length - 1 : 6;
+        for (var skip = 1; skip <= maxBoundarySkip; skip++) {
+          if (!_repeatsRetainedSuffix(retained, incoming, skip)) continue;
+          final skipped = incoming.skip(skip).toList();
+          final maxSkippedOverlap = retained.length < skipped.length
+              ? retained.length
+              : skipped.length;
+          final minOverlap = skip == 1 ? 1 : (skip <= 4 ? 2 : 3);
+          for (
+            var overlap = maxSkippedOverlap;
+            overlap >= minOverlap;
+            overlap--
+          ) {
+            if (overlap == 1 &&
+                skipped.length > 1 &&
+                retained.length < expectedSeq.length &&
+                !expectedSeq[retained.length].contains(skipped[1])) {
+              // Do not anchor on a single word after a wrong/skipped word unless
+              // the word immediately following that anchor is the next expected word.
+              continue;
+            }
+            var matches = true;
           for (var i = 0; i < overlap; i++) {
             final rWord = retained[retained.length - overlap + i];
             final sWord = skipped[i];
@@ -427,56 +467,84 @@ class SpeechComparisonService {
     final remainingExpected = expectedSeq.length - retained.length;
     if (allowWrittenOpenings && remainingExpected >= 2) {
       final confirmationWords = remainingExpected < 3 ? remainingExpected : 3;
-      for (
-        var start = 1;
-        start < incoming.length;
-        start++
-      ) {
-        if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
-        if (start + confirmationWords <= incoming.length) {
-          var matchesCursor = true;
-          for (var i = 0; i < confirmationWords; i++) {
-            if (!expectedSeq[retained.length + i].contains(
-              incoming[start + i],
-            )) {
-              matchesCursor = false;
-              break;
-            }
-          }
-          if (matchesCursor) {
-            return _spokenWords(
-              [...retained, ...incoming.skip(start)].join(' '),
-              expectedAyahs,
-              expectedVerseKeys,
-              allowWrittenOpenings,
-            ).join(' ');
+      var anchoredAtStart = false;
+      final maxStartOverlap = retained.length < incoming.length
+          ? retained.length
+          : incoming.length;
+      for (var overlap = maxStartOverlap; overlap >= 1; overlap--) {
+        var exact = true;
+        for (var i = 0; i < overlap; i++) {
+          if (retained[retained.length - overlap + i] != incoming[i]) {
+            exact = false;
+            break;
           }
         }
-        final normalized = _spokenWords(
-          [...retained, ...incoming.skip(start)].join(' '),
-          expectedAyahs,
-          expectedVerseKeys,
-          allowWrittenOpenings,
-        );
-        if (normalized.length >= retained.length + confirmationWords) {
-          var matchesNormalized = true;
-          for (var i = 0; i < confirmationWords; i++) {
-            if (!expectedSeq[retained.length + i].contains(
-              normalized[retained.length + i],
-            )) {
-              matchesNormalized = false;
-              break;
+        if (exact) {
+          anchoredAtStart = true;
+          break;
+        }
+      }
+      if (!anchoredAtStart) {
+        for (
+          var start = 1;
+          start < incoming.length;
+          start++
+        ) {
+          if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
+          if (start + confirmationWords <= incoming.length) {
+            var matchesCursor = true;
+            for (var i = 0; i < confirmationWords; i++) {
+              if (!expectedSeq[retained.length + i].contains(
+                incoming[start + i],
+              )) {
+                matchesCursor = false;
+                break;
+              }
+            }
+            if (matchesCursor) {
+              return _spokenWords(
+                [...retained, ...incoming.skip(start)].join(' '),
+                expectedAyahs,
+                expectedVerseKeys,
+                allowWrittenOpenings,
+              ).join(' ');
             }
           }
-          if (matchesNormalized) {
-            return normalized.join(' ');
+          final normalized = _spokenWords(
+            [...retained, ...incoming.skip(start)].join(' '),
+            expectedAyahs,
+            expectedVerseKeys,
+            allowWrittenOpenings,
+          );
+          if (normalized.length >= retained.length + confirmationWords) {
+            var matchesNormalized = true;
+            for (var i = 0; i < confirmationWords; i++) {
+              if (!expectedSeq[retained.length + i].contains(
+                normalized[retained.length + i],
+              )) {
+                matchesNormalized = false;
+                break;
+              }
+            }
+            if (matchesNormalized) {
+              return normalized.join(' ');
+            }
           }
         }
       }
     }
     if (allowWrittenOpenings && remainingExpected == 1 && retained.isNotEmpty) {
       for (var cursor = 1; cursor < incoming.length; cursor++) {
-        if ((_foldNearMiss(incoming[cursor - 1]) ==
+        final singleWordAnchor =
+            cursor == 1 &&
+            _isRepeatedAyahPrefixAnchor(
+              retainedLength: retained.length,
+              overlap: 1,
+              expectedAyahs: expectedAyahs,
+              expectedVerseKeys: expectedVerseKeys,
+            );
+        if (!singleWordAnchor &&
+            (_foldNearMiss(incoming[cursor - 1]) ==
                     _foldNearMiss(retained.last) ||
                 (cursor >= 3 &&
                     retained.length >= 3 &&
@@ -495,22 +563,62 @@ class SpeechComparisonService {
                         )))) &&
             _repeatsRetainedSuffix(retained, incoming, cursor)) {
           if (expectedSeq[retained.length].contains(incoming[cursor])) {
-            return [...retained, incoming[cursor]].join(' ');
+            return [
+              ...retained,
+              ...incoming.skip(cursor),
+            ].join(' ');
           }
-          final normalized = _spokenWords(
-            [...retained, ...incoming.skip(cursor)].join(' '),
-            expectedAyahs,
-            expectedVerseKeys,
-            allowWrittenOpenings,
-          );
-          if (normalized.length >= expectedSeq.length &&
-              expectedSeq[retained.length].contains(
-                normalized[retained.length],
-              )) {
-            return normalized.take(expectedSeq.length).join(' ');
+          if (cursor == incoming.length - 1) {
+            final normalized = _spokenWords(
+              [...retained, incoming[cursor]].join(' '),
+              expectedAyahs,
+              expectedVerseKeys,
+              allowWrittenOpenings,
+            );
+            if (normalized.length == expectedSeq.length &&
+                expectedSeq[retained.length].contains(
+                  normalized[retained.length],
+                )) {
+              return normalized.join(' ');
+            }
           }
         }
       }
+    }
+    // When the incoming window begins with the final expected word of the
+    // current ayah followed by an extra/wrong word and has no overlap with the
+    // retained prefix, do not auto-complete the ayah on that unanchored token.
+    var currentAyahStart = 0;
+    var currentAyahEnd = 0;
+    for (var verse = 0; verse < expectedAyahs.length; verse++) {
+      final verseLen = _expectedRecitationWords(
+        expectedAyahs[verse],
+        expectedVerseKeys[verse],
+      ).length;
+      if (retained.length < currentAyahStart + verseLen) {
+        currentAyahEnd = currentAyahStart + verseLen;
+        break;
+      }
+      currentAyahStart += verseLen;
+      currentAyahEnd = currentAyahStart;
+    }
+    final remainingInCurrentAyah = currentAyahEnd - retained.length;
+    if (allowWrittenOpenings &&
+        retained.length > currentAyahStart &&
+        incoming.length == 2 &&
+        remainingInCurrentAyah >= 2 &&
+        expectedSeq[retained.length].contains(incoming.first) &&
+        !expectedSeq[retained.length + 1].contains(incoming[1])) {
+      return [...retained, 'زئد', ...incoming].join(' ');
+    }
+    if (allowWrittenOpenings &&
+        retained.isNotEmpty &&
+        incoming.length >= 2 &&
+        remainingInCurrentAyah == 1 &&
+        expectedSeq[retained.length].contains(incoming.first) &&
+        (retained.length + 1 >= expectedSeq.length ||
+            !expectedSeq[retained.length + 1].contains(incoming[1]))) {
+      return [...retained, 'زئد', ...incoming].join(' ');
     }
     final combined = [...retained, ...incoming].join(' ');
     return allowWrittenOpenings
@@ -518,7 +626,7 @@ class SpeechComparisonService {
             combined,
             expectedAyahs,
             expectedVerseKeys,
-            allowWrittenOpenings,
+            false,
           ).join(' ')
         : combined;
   }

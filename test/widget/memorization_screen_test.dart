@@ -3839,4 +3839,83 @@ void main() {
       expect(listenAfter.onPressed, isNotNull);
     },
   );
+
+  testWidgets(
+    'windowed live recitation does not auto-complete ayah when right word is followed by wrong word',
+    (tester) async {
+      final speech = _FakeWindowedSpeech()..windowStartSeconds = 10;
+      final ayahs = [
+        Ayah(
+          surahNumber: 2,
+          ayahNumber: 12,
+          pageNumber: 3,
+          arabic: 'أَلَا إِنَّهُمْ هُمُ الْمُفْسِدُونَ وَلَٰكِن لَّا يَشْعُرُونَ',
+          imlaei: 'ألا إنهم هم المفسدون ولكن لا يشعرون',
+          translations: const {},
+          words: const [
+            TajweedWord(arabic: 'أَلَا', spans: [], lineNumber: 1),
+            TajweedWord(arabic: 'إِنَّهُمْ', spans: [], lineNumber: 1),
+            TajweedWord(arabic: 'هُمُ', spans: [], lineNumber: 1),
+            TajweedWord(arabic: 'الْمُفْسِدُونَ', spans: [], lineNumber: 1),
+            TajweedWord(arabic: 'وَلَٰكِن', spans: [], lineNumber: 1),
+            TajweedWord(arabic: 'لَّا', spans: [], lineNumber: 1),
+            TajweedWord(arabic: 'يَشْعُرُونَ', spans: [], lineNumber: 1),
+          ],
+          endLineNumber: 1,
+        ),
+        Ayah(
+          surahNumber: 2,
+          ayahNumber: 13,
+          pageNumber: 3,
+          arabic: 'وَإِذَا قِيلَ لَهُمْ آمِنُوا كَمَا آمَنَ النَّاسُ',
+          imlaei: 'وإذا قيل لهم آمنوا كما آمن الناس',
+          translations: const {},
+          words: const [
+            TajweedWord(arabic: 'وَإِذَا', spans: [], lineNumber: 2),
+            TajweedWord(arabic: 'قِيلَ', spans: [], lineNumber: 2),
+            TajweedWord(arabic: 'لَهُمْ', spans: [], lineNumber: 2),
+            TajweedWord(arabic: 'آمِنُوا', spans: [], lineNumber: 2),
+            TajweedWord(arabic: 'كَمَا', spans: [], lineNumber: 2),
+            TajweedWord(arabic: 'آمَنَ', spans: [], lineNumber: 2),
+            TajweedWord(arabic: 'النَّاسُ', spans: [], lineNumber: 2),
+          ],
+          endLineNumber: 2,
+        ),
+      ];
+      await _open(
+        tester,
+        speech,
+        ayahs: ayahs,
+        continuous: true,
+        localQuranLab: true,
+      );
+
+      MushafPageContent page() =>
+          tester.widget<MushafPageContent>(find.byType(MushafPageContent));
+
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+
+      // Reveal first 6 words of 2:12 ('ألا إنهم هم المفسدون ولكن لا').
+      speech.result!('ألا إنهم هم المفسدون ولكن لا', false);
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('2:12', 6));
+
+      // Now a sliding window hears a right word followed by a wrong word
+      // without valid anchor ('يشعرون يعلمون') or ('لا يعلمون'): must not
+      // auto-complete 2:12 or advance cursor to 2:13.
+      speech.result!('يشعرون يعلمون', false);
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('2:12', 6));
+
+      speech.result!('لا يعلمون', false);
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('2:12', 6));
+
+      // Saying the anchored correct completion ('ولكن لا يشعرون') completes 2:12.
+      speech.result!('ولكن لا يشعرون', false);
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('2:13', 0));
+    },
+  );
 }

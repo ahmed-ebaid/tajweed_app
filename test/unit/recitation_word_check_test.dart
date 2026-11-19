@@ -2193,4 +2193,104 @@ void main() {
       );
     },
   );
+
+  test(
+    'a right word followed by a wrong word never auto-completes or advances via retained prefix',
+    () {
+      // 2:12 (cloud bundle 2_1_d0f2090c): 6 of 7 words retained, followed by
+      // an unanchored or wrong 2-word window ('يشعرون يعلمون' or 'لا يعلمون')
+      // must not auto-complete the final word 'يشعرون'.
+      const baqarah12 = 'ألا إنهم هم المفسدون ولكن لا يشعرون';
+      const baqarah12Retained = 'ألا إنهم هم المفسدون ولكن لا';
+      for (final window in [
+        'يشعرون يعلمون',
+        'لا يعلمون',
+        'ولكن لا يعلمون',
+        'لا يشعروهم يعلمون',
+      ]) {
+        final joined = comparison.joinRecitationSegment(
+          retainedPrefix: baqarah12Retained,
+          spokenText: window,
+          expectedAyahs: [baqarah12],
+          expectedVerseKeys: ['2:12'],
+          allowWrittenOpenings: true,
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [baqarah12],
+            expectedVerseKeys: ['2:12'],
+            spokenText: joined,
+            allowWrittenOpenings: true,
+          ),
+          [6],
+          reason: 'Window "$window" should not auto-complete 2:12',
+        );
+        expect(
+          comparison
+              .checkSequence(
+                expectedAyahs: [baqarah12],
+                expectedVerseKeys: ['2:12'],
+                spokenText: joined,
+                allowWrittenOpenings: true,
+              )
+              .completedAyahs,
+          0,
+          reason: 'Window "$window" should not complete 2:12',
+        );
+      }
+
+      // 2:17 (cloud bundle 2_18_f34ad969): 8 of 17 words retained ('... ما'),
+      // followed by a 2-word window ('حوله غلط', 'ما غلط', or 'أضاءت ما غلط')
+      // must not advance the revealed prefix past word 8.
+      const baqarah17 =
+          'مثلهم كمثل الذي استوقد نارا فلما أضاءت ما حوله ذهب الله بنورهم وتركهم في ظلمات لا يبصرون';
+      const baqarah17Retained8 = 'مثلهم كمثل الذي استوقد نارا فلما أضاءت ما';
+      for (final window in [
+        'حوله غلط',
+        'ما غلط',
+        'أضاءت ما غلط',
+      ]) {
+        final joined = comparison.joinRecitationSegment(
+          retainedPrefix: baqarah17Retained8,
+          spokenText: window,
+          expectedAyahs: [baqarah17],
+          expectedVerseKeys: ['2:17'],
+          allowWrittenOpenings: true,
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [baqarah17],
+            expectedVerseKeys: ['2:17'],
+            spokenText: joined,
+            allowWrittenOpenings: true,
+          ),
+          [8],
+          reason: 'Window "$window" should keep 2:17 at 8 words',
+        );
+      }
+
+      // Multi-ayah repeated opening anchor (e.g., 2:11 'وإذا قيل لهم لا ...'
+      // and 2:13 'وإذا قيل لهم آمنوا ...'): when retained ends at the repeated
+      // 2-word opening of 2:11 ('وإذا قيل'), a 2-word window from a wrong/later
+      // verse ('وإذا قيل غلط') must not false-anchor or advance 2:11.
+      const baqarah11 = 'وإذا قيل لهم لا تفسدوا في الأرض قالوا إنما نحن مصلحون';
+      const baqarah13 = 'وإذا قيل لهم آمنوا كما آمن الناس';
+      final joinedRepeatedAnchor = comparison.joinRecitationSegment(
+        retainedPrefix: 'وإذا قيل',
+        spokenText: 'وإذا قيل آمنوا',
+        expectedAyahs: [baqarah11, baqarah13],
+        expectedVerseKeys: ['2:11', '2:13'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [baqarah11, baqarah13],
+          expectedVerseKeys: ['2:11', '2:13'],
+          spokenText: joinedRepeatedAnchor,
+          allowWrittenOpenings: true,
+        ),
+        [2],
+      );
+    },
+  );
 }
