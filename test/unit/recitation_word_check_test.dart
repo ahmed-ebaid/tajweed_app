@@ -2341,6 +2341,29 @@ void main() {
         ),
         [16, 1],
       );
+
+      // Surah Al-Qiyamah 75:1 -> 75:2: when 1 word ('القيامة') remains in the
+      // current ayah of a multi-ayah window and the incoming window repeats the
+      // retained suffix ('بيوم') with a slight opening variation ('ولأقسم'),
+      // the current ayah still completes on 'القيامة' just as in single-ayah mode.
+      const qiyamah1 = 'لَا أُقْسِمُ بِيَوْمِ الْقِيَامَةِ';
+      const qiyamah2 = 'وَلَا أُقْسِمُ بِالنَّفْسِ اللَّوَّامَةِ';
+      final joinedQiyamah1 = comparison.joinRecitationSegment(
+        retainedPrefix: 'لا أقسم بيوم',
+        spokenText: 'ولأقسم بيوم القيامة',
+        expectedAyahs: [qiyamah1, qiyamah2],
+        expectedVerseKeys: ['75:1', '75:2'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [qiyamah1, qiyamah2],
+          expectedVerseKeys: ['75:1', '75:2'],
+          spokenText: joinedQiyamah1,
+          allowWrittenOpenings: true,
+        ),
+        [4, 0],
+      );
     },
   );
 }

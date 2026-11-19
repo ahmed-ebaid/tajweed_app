@@ -372,7 +372,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     if (!widget.localQuranLab || !widget.continuous) return;
     final incoming = _comparison.recitationWords(text);
     if (incoming.isEmpty) return;
-    for (final ayah in _windowedExpectedAyahs(startIndex)) {
+    final ayahs = _windowedExpectedAyahs(startIndex);
+    for (var i = 0; i < ayahs.length; i++) {
+      final ayah = ayahs[i];
       final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
       final words = _comparison.recitationWords(ayah.imlaei ?? '');
       var count = _liveWordCounts[key] ?? 0;
@@ -392,7 +394,12 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         spokenText: text,
         allowWrittenOpenings: true,
       );
-      if (fromStart.first > 0) return;
+      if (fromStart.first > 0) {
+        if (i > 0 && fromStart.first > count) {
+          _retainRollingWords(startIndex);
+        }
+        return;
+      }
       // A retry may repeat an exact trailing prefix, but cannot skip a wrong word.
       final continuation = _comparison.joinRecitationSegment(
         retainedPrefix: words.take(count).join(' '),
@@ -484,6 +491,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       final firstCompleted =
           firstWords.isNotEmpty && firstRetainedCount >= firstWords.length;
       if (retainedTotal > 0 && totalCounts <= retainedTotal) {
+        if (!firstCompleted && totalCounts <= firstRetainedCount) {
+          return false;
+        }
         if (!firstCompleted) {
           final continued = _comparison.joinRecitationSegment(
             retainedPrefix: firstWords.take(firstRetainedCount).join(' '),
@@ -1071,6 +1081,94 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         completedInRetained++;
       }
     }
+    final activeOffset = completedInRetained < ayahs.length
+        ? completedInRetained
+        : ayahs.length - 1;
+    final activeIndex = startIndex + activeOffset;
+    var retainedPrefixText = retained.isEmpty ? _pendingText : retained.join(' ');
+    final hintedOnActive = widget.continuous
+        ? (_hintWordCounts[activeIndex] ?? 0)
+        : 0;
+    if (hintedOnActive > 0 && activeOffset < ayahs.length) {
+      final activeAyah = ayahs[activeOffset];
+      final activeKey = '${activeAyah.surahNumber}:${activeAyah.ayahNumber}';
+      final activeWords = _comparison.recitationWords(activeAyah.imlaei ?? '');
+      var activeRetainedCount = 0;
+      for (final counts in [
+        _rollingWordCounts,
+        _liveWordCounts,
+        _completedLiveWordCounts,
+        _acceptedWordCounts,
+        _pausedWordCounts,
+      ]) {
+        if ((counts[activeKey] ?? 0) > activeRetainedCount) {
+          activeRetainedCount = counts[activeKey]!;
+        }
+      }
+      if (activeRetainedCount == 0 &&
+          activeOffset == 0 &&
+          _pendingText.isNotEmpty) {
+        activeRetainedCount = _comparison.recitationWords(_pendingText).length;
+      }
+      final effectiveHintCount = hintedOnActive <= activeWords.length
+          ? hintedOnActive
+          : activeWords.length;
+      if (effectiveHintCount > activeRetainedCount) {
+        final expectedSlice = [
+          for (final ayah in ayahs.skip(activeOffset)) ayah.imlaei ?? '',
+        ];
+        final keySlice = [
+          for (final ayah in ayahs.skip(activeOffset))
+            '${ayah.surahNumber}:${ayah.ayahNumber}',
+        ];
+        final currentActivePrefix = activeWords
+            .take(activeRetainedCount)
+            .join(' ');
+        final fromCurrent = _comparison.joinRecitationSegment(
+          retainedPrefix: currentActivePrefix,
+          spokenText: text,
+          expectedAyahs: expectedSlice,
+          expectedVerseKeys: keySlice,
+          allowWrittenOpenings: true,
+        );
+        final currentMatched = _comparison
+            .matchingPrefixWordCounts(
+              expectedAyahs: expectedSlice,
+              expectedVerseKeys: keySlice,
+              spokenText: fromCurrent,
+              allowWrittenOpenings: true,
+            )
+            .fold(0, (a, b) => a + b);
+        if (currentMatched <= activeRetainedCount) {
+          final hintedActivePrefix = activeWords
+              .take(effectiveHintCount)
+              .join(' ');
+          final fromHinted = _comparison.joinRecitationSegment(
+            retainedPrefix: hintedActivePrefix,
+            spokenText: text,
+            expectedAyahs: expectedSlice,
+            expectedVerseKeys: keySlice,
+            allowWrittenOpenings: true,
+          );
+          final hintedMatched = _comparison
+              .matchingPrefixWordCounts(
+                expectedAyahs: expectedSlice,
+                expectedVerseKeys: keySlice,
+                spokenText: fromHinted,
+                allowWrittenOpenings: true,
+              )
+              .fold(0, (a, b) => a + b);
+          if (hintedMatched > effectiveHintCount) {
+            final completedBeforeActive = <String>[
+              for (var i = 0; i < activeOffset; i++)
+                ..._comparison.recitationWords(ayahs[i].imlaei ?? ''),
+              ...activeWords.take(effectiveHintCount),
+            ];
+            retainedPrefixText = completedBeforeActive.join(' ');
+          }
+        }
+      }
+    }
     var effectiveSpokenText = text;
     if (retained.isEmpty && _pendingText.isEmpty && startIndex > 0) {
       final prevWords = _comparison.recitationWords(
@@ -1113,10 +1211,6 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         }
       }
     }
-    final activeOffset = completedInRetained < ayahs.length
-        ? completedInRetained
-        : ayahs.length - 1;
-    final activeIndex = startIndex + activeOffset;
     if (effectiveSpokenText == text && activeIndex > 0) {
       final prevWords = _comparison.recitationWords(
         widget.ayahs[activeIndex - 1].imlaei ?? '',
@@ -1161,7 +1255,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       }
     }
     return _comparison.joinRecitationSegment(
-      retainedPrefix: retained.isEmpty ? _pendingText : retained.join(' '),
+      retainedPrefix: retainedPrefixText,
       spokenText: effectiveSpokenText,
       expectedAyahs: [for (final ayah in ayahs) ayah.imlaei ?? ''],
       expectedVerseKeys: [
@@ -2053,17 +2147,17 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   final cursorAyah = widget.ayahs[cursorIdx];
                   final cursorKey =
                       '${cursorAyah.surahNumber}:${cursorAyah.ayahNumber}';
-                  final hinted = _hintWordCounts[cursorIdx] ?? 0;
                   final displayed = displayWordCounts[cursorKey] ?? 0;
-                  final cursorVisibleCount = hinted > displayed
-                      ? hinted
-                      : displayed;
+                  final cursorWordIndex = displayed;
+                  final cursorWordTotal = cursorAyah.imlaei != null
+                      ? _comparison.recitationWords(cursorAyah.imlaei!).length
+                      : cursorAyah.words.length;
                   final showActiveWordCursor =
                       !widget.review &&
                       !_finished &&
                       !_revealed.contains(cursorIdx) &&
                       !_preview.contains(cursorIdx) &&
-                      cursorVisibleCount < cursorAyah.words.length;
+                      cursorWordIndex < cursorWordTotal;
                   return GestureDetector(
                     onHorizontalDragStart: (_) => _pageDragDistance = 0,
                     onHorizontalDragUpdate: (details) {
@@ -2082,7 +2176,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       verticalGlyphScale: 1.18,
                       revealedWordCounts: displayWordCounts,
                       activeCursorWord: showActiveWordCursor
-                          ? (cursorKey, cursorVisibleCount)
+                          ? (cursorKey, cursorWordIndex)
                           : null,
                       highlightedWordIndices: {
                         for (final entry in displayWordCounts.entries)

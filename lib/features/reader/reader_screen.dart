@@ -4917,10 +4917,9 @@ class _MushafTextPage extends StatelessWidget {
     TextStyle style,
   ) {
     final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
-    final visibleWordCount = math.max(
-      hintedWords[key] ?? 0,
-      revealedWordCounts[key] ?? 0,
-    );
+    final revealedCount = revealedWordCounts[key] ?? 0;
+    final hintedCount = hintedWords[key] ?? 0;
+    final visibleWordCount = math.max(hintedCount, revealedCount);
     final hidden =
         hiddenAyahs.contains(key) &&
         (wordIndex >= visibleWordCount ||
@@ -4928,10 +4927,14 @@ class _MushafTextPage extends StatelessWidget {
               word.arabic.replaceAll(RegExp(r'[\u06D6-\u06ED]'), '').trim(),
             ));
     final isActiveCursorWord =
-        hidden &&
         activeCursorWord != null &&
         activeCursorWord!.$1 == key &&
         activeCursorWord!.$2 == wordIndex;
+    final isUnspokenHintWord =
+        !hidden &&
+        hiddenAyahs.contains(key) &&
+        wordIndex >= revealedCount &&
+        wordIndex < hintedCount;
     return TajweedText.buildStyledWordSpans(
       word,
       baseStyle: style,
@@ -4941,9 +4944,14 @@ class _MushafTextPage extends StatelessWidget {
                 ? const Color(0xFF1D9E75).withValues(alpha: 0.30)
                 : _MushafColors.of(context).gold.withValues(alpha: 0.15))
           : null,
-      highlightBackground:
-          !hidden && (highlightedWordIndices[key]?.contains(wordIndex) ?? false)
-          ? const Color(0xFF81C9D8).withValues(alpha: 0.38)
+      highlightBackground: !hidden
+          ? (isActiveCursorWord
+                ? const Color(0xFF1D9E75).withValues(alpha: 0.28)
+                : isUnspokenHintWord
+                ? _MushafColors.of(context).gold.withValues(alpha: 0.22)
+                : (highlightedWordIndices[key]?.contains(wordIndex) ?? false)
+                ? const Color(0xFF81C9D8).withValues(alpha: 0.38)
+                : null)
           : null,
     );
   }

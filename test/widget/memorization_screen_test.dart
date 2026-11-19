@@ -2710,19 +2710,39 @@ void main() {
       await startLab(tester, speech);
       await _tap(tester, 'Need a hint?');
       expect(page(tester).hintedWords, {'1:1': 2});
+      expect(page(tester).activeCursorWord, ('1:1', 0));
       await _tap(tester, 'Resume');
       speech.result!('بسم الله الرحمن', true);
       await tester.pumpAndSettle();
       expect(page(tester).revealedWordCounts, {'1:1': 3});
       expect(page(tester).hintedWords, {'1:1': 2});
+      expect(page(tester).activeCursorWord, ('1:1', 3));
       expect(find.text('Continue from word: 4'), findsOneWidget);
       await _tap(tester, 'Need a hint?');
       expect(page(tester).hintedWords, {'1:1': 4});
+      expect(page(tester).activeCursorWord, ('1:1', 3));
       await _tap(tester, 'Need a hint?');
       expect(_hidden(tester), {'1:2'});
       expect(page(tester).hintedWords['1:2'], 2);
+      expect(page(tester).activeCursorWord, ('1:2', 0));
       expect(find.text('Ayah 2 / 2'), findsOneWidget);
     });
+
+    testWidgets(
+      'hinted words accept recitation from either the hinted word or the word after the hint',
+      (tester) async {
+        final speech = _FakeSpeech();
+        await startLab(tester, speech);
+        await _tap(tester, 'Live word preview (unverified)');
+        await _tap(tester, 'Need a hint?');
+        expect(page(tester).hintedWords, {'1:1': 2});
+        expect(page(tester).activeCursorWord, ('1:1', 0));
+        await _tap(tester, 'Resume');
+        speech.result!('الرحمن الرحيم', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'1:1': 4});
+      },
+    );
 
     testWidgets('Surah Al-Falaq 113 auto-completes across cloud transcripts', (
       tester,

@@ -581,7 +581,24 @@ class SpeechComparisonService {
         }
       }
     }
-    if (allowWrittenOpenings && remainingExpected == 1 && retained.isNotEmpty) {
+    var currentAyahStart = 0;
+    var currentAyahEnd = 0;
+    for (var verse = 0; verse < expectedAyahs.length; verse++) {
+      final verseLen = _expectedRecitationWords(
+        expectedAyahs[verse],
+        expectedVerseKeys[verse],
+      ).length;
+      if (retained.length < currentAyahStart + verseLen) {
+        currentAyahEnd = currentAyahStart + verseLen;
+        break;
+      }
+      currentAyahStart += verseLen;
+      currentAyahEnd = currentAyahStart;
+    }
+    final remainingInCurrentAyah = currentAyahEnd - retained.length;
+    if (allowWrittenOpenings &&
+        (remainingExpected == 1 || remainingInCurrentAyah == 1) &&
+        retained.isNotEmpty) {
       for (var cursor = 1; cursor < incoming.length; cursor++) {
         final singleWordAnchor =
             cursor == 1 &&
@@ -623,7 +640,7 @@ class SpeechComparisonService {
               expectedVerseKeys,
               allowWrittenOpenings,
             );
-            if (normalized.length == expectedSeq.length &&
+            if (normalized.length > retained.length &&
                 expectedSeq[retained.length].contains(
                   normalized[retained.length],
                 )) {
@@ -636,21 +653,6 @@ class SpeechComparisonService {
     // When the incoming window begins with the final expected word of the
     // current ayah followed by an extra/wrong word and has no overlap with the
     // retained prefix, do not auto-complete the ayah on that unanchored token.
-    var currentAyahStart = 0;
-    var currentAyahEnd = 0;
-    for (var verse = 0; verse < expectedAyahs.length; verse++) {
-      final verseLen = _expectedRecitationWords(
-        expectedAyahs[verse],
-        expectedVerseKeys[verse],
-      ).length;
-      if (retained.length < currentAyahStart + verseLen) {
-        currentAyahEnd = currentAyahStart + verseLen;
-        break;
-      }
-      currentAyahStart += verseLen;
-      currentAyahEnd = currentAyahStart;
-    }
-    final remainingInCurrentAyah = currentAyahEnd - retained.length;
     if (allowWrittenOpenings &&
         retained.length > currentAyahStart &&
         incoming.length == 2 &&
