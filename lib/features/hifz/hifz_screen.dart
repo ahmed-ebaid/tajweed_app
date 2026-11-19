@@ -122,27 +122,22 @@ class _HifzScreenState extends State<HifzScreen> {
       if (path == null && (url == null || url.isEmpty)) {
         throw StateError('Missing Hifz reference audio');
       }
-      if (path == null && url != null) {
-        try {
-          path = await _audioCache
-              .cacheAyahAudio(
-                reciterId: reciterId,
-                surahNumber: ayah.surahNumber,
-                ayahNumber: ayah.ayahNumber,
-                url: url,
-              )
-              .timeout(const Duration(seconds: 15));
-        } catch (cacheError) {
-          debugPrint('Hifz reference cache fallback to stream: $cacheError');
-        }
-      }
-      if (!mounted || generation != _generation) return false;
       await _audio.stop();
       if (!mounted || generation != _generation) return false;
       if (path != null) {
         await _audio.setFilePath(path);
       } else {
         await _audio.setUrl(url!);
+        unawaited(
+          _audioCache
+              .cacheAyahAudio(
+                reciterId: reciterId,
+                surahNumber: ayah.surahNumber,
+                ayahNumber: ayah.ayahNumber,
+                url: url,
+              )
+              .then<void>((_) {}, onError: (_) {}),
+        );
       }
       if (!mounted || generation != _generation) return false;
       unawaited(

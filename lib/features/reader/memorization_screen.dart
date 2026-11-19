@@ -81,6 +81,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   int? _startingSpeechGeneration;
   bool _consented = false;
   bool _busy = false;
+  bool _loadingReference = false;
   bool _acceptResults = false;
   bool _stopInProgress = false;
   bool _finished = false;
@@ -518,6 +519,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       setState(() {
         _checkpointLiveWords();
         _busy = false;
+        _loadingReference = false;
         _stopInProgress = false;
         _preview.clear();
         _clearLiveWords();
@@ -1441,7 +1443,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     }
     _preview.clear();
     _clearLiveWords();
-    setState(() => _busy = true);
+    setState(() {
+      _busy = false;
+      _loadingReference = true;
+    });
     try {
       await _lastCancellation;
       if (!mounted || generation != _generation) return;
@@ -1457,14 +1462,14 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         return;
       }
       setState(() {
-        _busy = false;
+        _loadingReference = false;
         if (!played) _message = 'mem_audio_error';
       });
     } on PlatformException catch (error) {
       debugPrint('Memorization reference error: ${error.code}');
       if (mounted && generation == _generation) {
         setState(() {
-          _busy = false;
+          _loadingReference = false;
           _message = 'mem_audio_error';
         });
       }
@@ -1740,14 +1745,43 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final pageNumber = _visiblePageNumber;
-    final statusTextStyle = Theme.of(context).textTheme.bodyLarge;
+    final statusTextStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(fontSize: 12, height: 1.15);
+    final metaTextStyle = statusTextStyle?.copyWith(
+      fontWeight: FontWeight.w600,
+    );
+    final buttonLabelStyle =
+        (Theme.of(context).textTheme.labelLarge ?? const TextStyle()).copyWith(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+        );
+    final compactFilledButtonStyle = FilledButton.styleFrom(
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      minimumSize: const Size(0, 28),
+      textStyle: buttonLabelStyle,
+    );
+    final compactTextButtonStyle = TextButton.styleFrom(
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      minimumSize: const Size(0, 28),
+      textStyle: buttonLabelStyle,
+    );
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 42,
         title: Text(
           '${l10n.get(widget.review ? 'hifz_review' : 'tab_hifz')} — '
           '${widget.surahNameFor(_ayah.surahNumber)}',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         actions: [
           if (!widget.review)
@@ -1876,6 +1910,24 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       displayWordCounts[entry.key] = entry.value;
                     }
                   }
+                  final cursorIdx =
+                      _activeAyahIndex < widget.ayahs.length
+                      ? _activeAyahIndex
+                      : _index;
+                  final cursorAyah = widget.ayahs[cursorIdx];
+                  final cursorKey =
+                      '${cursorAyah.surahNumber}:${cursorAyah.ayahNumber}';
+                  final hinted = _hintWordCounts[cursorIdx] ?? 0;
+                  final displayed = displayWordCounts[cursorKey] ?? 0;
+                  final cursorVisibleCount = hinted > displayed
+                      ? hinted
+                      : displayed;
+                  final showActiveWordCursor =
+                      !widget.review &&
+                      !_finished &&
+                      !_revealed.contains(cursorIdx) &&
+                      !_preview.contains(cursorIdx) &&
+                      cursorVisibleCount < cursorAyah.words.length;
                   return GestureDetector(
                     onHorizontalDragStart: (_) => _pageDragDistance = 0,
                     onHorizontalDragUpdate: (details) {
@@ -1891,7 +1943,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       highlightEnabled: true,
                       surahNameFor: widget.surahNameFor,
                       fitToViewport: true,
+                      verticalGlyphScale: 1.18,
                       revealedWordCounts: displayWordCounts,
+                      activeCursorWord: showActiveWordCursor
+                          ? (cursorKey, cursorVisibleCount)
+                          : null,
                       highlightedWordIndices: {
                         for (final entry in displayWordCounts.entries)
                           entry.key: {
@@ -1931,102 +1987,105 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             ),
             ConstrainedBox(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.24,
+                minHeight: widget.continuous && !widget.review
+                    ? (landscape ? 76 : 104)
+                    : 0,
+                maxHeight: widget.continuous && !widget.review
+                    ? (landscape ? 82 : 108)
+                    : MediaQuery.sizeOf(context).height * 0.20,
               ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                  horizontal: 10,
+                  vertical: 2,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (!widget.review &&
                         (widget.continuous || widget.localQuranLab))
-                      SwitchListTile(
-                        dense: true,
-                        visualDensity: VisualDensity.compact,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
+                      SizedBox(
+                        height: 30,
+                        child: SwitchListTile(
+                          dense: true,
+                          visualDensity: const VisualDensity(
+                            horizontal: -4,
+                            vertical: -4,
+                          ),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            l10n.get(
+                              widget.localQuranLab
+                                  ? 'quran_asr_word_preview'
+                                  : 'hifz_live_preview',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: statusTextStyle?.copyWith(fontSize: 11.5),
+                          ),
+                          value: _livePreview,
+                          onChanged: (enabled) => setState(() {
+                            if (_windowed && _acceptResults) {
+                              _retainRollingWords(_index);
+                            }
+                            _livePreview = enabled;
+                            _preview.clear();
+                            _clearLiveWords(
+                              keepRolling: _windowed && _acceptResults,
+                            );
+                          }),
+                        ),
+                      ),
+                    const SizedBox(height: 3),
+                    if (!_hasStarted && !widget.continuous && !widget.review)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(
                           l10n.get(
                             widget.localQuranLab
-                                ? 'quran_asr_word_preview'
-                                : 'hifz_live_preview',
+                                ? 'quran_asr_live_warning'
+                                : 'mem_intro',
                           ),
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontSize: 10.5, height: 1.15),
                         ),
-                        value: _livePreview,
-                        onChanged: (enabled) => setState(() {
-                          if (_windowed && _acceptResults) {
-                            _retainRollingWords(_index);
-                          }
-                          _livePreview = enabled;
-                          _preview.clear();
-                          _clearLiveWords(
-                            keepRolling: _windowed && _acceptResults,
-                          );
-                        }),
                       ),
-                    if (!_hasStarted)
-                      Text(
-                        l10n.get(
-                          widget.localQuranLab && !widget.review
-                              ? 'quran_asr_live_warning'
-                              : widget.review
-                              ? 'hifz_review_intro'
-                              : widget.continuous
-                              ? 'hifz_intro'
-                              : 'mem_intro',
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          '${l10n.get('ayah')} ${l10n.digits(_index + 1)}'
+                          ' / ${l10n.digits(widget.ayahs.length)}',
+                          style: metaTextStyle,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    Text(
-                      '${l10n.get('ayah')} ${l10n.digits(_index + 1)}'
-                      ' / ${l10n.digits(widget.ayahs.length)}',
-                      style: statusTextStyle,
+                        if (widget.localQuranLab &&
+                            widget.continuous &&
+                            !widget.review &&
+                            !_finished &&
+                            !_hasFullUnverifiedPreview)
+                          Text(
+                            '${l10n.get('quran_asr_next_word')}: '
+                            '${l10n.digits(_nextLabWord)}',
+                            style: metaTextStyle,
+                          ),
+                        if (widget.continuous && !widget.review)
+                          Text(
+                            '${l10n.get('hifz_unaided')}: ${l10n.digits(_matched.length)}'
+                            ' · ${l10n.get(widget.localQuranLab ? 'quran_asr_assisted' : 'hifz_assisted')}: ${l10n.digits(_assisted.length)}',
+                            style: metaTextStyle,
+                          ),
+                      ],
                     ),
-                    if (widget.localQuranLab &&
-                        widget.continuous &&
-                        !widget.review &&
-                        !_finished &&
-                        !_hasFullUnverifiedPreview)
-                      Text(
-                        '${l10n.get('quran_asr_next_word')}: '
-                        '${l10n.digits(_nextLabWord)}',
-                        style: statusTextStyle,
-                      ),
-                    if (widget.localQuranLab &&
-                        (_unverifiedAyahs.isNotEmpty ||
-                            _pausedWordCounts.isNotEmpty ||
-                            _navigationWordCounts.isNotEmpty ||
-                            (_livePreview && _liveWordCounts.isNotEmpty)))
-                      Text(
-                        l10n.get(
-                          _pausedWordCounts.isNotEmpty ||
-                                  _navigationWordCounts.isNotEmpty ||
-                                  _unverifiedAyahs.isNotEmpty
-                              ? 'quran_asr_retained_preview'
-                              : 'hifz_provisional',
-                        ),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontSize: statusTextStyle?.fontSize,
-                        ),
-                      ),
-                    if (_preview.isNotEmpty)
-                      Text(
-                        '${l10n.get('hifz_provisional')}: '
-                        '${_preview.map((i) => l10n.digits(widget.ayahs[i].ayahNumber)).join(', ')}',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontSize: statusTextStyle?.fontSize,
-                        ),
-                      ),
                     if (!widget.continuous || widget.review)
                       DropdownButton<int>(
                         isExpanded: true,
+                        isDense: true,
                         value: _index,
                         onChanged: _busy ? null : (index) => _select(index!),
                         items: [
@@ -2041,34 +2100,69 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                             ),
                         ],
                       ),
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _finished
-                            ? l10n.get('mem_done')
-                            : widget.review
-                            ? l10n.get('hifz_review_intro')
-                            : '${l10n.get(widget.continuous && _message == 'mem_ready' ? 'hifz_ready' : _message)}'
-                                  '${_mismatchWord == null ? '' : ' ${l10n.digits(_mismatchWord!)}'}',
-                        style: statusTextStyle,
-                      ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            _finished
+                                ? l10n.get('mem_done')
+                                : widget.review
+                                ? l10n.get('hifz_review_intro')
+                                : '${l10n.get(widget.continuous && _message == 'mem_ready' ? 'hifz_ready' : _message)}'
+                                      '${_mismatchWord == null ? '' : ' ${l10n.digits(_mismatchWord!)}'}',
+                            style: statusTextStyle,
+                          ),
+                        ),
+                        if (widget.localQuranLab &&
+                            (_unverifiedAyahs.isNotEmpty ||
+                                _pausedWordCounts.isNotEmpty ||
+                                _navigationWordCounts.isNotEmpty ||
+                                (_livePreview && _liveWordCounts.isNotEmpty)))
+                          Text(
+                            l10n.get(
+                              _pausedWordCounts.isNotEmpty ||
+                                      _navigationWordCounts.isNotEmpty ||
+                                      _unverifiedAyahs.isNotEmpty
+                                  ? 'quran_asr_retained_preview'
+                                  : 'hifz_provisional',
+                            ),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: statusTextStyle?.fontSize,
+                              height: 1.15,
+                            ),
+                          ),
+                        if (_preview.isNotEmpty)
+                          Text(
+                            '${l10n.get('hifz_provisional')}: '
+                            '${_preview.map((i) => l10n.digits(widget.ayahs[i].ayahNumber)).join(', ')}',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: statusTextStyle?.fontSize,
+                              height: 1.15,
+                            ),
+                          ),
+                      ],
                     ),
-                    if (widget.continuous && !widget.review)
-                      Text(
-                        '${l10n.get('hifz_unaided')}: ${l10n.digits(_matched.length)}'
-                        ' · ${l10n.get(widget.localQuranLab ? 'quran_asr_assisted' : 'hifz_assisted')}: ${l10n.digits(_assisted.length)}',
-                        style: statusTextStyle,
-                      ),
                     if (_transcript.isNotEmpty && !widget.localQuranLab)
                       Text(
                         '${l10n.get('mem_heard')}: $_transcript',
                         textDirection: TextDirection.rtl,
+                        style: statusTextStyle,
                       ),
+                    const SizedBox(height: 3),
                     Wrap(
-                      spacing: 8,
+                      spacing: 6,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (!widget.review)
+                        if (!widget.review) ...[
                           FilledButton.icon(
+                            style: compactFilledButtonStyle,
                             onPressed: _acceptResults
                                 ? (_stopInProgress ? null : _stop)
                                 : _stopInProgress ||
@@ -2080,13 +2174,16 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                 : _listen,
                             icon: _stopInProgress
                                 ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
+                                    width: 14,
+                                    height: 14,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : Icon(_acceptResults ? Icons.stop : Icons.mic),
+                                : Icon(
+                                    _acceptResults ? Icons.stop : Icons.mic,
+                                    size: 16,
+                                  ),
                             label: Text(
                               l10n.get(
                                 _stopInProgress
@@ -2105,8 +2202,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                               ),
                             ),
                           ),
-                        if (!widget.review)
-                          TextButton(
+                          TextButton.icon(
+                            style: compactTextButtonStyle,
                             onPressed:
                                 (_busy &&
                                         !_acceptResults &&
@@ -2122,14 +2219,22 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                         _hintWordCounts.containsKey(_index))
                                 ? null
                                 : _hint,
-                            child: Text(
+                            icon: const Icon(
+                              Icons.lightbulb_outline,
+                              size: 15,
+                            ),
+                            label: Text(
                               l10n.get(
-                                widget.continuous ? 'hifz_hint' : 'mem_hint',
+                                widget.continuous
+                                    ? 'hifz_hint'
+                                    : 'mem_hint',
                               ),
                             ),
                           ),
+                        ],
                         if (widget.continuous && !widget.review)
-                          TextButton(
+                          TextButton.icon(
+                            style: compactTextButtonStyle,
                             onPressed:
                                 (_busy &&
                                         !_acceptResults &&
@@ -2137,18 +2242,38 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                     _finished
                                 ? null
                                 : _reveal,
-                            child: Text(l10n.get('hifz_reveal')),
+                            icon: const Icon(
+                              Icons.visibility_outlined,
+                              size: 15,
+                            ),
+                            label: Text(l10n.get('hifz_reveal')),
                           ),
                         TextButton.icon(
+                          style: compactTextButtonStyle,
                           onPressed:
-                              _busy && !_acceptResults && !_stopInProgress
+                              _loadingReference ||
+                                  (_busy &&
+                                      !_acceptResults &&
+                                      !_stopInProgress)
                               ? null
                               : _reference,
-                          icon: const Icon(Icons.volume_up_outlined),
+                          icon: _loadingReference
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.volume_up_outlined,
+                                  size: 15,
+                                ),
                           label: Text(l10n.get('mem_replay')),
                         ),
                         if (!widget.continuous || widget.review)
                           TextButton(
+                            style: compactTextButtonStyle,
                             onPressed:
                                 _stopInProgress ||
                                     _busy ||

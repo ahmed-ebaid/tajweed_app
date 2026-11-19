@@ -118,7 +118,15 @@ Future<void> _open(
 }
 
 Future<void> _tap(WidgetTester tester, String label) async {
-  final finder = find.text(label);
+  const aliases = <String, String>{
+    'Start reciting': 'Recite',
+    'Need a hint?': 'Hint',
+    'Reveal ayah and continue': 'Reveal',
+    'Listen to reference': 'Listen',
+  };
+  final finder = find.text(label).evaluate().isNotEmpty
+      ? find.text(label)
+      : find.text(aliases[label] ?? label);
   await tester.ensureVisible(finder);
   await tester.tap(finder);
   await tester.pumpAndSettle();
@@ -3411,8 +3419,8 @@ void main() {
     final speech = _FakeSpeech();
     await _open(tester, speech, continuous: true, review: true);
     expect(_hidden(tester), isEmpty);
-    expect(find.text('Start reciting'), findsNothing);
-    expect(find.text('Need a hint?'), findsNothing);
+    expect(find.text('Recite'), findsNothing);
+    expect(find.text('Hint'), findsNothing);
     await _tap(tester, 'Listen to reference');
     expect(speech.starts, 0);
     await _tap(tester, 'Next ayah');
@@ -3705,4 +3713,130 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'active cursor highlights next masked word and waqf marks stay masked until revealed',
+    (tester) async {
+      final speech = _FakeSpeech();
+      await _open(
+        tester,
+        speech,
+        continuous: true,
+        localQuranLab: true,
+        ayahs: [
+          Ayah(
+            surahNumber: 2,
+            ayahNumber: 2,
+            pageNumber: 2,
+            arabic: 'ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ',
+            imlaei: 'ذلك الكتاب لا ريب فيه',
+            translations: const {},
+            words: const [
+              TajweedWord(arabic: 'ذَٰلِكَ', spans: [], lineNumber: 1),
+              TajweedWord(arabic: 'الْكِتَابُ', spans: [], lineNumber: 1),
+              TajweedWord(arabic: 'لَا', spans: [], lineNumber: 1),
+              TajweedWord(arabic: 'رَيْبَ ۛ', spans: [], lineNumber: 1),
+              TajweedWord(arabic: 'فِيهِ ۛ', spans: [], lineNumber: 1),
+            ],
+            endLineNumber: 1,
+          ),
+        ],
+      );
+
+      MushafPageContent page() =>
+          tester.widget<MushafPageContent>(find.byType(MushafPageContent));
+      expect(page().activeCursorWord, ('2:2', 0));
+
+      List<TextSpan> collectLineSpans() {
+        final spans = <TextSpan>[];
+        void collect(InlineSpan span) {
+          if (span is! TextSpan) return;
+          if ((span.text ?? '').isNotEmpty) spans.add(span);
+          for (final child in span.children ?? <InlineSpan>[]) {
+            collect(child);
+          }
+        }
+
+        for (final text in tester.widgetList<RichText>(
+          find.descendant(
+            of: find.byKey(const ValueKey('mushaf-line-1')),
+            matching: find.byType(RichText),
+          ),
+        )) {
+          collect(text.text);
+        }
+        return spans;
+      }
+
+      // Before reciting, waqf signs (ۛ) inside hidden words must be masked too.
+      final initialSpans = collectLineSpans();
+      final waqfSpans = initialSpans.where((s) => s.text == 'ۛ').toList();
+      expect(waqfSpans, isNotEmpty);
+      for (final waqf in waqfSpans) {
+        expect(waqf.style?.color, Colors.transparent);
+      }
+      // First word (index 0) has the active teal cursor mask; later words have gold mask.
+      final firstWordSpan = initialSpans.firstWhere(
+        (s) => (s.text ?? '').contains('ذَٰلِكَ'),
+      );
+      final secondWordSpan = initialSpans.firstWhere(
+        (s) => (s.text ?? '').contains('الْكِتَابُ'),
+      );
+      expect(
+        firstWordSpan.style?.backgroundColor,
+        isNot(equals(secondWordSpan.style?.backgroundColor)),
+      );
+
+      // Recite first 3 words -> active cursor advances to word index 3 ('رَيْبَ ۛ').
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+      speech.result!('ذلك الكتاب لا', false);
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('2:2', 3));
+    },
+  );
+
+  testWidgets(
+    'Listen button shows local spinner without disabling or flashing Recite/Continue button',
+    (tester) async {
+      final speech = _FakeSpeech();
+      final referenceDone = Completer<bool>();
+      await _open(
+        tester,
+        speech,
+        continuous: true,
+        playReference: (_) => referenceDone.future,
+      );
+
+      await tester.tap(find.text('Listen'));
+      await tester.pump();
+
+      // While reference audio is loading, Recite remains enabled (no flashing),
+      // while Listen itself is disabled and shows a progress indicator.
+      final reciteButton = tester.widget<ButtonStyleButton>(
+        find.ancestor(
+          of: find.text('Recite'),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
+      final listenButton = tester.widget<ButtonStyleButton>(
+        find.ancestor(
+          of: find.text('Listen'),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
+      expect(reciteButton.onPressed, isNotNull);
+      expect(listenButton.onPressed, isNull);
+
+      referenceDone.complete(true);
+      await tester.pumpAndSettle();
+      final listenAfter = tester.widget<ButtonStyleButton>(
+        find.ancestor(
+          of: find.text('Listen'),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
+      expect(listenAfter.onPressed, isNotNull);
+    },
+  );
 }

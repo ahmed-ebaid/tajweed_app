@@ -292,7 +292,7 @@ void main() {
       );
       expect(practice.continuous, isTrue);
       expect(practice.review, isFalse);
-      expect(find.text('Need a hint?'), findsOneWidget);
+      expect(find.text('Hint'), findsOneWidget);
       expect(find.text('Next ayah'), findsNothing);
       await close(tester);
     },

@@ -4155,6 +4155,7 @@ class MushafPageContent extends StatelessWidget {
   final Map<String, int> hintedWords;
   final Map<String, int> revealedWordCounts;
   final Map<String, Set<int>> highlightedWordIndices;
+  final (String, int)? activeCursorWord;
 
   const MushafPageContent({
     super.key,
@@ -4170,6 +4171,7 @@ class MushafPageContent extends StatelessWidget {
     this.hintedWords = const {},
     this.revealedWordCounts = const {},
     this.highlightedWordIndices = const {},
+    this.activeCursorWord,
   });
 
   @override
@@ -4204,6 +4206,7 @@ class MushafPageContent extends StatelessWidget {
         hintedWords: hintedWords,
         revealedWordCounts: revealedWordCounts,
         highlightedWordIndices: highlightedWordIndices,
+        activeCursorWord: activeCursorWord,
         onRetry: () {},
       ),
     );
@@ -4246,6 +4249,7 @@ class _MushafTextPage extends StatelessWidget {
   final Map<String, int> hintedWords;
   final Map<String, int> revealedWordCounts;
   final Map<String, Set<int>> highlightedWordIndices;
+  final (String, int)? activeCursorWord;
 
   const _MushafTextPage({
     super.key,
@@ -4266,6 +4270,7 @@ class _MushafTextPage extends StatelessWidget {
     this.hintedWords = const {},
     this.revealedWordCounts = const {},
     this.highlightedWordIndices = const {},
+    this.activeCursorWord,
   });
 
   @override
@@ -4385,8 +4390,9 @@ class _MushafTextPage extends StatelessWidget {
           label: '${l10n.get('quran_page')} ${l10n.digits(pageNumber)}',
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final horizontalInset =
-                  _MushafBorderMarker.width + _MushafBorderMarker.textGap;
+              final horizontalInset = verticalGlyphScale > 1
+                  ? 8.0
+                  : _MushafBorderMarker.width + _MushafBorderMarker.textGap;
               final heightFactor = isLandscape ? 1.8 : 2.0;
               final baseFontSize = isLandscape
                   ? 38.0
@@ -4395,12 +4401,12 @@ class _MushafTextPage extends StatelessWidget {
                   : 19.0;
               final glyphPadding = isLandscape ? 24.0 : 20.0;
               final scrollTopPadding = fitToViewport
-                  ? 2.0
+                  ? (verticalGlyphScale > 1 ? 1.0 : 2.0)
                   : isLandscape
                   ? 10.0
                   : 16.0;
               final scrollBottomPadding = fitToViewport
-                  ? 4.0
+                  ? (verticalGlyphScale > 1 ? 1.0 : 4.0)
                   : isLandscape
                   ? 20.0
                   : 28.0;
@@ -4420,7 +4426,7 @@ class _MushafTextPage extends StatelessWidget {
                 // Amiri's default line box adds leading that shrinks fitted text.
                 // Keep a proportional em box; fixed rows reserve mark clearance.
                 height: fitToViewport && hasPrintedLineLayout
-                    ? 1.8
+                    ? (verticalGlyphScale > 1 ? 1.54 : 1.8)
                     : heightFactor,
                 leadingDistribution: TextLeadingDistribution.even,
                 color: colors.ink,
@@ -4704,26 +4710,49 @@ class _MushafTextPage extends StatelessWidget {
     var pageScale = double.infinity;
     var fittedVerticalGlyphScale = 1.0;
     if (fitHeight != null) {
+      final verticalClearance = verticalGlyphScale > 1 ? 2.0 : 6.0;
+      final widthScales = <double>[];
+      var heightScale = double.infinity;
+      final wordSpacingFactor = verticalGlyphScale > 1 ? 0.16 : 0.35;
       for (final line in collectedLines) {
-        final metrics = _MushafLineMetrics.measure(line, scaledStyle);
-        pageScale = math.min(
-          pageScale,
-          math.min(
-            math.max(1, availableLineWidth - 1) / metrics.width,
-            math.max(1, slotHeight - 6) / metrics.height,
-          ),
+        final metrics = _MushafLineMetrics.measure(
+          line,
+          scaledStyle,
+          wordSpacingFactor: wordSpacingFactor,
         );
+        widthScales.add(
+          math.max(1, availableLineWidth - (verticalGlyphScale > 1 ? 3 : 1)) /
+              metrics.width,
+        );
+        heightScale = math.min(
+          heightScale,
+          math.max(1, slotHeight - verticalClearance) / metrics.height,
+        );
+      }
+      if (widthScales.isNotEmpty) {
+        widthScales.sort();
+        final widthScale = verticalGlyphScale > 1 && widthScales.length >= 4
+            ? math.min(
+                widthScales[widthScales.length ~/ 3],
+                widthScales.first * 1.12,
+              )
+            : widthScales.first;
+        pageScale = math.min(widthScale, heightScale);
       }
     }
     if (fitHeight != null && verticalGlyphScale > 1) {
       fittedVerticalGlyphScale = verticalGlyphScale;
       for (final line in collectedLines) {
-        final metrics = _MushafLineMetrics.measure(line, scaledStyle);
+        final metrics = _MushafLineMetrics.measure(
+          line,
+          scaledStyle,
+          wordSpacingFactor: 0.16,
+        );
         final rowHeight = metrics.height * pageScale;
         if (rowHeight > 0) {
           fittedVerticalGlyphScale = math.min(
             fittedVerticalGlyphScale,
-            slotHeight / rowHeight,
+            math.max(1.0, (slotHeight - 2) / rowHeight),
           );
         }
       }
@@ -4898,12 +4927,19 @@ class _MushafTextPage extends StatelessWidget {
             RegExp(r'\s').hasMatch(
               word.arabic.replaceAll(RegExp(r'[\u06D6-\u06ED]'), '').trim(),
             ));
+    final isActiveCursorWord =
+        hidden &&
+        activeCursorWord != null &&
+        activeCursorWord!.$1 == key &&
+        activeCursorWord!.$2 == wordIndex;
     return TajweedText.buildStyledWordSpans(
       word,
       baseStyle: style,
       highlightEnabled: highlightEnabled,
       maskColor: hidden
-          ? _MushafColors.of(context).gold.withValues(alpha: 0.15)
+          ? (isActiveCursorWord
+                ? const Color(0xFF1D9E75).withValues(alpha: 0.30)
+                : _MushafColors.of(context).gold.withValues(alpha: 0.15))
           : null,
       highlightBackground:
           !hidden && (highlightedWordIndices[key]?.contains(wordIndex) ?? false)
@@ -5489,8 +5525,9 @@ class _MushafLineMetrics {
 
   static _MushafLineMetrics measure(
     _MushafPrintedLineContent content,
-    TextStyle style,
-  ) {
+    TextStyle style, {
+    double wordSpacingFactor = 0.35,
+  }) {
     var width = 0.0;
     var height = 0.0;
     for (final group in content.wordGroups) {
@@ -5509,7 +5546,7 @@ class _MushafLineMetrics {
       textDirection: TextDirection.rtl,
       textScaler: TextScaler.noScaling,
     )..layout();
-    final wordSpacing = space.width * 0.35;
+    final wordSpacing = space.width * wordSpacingFactor;
     space.dispose();
     return _MushafLineMetrics(
       math.max(1, width + wordSpacing * (content.wordGroups.length - 1)),
@@ -5585,8 +5622,31 @@ class _MushafJustifiedLine extends StatelessWidget {
               ],
             ),
         ];
-        final metrics = _MushafLineMetrics.measure(content, style);
-        final lineWidth = centered ? metrics.width : width / scale;
+        final metrics = _MushafLineMetrics.measure(
+          content,
+          style,
+          wordSpacingFactor: verticalGlyphScale > 1 ? 0.16 : 0.35,
+        );
+        final minRequiredWidth =
+            metrics.width -
+            metrics.wordSpacing * (content.wordGroups.length - 1) +
+            content.wordGroups.length;
+        final effectiveScale = verticalGlyphScale > 1
+            ? math.min(
+                scale,
+                math.max(1.0, width - 3) /
+                    math.max(metrics.width, minRequiredWidth),
+              )
+            : scale;
+        final effectiveVerticalScale =
+            verticalGlyphScale > 1 && effectiveScale > 0
+            ? verticalGlyphScale * (scale / effectiveScale)
+            : verticalGlyphScale;
+        final lineWidth = centered
+            ? metrics.width
+            : verticalGlyphScale > 1
+            ? math.max(minRequiredWidth, width / effectiveScale)
+            : width / effectiveScale;
         return Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -5600,10 +5660,10 @@ class _MushafJustifiedLine extends StatelessWidget {
                 textDirection: TextDirection.rtl,
                 excludeSemantics: true,
                 child: SizedBox(
-                  width: lineWidth * scale,
-                  height: metrics.height * scale,
+                  width: lineWidth * effectiveScale,
+                  height: metrics.height * effectiveScale,
                   child: Transform.scale(
-                    scaleY: verticalGlyphScale,
+                    scaleY: effectiveVerticalScale,
                     child: FittedBox(
                       child: SizedBox(
                         width: lineWidth,

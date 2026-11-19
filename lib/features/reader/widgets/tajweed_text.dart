@@ -400,17 +400,24 @@ class TajweedText extends StatelessWidget {
 
     final spans = <InlineSpan>[];
     for (final run in splitIntoStyledRuns(normalizedText)) {
+      final isWaqf = run.markerRule == TajweedRule.waqf;
+      final isHiddenMarker = maskColor != null && isWaqf;
       spans.add(
         TextSpan(
           text: run.text,
-          style: run.isMarker
+          style: isHiddenMarker
+              ? bodyStyle
+              : run.isMarker
               ? _quranMarkerStyleFrom(
                   style,
                   markerRule: run.markerRule,
                   isSajdah: run.markerRule == TajweedRule.sajdah,
                 )
               : bodyStyle,
-          semanticsLabel: maskColor != null && !run.isMarker ? '' : null,
+          semanticsLabel:
+              maskColor != null && (!run.isMarker || isHiddenMarker)
+              ? ''
+              : null,
           recognizer: onTap != null
               ? (TapGestureRecognizer()..onTap = onTap)
               : null,
