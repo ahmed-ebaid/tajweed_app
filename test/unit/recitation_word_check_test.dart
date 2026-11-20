@@ -2671,4 +2671,161 @@ void main() {
       );
     },
   );
+
+  test(
+    'strictly enforces harakat on vocalized ASR transcripts (blocks kasra/damma/fatha swaps)',
+    () {
+      const fatihah2 = 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ';
+      const fatihah4 = 'مَالِكِ يَوْمِ الدِّينِ';
+      const fatihah7 =
+          'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ';
+      const rahman1 = 'الرَّحْمَٰنُ';
+      const rahman2 = 'عَلَّمَ الْقُرْآنَ';
+      const rahman13 = 'فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ';
+
+      // Correct vocalized transcripts advance normally.
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [fatihah2],
+          expectedVerseKeys: ['1:2'],
+          spokenText: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+          allowWrittenOpenings: true,
+        ),
+        [4],
+      );
+
+      // Saying fatha instead of damma/kasra on Al-Fatihah 1:2 ('الْحَمْدَ لِلَّهِ رَبَّ')
+      // must stop before the first wrong harakah word.
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [fatihah2],
+          expectedVerseKeys: ['1:2'],
+          spokenText: 'الْحَمْدَ لِلَّهِ رَبَّ الْعَالَمِينَ',
+          allowWrittenOpenings: true,
+        ),
+        [0],
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [fatihah2],
+          expectedVerseKeys: ['1:2'],
+          spokenText: 'الْحَمْدُ لِلَّهِ رَبَّ الْعَالَمِينَ',
+          allowWrittenOpenings: true,
+        ),
+        [2],
+      );
+
+      // Saying fatha instead of kasra on 1:4 ('مَالِكَ يَوْمَ الدِّينِ').
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [fatihah4],
+          expectedVerseKeys: ['1:4'],
+          spokenText: 'مَالِكَ يَوْمَ الدِّينِ',
+          allowWrittenOpenings: true,
+        ),
+        [0],
+      );
+
+      // Saying kasra or damma instead of fatha on 'أَنْعَمْتَ' in 1:7.
+      for (final wrongAnamta in const ['أَنْعَمْتِ', 'أَنْعَمْتُ']) {
+        final joined = comparison.joinRecitationSegment(
+          retainedPrefix: 'صراط الذين',
+          spokenText: 'الَّذِينَ $wrongAnamta عَلَيْهِمْ',
+          expectedAyahs: [fatihah7],
+          expectedVerseKeys: ['1:7'],
+          allowWrittenOpenings: true,
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [fatihah7],
+            expectedVerseKeys: ['1:7'],
+            spokenText: joined,
+            allowWrittenOpenings: true,
+          ),
+          [2],
+          reason: 'Should block wrong harakah on $wrongAnamta',
+        );
+      }
+
+      // Saying kasra instead of fatha on 55:2 ('عَلَّمِ الْقُرْآنِ').
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman1, rahman2],
+          expectedVerseKeys: ['55:1', '55:2'],
+          spokenText: 'الرَّحْمَنُ عَلَّمِ الْقُرْآنِ',
+          allowWrittenOpenings: true,
+        ),
+        [1, 0],
+      );
+
+      // Saying kasra instead of damma on 'تُكَذِّبَانِ' ('تِكَذِّبَانِ') or
+      // 'رَبِّكُمَا' ('رَبِّكِ مَا').
+      final joinedWrongTukadhiban = comparison.joinRecitationSegment(
+        retainedPrefix: 'فبأي آلاء ربكما',
+        spokenText: 'رَبِّكُمَا تِكَذِّبَانِ',
+        expectedAyahs: [rahman13],
+        expectedVerseKeys: ['55:13'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman13],
+          expectedVerseKeys: ['55:13'],
+          spokenText: joinedWrongTukadhiban,
+          allowWrittenOpenings: true,
+        ),
+        [3],
+      );
+
+      final joinedWrongRabbikuma = comparison.joinRecitationSegment(
+        retainedPrefix: 'فبأي آلاء',
+        spokenText: 'آلَاءِ رَبِّكِ مَا تُكَذِّبَانِ',
+        expectedAyahs: [rahman13],
+        expectedVerseKeys: ['55:13'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman13],
+          expectedVerseKeys: ['55:13'],
+          spokenText: joinedWrongRabbikuma,
+          allowWrittenOpenings: true,
+        ),
+        [2],
+      );
+    },
+  );
+
+  test(
+    'advances 55:27 ذو الجلال والإكرام when madd waw elides into ذلجلال or merges at window start',
+    () {
+      const rahman27 = 'وَيَبْقَىٰ وَجْهُ رَبِّكَ ذُو الْجَلَالِ وَالْإِكْرَامِ';
+      const rahman28 = 'فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ';
+
+      for (final window in const [
+        'ذُلْجَلَالِ وَالْإِكْرَامِ',
+        'لِكَذُو الْجَلَالِ وَالْإِكْرَامِ',
+        'كَذُو الْجَلَالِ وَالْإِكْرَامِ',
+        'الْجَلَالِ وَالْإِكْرَامِ',
+      ]) {
+        final joined = comparison.joinRecitationSegment(
+          retainedPrefix: 'ويبقى وجه ربك ذو',
+          spokenText: window,
+          expectedAyahs: [rahman27, rahman28],
+          expectedVerseKeys: ['55:27', '55:28'],
+          allowWrittenOpenings: true,
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [rahman27, rahman28],
+            expectedVerseKeys: ['55:27', '55:28'],
+            spokenText: joined,
+            allowWrittenOpenings: true,
+          ),
+          [6, 0],
+          reason: 'Failed to complete 55:27 on window: $window',
+        );
+      }
+    },
+  );
 }

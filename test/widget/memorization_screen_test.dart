@@ -4267,4 +4267,45 @@ void main() {
       expect(page().revealedWordCounts['55:30'], 4);
     },
   );
+
+  testWidgets(
+    'strictly blocks wrong harakah (kasra/fatha/damma swap) even after carryover stripping',
+    (tester) async {
+      final speech = _FakeWindowedSpeech();
+      final fatihahAyahs = [
+        _ayah(1, 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', surahNumber: 1, pageNumber: 1),
+        _ayah(2, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ', surahNumber: 1, pageNumber: 1),
+      ];
+      await _open(
+        tester,
+        speech,
+        ayahs: fatihahAyahs,
+        continuous: true,
+        localQuranLab: true,
+      );
+
+      MushafPageContent page() =>
+          tester.widget<MushafPageContent>(find.byType(MushafPageContent));
+
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+
+      speech.windowStartSeconds = 0.0;
+      speech.result!('بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ', false);
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['1:1'], 4);
+
+      // Next window carries over "الرَّحْمَنِ الرَّحِيمِ" from 1:1 and has fatha
+      // instead of kasra on "رَبَّ" in 1:2: must reveal only 2 words of 1:2
+      // ("الْحَمْدُ لِلَّهِ") and stop at "رَبِّ".
+      speech.windowStartSeconds = 2.0;
+      speech.result!(
+        'الرَّحْمَنِ الرَّحِيمِ الْحَمْدُ لِلَّهِ رَبَّ الْعَالَمِينَ',
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['1:2'], 2);
+      expect(page().activeCursorWord, ('1:2', 2));
+    },
+  );
 }

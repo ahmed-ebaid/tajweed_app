@@ -13,6 +13,9 @@ class SpeechComparisonService {
   /// Recitation words without Quranic pause marks or Arabic diacritics.
   List<String> recitationWords(String text) => _recitationWords(text);
 
+  /// Recitation words preserving Arabic vowel diacritics (harakat).
+  List<String> vocalizedWords(String text) => _vocalizedWords(text);
+
   /// Join a new recording to an already matched prefix. Only an exact overlap
   /// with the end of that prefix may be repeated; unmatched words stay intact.
   String joinRecitationSegment({
@@ -169,7 +172,9 @@ class SpeechComparisonService {
           start == 1 &&
           remainingInCurrentAyah == 2 &&
           retained.length >= 2 &&
-          retained.last == 'آلاء' &&
+          (retained.last == 'آلاء' ||
+              (retained.last == 'ذو' &&
+                  expectedSeq[retained.length].first == 'الجلال')) &&
           incoming.length >= 3 &&
           expectedSeq[retained.length].contains(incoming[1]) &&
           (expectedSeq[retained.length + 1].contains(incoming[2]) ||
@@ -359,7 +364,12 @@ class SpeechComparisonService {
             incoming,
             expectedAyahs,
             expectedVerseKeys,
-            rawIncoming: _recitationWords(spokenText),
+            rawIncoming: _applyHarakahConflicts(
+              _recitationWords(spokenText),
+              _vocalizedWords(spokenText),
+              expectedAyahs,
+              expectedVerseKeys,
+            ),
           )) {
         return retained.join(' ');
       }
@@ -846,7 +856,9 @@ class SpeechComparisonService {
               start == 1 &&
               remainingInCurrentAyah == 2 &&
               retained.length >= 2 &&
-              retained.last == 'آلاء' &&
+              (retained.last == 'آلاء' ||
+                  (retained.last == 'ذو' &&
+                      expectedSeq[retained.length].first == 'الجلال')) &&
               incoming.length >= 3 &&
               expectedSeq[retained.length].contains(incoming[1]) &&
               (expectedSeq[retained.length + 1].contains(incoming[2]) ||
@@ -1254,7 +1266,12 @@ class SpeechComparisonService {
     if (expectedAyahs.length != expectedVerseKeys.length) {
       throw ArgumentError('Verse keys must correspond to every expected ayah');
     }
-    final spoken = _recitationWords(spokenText);
+    final spoken = _applyHarakahConflicts(
+      _recitationWords(spokenText),
+      _vocalizedWords(spokenText),
+      expectedAyahs,
+      expectedVerseKeys,
+    );
     final evidence = <bool>[];
     var consumed = 0;
     for (var ayah = 0; ayah < expectedAyahs.length; ayah++) {
@@ -1458,7 +1475,14 @@ class SpeechComparisonService {
     bool trustedPrefix = false,
     bool allowDisplayOnlyCorrections = false,
   }) {
-    final rawSpoken = _recitationWords(text);
+    final rawSpoken = trustedPrefix
+        ? _recitationWords(text)
+        : _applyHarakahConflicts(
+            _recitationWords(text),
+            _vocalizedWords(text),
+            expectedAyahs,
+            keys,
+          );
     if (!allowWrittenOpenings || keys == null) return rawSpoken;
     final spoken = <String>[];
     for (var i = 0; i < rawSpoken.length; i++) {
@@ -3212,6 +3236,54 @@ class SpeechComparisonService {
                   (!quranVocabulary.contains(spoken[offset]) &&
                       _isOrthographicNearMiss('تكذبان', spoken[offset])))) {
             expanded.add('تكذبان');
+            offset++;
+            word++;
+            continue;
+          }
+          if (expected[word].first == 'ذو' &&
+              (hasLeft || hasRight) &&
+              const {
+                'ذل',
+                'ذلب',
+                'ذرب',
+                'لذو',
+                'كذو',
+                'لكذو',
+                'بوذو',
+                'ذا',
+                'ذي',
+              }.contains(spoken[offset])) {
+            expanded.add('ذو');
+            offset++;
+            word++;
+            continue;
+          }
+          if (expected[word].first == 'ذو' &&
+              word + 1 < expected.length &&
+              expected[word + 1].first == 'الجلال' &&
+              const {
+                'ذوالجلال',
+                'ذلجلال',
+                'ذوالجلالي',
+                'لذوالجلال',
+                'كذوالجلال',
+                'لكذوالجلال',
+              }.contains(spoken[offset])) {
+            expanded.addAll(['ذو', 'الجلال']);
+            offset++;
+            word += 2;
+            continue;
+          }
+          if (expected[word].first == 'والإكرام' &&
+              hasLeft &&
+              const {
+                'الإكرام',
+                'والإكرا',
+                'والإكر',
+                'ولإكرام',
+                'والأكرام',
+              }.contains(spoken[offset])) {
+            expanded.add('والإكرام');
             offset++;
             word++;
             continue;
@@ -5599,6 +5671,7 @@ class SpeechComparisonService {
       _foldNearMiss(word.replaceAll('ى', 'ا'));
 
   bool _isThreeLetterFlankedNearMiss(String expectedWord, String spokenWord) {
+    if (_harakat.hasMatch(spokenWord)) return false;
     final a = _foldAlifMaqsuraToAlif(expectedWord);
     final b = _foldAlifMaqsuraToAlif(spokenWord);
     if (a.length != 3 || b.length != 3) return false;
@@ -5613,6 +5686,7 @@ class SpeechComparisonService {
   }
 
   bool _isOrthographicNearMiss(String expectedWord, String spokenWord) {
+    if (_harakat.hasMatch(spokenWord)) return false;
     if (expectedWord.endsWith('ى') &&
         (spokenWord.endsWith('ي') ||
             spokenWord.endsWith('يت') ||
@@ -6721,6 +6795,252 @@ class SpeechComparisonService {
       }
     }
     return false;
+  }
+
+  static final RegExp _harakat = RegExp(r'[\u064B-\u065F\u0670]');
+  static final RegExp _shortVowelMarks = RegExp(
+    r'[\u064B-\u0650\u0670]',
+  );
+
+  List<String> _vocalizedWords(String text) {
+    final cleaned = text
+        .replaceAll(RegExp(r'[\u0610-\u061A\u06D6-\u06ED\u0640]'), '')
+        .replaceAll('\u0671', '\u0627')
+        .replaceAll(RegExp(r'[\u200B-\u200F\u202A-\u202E\u2060-\u2069]'), '')
+        .replaceAll(RegExp(r'[.,!?:;،؛؟]'), ' ')
+        .trim();
+    if (cleaned.isEmpty) return [];
+    return [
+      for (final token in cleaned.split(RegExp(r'\s+')))
+        if (token.replaceAll(_harakat, '').isNotEmpty) token,
+    ];
+  }
+
+  List<(String, String?)> _extractLetterVowels(String word) {
+    final result = <(String, String?)>[];
+    String? curChar;
+    String? curVowel;
+    for (var i = 0; i < word.length; i++) {
+      final ch = word[i];
+      if (ch == '\u064E' || ch == '\u064B' || ch == '\u0670') {
+        curVowel = 'F';
+      } else if (ch == '\u0650' || ch == '\u064D') {
+        curVowel = 'K';
+      } else if (ch == '\u064F' || ch == '\u064C') {
+        curVowel = 'D';
+      } else if (ch == '\u0652') {
+        curVowel ??= 'S';
+      } else {
+        final code = ch.codeUnitAt(0);
+        if ((code >= 0x0621 && code <= 0x064A) || ch == 'ٱ' || ch == 'ى') {
+          if (curChar != null) {
+            result.add((curChar, curVowel));
+          }
+          var norm = ch;
+          if (ch == 'أ' || ch == 'إ' || ch == 'آ' || ch == 'ٱ') {
+            norm = 'ا';
+          } else if (ch == 'ؤ') {
+            norm = 'و';
+          } else if (ch == 'ئ') {
+            norm = 'ي';
+          } else if (ch == 'ة') {
+            norm = 'ه';
+          }
+          curChar = norm;
+          curVowel = null;
+        }
+      }
+    }
+    if (curChar != null) {
+      result.add((curChar, curVowel));
+    }
+    return result;
+  }
+
+  List<(String, String?)> _dropMedialAlifs(List<(String, String?)> letters) {
+    final out = <(String, String?)>[];
+    for (var idx = 0; idx < letters.length; idx++) {
+      final isLast = idx == letters.length - 1;
+      final (ch, v) = letters[idx];
+      if (!isLast &&
+          (ch == 'ا' || ch == 'ى') &&
+          v == null &&
+          out.isNotEmpty &&
+          out.last.$2 == 'F') {
+        continue;
+      }
+      out.add((ch, v));
+    }
+    return out;
+  }
+
+  bool _vowelsConflict(String? ev, String? fv) =>
+      (ev == 'F' || ev == 'K' || ev == 'D') &&
+      (fv == 'F' || fv == 'K' || fv == 'D') &&
+      ev != fv;
+
+  bool _hasHarakahConflict(String expectedVocalized, String spokenVocalized) {
+    if (!_shortVowelMarks.hasMatch(spokenVocalized) ||
+        !_shortVowelMarks.hasMatch(expectedVocalized)) {
+      return false;
+    }
+    final el = _dropMedialAlifs(_extractLetterVowels(expectedVocalized));
+    final fl = _dropMedialAlifs(_extractLetterVowels(spokenVocalized));
+    if (el.isEmpty || el.length != fl.length) return false;
+    for (var i = 0; i < el.length; i++) {
+      if (el[i].$1 != fl[i].$1) return false;
+    }
+    final skelE = [for (final (c, _) in el) c].join();
+    if (skelE == 'ضعف' || skelE == 'ضعفا') return false;
+
+    for (var i = 0; i < el.length; i++) {
+      if (_vowelsConflict(el[i].$2, fl[i].$2)) {
+        // Guard against Whisper labial vowel harmony before attached '-هُم'
+        // (e.g. 'أَطْعَمَهُم' transcribed as 'أَطْعَمُهُمْ').
+        if (i + 2 == el.length - 1 &&
+            el[i + 1].$1 == 'ه' &&
+            el[i + 2].$1 == 'م' &&
+            el[i + 1].$2 == 'D' &&
+            fl[i].$2 == 'D') {
+          continue;
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<String> _applyHarakahConflicts(
+    List<String> rawSpoken,
+    List<String> rawVocalized,
+    List<String> expectedAyahs,
+    List<String>? keys,
+  ) {
+    if (rawSpoken.isEmpty ||
+        rawSpoken.length != rawVocalized.length ||
+        expectedAyahs.isEmpty ||
+        !rawVocalized.any(_shortVowelMarks.hasMatch)) {
+      return rawSpoken;
+    }
+    final entries = <({
+      String written,
+      String folded,
+      String vocalized,
+      String? prevFolded,
+      String? nextFolded,
+    })>[];
+    final allWritten = <String>[];
+    final allVocalized = <String>[];
+    for (final ayahText in expectedAyahs) {
+      final wWords = _recitationWords(ayahText);
+      final vWords = _vocalizedWords(ayahText);
+      if (wWords.length != vWords.length) continue;
+      allWritten.addAll(wWords);
+      allVocalized.addAll(vWords);
+    }
+    if (allWritten.isEmpty) return rawSpoken;
+    for (var idx = 0; idx < allWritten.length; idx++) {
+      entries.add((
+        written: allWritten[idx],
+        folded: _foldAlifMaqsuraToAlif(allWritten[idx]),
+        vocalized: allVocalized[idx],
+        prevFolded: idx > 0
+            ? _foldAlifMaqsuraToAlif(allWritten[idx - 1])
+            : null,
+        nextFolded: idx + 1 < allWritten.length
+            ? _foldAlifMaqsuraToAlif(allWritten[idx + 1])
+            : null,
+      ));
+    }
+
+    final result = List<String>.of(rawSpoken);
+    for (var i = 0; i < rawSpoken.length; i++) {
+      final vToken = rawVocalized[i];
+      if (!_shortVowelMarks.hasMatch(vToken)) continue;
+      final sFolded = _foldAlifMaqsuraToAlif(rawSpoken[i]);
+      final prevSpokenFolded = i > 0
+          ? _foldAlifMaqsuraToAlif(rawSpoken[i - 1])
+          : null;
+      final nextSpokenFolded = i + 1 < rawSpoken.length
+          ? _foldAlifMaqsuraToAlif(rawSpoken[i + 1])
+          : null;
+
+      // Check 2-to-1 split word merges first (e.g. 'رَبِّكِ' + 'مَا' -> 'ربكما')
+      if (i + 1 < rawSpoken.length) {
+        final mergedSpoken = '${rawSpoken[i]}${rawSpoken[i + 1]}';
+        final mergedFolded = _foldAlifMaqsuraToAlif(mergedSpoken);
+        final isRabbiKumaSplit =
+            (rawSpoken[i] == 'رب' ||
+                rawSpoken[i] == 'ربي' ||
+                rawSpoken[i] == 'ربك') &&
+            (rawSpoken[i + 1] == 'كما' ||
+                rawSpoken[i + 1] == 'كم' ||
+                rawSpoken[i + 1] == 'ما');
+        final splitMatches = [
+          for (final e in entries)
+            if (e.folded == mergedFolded ||
+                (isRabbiKumaSplit && e.folded == 'ربكما'))
+              e,
+        ];
+        if (splitMatches.isNotEmpty) {
+          final mergedVocalized = '${rawVocalized[i]}${rawVocalized[i + 1]}';
+          if (splitMatches.every(
+            (e) => _hasHarakahConflict(e.vocalized, mergedVocalized),
+          )) {
+            result[i] = vToken;
+            continue;
+          }
+        }
+      }
+
+      var candidates = [
+        for (final e in entries)
+          if (e.folded == sFolded) e,
+      ];
+      if (candidates.length > 1 &&
+          (prevSpokenFolded != null || nextSpokenFolded != null)) {
+        final neighborMatched = [
+          for (final e in candidates)
+            if ((prevSpokenFolded != null &&
+                    e.prevFolded == prevSpokenFolded) ||
+                (nextSpokenFolded != null && e.nextFolded == nextSpokenFolded))
+              e,
+        ];
+        if (neighborMatched.isNotEmpty) {
+          candidates = neighborMatched;
+        }
+      }
+      if (candidates.isEmpty && sFolded.length >= 3) {
+        candidates = [
+          for (final e in entries)
+            if (_isOrthographicNearMiss(e.written, rawSpoken[i]) ||
+                _isThreeLetterFlankedNearMiss(e.written, rawSpoken[i]) ||
+                (e.folded.length == sFolded.length &&
+                    _singleDiffOrLess(e.folded, sFolded)) ||
+                (e.folded == 'ربكما' && e.folded.startsWith(sFolded)) ||
+                (e.folded == 'تكذبان' &&
+                    (sFolded.startsWith('تكذب') || sFolded.endsWith('كذبان'))))
+              e,
+        ];
+      }
+      if (candidates.isNotEmpty &&
+          candidates.every((e) => _hasHarakahConflict(e.vocalized, vToken))) {
+        result[i] = vToken;
+      }
+    }
+    return result;
+  }
+
+  bool _singleDiffOrLess(String a, String b) {
+    if (a.length != b.length) return false;
+    var diffs = 0;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) {
+        diffs++;
+        if (diffs > 1) return false;
+      }
+    }
+    return true;
   }
 
   List<String> _recitationWords(String text) {
