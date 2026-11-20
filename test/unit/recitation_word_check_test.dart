@@ -2527,6 +2527,112 @@ void main() {
             .completedAyahs,
         0,
       );
+
+      // Surah Ar-Rahman (55:28-55:34): repeated refrain 'فبأي آلاء ربكما تكذبان'
+      // and Ayah 55:33 ('السماوات والأرض') sliding-window edge cases.
+      const rahman28 = 'فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ';
+      const rahman29 =
+          'يَسْأَلُهُ مَنْ فِي السَّمَاوَاتِ وَالْأَرْضِ كُلَّ يَوْمٍ هُوَ فِي شَأْنٍ';
+      const rahman30 = 'فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ';
+      const rahman33 =
+          'يَا مَعْشَرَ الْجِنِّ وَالْإِنْسِ إِنِ اسْتَطَعْتُمْ أَنْ تَنْفُذُوا مِنْ أَقْطَارِ السَّمَاوَاتِ وَالْأَرْضِ فَانْفُذُوا لَا تَنْفُذُونَ إِلَّا بِسُلْطَانٍ';
+      const rahman34 = 'فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ';
+
+      // 1) When 'فبأي آلاء' is retained (2 words left in the refrain) and the
+      // 3s window contains 'ربكما' plus a partial/near-miss 'تكذبا' or 'تكذبون',
+      // contextual normalization completes all 4 words instead of injecting 'زئد'
+      // before 'ربكما'.
+      final joinedRefrainNearMiss = comparison.joinRecitationSegment(
+        retainedPrefix: 'فبأي آلاء',
+        spokenText: 'ربكما تكذبا',
+        expectedAyahs: [rahman28, rahman29, rahman30],
+        expectedVerseKeys: ['55:28', '55:29', '55:30'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman28, rahman29, rahman30],
+          expectedVerseKeys: ['55:28', '55:29', '55:30'],
+          spokenText: joinedRefrainNearMiss,
+          allowWrittenOpenings: true,
+        ),
+        [4, 0],
+      );
+
+      // 2) When the 3s window starts mid-madd on 'آلَآءِ' and outputs a clipped
+      // fragment ('لا ربكما تكذبان' or 'ألا ربكما تكذبان'), the refrain still
+      // completes cleanly in multi-ayah mode.
+      final joinedRefrainClippedMadd = comparison.joinRecitationSegment(
+        retainedPrefix: 'فبأي آلاء',
+        spokenText: 'لا ربكما تكذبان',
+        expectedAyahs: [rahman28, rahman29, rahman30],
+        expectedVerseKeys: ['55:28', '55:29', '55:30'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman28, rahman29, rahman30],
+          expectedVerseKeys: ['55:28', '55:29', '55:30'],
+          spokenText: joinedRefrainClippedMadd,
+          allowWrittenOpenings: true,
+        ),
+        [4, 0],
+      );
+
+      // 3) When the window clips 'فبأي' to a boundary fragment ('أبي آلاء ربكما'),
+      // maxBoundarySkip anchors on 'آلاء' and reveals 'ربكما' (word 3).
+      final joinedBoundarySkip = comparison.joinRecitationSegment(
+        retainedPrefix: 'فبأي آلاء',
+        spokenText: 'أبي آلاء ربكما',
+        expectedAyahs: [rahman28, rahman29, rahman30],
+        expectedVerseKeys: ['55:28', '55:29', '55:30'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman28, rahman29, rahman30],
+          expectedVerseKeys: ['55:28', '55:29', '55:30'],
+          spokenText: joinedBoundarySkip,
+          allowWrittenOpenings: true,
+        ),
+        [3],
+      );
+
+      // 4) Ayah 55:33: Whisper window variants around 'أن تنفذوا من أقطار السماوات والأرض فانفذوا'
+      // (including 'تنفذون', 'وطار السماوات والأرض فانفذوا', 'وآوات والأرض فانفذوا').
+      final joinedRahman33 = comparison.joinRecitationSegment(
+        retainedPrefix: 'يا معشر الجن والإنس إن استطعتم أن',
+        spokenText: 'أن تنفذون من أقطر السماء والأرض فانفذوا',
+        expectedAyahs: [rahman33, rahman34],
+        expectedVerseKeys: ['55:33', '55:34'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman33, rahman34],
+          expectedVerseKeys: ['55:33', '55:34'],
+          spokenText: joinedRahman33,
+          allowWrittenOpenings: true,
+        ),
+        [13],
+      );
+      final joinedRahman33Clipped = comparison.joinRecitationSegment(
+        retainedPrefix:
+            'يا معشر الجن والإنس إن استطعتم أن تنفذوا من أقطار السماوات',
+        spokenText: 'وآوات والأرض فانفذوا لا تنفذون إلا بسلطان',
+        expectedAyahs: [rahman33, rahman34],
+        expectedVerseKeys: ['55:33', '55:34'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [rahman33, rahman34],
+          expectedVerseKeys: ['55:33', '55:34'],
+          spokenText: joinedRahman33Clipped,
+          allowWrittenOpenings: true,
+        ),
+        [17, 0],
+      );
     },
   );
 }

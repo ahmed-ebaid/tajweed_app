@@ -845,6 +845,24 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               final value = map[activeKey] ?? 0;
               if (value > activeRetained) activeRetained = value;
             }
+            if (activeRetained > 0 &&
+                expected.take(activeOffset).contains(activeExpected)) {
+              final directActiveCount = _comparison
+                  .matchingPrefixWordCounts(
+                    expectedAyahs: [activeExpected],
+                    expectedVerseKeys: [activeKey],
+                    spokenText: text,
+                    allowWrittenOpenings: true,
+                  )
+                  .first;
+              if (directActiveCount > activeRetained ||
+                  (directActiveCount > 0 &&
+                      directActiveCount == activeRetained &&
+                      _comparison.recitationWords(text).length ==
+                          directActiveCount)) {
+                return false;
+              }
+            }
             if (activeRetained > 0) {
               final continued = _comparison.joinRecitationSegment(
                 retainedPrefix: activeWords.take(activeRetained).join(' '),
@@ -1619,15 +1637,59 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         }
       }
     }
-    return _comparison.joinRecitationSegment(
+    final expectedAll = [for (final ayah in ayahs) ayah.imlaei ?? ''];
+    final keysAll = [
+      for (final ayah in ayahs) '${ayah.surahNumber}:${ayah.ayahNumber}',
+    ];
+    final fullJoined = _comparison.joinRecitationSegment(
       retainedPrefix: retainedPrefixText,
       spokenText: effectiveSpokenText,
-      expectedAyahs: [for (final ayah in ayahs) ayah.imlaei ?? ''],
-      expectedVerseKeys: [
-        for (final ayah in ayahs) '${ayah.surahNumber}:${ayah.ayahNumber}',
-      ],
+      expectedAyahs: expectedAll,
+      expectedVerseKeys: keysAll,
       allowWrittenOpenings: true,
     );
+    if (activeOffset > 0 &&
+        activeOffset < ayahs.length &&
+        expectedAll.take(activeOffset).contains(expectedAll[activeOffset])) {
+      final completedBeforeActive = <String>[
+        for (final ayah in ayahs.take(activeOffset))
+          ..._comparison.recitationWords(ayah.imlaei ?? ''),
+      ];
+      final activeRetainedPrefix = retained
+          .skip(completedBeforeActive.length)
+          .join(' ');
+      final activeExpectedSlice = expectedAll.skip(activeOffset).toList();
+      final activeKeysSlice = keysAll.skip(activeOffset).toList();
+      final activeJoined = _comparison.joinRecitationSegment(
+        retainedPrefix: activeRetainedPrefix,
+        spokenText: effectiveSpokenText,
+        expectedAyahs: activeExpectedSlice,
+        expectedVerseKeys: activeKeysSlice,
+        allowWrittenOpenings: true,
+      );
+      final fullCounts = _comparison.matchingPrefixWordCounts(
+        expectedAyahs: expectedAll,
+        expectedVerseKeys: keysAll,
+        spokenText: fullJoined,
+        allowWrittenOpenings: true,
+      );
+      final activeSliceCounts = _comparison.matchingPrefixWordCounts(
+        expectedAyahs: activeExpectedSlice,
+        expectedVerseKeys: activeKeysSlice,
+        spokenText: activeJoined,
+        allowWrittenOpenings: true,
+      );
+      final fullAfterActive = fullCounts
+          .skip(activeOffset)
+          .fold(0, (a, b) => a + b);
+      final activeSliceTotal = activeSliceCounts.fold(0, (a, b) => a + b);
+      if (activeSliceTotal > fullAfterActive) {
+        return [...completedBeforeActive, activeJoined]
+            .where((part) => part.isNotEmpty)
+            .join(' ');
+      }
+    }
+    return fullJoined;
   }
 
   RecitationSequenceCheck _sequenceCheck(int startIndex, String text) =>

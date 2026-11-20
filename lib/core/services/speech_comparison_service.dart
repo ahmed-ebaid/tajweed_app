@@ -134,9 +134,11 @@ class SpeechComparisonService {
         return 1;
       }
       if (remainingInCurrentAyah == 2 &&
-          start >= 1 &&
+          !endsAtAyahBoundary &&
           retained.isNotEmpty &&
-          _foldNearMiss(incoming[start - 1]) == _foldNearMiss(retained.last)) {
+          (start == 0 ||
+              _foldNearMiss(incoming[start - 1]) ==
+                  _foldNearMiss(retained.last))) {
         return 2;
       }
       return remaining < 3 ? remaining : 3;
@@ -163,8 +165,29 @@ class SpeechComparisonService {
     }
     for (var start = 0; start < incoming.length; start++) {
       if (anchoredAtStart && start > 0) break;
-      if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
-      final confirmation = confirmationFor(start);
+      final isClippedMaddBeforeFinalRefrain =
+          start == 1 &&
+          remainingInCurrentAyah == 2 &&
+          retained.length >= 2 &&
+          retained.last == 'آلاء' &&
+          incoming.length >= 3 &&
+          expectedSeq[retained.length].contains(incoming[1]) &&
+          (expectedSeq[retained.length + 1].contains(incoming[2]) ||
+              _foldNearMiss(
+                expectedSeq[retained.length + 1].first,
+              ).startsWith(_foldNearMiss(incoming[2])) ||
+              (!quranVocabulary.contains(incoming[2]) &&
+                  _isOrthographicNearMiss(
+                    expectedSeq[retained.length + 1].first,
+                    incoming[2],
+                  )));
+      if (!_repeatsRetainedSuffix(retained, incoming, start) &&
+          !isClippedMaddBeforeFinalRefrain) {
+        continue;
+      }
+      final confirmation = isClippedMaddBeforeFinalRefrain
+          ? 2
+          : confirmationFor(start);
       if (start == 1 && retained.length >= 2 && incoming.length >= 3) {
         var matchesEarlierInRetained = false;
         for (var j = 0; j + 1 < retained.length - 1; j++) {
@@ -256,6 +279,9 @@ class SpeechComparisonService {
           if (matchesNormalized) {
             return normalized.join(' ');
           }
+        }
+        if (isClippedMaddBeforeFinalRefrain) {
+          return [...retained, expectedSeq[retained.length].first].join(' ');
         }
       }
     }
@@ -566,7 +592,6 @@ class SpeechComparisonService {
       if (allowWrittenOpenings && incoming.length >= 2 && retained.isNotEmpty) {
         final maxBoundarySkip = incoming.length - 1 < 6 ? incoming.length - 1 : 6;
         for (var skip = 1; skip <= maxBoundarySkip; skip++) {
-          if (!_repeatsRetainedSuffix(retained, incoming, skip)) continue;
           final skipped = incoming.skip(skip).toList();
           final maxSkippedOverlap = retained.length < skipped.length
               ? retained.length
@@ -577,6 +602,17 @@ class SpeechComparisonService {
             overlap >= minOverlap;
             overlap--
           ) {
+            final retainedBeforeOverlap = retained
+                .take(retained.length - overlap)
+                .toList();
+            if (retainedBeforeOverlap.isNotEmpty &&
+                !_repeatsRetainedSuffix(
+                  retainedBeforeOverlap,
+                  incoming,
+                  skip,
+                )) {
+              continue;
+            }
             if (overlap == 1 &&
                 skipped.length > 1 &&
                 retained.length < expectedSeq.length &&
@@ -757,7 +793,26 @@ class SpeechComparisonService {
           start < incoming.length;
           start++
         ) {
-          if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
+          final isClippedMaddBeforeFinalRefrain =
+              start == 1 &&
+              remainingInCurrentAyah == 2 &&
+              retained.length >= 2 &&
+              retained.last == 'آلاء' &&
+              incoming.length >= 3 &&
+              expectedSeq[retained.length].contains(incoming[1]) &&
+              (expectedSeq[retained.length + 1].contains(incoming[2]) ||
+                  _foldNearMiss(
+                    expectedSeq[retained.length + 1].first,
+                  ).startsWith(_foldNearMiss(incoming[2])) ||
+                  (!quranVocabulary.contains(incoming[2]) &&
+                      _isOrthographicNearMiss(
+                        expectedSeq[retained.length + 1].first,
+                        incoming[2],
+                      )));
+          if (!_repeatsRetainedSuffix(retained, incoming, start) &&
+              !isClippedMaddBeforeFinalRefrain) {
+            continue;
+          }
           if (start == 1 && retained.length >= 2 && incoming.length >= 3) {
             var matchesEarlierInRetained = false;
             for (var j = 0; j + 1 < retained.length - 1; j++) {
@@ -800,7 +855,9 @@ class SpeechComparisonService {
             }
             if (matchesEarlierInRetained) continue;
           }
-          final confirmationWords = confirmationWordsFor(start);
+          final confirmationWords = isClippedMaddBeforeFinalRefrain
+              ? 2
+              : confirmationWordsFor(start);
           if (start + confirmationWords <= incoming.length) {
             var matchesCursor = true;
             for (var i = 0; i < confirmationWords; i++) {
@@ -839,6 +896,9 @@ class SpeechComparisonService {
             if (matchesNormalized) {
               return normalized.join(' ');
             }
+          }
+          if (isClippedMaddBeforeFinalRefrain) {
+            return [...retained, expectedSeq[retained.length].first].join(' ');
           }
         }
       }
@@ -925,6 +985,25 @@ class SpeechComparisonService {
         remainingInCurrentAyah >= 2 &&
         expectedSeq[retained.length].contains(incoming.first) &&
         !expectedSeq[retained.length + 1].contains(incoming[1])) {
+      final contextual = _spokenWords(
+        [...retained, ...incoming].join(' '),
+        expectedAyahs,
+        expectedVerseKeys,
+        allowWrittenOpenings,
+      );
+      if (contextual.length >= retained.length + 2 &&
+          expectedSeq[retained.length].contains(contextual[retained.length]) &&
+          expectedSeq[retained.length + 1].contains(
+            contextual[retained.length + 1],
+          )) {
+        return contextual.join(' ');
+      }
+      if (remainingInCurrentAyah == 2 &&
+          expectedSeq[retained.length].first == 'ربكما' &&
+          expectedSeq[retained.length + 1].first == 'تكذبان' &&
+          !quranVocabulary.contains(incoming[1])) {
+        return [...retained, incoming.first, 'زئد', incoming[1]].join(' ');
+      }
       return [...retained, 'زئد', ...incoming].join(' ');
     }
     if (allowWrittenOpenings &&
@@ -942,7 +1021,7 @@ class SpeechComparisonService {
             combined,
             expectedAyahs,
             expectedVerseKeys,
-            false,
+            allowWrittenOpenings,
           ).join(' ')
         : combined;
   }
@@ -2885,6 +2964,250 @@ class SpeechComparisonService {
           );
           if (nextAyahExpected.isNotEmpty) {
             nextExpectedSet = nextAyahExpected.first;
+          }
+        }
+        if (keys[ayah].startsWith('55:')) {
+          final hasLeft =
+              word > 0 &&
+              expanded.isNotEmpty &&
+              expected[word - 1].contains(expanded.last);
+          final hasRight =
+              nextExpectedSet != null &&
+              offset + 1 < spoken.length &&
+              (nextExpectedSet.contains(spoken[offset + 1]) ||
+                  _foldNearMiss(spoken[offset + 1]) ==
+                      _foldNearMiss(nextExpectedSet.first));
+          if (expected[word].first == 'فبأي' &&
+              hasRight &&
+              const {
+                'بأي',
+                'أبي',
+                'فبي',
+                'فباي',
+                'وبأي',
+                'فبأيي',
+              }.contains(spoken[offset])) {
+            expanded.add('فبأي');
+            offset++;
+            word++;
+            continue;
+          }
+          if (expected[word].first == 'آلاء' &&
+              (hasLeft || hasRight) &&
+              const {
+                'ألا',
+                'إلا',
+                'آلا',
+                'علاء',
+                'ولاء',
+                'الألاء',
+                'الآلاء',
+                'آلائي',
+                'ألاء',
+                'إلاء',
+              }.contains(spoken[offset])) {
+            expanded.add('آلاء');
+            offset++;
+            word++;
+            continue;
+          }
+          if (expected[word].first == 'ربكما' &&
+              (hasLeft || hasRight) &&
+              const {
+                'وربكما',
+                'بربكما',
+                'لربكما',
+                'أربكما',
+                'ربكم',
+                'ربهم',
+                'ربكنا',
+              }.contains(spoken[offset])) {
+            expanded.add('ربكما');
+            offset++;
+            word++;
+            continue;
+          }
+          if (expected[word].first == 'ربكما' &&
+              (hasLeft ||
+                  (offset + 2 < spoken.length &&
+                      nextExpectedSet != null &&
+                      nextExpectedSet.contains(spoken[offset + 2]))) &&
+              offset + 1 < spoken.length &&
+              (spoken[offset] == 'رب' || spoken[offset] == 'ربي') &&
+              (spoken[offset + 1] == 'كما' || spoken[offset + 1] == 'كم')) {
+            expanded.add('ربكما');
+            offset += 2;
+            word++;
+            continue;
+          }
+          if (expected[word].first == 'تكذبان' &&
+              hasLeft &&
+              (const {
+                    'تكذبون',
+                    'يكذبان',
+                    'تتكذبان',
+                    'اتكذبان',
+                    'وتكذبان',
+                    'تكذباني',
+                    'تكذبا',
+                    'تكذب',
+                    'كذبان',
+                    'تكذبن',
+                  }.contains(spoken[offset]) ||
+                  (!quranVocabulary.contains(spoken[offset]) &&
+                      _isOrthographicNearMiss('تكذبان', spoken[offset])))) {
+            expanded.add('تكذبان');
+            offset++;
+            word++;
+            continue;
+          }
+          if (keys[ayah] == '55:33') {
+            if (expected[word].first == 'استطعتم' &&
+                (hasLeft || hasRight) &&
+                const {
+                  'أطعتم',
+                  'سطعتم',
+                  'أعتم',
+                  'تطعتم',
+                  'استطعت',
+                  'استطعم',
+                }.contains(spoken[offset])) {
+              expanded.add('استطعتم');
+              offset++;
+              word++;
+              continue;
+            }
+            if (expected[word].first == 'أن' &&
+                word + 1 < expected.length &&
+                expected[word + 1].first == 'تنفذوا' &&
+                (hasLeft ||
+                    (offset + 1 < spoken.length &&
+                        (spoken[offset + 1] == 'تنفذوا' ||
+                            spoken[offset + 1] == 'تنفذون' ||
+                            spoken[offset + 1] == 'من'))) &&
+                const {'لن', 'إن', 'ألا', 'فأن', 'وأن'}.contains(
+                  spoken[offset],
+                )) {
+              expanded.add('أن');
+              offset++;
+              word++;
+              continue;
+            }
+            if (expected[word].first == 'أن' &&
+                word + 1 < expected.length &&
+                expected[word + 1].first == 'تنفذوا' &&
+                (hasLeft ||
+                    (offset + 1 < spoken.length &&
+                        spoken[offset + 1] == 'من')) &&
+                const {
+                  'فانفذوا',
+                  'فأنفذوا',
+                  'أنتنفذوا',
+                  'لنتنفذوا',
+                  'تنفذوا',
+                  'تنفذون',
+                }.contains(spoken[offset])) {
+              expanded.addAll(['أن', 'تنفذوا']);
+              offset++;
+              word += 2;
+              continue;
+            }
+            if (expected[word].first == 'تنفذوا' &&
+                (hasLeft || hasRight) &&
+                const {
+                  'تنفذون',
+                  'فانفذوا',
+                  'فأنفذوا',
+                  'أنفذوا',
+                  'ينفذوا',
+                  'ينفذون',
+                  'تأخذوا',
+                  'تنفذ',
+                  'تنفذوا',
+                  'فنفذوا',
+                  'انفذوا',
+                }.contains(spoken[offset])) {
+              expanded.add('تنفذوا');
+              offset++;
+              word++;
+              continue;
+            }
+            if (expected[word].first == 'من' &&
+                (hasLeft || hasRight) &&
+                const {'ومن', 'فمن', 'بمن', 'عمن', 'إن'}.contains(
+                  spoken[offset],
+                )) {
+              expanded.add('من');
+              offset++;
+              word++;
+              continue;
+            }
+            if (expected[word].first == 'أقطار' &&
+                (hasLeft || hasRight) &&
+                const {
+                  'أقطر',
+                  'الأقطار',
+                  'قطار',
+                  'أقتار',
+                  'وطار',
+                  'أقدر',
+                  'أقدار',
+                  'اقطار',
+                }.contains(spoken[offset])) {
+              expanded.add('أقطار');
+              offset++;
+              word++;
+              continue;
+            }
+            if (expected[word].first == 'السماوات' &&
+                (hasLeft || hasRight) &&
+                const {
+                  'والسماوات',
+                  'السماء',
+                  'السماو',
+                  'سماوات',
+                  'وآوات',
+                  'السموات',
+                  'والسموات',
+                  'السماواتي',
+                  'بالسماوات',
+                }.contains(spoken[offset])) {
+              expanded.add('السماوات');
+              offset++;
+              word++;
+              continue;
+            }
+            if (expected[word].first == 'والأرض' &&
+                (hasLeft || hasRight) &&
+                const {
+                  'الأرض',
+                  'أرض',
+                  'والأرضي',
+                  'بلأرض',
+                  'فالأرض',
+                }.contains(spoken[offset])) {
+              expanded.add('والأرض');
+              offset++;
+              word++;
+              continue;
+            }
+            if (expected[word].first == 'فانفذوا' &&
+                (hasLeft || hasRight) &&
+                const {
+                  'فأنفذوا',
+                  'فنفذوا',
+                  'انفذوا',
+                  'فانفذون',
+                  'تنفذوا',
+                  'تنفذون',
+                  'وانفذوا',
+                  'فانفذ',
+                }.contains(spoken[offset])) {
+              expanded.add('فانفذوا');
+              offset++;
+              word++;
+              continue;
+            }
           }
         }
         if (keys[ayah].startsWith('98:') &&

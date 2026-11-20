@@ -4199,4 +4199,72 @@ void main() {
       expect(find.text('Listen'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Surah Ar-Rahman repeated refrains do not clear rolling words or stall on ربكما تكذبان',
+    (tester) async {
+      final speech = _FakeWindowedSpeech();
+      final rahmanAyahs = [
+        _ayah(
+          28,
+          'فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ',
+          surahNumber: 55,
+          pageNumber: 532,
+        ),
+        _ayah(
+          29,
+          'يَسْأَلُهُ مَنْ فِي السَّمَاوَاتِ وَالْأَرْضِ كُلَّ يَوْمٍ هُوَ فِي شَأْنٍ',
+          surahNumber: 55,
+          pageNumber: 532,
+        ),
+        _ayah(
+          30,
+          'فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ',
+          surahNumber: 55,
+          pageNumber: 532,
+        ),
+      ];
+      await _open(
+        tester,
+        speech,
+        ayahs: rahmanAyahs,
+        continuous: true,
+        localQuranLab: true,
+      );
+
+      MushafPageContent page() =>
+          tester.widget<MushafPageContent>(find.byType(MushafPageContent));
+
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+
+      speech.windowStartSeconds = 1.0;
+      speech.result!('فبأي آلاء ربكما تكذبان', false);
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['55:28'], 4);
+
+      speech.windowStartSeconds = 4.0;
+      speech.result!(
+        'يسأله من في السماوات والأرض كل يوم هو في شأن',
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['55:29'], 10);
+
+      // Now on the repeated refrain 55:30:
+      // 1) First 2 words "فبأي آلاء" arrive.
+      speech.windowStartSeconds = 8.0;
+      speech.result!('فبأي آلاء', false);
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['55:30'], 2);
+
+      // 2) Next 3s window starts mid-madd on آلاء ("لا ربكما تكذبان"):
+      // must NOT trigger a false contradictory snapshot against 55:28 and
+      // must complete 55:30 immediately.
+      speech.windowStartSeconds = 9.0;
+      speech.result!('لا ربكما تكذبان', false);
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['55:30'], 4);
+    },
+  );
 }
