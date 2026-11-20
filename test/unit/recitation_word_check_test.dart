@@ -871,6 +871,30 @@ void main() {
       expect(check.completedAyahs, 2);
       expect(check.mismatch, isTrue);
     }
+
+    // Reproduces 1:3 "الرحمن الحليم" recording: when retained already has 1:1
+    // ("بسم الله الرحمن الرحيم"), a sliding window containing "الرحمن الرحيم"
+    // from 1:1 followed by "الحمد لله رب العالمين الرحمن الحليم مالك يوم الدين"
+    // must NOT falsely complete 1:3 via 1:1's earlier "الرحمن الرحيم" bigram.
+    const retainedAt13 = 'بسم الله الرحمن الرحيم الحمد لله رب العالمين الرحمن';
+    const windowWithEarlier11AndMisread13 =
+        'الرحمن الرحيم الحمد لله رب العالمين الرحمن الحليم مالك يوم الدين';
+    final joined13 = comparison.joinRecitationSegment(
+      retainedPrefix: retainedAt13,
+      spokenText: windowWithEarlier11AndMisread13,
+      expectedAyahs: ayahs,
+      expectedVerseKeys: keys,
+      allowWrittenOpenings: true,
+    );
+    expect(
+      comparison.matchingPrefixWordCounts(
+        expectedAyahs: ayahs,
+        expectedVerseKeys: keys,
+        spokenText: joined13,
+        allowWrittenOpenings: true,
+      ),
+      [4, 4, 1],
+    );
   });
 
   test('resume overlap cannot discard a wrong or repeated new word', () {

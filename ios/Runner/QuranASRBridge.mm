@@ -93,11 +93,7 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
   }
   auto options = whisper_context_default_params();
 #if QURAN_ASR_USE_METAL && !TARGET_OS_SIMULATOR
-#if QURAN_ASR_GPU_PREVIEWS
   options.use_gpu = true;
-#else
-  options.use_gpu = cancellation == nil;
-#endif
 #else
   options.use_gpu = false;
 #endif

@@ -1627,14 +1627,29 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 : check.wordIndex + 1
           : null;
       _message = check.mismatch ? 'mem_mismatch' : 'hifz_resume_message';
-      final finalIndex = _index;
-      final finalPrefix = _pendingText;
-      _retainPausedWords(startIndex, visibleWords);
       if (check.mismatch) {
-        final mistakeWord = _mismatchWord ??
+        final mistakeWord =
+            _mismatchWord ??
             (widget.localQuranLab ? _nextLabWord : check.wordIndex + 1);
         _recordMistake(_index, mistakeWord);
       }
+      final finalIndex = _index;
+      final finalPrefix = _pendingText;
+      final mismatchFromLaterAyah =
+          check.mismatch &&
+          check.completedAyahs > 0 &&
+          visibleWords.keys.any((key) {
+            final idx = widget.ayahs.indexWhere(
+              (a) => '${a.surahNumber}:${a.ayahNumber}' == key,
+            );
+            return idx > _index && (visibleWords[key] ?? 0) > 0;
+          });
+      _retainPausedWords(
+        startIndex,
+        visibleWords,
+        maxAyahIndex: mismatchFromLaterAyah ? _index : null,
+        maxWordCountAtBoundary: mismatchFromLaterAyah ? check.wordIndex : null,
+      );
       retainedFurther =
           !_finished && (_index != finalIndex || _pendingText != finalPrefix);
     });
@@ -1750,12 +1765,24 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     }
   }
 
-  void _retainPausedWords(int startIndex, Map<String, int> counts) {
+  void _retainPausedWords(
+    int startIndex,
+    Map<String, int> counts, {
+    int? maxAyahIndex,
+    int? maxWordCountAtBoundary,
+  }) {
     for (var i = startIndex; i < widget.ayahs.length; i++) {
+      if (maxAyahIndex != null && i > maxAyahIndex) break;
       if (_revealed.contains(i)) continue;
       final ayah = widget.ayahs[i];
       final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
-      final count = counts[key] ?? 0;
+      var count = counts[key] ?? 0;
+      if (maxAyahIndex != null &&
+          i == maxAyahIndex &&
+          maxWordCountAtBoundary != null &&
+          count > maxWordCountAtBoundary) {
+        count = maxWordCountAtBoundary;
+      }
       if (count == 0) break;
       final words = _comparison.recitationWords(ayah.imlaei ?? '');
       if (i >= _index && !_finished && !_revealed.contains(i)) {
@@ -2352,11 +2379,15 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: widget.continuous && !widget.review
-                    ? (landscape ? 76 : 104)
+                    ? (landscape ? 68 : 92)
                     : 0,
                 maxHeight: widget.continuous && !widget.review
-                    ? (landscape ? 82 : 108)
-                    : MediaQuery.sizeOf(context).height * 0.20,
+                    ? (landscape
+                          ? (MediaQuery.sizeOf(context).width >= 700
+                                ? 112
+                                : 104)
+                          : 148)
+                    : MediaQuery.sizeOf(context).height * 0.24,
               ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -2369,7 +2400,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                     if (!widget.review &&
                         (widget.continuous || widget.localQuranLab))
                       SizedBox(
-                        height: 30,
+                        height: 24,
                         child: SwitchListTile(
                           dense: true,
                           visualDensity: const VisualDensity(
@@ -2387,7 +2418,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: statusTextStyle?.copyWith(fontSize: 11.5),
+                            style: statusTextStyle?.copyWith(fontSize: 11),
                           ),
                           value: _livePreview,
                           onChanged: (enabled) => setState(() {
@@ -2402,7 +2433,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                           }),
                         ),
                       ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 1),
                     if (!_hasStarted && !widget.continuous && !widget.review)
                       Padding(
                         padding: const EdgeInsets.only(top: 1),

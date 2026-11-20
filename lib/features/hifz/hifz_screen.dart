@@ -10,6 +10,7 @@ import '../../core/models/tajweed_models.dart';
 import '../../core/providers/recitation_provider.dart';
 import '../../core/services/audio_cache_service.dart';
 import '../../core/services/hifz_content_service.dart';
+import '../../core/services/memorization_speech_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/quran_asr_speech_input.dart';
@@ -191,27 +192,33 @@ class _HifzScreenState extends State<HifzScreen> {
       }
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
-          builder: (_) => MemorizationScreen(
-            localQuranLab:
+          builder: (_) {
+            final useNativeStreaming =
+                quranAsrStreamingDefault &&
+                !kIsWeb &&
+                defaultTargetPlatform == TargetPlatform.iOS;
+            final useLocalLabEngine =
                 quranAsrExperimentEnabled &&
                 !kIsWeb &&
-                defaultTargetPlatform == TargetPlatform.iOS,
-            speechInput:
-                quranAsrExperimentEnabled &&
-                    !kIsWeb &&
-                    defaultTargetPlatform == TargetPlatform.iOS
-                ? QuranAsrSpeechInput()
-                : null,
-            ayahs: ayahs,
-            loadPage: (page) => page == ayahs.first.pageNumber
-                ? Future.value(firstPage)
-                : _content.loadPage(page, _chapters!),
-            surahNameFor: _name,
-            review: review,
-            continuous: !_stepByStep,
-            playReference: (ayah) => _playReference(ayah, reciter),
-            stopReference: _stopReference,
-          ),
+                defaultTargetPlatform == TargetPlatform.iOS;
+            return MemorizationScreen(
+              localQuranLab: useNativeStreaming || useLocalLabEngine,
+              speechInput: useNativeStreaming
+                  ? MemorizationSpeechService.instance
+                  : useLocalLabEngine
+                  ? QuranAsrSpeechInput()
+                  : null,
+              ayahs: ayahs,
+              loadPage: (page) => page == ayahs.first.pageNumber
+                  ? Future.value(firstPage)
+                  : _content.loadPage(page, _chapters!),
+              surahNameFor: _name,
+              review: review,
+              continuous: !_stepByStep,
+              playReference: (ayah) => _playReference(ayah, reciter),
+              stopReference: _stopReference,
+            );
+          },
         ),
       );
     } catch (error) {

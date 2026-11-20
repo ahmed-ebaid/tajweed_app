@@ -101,13 +101,25 @@ class SpeechComparisonService {
     );
     var endsAtAyahBoundary = false;
     var verseWordsTotal = 0;
+    var remainingInCurrentAyah = remaining;
     for (var verse = 0; verse < expectedAyahs.length; verse++) {
-      verseWordsTotal += _expectedRecitationWords(
+      final verseLen = _expectedRecitationWords(
         expectedAyahs[verse],
         expectedVerseKeys[verse],
       ).length;
-      if (verseWordsTotal >= retained.length) {
-        endsAtAyahBoundary = verseWordsTotal == retained.length;
+      if (retained.length < verseWordsTotal + verseLen) {
+        remainingInCurrentAyah = verseWordsTotal + verseLen - retained.length;
+        break;
+      }
+      verseWordsTotal += verseLen;
+      if (verseWordsTotal == retained.length) {
+        endsAtAyahBoundary = true;
+        if (verse + 1 < expectedAyahs.length) {
+          remainingInCurrentAyah = _expectedRecitationWords(
+            expectedAyahs[verse + 1],
+            expectedVerseKeys[verse + 1],
+          ).length;
+        }
         break;
       }
     }
@@ -120,6 +132,12 @@ class SpeechComparisonService {
           _foldAlifMaqsuraToAlif(incoming[start - 1]) ==
               _foldAlifMaqsuraToAlif(retained.last)) {
         return 1;
+      }
+      if (remainingInCurrentAyah == 2 &&
+          start >= 1 &&
+          retained.isNotEmpty &&
+          _foldNearMiss(incoming[start - 1]) == _foldNearMiss(retained.last)) {
+        return 2;
       }
       return remaining < 3 ? remaining : 3;
     }
@@ -147,6 +165,30 @@ class SpeechComparisonService {
       if (anchoredAtStart && start > 0) break;
       if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
       final confirmation = confirmationFor(start);
+      if (start == 1 && retained.length >= 2 && incoming.length >= 3) {
+        var matchesEarlierInRetained = false;
+        for (var j = 0; j + 1 < retained.length - 1; j++) {
+          if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
+              _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
+            final laterMatchLen = retained.length - (j + 1);
+            if (laterMatchLen >= 2 && 1 + laterMatchLen <= incoming.length) {
+              var matchesLater = true;
+              for (var k = 0; k < laterMatchLen; k++) {
+                if (_foldNearMiss(incoming[1 + k]) !=
+                    _foldNearMiss(retained[j + 1 + k])) {
+                  matchesLater = false;
+                  break;
+                }
+              }
+              if (matchesLater) {
+                matchesEarlierInRetained = true;
+                break;
+              }
+            }
+          }
+        }
+        if (matchesEarlierInRetained) continue;
+      }
       if (start + confirmation <= incoming.length) {
         var matches = true;
         for (var i = 0; i < confirmation; i++) {
@@ -269,6 +311,32 @@ class SpeechComparisonService {
             break;
           }
         }
+        if (matches &&
+            allowWrittenOpenings &&
+            overlap == 1 &&
+            incoming.length >= 3 &&
+            retained.length >= 2) {
+          for (var j = 0; j + 1 < retained.length - 1; j++) {
+            if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
+                _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
+              final laterMatchLen = retained.length - (j + 1);
+              if (laterMatchLen >= 2 && 1 + laterMatchLen <= incoming.length) {
+                var matchesLater = true;
+                for (var k = 0; k < laterMatchLen; k++) {
+                  if (_foldNearMiss(incoming[1 + k]) !=
+                      _foldNearMiss(retained[j + 1 + k])) {
+                    matchesLater = false;
+                    break;
+                  }
+                }
+                if (matchesLater) {
+                  matches = false;
+                  break;
+                }
+              }
+            }
+          }
+        }
         if (matches) {
           final joined = [...retained, ...incoming.skip(overlap)].join(' ');
           return allowWrittenOpenings
@@ -365,6 +433,33 @@ class SpeechComparisonService {
           }
         }
       }
+        if (matches &&
+            allowWrittenOpenings &&
+            overlap == 1 &&
+            incoming.length >= 3 &&
+            retained.length >= 2) {
+          for (var j = 0; j + 1 < retained.length - 1; j++) {
+            if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
+                _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
+              final laterMatchLen = retained.length - (j + 1);
+              if (laterMatchLen >= 2 &&
+                  1 + laterMatchLen <= incoming.length) {
+                var matchesLaterRetained = true;
+                for (var k = 0; k < laterMatchLen; k++) {
+                  if (_foldNearMiss(incoming[1 + k]) !=
+                      _foldNearMiss(retained[j + 1 + k])) {
+                    matchesLaterRetained = false;
+                    break;
+                  }
+                }
+                if (matchesLaterRetained) {
+                  matches = false;
+                  break;
+                }
+              }
+            }
+          }
+        }
         if (matches) {
           final isMidAyahAnchor =
               overlap <= 2 &&
@@ -443,14 +538,39 @@ class SpeechComparisonService {
             }
           }
           if (matches) {
+            var matchesEarlierInRetained = false;
+            if (overlap == 1 && skipped.length >= 3 && retained.length >= 2) {
+              for (var j = 0; j + 1 < retained.length - 1; j++) {
+                if (_foldNearMiss(retained[j]) == _foldNearMiss(skipped[0]) &&
+                    _foldNearMiss(retained[j + 1]) ==
+                        _foldNearMiss(skipped[1])) {
+                  final laterMatchLen = retained.length - (j + 1);
+                  if (laterMatchLen >= 2 && 1 + laterMatchLen <= skipped.length) {
+                    var matchesLater = true;
+                    for (var k = 0; k < laterMatchLen; k++) {
+                      if (_foldNearMiss(skipped[1 + k]) !=
+                          _foldNearMiss(retained[j + 1 + k])) {
+                        matchesLater = false;
+                        break;
+                      }
+                    }
+                    if (matchesLater) {
+                      matchesEarlierInRetained = true;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
             final isMidAyahAnchor =
-                overlap <= 2 &&
+                matchesEarlierInRetained ||
+                (overlap <= 2 &&
                 _isRepeatedAyahPrefixAnchor(
                   retainedLength: retained.length,
                   overlap: overlap,
                   expectedAyahs: expectedAyahs,
                   expectedVerseKeys: expectedVerseKeys,
-                );
+                ));
             if (!isMidAyahAnchor) {
               var rest = skipped.skip(overlap).toList();
               if (overlap >= 2 &&
@@ -489,6 +609,21 @@ class SpeechComparisonService {
       }
     }
     final remainingExpected = expectedSeq.length - retained.length;
+    var currentAyahStart = 0;
+    var currentAyahEnd = 0;
+    for (var verse = 0; verse < expectedAyahs.length; verse++) {
+      final verseLen = _expectedRecitationWords(
+        expectedAyahs[verse],
+        expectedVerseKeys[verse],
+      ).length;
+      if (retained.length < currentAyahStart + verseLen) {
+        currentAyahEnd = currentAyahStart + verseLen;
+        break;
+      }
+      currentAyahStart += verseLen;
+      currentAyahEnd = currentAyahStart;
+    }
+    final remainingInCurrentAyah = currentAyahEnd - retained.length;
     if (allowWrittenOpenings && remainingExpected >= 2) {
       var endsAtAyahBoundary = false;
       var verseWordsTotal = 0;
@@ -511,6 +646,13 @@ class SpeechComparisonService {
             _foldAlifMaqsuraToAlif(incoming[start - 1]) ==
                 _foldAlifMaqsuraToAlif(retained.last)) {
           return 1;
+        }
+        if (remainingInCurrentAyah == 2 &&
+            start >= 1 &&
+            retained.isNotEmpty &&
+            _foldNearMiss(incoming[start - 1]) ==
+                _foldNearMiss(retained.last)) {
+          return 2;
         }
         return remainingExpected < 3 ? remainingExpected : 3;
       }
@@ -538,6 +680,31 @@ class SpeechComparisonService {
           start++
         ) {
           if (!_repeatsRetainedSuffix(retained, incoming, start)) continue;
+          if (start == 1 && retained.length >= 2 && incoming.length >= 3) {
+            var matchesEarlierInRetained = false;
+            for (var j = 0; j + 1 < retained.length - 1; j++) {
+              if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
+                  _foldNearMiss(retained[j + 1]) ==
+                      _foldNearMiss(incoming[1])) {
+                final laterMatchLen = retained.length - (j + 1);
+                if (laterMatchLen >= 2 && 1 + laterMatchLen <= incoming.length) {
+                  var matchesLater = true;
+                  for (var k = 0; k < laterMatchLen; k++) {
+                    if (_foldNearMiss(incoming[1 + k]) !=
+                        _foldNearMiss(retained[j + 1 + k])) {
+                      matchesLater = false;
+                      break;
+                    }
+                  }
+                  if (matchesLater) {
+                    matchesEarlierInRetained = true;
+                    break;
+                  }
+                }
+              }
+            }
+            if (matchesEarlierInRetained) continue;
+          }
           final confirmationWords = confirmationWordsFor(start);
           if (start + confirmationWords <= incoming.length) {
             var matchesCursor = true;
@@ -581,24 +748,21 @@ class SpeechComparisonService {
         }
       }
     }
-    var currentAyahStart = 0;
-    var currentAyahEnd = 0;
-    for (var verse = 0; verse < expectedAyahs.length; verse++) {
-      final verseLen = _expectedRecitationWords(
-        expectedAyahs[verse],
-        expectedVerseKeys[verse],
-      ).length;
-      if (retained.length < currentAyahStart + verseLen) {
-        currentAyahEnd = currentAyahStart + verseLen;
-        break;
-      }
-      currentAyahStart += verseLen;
-      currentAyahEnd = currentAyahStart;
-    }
-    final remainingInCurrentAyah = currentAyahEnd - retained.length;
     if (allowWrittenOpenings &&
         (remainingExpected == 1 || remainingInCurrentAyah == 1) &&
         retained.isNotEmpty) {
+      bool repeatsEarlierInRetained(int cursor) {
+        final target = expectedSeq[retained.length].first;
+        final prev = retained.last;
+        for (var j = 0; j + 1 < retained.length - 1; j++) {
+          if (_foldNearMiss(retained[j]) == _foldNearMiss(prev) &&
+              _foldNearMiss(retained[j + 1]) == _foldNearMiss(target)) {
+            return true;
+          }
+        }
+        return false;
+      }
+
       for (var cursor = 1; cursor < incoming.length; cursor++) {
         final singleWordAnchor =
             cursor == 1 &&
@@ -608,7 +772,14 @@ class SpeechComparisonService {
               expectedAyahs: expectedAyahs,
               expectedVerseKeys: expectedVerseKeys,
             );
+        final requiresLongerAnchor =
+            repeatsEarlierInRetained(cursor) && cursor < incoming.length - 1;
         if (!singleWordAnchor &&
+            (!requiresLongerAnchor ||
+                (cursor >= 2 &&
+                    retained.length >= 2 &&
+                    _foldNearMiss(incoming[cursor - 2]) ==
+                        _foldNearMiss(retained[retained.length - 2]))) &&
             (_foldNearMiss(incoming[cursor - 1]) ==
                     _foldNearMiss(retained.last) ||
                 (cursor >= 3 &&

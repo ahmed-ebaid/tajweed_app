@@ -4009,10 +4009,77 @@ void main() {
       expect(find.text('Mistakes (1)'), findsOneWidget);
 
       // Tapping the Mistakes pill opens the bottom sheet showing the exact missed word.
+      await tester.ensureVisible(find.byKey(const ValueKey('hifz-mistakes-pill')));
       await tester.tap(find.byKey(const ValueKey('hifz-mistakes-pill')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Continue from word 3'), findsOneWidget);
       expect(find.text('الرحمن'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Al-Fatihah 1:3 الرحمن الحليم mismatch records الرحيم on 1:3 and never advances mistake to 1:5 إياك',
+    (tester) async {
+      final speech = _FakeWindowedSpeech();
+      final fatihahAyahs = [
+        _ayah(1, 'بسم الله الرحمن الرحيم'),
+        _ayah(2, 'الحمد لله رب العالمين'),
+        _ayah(3, 'الرحمن الرحيم'),
+        _ayah(4, 'مالك يوم الدين'),
+        _ayah(5, 'إياك نعبد وإياك نستعين'),
+      ];
+      await _open(
+        tester,
+        speech,
+        ayahs: fatihahAyahs,
+        continuous: true,
+        localQuranLab: true,
+      );
+
+      MushafPageContent page() =>
+          tester.widget<MushafPageContent>(find.byType(MushafPageContent));
+
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+
+      // 1) User recites 1:1, 1:2, and "الرحمن الحليم" on 1:3: cursor stops at 1:3 word 2 ("الرحيم").
+      speech.windowStartSeconds = 1.65;
+      speech.result!(
+        'بسم الله الرحمن الرحيم الحمد لله رب العالمين الرحمن الحليم',
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('1:3', 1));
+
+      // 2) Later window still has 1:1's "الرحمن الرحيم" plus "الرحمن الحليم مالك يوم الدين":
+      // must NOT falsely complete 1:3 or advance to 1:5 ("إياك").
+      speech.windowStartSeconds = 2.65;
+      speech.result!(
+        'الرحمن الرحيم الحمد لله رب العالمين الرحمن الحليم مالك يوم الدين',
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('1:3', 1));
+
+      // 3) User stops; final check detects mismatch at 1:3 word 2 ("الرحيم")
+      // and records "الرحيم" (never 1:5 "إياك") in Mistakes.
+      speech.windowStartSeconds = 0.0;
+      speech.result!(
+        'بسم الله الرحمن الرحيم الحمد لله رب العالمين الرحمن الحليم مالك يوم الدين',
+        true,
+      );
+      await tester.pumpAndSettle();
+      expect(page().activeCursorWord, ('1:3', 1));
+      expect(page().activeCursorHasError, isTrue);
+      expect(find.text('Mistakes (1)'), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('hifz-mistakes-pill')),
+      );
+      await tester.tap(find.byKey(const ValueKey('hifz-mistakes-pill')));
+      await tester.pumpAndSettle();
+      expect(find.text('الرحيم'), findsOneWidget);
+      expect(find.text('إياك'), findsNothing);
     },
   );
 }

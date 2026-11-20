@@ -12,6 +12,10 @@ import 'quran_api_service.dart';
 import 'quran_attestation_service.dart';
 
 const quranAsrExperimentEnabled = bool.fromEnvironment('QURAN_ASR_EXPERIMENT');
+const quranAsrStreamingDefault = bool.fromEnvironment(
+  'QURAN_ASR_STREAMING',
+  defaultValue: true,
+);
 const quranAsrRetainDebugAudio =
     quranAsrExperimentEnabled &&
     bool.fromEnvironment('QURAN_ASR_RETAIN_DEBUG_AUDIO');
