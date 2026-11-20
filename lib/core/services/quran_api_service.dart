@@ -219,7 +219,7 @@ class QuranApiService {
   Future<List<Map<String, dynamic>>> fetchVerses({
     required int surahNumber,
     required String langCode,
-    int reciterId = 1, // AbdulBasit Mujawwad
+    int reciterId = 12, // Al-Husary (Muallim)
     int? page,
   }) async {
     final response = await _contentDio.get(
@@ -268,7 +268,7 @@ class QuranApiService {
     required int surahNumber,
     required int ayahNumber,
     required String langCode,
-    int reciterId = 1, // AbdulBasit Mujawwad
+    int reciterId = 12, // Al-Husary (Muallim)
   }) async {
     final response = await _contentDio.get(
       '/verses/by_key/$surahNumber:$ayahNumber',
@@ -489,7 +489,7 @@ class QuranApiService {
     final response = await _contentDio.get('/resources/recitations');
     return List<Map<String, dynamic>>.from(
       response.data['recitations'],
-    ).where((reciter) => (reciter['id'] as int?) != 7).toList(growable: false);
+    ).toList(growable: false);
   }
 
   Future<QuranContentSyncPage> fetchContentSyncPage({

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -17,6 +18,7 @@ class MemorizationScreen extends StatefulWidget {
   final String Function(int) surahNameFor;
   final Future<bool> Function(Ayah) playReference;
   final Future<void> Function() stopReference;
+  final ValueListenable<bool>? referencePlayingListenable;
   final MemorizationSpeechInput? speechInput;
   final Future<List<Ayah>> Function(int)? loadPage;
   final bool continuous;
@@ -29,6 +31,7 @@ class MemorizationScreen extends StatefulWidget {
     required this.surahNameFor,
     required this.playReference,
     required this.stopReference,
+    this.referencePlayingListenable,
     this.speechInput,
     this.loadPage,
     this.continuous = true,
@@ -99,6 +102,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   bool _consented = false;
   bool _busy = false;
   bool _loadingReference = false;
+  bool _playingReference = false;
   bool _acceptResults = false;
   bool _stopInProgress = false;
   bool _finished = false;
@@ -801,7 +805,32 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   void initState() {
     super.initState();
     _livePreview = widget.localQuranLab && !widget.review;
+    _playingReference = widget.referencePlayingListenable?.value ?? false;
+    widget.referencePlayingListenable?.addListener(_onReferencePlayingChanged);
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didUpdateWidget(MemorizationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.referencePlayingListenable !=
+        widget.referencePlayingListenable) {
+      oldWidget.referencePlayingListenable?.removeListener(
+        _onReferencePlayingChanged,
+      );
+      _playingReference = widget.referencePlayingListenable?.value ?? false;
+      widget.referencePlayingListenable?.addListener(
+        _onReferencePlayingChanged,
+      );
+    }
+  }
+
+  void _onReferencePlayingChanged() {
+    if (!mounted) return;
+    final playing = widget.referencePlayingListenable?.value ?? false;
+    if (_playingReference != playing) {
+      setState(() => _playingReference = playing);
+    }
   }
 
   @override
@@ -832,6 +861,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _checkpointLiveWords();
         _busy = false;
         _loadingReference = false;
+        _playingReference = false;
         _stopInProgress = false;
         _preview.clear();
         _clearLiveWords();
@@ -867,6 +897,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   @override
   void dispose() {
+    widget.referencePlayingListenable?.removeListener(
+      _onReferencePlayingChanged,
+    );
     WidgetsBinding.instance.removeObserver(this);
     ++_generation;
     _acceptResults = false;
@@ -1894,6 +1927,15 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }
 
   Future<void> _reference() async {
+    if (_playingReference) {
+      ++_generation;
+      setState(() {
+        _loadingReference = false;
+        _playingReference = false;
+      });
+      await widget.stopReference();
+      return;
+    }
     final targetIndex = _actionAyahIndex;
     final generation = ++_generation;
     _acceptResults = false;
@@ -1938,13 +1980,17 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       }
       setState(() {
         _loadingReference = false;
-        if (!played) _message = 'mem_audio_error';
+        if (!played) {
+          _playingReference = false;
+          _message = 'mem_audio_error';
+        }
       });
     } on PlatformException catch (error) {
       debugPrint('Memorization reference error: ${error.code}');
       if (mounted && generation == _generation) {
         setState(() {
           _loadingReference = false;
+          _playingReference = false;
           _message = 'mem_audio_error';
         });
       }
@@ -2861,7 +2907,14 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                   label: Text(l10n.get('hifz_reveal')),
                                 ),
                               TextButton.icon(
-                                style: compactTextButtonStyle,
+                                key: const ValueKey('hifz-listen-button'),
+                                style: _playingReference
+                                    ? compactTextButtonStyle.copyWith(
+                                        foregroundColor: WidgetStatePropertyAll(
+                                          Theme.of(context).colorScheme.error,
+                                        ),
+                                      )
+                                    : compactTextButtonStyle,
                                 onPressed:
                                     _loadingReference ||
                                         (_busy &&
@@ -2877,11 +2930,17 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Icon(
-                                        Icons.menu_book_outlined,
+                                    : Icon(
+                                        _playingReference
+                                            ? Icons.stop_rounded
+                                            : Icons.menu_book_outlined,
                                         size: 15,
                                       ),
-                                label: Text(l10n.get('mem_replay')),
+                                label: Text(
+                                  l10n.get(
+                                    _playingReference ? 'stop' : 'mem_replay',
+                                  ),
+                                ),
                               ),
                               if (!widget.continuous || widget.review)
                                 TextButton(

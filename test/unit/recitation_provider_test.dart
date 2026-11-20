@@ -45,6 +45,16 @@ void main() {
     expect(RecitationProvider.supportedReciterIds, contains(_husaryMuallim));
   });
 
+  test('supports Mishary Rashid Alafasy (reciter 7)', () async {
+    expect(RecitationProvider.supportedReciterIds, contains(7));
+
+    final provider = RecitationProvider();
+    await provider.setReciter(7);
+
+    expect(provider.selectedReciterId, 7);
+    expect(Hive.box('settings').get('reciter_id'), 7);
+  });
+
   test('setReciter persists the choice', () async {
     final provider = RecitationProvider();
 

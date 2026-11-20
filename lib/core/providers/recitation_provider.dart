@@ -9,7 +9,7 @@ class RecitationProvider extends ChangeNotifier {
   static const _defaultReciterId = 12;
   static const Set<int> supportedReciterIds = {
     // dart format off
-    1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
     // dart format on
   };
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -80,6 +81,7 @@ Future<void> _open(
   bool referenceAvailable = true,
   Future<bool> Function(Ayah)? playReference,
   Future<void> Function()? stopReference,
+  ValueListenable<bool>? referencePlayingListenable,
   List<Ayah>? ayahs,
   bool continuous = false,
   bool review = false,
@@ -111,6 +113,7 @@ Future<void> _open(
         surahNameFor: (_) => 'الفاتحة',
         playReference: playReference ?? (_) async => true,
         stopReference: stopReference ?? () async {},
+        referencePlayingListenable: referencePlayingListenable,
       ),
     ),
   );
@@ -4082,6 +4085,46 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('الرحيم'), findsOneWidget);
       expect(find.text('إياك'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Listen button toggles to Stop while reference audio is playing and stops on tap',
+    (tester) async {
+      final speech = _FakeSpeech();
+      final playing = ValueNotifier<bool>(false);
+      var playCalls = 0;
+      var stopCalls = 0;
+      await _open(
+        tester,
+        speech,
+        continuous: true,
+        referencePlayingListenable: playing,
+        playReference: (_) async {
+          playCalls++;
+          playing.value = true;
+          return true;
+        },
+        stopReference: () async {
+          stopCalls++;
+          playing.value = false;
+        },
+      );
+
+      expect(find.text('Listen'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('hifz-listen-button')));
+      await tester.pumpAndSettle();
+
+      // While playing, button shows Stop and tapping it stops playback instead of replaying.
+      expect(playCalls, 1);
+      expect(find.text('Stop'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('hifz-listen-button')));
+      await tester.pumpAndSettle();
+
+      expect(stopCalls, 2); // 1 before playReference + 1 from tapping Stop
+      expect(playCalls, 1);
+      expect(find.text('Listen'), findsOneWidget);
     },
   );
 }

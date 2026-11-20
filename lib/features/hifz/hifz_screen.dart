@@ -30,6 +30,8 @@ class HifzScreen extends StatefulWidget {
 class _HifzScreenState extends State<HifzScreen> {
   late final _content = widget.content ?? HifzContentService();
   final _audio = AudioPlayer();
+  final _referencePlaying = ValueNotifier<bool>(false);
+  StreamSubscription<PlayerState>? _audioStateSub;
   final _api = QuranApiService();
   final _audioCache = AudioCacheService();
   final _contentSync = QuranContentSyncService();
@@ -46,6 +48,15 @@ class _HifzScreenState extends State<HifzScreen> {
   @override
   void initState() {
     super.initState();
+    _audioStateSub = _audio.playerStateStream.listen((state) {
+      final isPlaying =
+          state.playing &&
+          state.processingState != ProcessingState.completed &&
+          state.processingState != ProcessingState.idle;
+      if (_referencePlaying.value != isPlaying) {
+        _referencePlaying.value = isPlaying;
+      }
+    });
     if (widget.isActive) unawaited(_loadChapters());
   }
 
@@ -83,6 +94,7 @@ class _HifzScreenState extends State<HifzScreen> {
 
   Future<void> _stopReference() async {
     ++_generation;
+    _referencePlaying.value = false;
     await _audio.stop();
   }
 
@@ -96,40 +108,47 @@ class _HifzScreenState extends State<HifzScreen> {
         ayahNumber: ayah.ayahNumber,
       );
       if (!mounted || generation != _generation) return false;
-      var url = path == null ? ayah.audioUrl : null;
-      if (path == null && (url == null || url.isEmpty)) {
+      String? url;
+      if (path == null) {
         url = _contentSync.getCachedRecitationMap(
           reciterId: reciterId,
           surahNumber: ayah.surahNumber,
         )[key];
       }
       if (path == null && (url == null || url.isEmpty)) {
-        final files = await _api
-            .fetchAudioFilesWithTimings(
-              reciterId: reciterId,
-              surahNumber: ayah.surahNumber,
-            )
-            .timeout(const Duration(seconds: 20));
-        url = files[key]?.url;
-        if (files.isNotEmpty) {
-          final audioMap = {
-            ..._contentSync.getCachedRecitationMap(
-              reciterId: reciterId,
-              surahNumber: ayah.surahNumber,
-            ),
-            for (final entry in files.entries)
-              if (entry.value.url.isNotEmpty) entry.key: entry.value.url,
-          };
-          unawaited(
-            _contentSync
-                .cacheRecitationMap(
-                  reciterId: reciterId,
-                  surahNumber: ayah.surahNumber,
-                  audioUrls: audioMap,
-                )
-                .then<void>((_) {}, onError: (_) {}),
-          );
+        try {
+          final files = await _api
+              .fetchAudioFilesWithTimings(
+                reciterId: reciterId,
+                surahNumber: ayah.surahNumber,
+              )
+              .timeout(const Duration(seconds: 20));
+          url = files[key]?.url;
+          if (files.isNotEmpty) {
+            final audioMap = {
+              ..._contentSync.getCachedRecitationMap(
+                reciterId: reciterId,
+                surahNumber: ayah.surahNumber,
+              ),
+              for (final entry in files.entries)
+                if (entry.value.url.isNotEmpty) entry.key: entry.value.url,
+            };
+            unawaited(
+              _contentSync
+                  .cacheRecitationMap(
+                    reciterId: reciterId,
+                    surahNumber: ayah.surahNumber,
+                    audioUrls: audioMap,
+                  )
+                  .then<void>((_) {}, onError: (_) {}),
+            );
+          }
+        } catch (error) {
+          debugPrint('Hifz reciter audio map fetch failed: $error');
         }
+      }
+      if (path == null && (url == null || url.isEmpty)) {
+        url = ayah.audioUrl;
       }
       url = QuranApiService.normalizeAudioUrl(url);
       if (path == null && (url == null || url.isEmpty)) {
@@ -161,9 +180,13 @@ class _HifzScreenState extends State<HifzScreen> {
         );
       }
       if (!mounted || generation != _generation) return false;
+      _referencePlaying.value = true;
       unawaited(
         _audio.play().catchError((Object error) {
           debugPrint('Hifz reference playback failed: $error');
+          if (generation == _generation) {
+            _referencePlaying.value = false;
+          }
           if (mounted && generation == _generation) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -178,6 +201,9 @@ class _HifzScreenState extends State<HifzScreen> {
       return true;
     } catch (error) {
       debugPrint('Hifz reference loading failed: $error');
+      if (generation == _generation) {
+        _referencePlaying.value = false;
+      }
       return false;
     }
   }
@@ -235,8 +261,12 @@ class _HifzScreenState extends State<HifzScreen> {
               surahNameFor: _name,
               review: review,
               continuous: !_stepByStep,
-              playReference: (ayah) => _playReference(ayah, reciter),
+              playReference: (ayah) => _playReference(
+                ayah,
+                context.read<RecitationProvider>().selectedReciterId,
+              ),
               stopReference: _stopReference,
+              referencePlayingListenable: _referencePlaying,
             );
           },
         ),
@@ -258,6 +288,8 @@ class _HifzScreenState extends State<HifzScreen> {
   @override
   void dispose() {
     ++_generation;
+    unawaited(_audioStateSub?.cancel());
+    _referencePlaying.dispose();
     unawaited(_audio.dispose());
     super.dispose();
   }
