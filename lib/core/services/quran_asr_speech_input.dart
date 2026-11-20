@@ -337,20 +337,35 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     }
   }
 
-  void _schedulePreview(int generation, {bool initial = false}) {
+  void _schedulePreview(
+    int generation, {
+    bool initial = false,
+    Duration? elapsed,
+  }) {
     // Probe capture after 500ms; native returns no report until 1s of audio.
-    // Subsequent checks wait for fresh audio after inference without overlap.
-    final delay = initial
-        ? const Duration(milliseconds: 500)
-        : const Duration(milliseconds: 200);
+    // Subsequent checks adapt to inference duration so slow decodes poll sooner
+    // while fast decodes keep the standard 200ms cadence.
+    Duration delay;
+    if (initial) {
+      delay = const Duration(milliseconds: 500);
+    } else if (elapsed != null && elapsed > const Duration(milliseconds: 120)) {
+      final remainingMs = 240 - elapsed.inMilliseconds;
+      delay = Duration(milliseconds: remainingMs < 60 ? 60 : remainingMs);
+    } else {
+      delay = const Duration(milliseconds: 200);
+    }
     _poll = Timer(delay, () {
       if (!_active || _stopping || generation != _generation) return;
+      final startedAt = DateTime.now();
       _inFlight = _preview(generation);
       unawaited(
         _inFlight!.whenComplete(() {
           _inFlight = null;
           if (_active && !_stopping && generation == _generation) {
-            _schedulePreview(generation);
+            _schedulePreview(
+              generation,
+              elapsed: DateTime.now().difference(startedAt),
+            );
           }
         }),
       );

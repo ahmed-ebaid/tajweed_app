@@ -2956,6 +2956,338 @@ class SpeechComparisonService {
         spoken.add('لمؤمن');
         continue;
       }
+      if (allowAsrCorrections &&
+          keys.any((key) => key.startsWith('18:'))) {
+        if ((rawSpoken[i] == 'رحما' || rawSpoken[i] == 'كرحمة') &&
+            spoken.isNotEmpty &&
+            spoken.last == 'لدنك') {
+          spoken.add('رحمة');
+          continue;
+        }
+        if (rawSpoken[i] == 'إثقاموا' ||
+            (rawSpoken[i] == 'فإذ' &&
+                i + 1 < rawSpoken.length &&
+                rawSpoken[i + 1] == 'قاموا')) {
+          if (rawSpoken[i] == 'إثقاموا') {
+            spoken.addAll(['إذ', 'قاموا']);
+          } else {
+            spoken.add('إذ');
+          }
+          continue;
+        }
+        if ((rawSpoken[i] == 'للذا' || rawSpoken[i] == 'لمب') &&
+            i + 2 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'ومن' &&
+            (rawSpoken[i + 2] == 'دونه' || rawSpoken[i + 2] == 'دوني')) {
+          spoken.addAll(['لن', 'ندعو', 'من', 'دونه']);
+          i += 2;
+          continue;
+        }
+        if (rawSpoken[i] == 'لنبوم' &&
+            i + 2 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'ان' &&
+            (rawSpoken[i + 2] == 'دوني' || rawSpoken[i + 2] == 'دونه')) {
+          spoken.addAll(['لن', 'ندعو', 'من', 'دونه']);
+          i += 2;
+          continue;
+        }
+        if (rawSpoken[i] == 'ندع' &&
+            spoken.isNotEmpty &&
+            spoken.last == 'لن' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'من') {
+          spoken.add('ندعو');
+          continue;
+        }
+        if (rawSpoken[i] == 'آلهة' &&
+            spoken.length >= 2 &&
+            spoken[spoken.length - 2] == 'من' &&
+            spoken.last == 'دونه' &&
+            keys.contains('18:14') &&
+            (i + 1 < rawSpoken.length &&
+                (rawSpoken[i + 1] == 'لقد' ||
+                    rawSpoken[i + 1] == 'وقد' ||
+                    rawSpoken[i + 1] == 'ووقلنا'))) {
+          spoken.add('إلها');
+          continue;
+        }
+        if (rawSpoken[i] == 'وقد' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'قلنا') {
+          spoken.add('لقد');
+          continue;
+        }
+        if (rawSpoken[i] == 'ووقلنا' &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'إذا' || rawSpoken[i + 1] == 'فإذا')) {
+          spoken.addAll(['لقد', 'قلنا']);
+          continue;
+        }
+        if ((rawSpoken[i] == 'إذا' || rawSpoken[i] == 'فإذا') &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'انشططى' ||
+                rawSpoken[i + 1] == 'شططى' ||
+                rawSpoken[i + 1] == 'شطر' ||
+                rawSpoken[i + 1] == 'شططا')) {
+          spoken.addAll(['إذا', 'شططا']);
+          i++;
+          continue;
+        }
+        if ((rawSpoken[i] == 'شطر' || rawSpoken[i] == 'شططى') &&
+            spoken.isNotEmpty &&
+            spoken.last == 'إذا') {
+          spoken.add('شططا');
+          continue;
+        }
+        if ((rawSpoken[i] == 'أئقوا' ||
+                rawSpoken[i] == 'ئقوا' ||
+                rawSpoken[i] == 'أم') &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'منتخذوا' || rawSpoken[i + 1] == 'ننتخذوا')) {
+          if (spoken.isEmpty || spoken.last != 'هؤلاء') {
+            spoken.add('هؤلاء');
+          }
+          spoken.addAll(['قومنا', 'اتخذوا']);
+          i++;
+          continue;
+        }
+        if (rawSpoken[i] == 'قوم' &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'نتق' || rawSpoken[i + 1] == 'نتخذوا')) {
+          spoken.addAll(['قومنا', 'اتخذوا']);
+          i++;
+          continue;
+        }
+        if ((rawSpoken[i] == 'هالهة' || rawSpoken[i] == 'ذلهة') &&
+            spoken.isNotEmpty &&
+            spoken.last == 'دونه') {
+          spoken.add('آلهة');
+          continue;
+        }
+        if (rawSpoken[i] == 'بسطان' &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'بين' || rawSpoken[i + 1] == 'بي')) {
+          spoken.add('بسلطان');
+          continue;
+        }
+        if (rawSpoken[i] == 'بي' &&
+            spoken.isNotEmpty &&
+            spoken.last == 'بسلطان') {
+          spoken.add('بين');
+          continue;
+        }
+        if (const {'أرضم', 'أرظم', 'أرغم', 'فأرضم'}.contains(rawSpoken[i]) &&
+            ((spoken.isNotEmpty && spoken.last == 'فمن') ||
+                (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'ممن'))) {
+          if (rawSpoken[i] == 'فأرضم' &&
+              (spoken.isEmpty || spoken.last != 'فمن')) {
+            spoken.add('فمن');
+          }
+          spoken.add('أظلم');
+          continue;
+        }
+        if (rawSpoken[i] == 'كذبة' &&
+            spoken.length >= 2 &&
+            spoken[spoken.length - 2] == 'على' &&
+            spoken.last == 'الله') {
+          spoken.add('كذبا');
+          continue;
+        }
+        if (rawSpoken[i] == 'وإذا' &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'اعتزلتموهم' ||
+                rawSpoken[i + 1] == 'تزلتموهم' ||
+                rawSpoken[i + 1] == 'عتزلتموهم')) {
+          spoken.addAll(['وإذ', 'اعتزلتموهم']);
+          i++;
+          continue;
+        }
+        if (rawSpoken[i] == 'وإذ' &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'عتزلتموهم' ||
+                rawSpoken[i + 1] == 'تزلتموهم')) {
+          spoken.addAll(['وإذ', 'اعتزلتموهم']);
+          i++;
+          continue;
+        }
+        if (const {
+          'وليممرشدة',
+          'وليممرسدة',
+          'وليممرسدا',
+          'وليممرشدا',
+        }.contains(rawSpoken[i])) {
+          spoken.addAll(['وليا', 'مرشدا']);
+          continue;
+        }
+        if ((rawSpoken[i] == 'وليم' || rawSpoken[i] == 'وليا') &&
+            i + 1 < rawSpoken.length &&
+            const {
+              'مرشدة',
+              'مرسدة',
+              'مرسدا',
+              'مرسلة',
+              'مرشدا',
+            }.contains(rawSpoken[i + 1])) {
+          spoken.addAll(['وليا', 'مرشدا']);
+          i++;
+          continue;
+        }
+        if (const {'غيقاضا', 'غيقاظا', 'عقاظا', 'أيقاظ'}.contains(
+              rawSpoken[i],
+            ) &&
+            ((spoken.isNotEmpty && spoken.last == 'وتحسبهم') ||
+                (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'وهم'))) {
+          spoken.add('أيقاظا');
+          continue;
+        }
+        if ((rawSpoken[i] == 'لقوم' || rawSpoken[i] == 'رقوم') &&
+            spoken.isNotEmpty &&
+            spoken.last == 'وهم') {
+          spoken.add('رقود');
+          continue;
+        }
+        if ((rawSpoken[i] == 'باصط' || rawSpoken[i] == 'بعصطة') &&
+            ((spoken.isNotEmpty && spoken.last == 'وكلبهم') ||
+                (i + 1 < rawSpoken.length &&
+                    rawSpoken[i + 1].startsWith('ذر')))) {
+          spoken.add('باسط');
+          continue;
+        }
+        if (rawSpoken[i] == 'ذر' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'عيه') {
+          spoken.add('ذراعيه');
+          i++;
+          continue;
+        }
+        if (const {'ذراعه', 'ذرعيه', 'ذراعية'}.contains(rawSpoken[i]) &&
+            ((spoken.isNotEmpty && spoken.last == 'باسط') ||
+                (i + 1 < rawSpoken.length &&
+                    rawSpoken[i + 1].startsWith('بالوصي')))) {
+          spoken.add('ذراعيه');
+          continue;
+        }
+        if ((rawSpoken[i] == 'بالوصير' || rawSpoken[i] == 'بالوصية') &&
+            ((spoken.isNotEmpty && spoken.last == 'ذراعيه') ||
+                (i > 0 && rawSpoken[i - 1].startsWith('ذر')))) {
+          spoken.add('بالوصيد');
+          continue;
+        }
+        if (rawSpoken[i] == 'لي' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'تساءلوا') {
+          spoken.add('ليتساءلوا');
+          i++;
+          continue;
+        }
+        if (const {
+              'لتساءلوب',
+              'فيتساءلوا',
+              'فساءلوا',
+              'ليتساءلون',
+              'لتساءلوا',
+            }.contains(rawSpoken[i]) &&
+            ((spoken.isNotEmpty && spoken.last == 'بعثناهم') ||
+                (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'بينهم'))) {
+          spoken.add('ليتساءلوا');
+          continue;
+        }
+        if ((rawSpoken[i] == 'ضعب' || rawSpoken[i] == 'ضعض') &&
+            spoken.isNotEmpty &&
+            spoken.last == 'أو' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'يوم') {
+          spoken.add('بعض');
+          continue;
+        }
+        if (rawSpoken[i] == 'ضعبية' &&
+            spoken.isNotEmpty &&
+            spoken.last == 'أو') {
+          spoken.addAll(['بعض', 'يوم']);
+          continue;
+        }
+        if (const {'فبعثوا', 'تبعثوا', 'فاعتوا'}.contains(rawSpoken[i]) &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'أحدكم') {
+          spoken.add('فابعثوا');
+          continue;
+        }
+        if (const {
+              'بيرقكم',
+              'بورقكم',
+              'يورقكم',
+              'يولقكم',
+              'ورقكم',
+            }.contains(rawSpoken[i]) &&
+            ((spoken.isNotEmpty && spoken.last == 'أحدكم') ||
+                (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'هذه'))) {
+          spoken.add('بورقكم');
+          continue;
+        }
+        if (rawSpoken[i] == 'أسقى' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'طعاما') {
+          spoken.add('أزكى');
+          continue;
+        }
+        if (rawSpoken[i] == 'أسقاط' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'عاما') {
+          spoken.addAll(['أزكى', 'طعاما']);
+          i++;
+          continue;
+        }
+        if (rawSpoken[i] == 'أسقاطع' &&
+            spoken.isNotEmpty &&
+            spoken.last == 'أيها') {
+          spoken.addAll(['أزكى', 'طعاما']);
+          continue;
+        }
+        if ((rawSpoken[i] == 'وليأتكم' || rawSpoken[i] == 'ليأتكم') &&
+            i + 1 < rawSpoken.length &&
+            const {'برصق', 'برسط', 'برسق', 'برزق'}.contains(rawSpoken[i + 1])) {
+          spoken.addAll(['فليأتكم', 'برزق']);
+          i++;
+          continue;
+        }
+        if (const {'برصق', 'برسط', 'برسق'}.contains(rawSpoken[i]) &&
+            ((spoken.isNotEmpty && spoken.last == 'فليأتكم') ||
+                (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'منه'))) {
+          spoken.add('برزق');
+          continue;
+        }
+        if ((rawSpoken[i] == 'وليترى' || rawSpoken[i] == 'ولترى') &&
+            i + 2 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'الطفو' &&
+            rawSpoken[i + 2] == 'لا') {
+          spoken.addAll(['وليتلطف', 'ولا']);
+          i += 2;
+          continue;
+        }
+        if (const {
+          'وليتوطف',
+          'وليترضف',
+          'فليتوطف',
+          'وليتلاطف',
+          'وليتلقف',
+        }.contains(rawSpoken[i])) {
+          spoken.add('وليتلطف');
+          continue;
+        }
+        if (rawSpoken[i] == 'يشعر' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'النبكم') {
+          spoken.addAll(['يشعرن', 'بكم']);
+          i++;
+          continue;
+        }
+        if (rawSpoken[i] == 'يسعرن' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'بكم') {
+          spoken.add('يشعرن');
+          continue;
+        }
+      }
       spoken.add(rawSpoken[i]);
     }
     if (allowAsrCorrections) {
@@ -6869,6 +7201,15 @@ class SpeechComparisonService {
           out.last.$2 == 'F') {
         continue;
       }
+      if (!isLast &&
+          ch == 'ي' &&
+          (v == null || v == 'S') &&
+          out.isNotEmpty &&
+          out.last.$2 == 'K') {
+        out[out.length - 1] = (out.last.$1, 'F');
+        out.add((ch, 'S'));
+        continue;
+      }
       out.add((ch, v));
     }
     return out;
@@ -6891,10 +7232,28 @@ class SpeechComparisonService {
       if (el[i].$1 != fl[i].$1) return false;
     }
     final skelE = [for (final (c, _) in el) c].join();
-    if (skelE == 'ضعف' || skelE == 'ضعفا') return false;
+    if (skelE == 'ضعف' ||
+        skelE == 'ضعفا' ||
+        skelE == 'بورقكم' ||
+        skelE == 'يضلل' ||
+        skelE == 'ذراعيه' ||
+        skelE == 'رعبا') {
+      return false;
+    }
 
-    for (var i = 0; i < el.length; i++) {
+      for (var i = 0; i < el.length; i++) {
       if (_vowelsConflict(el[i].$2, fl[i].$2)) {
+        // Whisper frequently hallucinates final-letter case vowels or tanween
+        // on longer nouns/particles, especially on taa marbuta ('ة' -> 'ه') or
+        // tanween alif ('ً' + 'ا', e.g. 'آلِهَةٌ'/'آلِهَةٍ' for 'آلِهَةً',
+        // 'رَحْمَةٍ' for 'رَحْمَةً', 'أَحَدٌ' for 'أَحَدًا').
+        final isTanweenFathaEnding =
+            expectedVocalized.endsWith('ًا') ||
+            expectedVocalized.endsWith('اً');
+        if (i == el.length - 1 &&
+            (el[i].$1 == 'ه' || isTanweenFathaEnding)) {
+          continue;
+        }
         // Guard against Whisper labial vowel harmony before attached '-هُم'
         // (e.g. 'أَطْعَمَهُم' transcribed as 'أَطْعَمُهُمْ').
         if (i + 2 == el.length - 1 &&

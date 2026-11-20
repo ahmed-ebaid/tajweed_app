@@ -2828,4 +2828,187 @@ void main() {
       }
     },
   );
+
+  test(
+    'advances Surah Al-Kahf (18:10-18:20) through Build 148 Whisper ASR transcripts without stalling',
+    () {
+      const kahf10 =
+          'إِذْ أَوَى الْفِتْيَةُ إِلَى الْكَهْفِ فَقَالُوا رَبَّنَا آتِنَا مِنْ لَدُنْكَ رَحْمَةً وَهَيِّئْ لَنَا مِنْ أَمْرِنَا رَشَدًا';
+      const kahf14 =
+          'وَرَبَطْنَا عَلَىٰ قُلُوبِهِمْ إِذْ قَامُوا فَقَالُوا رَبُّنَا رَبُّ السَّمَاوَاتِ وَالْأَرْضِ لَنْ نَدْعُوَ مِنْ دُونِهِ إِلَٰهًا لَقَدْ قُلْنَا إِذًا شَطَطًا';
+      const kahf15 =
+          'هَٰؤُلَاءِ قَوْمُنَا اتَّخَذُوا مِنْ دُونِهِ آلِهَةً لَوْلَا يَأْتُونَ عَلَيْهِمْ بِسُلْطَانٍ بَيِّنٍ فَمَنْ أَظْلَمُ مِمَّنِ افْتَرَىٰ عَلَى اللَّهِ كَذِبًا';
+      const kahf16 =
+          'وَإِذِ اعْتَزَلْتُمُوهُمْ وَمَا يَعْبُدُونَ إِلَّا اللَّهَ فَأْوُوا إِلَى الْكَهْفِ يَنْشُرْ لَكُمْ رَبُّكُمْ مِنْ رَحْمَتِهِ وَيُهَيِّئْ لَكُمْ مِنْ أَمْرِكُمْ مِرْفَقًا';
+      const kahf17 =
+          'وَتَرَى الشَّمْسَ إِذَا طَلَعَتْ تَزَاوَرُ عَنْ كَهْفِهِمْ ذَاتَ الْيَمِينِ وَإِذَا غَرَبَتْ تَقْرِضُهُمْ ذَاتَ الشِّمَالِ وَهُمْ فِي فَجْوَةٍ مِنْهُ ذَٰلِكَ مِنْ آيَاتِ اللَّهِ مَنْ يَهْدِ اللَّهُ فَهُوَ الْمُهْتَدِ وَمَنْ يُضْلِلْ فَلَنْ تَجِدَ لَهُ وَلِيًّا مُرْشِدًا';
+      const kahf18 =
+          'وَتَحْسَبُهُمْ أَيْقَاظًا وَهُمْ رُقُودٌ وَنُقَلِّبُهُمْ ذَاتَ الْيَمِينِ وَذَاتَ الشِّمَالِ وَكَلْبُهُمْ بَاسِطٌ ذِرَاعَيْهِ بِالْوَصِيدِ لَوِ اطَّلَعْتَ عَلَيْهِمْ لَوَلَّيْتَ مِنْهُمْ فِرَارًا وَلَمُلِئْتَ مِنْهُمْ رُعْبًا';
+      const kahf19 =
+          'وَكَذَٰلِكَ بَعَثْنَاهُمْ لِيَتَسَاءَلُوا بَيْنَهُمْ قَالَ قَائِلٌ مِنْهُمْ كَمْ لَبِثْتُمْ قَالُوا لَبِثْنَا يَوْمًا أَوْ بَعْضَ يَوْمٍ قَالُوا رَبُّكُمْ أَعْلَمُ بِمَا لَبِثْتُمْ فَابْعَثُوا أَحَدَكُمْ بِوَرِقِكُمْ هَٰذِهِ إِلَى الْمَدِينَةِ فَلْيَنْظُرْ أَيُّهَا أَزْكَىٰ طَعَامًا فَلْيَأْتِكُمْ بِرِزْقٍ مِنْهُ وَلْيَتَلَطَّفْ وَلَا يُشْعِرَنَّ بِكُمْ أَحَدًا';
+
+      // 18:10: 'رَحْمَةٍ' / 'رَحْمًا' after 'لَدُنْكَ'
+      final joined10 = comparison.joinRecitationSegment(
+        retainedPrefix: 'إذ أوى الفتية إلى الكهف فقالوا ربنا آتنا من لدنك',
+        spokenText: 'آتِنَا مِنْ لَدُنْكَ رَحْمَةٍ وَهَيِّئْ لَنَا مِنْ أَمْرِنَا رَشَدًا',
+        expectedAyahs: [kahf10],
+        expectedVerseKeys: ['18:10'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [kahf10],
+          expectedVerseKeys: ['18:10'],
+          spokenText: joined10,
+          allowWrittenOpenings: true,
+        ),
+        [16],
+      );
+
+      // 18:14: 'إِثْقَامُوا', 'لَلَّذَا وَمِنْ دُونِهِ', 'وَقَدْ قُلْنَا إِذَا انْشَطَطَى'
+      var joined14 = comparison.joinRecitationSegment(
+        retainedPrefix: 'وربطنا على قلوبهم',
+        spokenText: 'عَلَىٰ قُلُوبِهِمْ إِثْقَامُوا فَقَالُوا رَبُّنَا رَبُّ السَّمَاوَاتِ وَالْأَرْضِ',
+        expectedAyahs: [kahf14],
+        expectedVerseKeys: ['18:14'],
+        allowWrittenOpenings: true,
+      );
+      joined14 = comparison.joinRecitationSegment(
+        retainedPrefix: joined14,
+        spokenText: 'وَالأَرْضِ لَلَّذَا وَمِنْ دُونِهِ إِلَٰهًا وَقَدْ قُلْنَا إِذَا انْشَطَطَى',
+        expectedAyahs: [kahf14],
+        expectedVerseKeys: ['18:14'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [kahf14],
+          expectedVerseKeys: ['18:14'],
+          spokenText: joined14,
+          allowWrittenOpenings: true,
+        ),
+        [19],
+      );
+
+      // 18:15: 'آلِهَةٌ' (damma tanween), 'بِسُطَانٍ بَيٍّ', 'فَمَنْ أَرْضَمَ مِمَّنِ افْتَرَىٰ عَلَى اللَّهِ كَذِبَةً'
+      var joined15 = comparison.joinRecitationSegment(
+        retainedPrefix: 'هؤلاء قومنا اتخذوا من دونه',
+        spokenText: 'مِنْ دُونِهِ آلِهَةٌ لَوْلَا يَأْتُونَ عَلَيْهِمْ بِسُطَانٍ بَيٍّ',
+        expectedAyahs: [kahf15],
+        expectedVerseKeys: ['18:15'],
+        allowWrittenOpenings: true,
+      );
+      joined15 = comparison.joinRecitationSegment(
+        retainedPrefix: joined15,
+        spokenText: 'بِسُلْطَانٍ بَيِّنٍ فَمَنْ أَرْضَمَ مِمَّنِ افْتَرَىٰ عَلَى اللَّهِ كَذِبَةً',
+        expectedAyahs: [kahf15],
+        expectedVerseKeys: ['18:15'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [kahf15],
+          expectedVerseKeys: ['18:15'],
+          spokenText: joined15,
+          allowWrittenOpenings: true,
+        ),
+        [18],
+      );
+
+      // 18:16: 'وَإِذَا اعْتَزَلْتُمُوهُمْ'
+      final joined16 = comparison.joinRecitationSegment(
+        retainedPrefix: '',
+        spokenText: 'وَإِذَا اعْتَزَلْتُمُوهُمْ وَمَا يَعْبُدُونَ إِلَّا اللَّهَ',
+        expectedAyahs: [kahf16],
+        expectedVerseKeys: ['18:16'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [kahf16],
+          expectedVerseKeys: ['18:16'],
+          spokenText: joined16,
+          allowWrittenOpenings: true,
+        ),
+        [6],
+      );
+
+      // 18:17: 'يُضْلَلْ' + 'وَلِيَمْ مُرْشِدَةٌ'
+      final joined17 = comparison.joinRecitationSegment(
+        retainedPrefix:
+            'وترى الشمس إذا طلعت تزاور عن كهفهم ذات اليمين وإذا غربت تقرضهم ذات الشمال وهم في فجوة منه ذلك من آيات الله من يهد الله فهو المهتد ومن',
+        spokenText: 'فَهُوَ الْمُهْتَدِ وَمَنْ يُضْلَلْ فَلَنْ تَجِدَ لَهُ وَلِيَمْ مُرْشِدَةٌ',
+        expectedAyahs: [kahf17],
+        expectedVerseKeys: ['18:17'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [kahf17],
+          expectedVerseKeys: ['18:17'],
+          spokenText: joined17,
+          allowWrittenOpenings: true,
+        ),
+        [34],
+      );
+
+      // 18:18: 'غَيْقَاضًا وَهُمْ لُقُومٌ', 'بَاصِطٌ ذِرَاعِيهِ بِالْوَصِيرِ', 'رَعْبًا'
+      var joined18 = comparison.joinRecitationSegment(
+        retainedPrefix: 'وتحسبهم',
+        spokenText: 'وَتَحْسَبُهُمْ غَيْقَاضًا وَهُمْ لُقُومٌ وَنُقَلِّبُهُمْ ذَاتَ الْيَمِينِ وَذَاتَ الشِّمَالِ',
+        expectedAyahs: [kahf18],
+        expectedVerseKeys: ['18:18'],
+        allowWrittenOpenings: true,
+      );
+      joined18 = comparison.joinRecitationSegment(
+        retainedPrefix: joined18,
+        spokenText: 'وَذَاتَ الشِّمَالِ وَكَلْبُهُمْ بَاصِطٌ ذِرَاعِيهِ بِالْوَصِيرِ لَوِ اطَّلَعْتَ عَلَيْهِمْ لَوَلَّيْتَ مِنْهُمْ فِرَارًا وَلَمُلِئْتَ مِنْهُمْ رَعْبًا',
+        expectedAyahs: [kahf18],
+        expectedVerseKeys: ['18:18'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [kahf18],
+          expectedVerseKeys: ['18:18'],
+          spokenText: joined18,
+          allowWrittenOpenings: true,
+        ),
+        [22],
+      );
+
+      // 18:19: 'لِي تَسَاءَلُوا', 'أَوْ ضَعْبَ يَوْمٍ', 'فَبَعَثُوا أَحَدَكُمْ بِوَرَقِكُمْ',
+      // 'أَسْقَاطَ عَامًا', 'وَلْيَأْتِكُمْ بِرَصْقٍ مِنْهُ وَلِيَتَرَى الطَّفْوَ لَا يُشْعِرَ النَّبِكُمْ أَحَدٌ'
+      var joined19 = comparison.joinRecitationSegment(
+        retainedPrefix: 'وكذلك بعثناهم',
+        spokenText: 'وَكَذَٰلِكَ بَعَثْنَاهُمْ لِي تَسَاءَلُوا بَيْنَهُمْ قَالَ قَائِلٌ مِنْهُمْ كَمْ لَبِثْتُمْ قَالُوا لَبِثْنَا يَوْمًا أَوْ ضَعْبَ يَوْمٍ',
+        expectedAyahs: [kahf19],
+        expectedVerseKeys: ['18:19'],
+        allowWrittenOpenings: true,
+      );
+      joined19 = comparison.joinRecitationSegment(
+        retainedPrefix: joined19,
+        spokenText: 'أَوْ ضَعْبَ يَوْمٍ قَالُوا رَبُّكُمْ أَعْلَمُ بِمَا لَبِثْتُمْ فَبَعَثُوا أَحَدَكُمْ بِوَرَقِكُمْ هَٰذِهِ إِلَى الْمَدِينَةِ',
+        expectedAyahs: [kahf19],
+        expectedVerseKeys: ['18:19'],
+        allowWrittenOpenings: true,
+      );
+      joined19 = comparison.joinRecitationSegment(
+        retainedPrefix: joined19,
+        spokenText: 'إِلَى الْمَدِينَةِ فَلْيَنْظُرْ أَيُّهَا أَسْقَاطَ عَامًا وَلْيَأْتِكُمْ بِرَصْقٍ مِنْهُ وَلِيَتَرَى الطَّفْوَ لَا يُشْعِرَ النَّبِكُمْ أَحَدٌ',
+        expectedAyahs: [kahf19],
+        expectedVerseKeys: ['18:19'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [kahf19],
+          expectedVerseKeys: ['18:19'],
+          spokenText: joined19,
+          allowWrittenOpenings: true,
+        ),
+        [38],
+      );
+    },
+  );
 }
