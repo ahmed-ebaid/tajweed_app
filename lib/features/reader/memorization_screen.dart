@@ -1086,10 +1086,16 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                         allowWrittenOpenings: true,
                       )
                     : null;
-                if (liveCheck != null && liveCheck.mismatch) {
-                  final activeIdx = _activeAyahIndex < widget.ayahs.length
-                      ? _activeAyahIndex
-                      : _index;
+                final totalPreviewWords = wordCounts.fold(0, (a, b) => a + b);
+                final previousPreviewWords = previousWords.values.fold(
+                  0,
+                  (a, b) => a + b,
+                );
+                if (liveCheck != null &&
+                    liveCheck.mismatch &&
+                    totalPreviewWords <= previousPreviewWords &&
+                    _activeAyahIndex < widget.ayahs.length) {
+                  final activeIdx = _activeAyahIndex;
                   final activeKey =
                       '${widget.ayahs[activeIdx].surahNumber}:${widget.ayahs[activeIdx].ayahNumber}';
                   final activeMatched = _visibleWordCounts[activeKey] ?? 0;
@@ -2447,64 +2453,75 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: widget.continuous && !widget.review
-                    ? (landscape ? 68 : 92)
+                    ? (landscape ? 52 : 56)
                     : 0,
                 maxHeight: widget.continuous && !widget.review
                     ? (landscape
                           ? (MediaQuery.sizeOf(context).width >= 700
-                                ? 112
-                                : 104)
-                          : 148)
-                    : MediaQuery.sizeOf(context).height * 0.24,
+                                ? 60
+                                : 64)
+                          : 68)
+                    : MediaQuery.sizeOf(context).height * 0.16,
               ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
-                  vertical: 2,
+                  vertical: 6,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (!widget.review &&
                         (widget.continuous || widget.localQuranLab))
-                      SizedBox(
-                        height: 24,
-                        child: SwitchListTile(
-                          dense: true,
-                          visualDensity: const VisualDensity(
-                            horizontal: 0,
-                            vertical: -4,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                          ),
-                          title: Opacity(
-                            opacity: 0,
-                            child: Text(
-                              l10n.get(
-                                widget.localQuranLab
-                                    ? 'quran_asr_word_preview'
-                                    : 'hifz_live_preview',
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 1,
+                          height: 1,
+                          child: FittedBox(
+                            child: Opacity(
+                              opacity: 0,
+                              child: SizedBox(
+                                width: 320,
+                                height: 32,
+                                child: SwitchListTile(
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                    horizontal: 0,
+                                    vertical: -4,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  title: Text(
+                                    l10n.get(
+                                      widget.localQuranLab
+                                          ? 'quran_asr_word_preview'
+                                          : 'hifz_live_preview',
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: statusTextStyle?.copyWith(
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  value: _livePreview,
+                                  onChanged: (enabled) => setState(() {
+                                    if (_windowed && _acceptResults) {
+                                      _retainRollingWords(_index);
+                                    }
+                                    _livePreview = enabled;
+                                    _preview.clear();
+                                    _clearLiveWords(
+                                      keepRolling: _windowed && _acceptResults,
+                                    );
+                                  }),
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: statusTextStyle?.copyWith(fontSize: 11),
                             ),
                           ),
-                          value: _livePreview,
-                          onChanged: (enabled) => setState(() {
-                            if (_windowed && _acceptResults) {
-                              _retainRollingWords(_index);
-                            }
-                            _livePreview = enabled;
-                            _preview.clear();
-                            _clearLiveWords(
-                              keepRolling: _windowed && _acceptResults,
-                            );
-                          }),
                         ),
                       ),
-                    const SizedBox(height: 1),
                     if (!_hasStarted && !widget.continuous && !widget.review)
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
@@ -2520,33 +2537,110 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                               ?.copyWith(fontSize: 10.5, height: 1.15),
                         ),
                       ),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 2,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          '${l10n.get('ayah')} ${l10n.digits(_index + 1)}'
-                          ' / ${l10n.digits(widget.ayahs.length)}',
-                          style: metaTextStyle,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 1,
+                        height: 1,
+                        child: FittedBox(
+                          child: Opacity(
+                            opacity: 0,
+                            child: SizedBox(
+                              width: 320,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 2,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      Text(
+                                        '${l10n.get('ayah')} ${l10n.digits(_index + 1)}'
+                                        ' / ${l10n.digits(widget.ayahs.length)}',
+                                        style: metaTextStyle,
+                                      ),
+                                      if (widget.localQuranLab &&
+                                          widget.continuous &&
+                                          !widget.review &&
+                                          !_finished &&
+                                          !_hasFullUnverifiedPreview)
+                                        Text(
+                                          '${l10n.get('quran_asr_next_word')}: '
+                                          '${l10n.digits(_nextLabWord)}',
+                                          style: metaTextStyle,
+                                        ),
+                                      if (widget.continuous && !widget.review)
+                                        Text(
+                                          '${l10n.get('hifz_unaided')}: ${l10n.digits(_matched.length)}'
+                                          ' · ${l10n.get(widget.localQuranLab ? 'quran_asr_assisted' : 'hifz_assisted')}: ${l10n.digits(_assisted.length)}',
+                                          style: metaTextStyle,
+                                        ),
+                                    ],
+                                  ),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 2,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      Semantics(
+                                        liveRegion: true,
+                                        child: Text(
+                                          _finished
+                                              ? l10n.get('mem_done')
+                                              : widget.review
+                                              ? l10n.get('hifz_review_intro')
+                                              : '${l10n.get(widget.continuous && _message == 'mem_ready' ? 'hifz_ready' : _message)}'
+                                                    '${_mismatchWord == null ? '' : ' ${l10n.digits(_mismatchWord!)}'}',
+                                          style: statusTextStyle,
+                                        ),
+                                      ),
+                                      if (widget.localQuranLab &&
+                                          (_unverifiedAyahs.isNotEmpty ||
+                                              _pausedWordCounts.isNotEmpty ||
+                                              _navigationWordCounts
+                                                  .isNotEmpty ||
+                                              (_livePreview &&
+                                                  _liveWordCounts.isNotEmpty)))
+                                        Text(
+                                          l10n.get(
+                                            _pausedWordCounts.isNotEmpty ||
+                                                    _navigationWordCounts
+                                                        .isNotEmpty ||
+                                                    _unverifiedAyahs.isNotEmpty
+                                                ? 'quran_asr_retained_preview'
+                                                : 'hifz_provisional',
+                                          ),
+                                          style: TextStyle(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            fontSize: statusTextStyle?.fontSize,
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                      if (_preview.isNotEmpty)
+                                        Text(
+                                          '${l10n.get('hifz_provisional')}: '
+                                          '${_preview.map((i) => l10n.digits(widget.ayahs[i].ayahNumber)).join(', ')}',
+                                          style: TextStyle(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            fontSize: statusTextStyle?.fontSize,
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        if (widget.localQuranLab &&
-                            widget.continuous &&
-                            !widget.review &&
-                            !_finished &&
-                            !_hasFullUnverifiedPreview)
-                          Text(
-                            '${l10n.get('quran_asr_next_word')}: '
-                            '${l10n.digits(_nextLabWord)}',
-                            style: metaTextStyle,
-                          ),
-                        if (widget.continuous && !widget.review)
-                          Text(
-                            '${l10n.get('hifz_unaided')}: ${l10n.digits(_matched.length)}'
-                            ' · ${l10n.get(widget.localQuranLab ? 'quran_asr_assisted' : 'hifz_assisted')}: ${l10n.digits(_assisted.length)}',
-                            style: metaTextStyle,
-                          ),
-                      ],
+                      ),
                     ),
                     if (!widget.continuous || widget.review)
                       DropdownButton<int>(
@@ -2566,105 +2660,67 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                             ),
                         ],
                       ),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 2,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            _finished
-                                ? l10n.get('mem_done')
-                                : widget.review
-                                ? l10n.get('hifz_review_intro')
-                                : '${l10n.get(widget.continuous && _message == 'mem_ready' ? 'hifz_ready' : _message)}'
-                                      '${_mismatchWord == null ? '' : ' ${l10n.digits(_mismatchWord!)}'}',
-                            style: statusTextStyle,
-                          ),
-                        ),
-                        if (widget.localQuranLab &&
-                            (_unverifiedAyahs.isNotEmpty ||
-                                _pausedWordCounts.isNotEmpty ||
-                                _navigationWordCounts.isNotEmpty ||
-                                (_livePreview && _liveWordCounts.isNotEmpty)))
-                          Text(
-                            l10n.get(
-                              _pausedWordCounts.isNotEmpty ||
-                                      _navigationWordCounts.isNotEmpty ||
-                                      _unverifiedAyahs.isNotEmpty
-                                  ? 'quran_asr_retained_preview'
-                                  : 'hifz_provisional',
-                            ),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontSize: statusTextStyle?.fontSize,
-                              height: 1.15,
-                            ),
-                          ),
-                        if (_preview.isNotEmpty)
-                          Text(
-                            '${l10n.get('hifz_provisional')}: '
-                            '${_preview.map((i) => l10n.digits(widget.ayahs[i].ayahNumber)).join(', ')}',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontSize: statusTextStyle?.fontSize,
-                              height: 1.15,
-                            ),
-                          ),
-                      ],
-                    ),
                     if (_transcript.isNotEmpty && !widget.localQuranLab)
                       Text(
                         '${l10n.get('mem_heard')}: $_transcript',
                         textDirection: TextDirection.rtl,
                         style: statusTextStyle,
                       ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Wrap(
-                      spacing: 6,
+                      spacing: 8,
                       runSpacing: 4,
-                      alignment: WrapAlignment.spaceBetween,
+                      alignment: WrapAlignment.center,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         if (!widget.review)
-                          OutlinedButton.icon(
-                            key: const ValueKey('hifz-mistakes-pill'),
-                            style: OutlinedButton.styleFrom(
-                              visualDensity: const VisualDensity(
-                                horizontal: -2,
-                                vertical: -3,
+                          SizedBox(
+                            width: 1,
+                            height: 1,
+                            child: FittedBox(
+                              child: Opacity(
+                                opacity: 0,
+                                child: OutlinedButton.icon(
+                                  key: const ValueKey('hifz-mistakes-pill'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: const VisualDensity(
+                                      horizontal: -2,
+                                      vertical: -3,
+                                    ),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 3,
+                                    ),
+                                    minimumSize: const Size(0, 28),
+                                    shape: const StadiumBorder(),
+                                    side: BorderSide(
+                                      color: _mistakes.isNotEmpty
+                                          ? const Color(
+                                              0xFFD32F2F,
+                                            ).withValues(alpha: 0.50)
+                                          : Theme.of(context).dividerColor,
+                                    ),
+                                    foregroundColor: _mistakes.isNotEmpty
+                                        ? const Color(0xFFD32F2F)
+                                        : null,
+                                    textStyle: buttonLabelStyle,
+                                  ),
+                                  onPressed: _showMistakesSheet,
+                                  icon: Icon(
+                                    _mistakes.isNotEmpty
+                                        ? Icons.error_outline
+                                        : Icons.history,
+                                    size: 14,
+                                  ),
+                                  label: Text(
+                                    _mistakes.isEmpty
+                                        ? l10n.get('hifz_mistakes')
+                                        : '${l10n.get('hifz_mistakes')} (${l10n.digits(_mistakes.length)})',
+                                  ),
+                                ),
                               ),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 3,
-                              ),
-                              minimumSize: const Size(0, 28),
-                              shape: const StadiumBorder(),
-                              side: BorderSide(
-                                color: _mistakes.isNotEmpty
-                                    ? const Color(
-                                        0xFFD32F2F,
-                                      ).withValues(alpha: 0.50)
-                                    : Theme.of(context).dividerColor,
-                              ),
-                              foregroundColor: _mistakes.isNotEmpty
-                                  ? const Color(0xFFD32F2F)
-                                  : null,
-                              textStyle: buttonLabelStyle,
-                            ),
-                            onPressed: _showMistakesSheet,
-                            icon: Icon(
-                              _mistakes.isNotEmpty
-                                  ? Icons.error_outline
-                                  : Icons.history,
-                              size: 14,
-                            ),
-                            label: Text(
-                              _mistakes.isEmpty
-                                  ? l10n.get('hifz_mistakes')
-                                  : '${l10n.get('hifz_mistakes')} (${l10n.digits(_mistakes.length)})',
                             ),
                           ),
                         Container(
