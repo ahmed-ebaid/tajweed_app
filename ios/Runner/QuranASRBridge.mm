@@ -109,6 +109,10 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
   params.translate = false;
   params.no_context = true;
   params.no_timestamps = true;
+  params.single_segment = true;
+  const double durationSec = (double)buffer.frameLength / 16000.0;
+  const int durationTokens = (int)std::ceil(durationSec * 14.0) + 12;
+  params.max_tokens = std::max(36, std::min(192, durationTokens));
   params.print_progress = false;
   params.print_realtime = false;
   params.print_timestamps = false;
