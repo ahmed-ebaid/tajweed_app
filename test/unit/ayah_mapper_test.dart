@@ -305,6 +305,19 @@ void main() {
     );
   });
 
+  test('normalizes relative audio URLs in AyahMapper.fromApi', () {
+    final ayah = AyahMapper.fromApi({
+      'verse_key': '1:1',
+      'page_number': 1,
+      'text_uthmani': 'بِسْمِ ٱللَّهِ',
+      'audio': {'url': 'Alafasy/mp3/001001.mp3'},
+    });
+    expect(
+      ayah.audioUrl,
+      'https://verses.quran.com/Alafasy/mp3/001001.mp3',
+    );
+  });
+
   test('does not present concatenated word glosses as a verse translation', () {
     final ayah = AyahMapper.fromApi({
       'verse_key': '1:1',

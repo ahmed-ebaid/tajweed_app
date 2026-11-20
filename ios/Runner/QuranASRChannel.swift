@@ -475,7 +475,6 @@ final class QuranASRChannel {
     guard let category = previousCategory, let mode = previousMode,
           let options = previousOptions else { return }
     let session = AVAudioSession.sharedInstance()
-    try session.setActive(false, options: .notifyOthersOnDeactivation)
     let targetCategory: AVAudioSession.Category = (category == .soloAmbient || category == .ambient || category == .record) ? .playback : category
     try session.setCategory(targetCategory, mode: mode == .measurement ? .default : mode, options: options)
     try session.setActive(true)

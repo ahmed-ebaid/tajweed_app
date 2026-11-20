@@ -183,7 +183,9 @@ class AyahMapper {
     // Audio URL
     final audioRaw = json['audio'];
     final audio = audioRaw is Map ? Map<String, dynamic>.from(audioRaw) : null;
-    final audioUrl = audio?['url'] as String?;
+    final audioUrl = QuranApiService.normalizeAudioUrl(
+      audio?['url'] as String?,
+    );
 
     // Parse verse-level tajweed segments from uthmani_tajweed HTML
     final tajweedSegments = tajweedHtml != null

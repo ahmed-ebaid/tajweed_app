@@ -2711,7 +2711,8 @@ void main() {
       await _tap(tester, 'Need a hint?');
       expect(page(tester).hintedWords, {'1:1': 2});
       expect(page(tester).activeCursorWord, ('1:1', 0));
-      await _tap(tester, 'Resume');
+      // Hint keeps recording active without needing Resume.
+      expect(find.text('Pause'), findsOneWidget);
       speech.result!('بسم الله الرحمن', true);
       await tester.pumpAndSettle();
       expect(page(tester).revealedWordCounts, {'1:1': 3});
@@ -2737,7 +2738,8 @@ void main() {
         await _tap(tester, 'Need a hint?');
         expect(page(tester).hintedWords, {'1:1': 2});
         expect(page(tester).activeCursorWord, ('1:1', 0));
-        await _tap(tester, 'Resume');
+        // Hint keeps recording active without needing Resume.
+        expect(find.text('Pause'), findsOneWidget);
         speech.result!('الرحمن الرحيم', false);
         await tester.pumpAndSettle();
         expect(page(tester).revealedWordCounts, {'1:1': 4});

@@ -4066,6 +4066,8 @@ class SpeechComparisonService {
                     spoken[offset] == expected[word].first.substring(1)) ||
                 (expected[word].first.length >= 5 &&
                     expected[word].first.contains('ت') &&
+                    !(expected[word].first.endsWith('ى') &&
+                        spoken[offset].endsWith('ي')) &&
                     _foldNearMiss(spoken[offset]) ==
                         _foldNearMiss(expected[word].first)) ||
                 (expected[word].first.length >= 4 &&
@@ -4224,6 +4226,8 @@ class SpeechComparisonService {
         // Hamza seat, taa marbuta or alif maqsura spellings of exactly the
         // expected letters (مغلوله, اسراييل) cannot hide a skipped word.
         if (!quranVocabulary.contains(spoken[offset]) &&
+            !(expected[word].first.endsWith('ى') &&
+                spoken[offset].endsWith('ي')) &&
             _foldNearMiss(spoken[offset]).length >= 3 &&
             (_foldNearMiss(spoken[offset]) ==
                     _foldNearMiss(expected[word].first) ||
@@ -4235,6 +4239,8 @@ class SpeechComparisonService {
           continue;
         }
         if (hasRightAnchor &&
+            !(expected[word].first.endsWith('ى') &&
+                spoken[offset].endsWith('ي')) &&
             _foldNearMiss(spoken[offset]).length >= 3 &&
             (_foldNearMiss(spoken[offset]) ==
                     _foldNearMiss(expected[word].first) ||
@@ -4269,12 +4275,18 @@ class SpeechComparisonService {
             continue;
           }
         }
-        // A non-Quran ASR spelling close to the expected word, followed by the
-        // next two expected words, is a misrecognition rather than a skip.
-        if (word + 2 < expected.length &&
-            offset + 2 < spoken.length &&
-            expected[word + 1].contains(spoken[offset + 1]) &&
-            expected[word + 2].contains(spoken[offset + 2]) &&
+          // A non-Quran ASR spelling close to the expected word, followed by the
+          // next two expected words, is a misrecognition rather than a skip.
+          // However, if the expected word ends with 'ى' (alif maqsura) and the
+          // spoken word ends with 'ي' (ya), it is a vowel/haraka mistake
+          // (kasra/ya instead of fatha/alif maqsura, e.g. استوي for استوى) and
+          // must not be auto-corrected.
+          if (word + 2 < expected.length &&
+              offset + 2 < spoken.length &&
+              !(expected[word].first.endsWith('ى') &&
+                  spoken[offset].endsWith('ي')) &&
+              expected[word + 1].contains(spoken[offset + 1]) &&
+              expected[word + 2].contains(spoken[offset + 2]) &&
             ((!quranVocabulary.contains(spoken[offset]) &&
                     _isOrthographicNearMiss(
                       expected[word].first,
@@ -4354,6 +4366,8 @@ class SpeechComparisonService {
             word > 0 &&
             expanded.isNotEmpty &&
             expected[word - 1].contains(expanded.last) &&
+            !(expected[word].first.endsWith('ى') &&
+                spoken[offset].endsWith('ي')) &&
             (_matchesQalqalahPauseEnding(
                   expected[word].first,
                   spoken[offset],
@@ -4573,6 +4587,7 @@ class SpeechComparisonService {
         retained.length >= 2 &&
         _foldAlifMaqsuraToAlif(incoming[start - 2]) ==
             _foldAlifMaqsuraToAlif(retained[retained.length - 2]) &&
+        !(retained.last.endsWith('ى') && incoming[start - 1].endsWith('ي')) &&
         ((!quranVocabulary.contains(incoming[start - 1]) &&
                 _isOrthographicNearMiss(retained.last, incoming[start - 1])) ||
             (retained.last.length == 3 &&
@@ -4591,6 +4606,7 @@ class SpeechComparisonService {
     if (start == 1 &&
         retained.last.length >= 5 &&
         incoming[0].length >= 4 &&
+        (incoming[0].length - retained.last.length).abs() <= 1 &&
         incoming[0].substring(incoming[0].length - 3) ==
             retained.last.substring(retained.last.length - 3)) {
       return true;
@@ -5024,6 +5040,13 @@ class SpeechComparisonService {
   }
 
   bool _isOrthographicNearMiss(String expectedWord, String spokenWord) {
+    if (expectedWord.endsWith('ى') &&
+        (spokenWord.endsWith('ي') ||
+            spokenWord.endsWith('يت') ||
+            spokenWord.endsWith('يتم') ||
+            spokenWord.endsWith('ينا'))) {
+      return false;
+    }
     final fold =
         (expectedWord.endsWith('ى') && spokenWord.endsWith('ا')) ||
             (expectedWord.endsWith('ا') && spokenWord.endsWith('ى'))
@@ -5614,6 +5637,7 @@ class SpeechComparisonService {
               .replaceFirst('تفن', 'تثن')
         : secondSpoken;
     if (expectedWord.length >= 4 &&
+        !(lastChar == 'ى' && firstSpoken.endsWith('ي')) &&
         (secondSpoken == shiftedSecond ||
             normalizedSecondForIthn == shiftedSecond ||
             (nextExpectedWord.startsWith('اثن') &&
@@ -5693,7 +5717,13 @@ class SpeechComparisonService {
         }
       }
     }
-    if (nextExpectedWord.length >= 3) {
+    if (nextExpectedWord.length >= 3 &&
+        !(lastChar == 'ى' &&
+            (firstSpoken.endsWith('ي') ||
+                firstSpoken.endsWith('يت') ||
+                firstSpoken.endsWith('يتم') ||
+                firstSpoken.endsWith('ينا') ||
+                firstSpoken.endsWith('ين')))) {
       final nextFirst = nextExpectedWord[0];
       final nextRemainder = nextExpectedWord.substring(1);
       final shiftedFirst = '$expectedWord$nextFirst';

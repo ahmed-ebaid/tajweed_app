@@ -490,6 +490,76 @@ void main() {
       2,
     );
   });
+  test(
+    'Al-Baqarah 2:29 rejects استوي / استويت / استويتم for استوى instead of auto-completing',
+    () {
+      const expected =
+          'هو الذي خلق لكم ما في الأرض جميعا ثم استوى إلى السماء فسواهن سبع سماوات وهو بكل شيء عليم';
+      const retained = 'هو الذي خلق لكم ما في الأرض جميعا ثم';
+      for (final wrongWord in ['استوي', 'استويت', 'استويتم']) {
+        final spoken = '$retained $wrongWord إلى السماء فسواهن سبع سماوات وهو بكل شيء عليم';
+        expect(
+          comparison
+              .checkEntireAyah(
+                expectedImlaei: expected,
+                expectedVerseKey: '2:29',
+                spokenText: spoken,
+                allowWrittenOpenings: true,
+              )
+              .matched,
+          isFalse,
+          reason: 'checkEntireAyah must reject $wrongWord for استوى',
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: const [expected],
+            expectedVerseKeys: const ['2:29'],
+            spokenText: spoken,
+            allowWrittenOpenings: true,
+            allowDisplayOnlyCorrections: true,
+          ),
+          [9],
+          reason: 'matchingPrefixWordCounts must stop before $wrongWord',
+        );
+        final joined = comparison.joinRecitationSegment(
+          retainedPrefix: retained,
+          spokenText: 'جميعا ثم $wrongWord إلى السماء فسواهن',
+          expectedAyahs: const [expected],
+          expectedVerseKeys: const ['2:29'],
+          allowWrittenOpenings: true,
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: const [expected],
+            expectedVerseKeys: const ['2:29'],
+            spokenText: joined,
+            allowWrittenOpenings: true,
+            allowDisplayOnlyCorrections: true,
+          ),
+          [9],
+          reason: 'joinRecitationSegment must not advance past $wrongWord',
+        );
+      }
+
+      // Also verify that _isSameJoinWord does not conflate جمعنا with جميعا
+      final joinedAfterJump = comparison.joinRecitationSegment(
+        retainedPrefix: 'هو الذي خلق لكم ما في الأرض جميعا',
+        spokenText: 'جمعنا ثم استويت إلى السماء فسواهن',
+        expectedAyahs: const [expected],
+        expectedVerseKeys: const ['2:29'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: const [expected],
+          expectedVerseKeys: const ['2:29'],
+          spokenText: joinedAfterJump,
+          allowWrittenOpenings: true,
+        ),
+        [8],
+      );
+    },
+  );
   const expected = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
   test(

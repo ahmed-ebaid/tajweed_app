@@ -111,7 +111,27 @@ class _HifzScreenState extends State<HifzScreen> {
             )
             .timeout(const Duration(seconds: 20));
         url = files[key]?.url;
+        if (files.isNotEmpty) {
+          final audioMap = {
+            ..._contentSync.getCachedRecitationMap(
+              reciterId: reciterId,
+              surahNumber: ayah.surahNumber,
+            ),
+            for (final entry in files.entries)
+              if (entry.value.url.isNotEmpty) entry.key: entry.value.url,
+          };
+          unawaited(
+            _contentSync
+                .cacheRecitationMap(
+                  reciterId: reciterId,
+                  surahNumber: ayah.surahNumber,
+                  audioUrls: audioMap,
+                )
+                .then<void>((_) {}, onError: (_) {}),
+          );
+        }
       }
+      url = QuranApiService.normalizeAudioUrl(url);
       if (path == null && (url == null || url.isEmpty)) {
         url = _api.audioUrl(
           reciterId: reciterId,
