@@ -2388,6 +2388,34 @@ void main() {
         ),
         [4, 0],
       );
+
+      // Waqf on the last word of an ayah (e.g., 100:1 'ضبحا' -> 'ضبح' when
+      // stopping without tanween alif, or 100:4 'نقعا' -> 'نقع') matches when
+      // anchored by the preceding word at the end of the utterance, but not
+      // when followed by a wrong word.
+      const adiyat1 = 'والعاديات ضبحا';
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [adiyat1],
+              expectedVerseKeys: ['100:1'],
+              spokenText: 'والعاديات ضبح',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        1,
+      );
+      expect(
+        comparison
+            .checkSequence(
+              expectedAyahs: [adiyat1],
+              expectedVerseKeys: ['100:1'],
+              spokenText: 'والعاديات ضبح غلط',
+              allowWrittenOpenings: true,
+            )
+            .completedAyahs,
+        0,
+      );
     },
   );
 }

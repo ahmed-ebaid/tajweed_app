@@ -243,6 +243,25 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   int get _actionAyahIndex =>
       _activeAyahIndex.clamp(0, widget.ayahs.length - 1);
 
+  String _vocalizedWord(Ayah ayah, int wordNumber) {
+    final arabicWords = ayah.arabic
+        .replaceAll(RegExp(r'[\u06D6-\u06ED]'), ' ')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (ayah.words.length > 1 && wordNumber >= 1 && wordNumber <= ayah.words.length) {
+      return ayah.words[wordNumber - 1].arabic.trim();
+    }
+    if (arabicWords.isNotEmpty) {
+      final idx = (wordNumber - 1).clamp(0, arabicWords.length - 1);
+      return arabicWords[idx];
+    }
+    final words = _comparison.recitationWords(ayah.imlaei ?? ayah.arabic);
+    if (words.isEmpty) return '';
+    return words[(wordNumber - 1).clamp(0, words.length - 1)];
+  }
+
   void _recordMistake(int ayahIndex, int wordNumber) {
     if (ayahIndex < 0 || ayahIndex >= widget.ayahs.length) return;
     final ayah = widget.ayahs[ayahIndex];
@@ -251,7 +270,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       1,
       words.isEmpty ? 1 : words.length,
     );
-    final expectedWord = words.isEmpty ? '' : words[clampedWordNumber - 1];
+    final expectedWord = _vocalizedWord(ayah, clampedWordNumber);
     final existingIndex = _mistakes.indexWhere(
       (item) =>
           item.surahNumber == ayah.surahNumber &&
@@ -308,7 +327,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _mistakes.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = _mistakes[_mistakes.length - 1 - index];
                     return ListTile(
@@ -373,9 +392,31 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     required bool contradictsPrefix,
     required Map<String, int> alignment,
   }) {
+    if (!widget.localQuranLab) return;
     final speech = _speech;
-    if (!widget.localQuranLab || speech is! QuranAsrSpeechInput) return;
     final visibleWords = _displayedLabWords;
+    if (speech is! QuranAsrSpeechInput) {
+      final activeIdx = _activeAyahIndex < widget.ayahs.length
+          ? _activeAyahIndex
+          : _index;
+      final activeAyah = widget.ayahs[activeIdx];
+      final activeKey = '${activeAyah.surahNumber}:${activeAyah.ayahNumber}';
+      QuranAsrSpeechInput.recordExternalDiagnosticEvent({
+        'event': 'progress',
+        'verseKey': _verseKey,
+        'activeKey': activeKey,
+        'expectedIndex': _index,
+        'activeIndex': activeIdx,
+        'activeWords': _visibleWordCounts[activeKey] ?? 0,
+        'visibleWords': visibleWords,
+        'rawWords': _comparison.recitationWords(text).length,
+        'isFinal': isFinal,
+        'contradictsPrefix': contradictsPrefix,
+        'mismatchWord': _mismatchWord,
+        'transcript': text,
+      });
+      return;
+    }
     final newVisibleWords =
         visibleWords - (alignment['displayedBefore'] ?? visibleWords);
     if (!isFinal && newVisibleWords > 0) {
@@ -1031,6 +1072,33 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 }
               }
               _liveWordCounts.addAll(_completedLiveWordCounts);
+              if (widget.localQuranLab) {
+                final liveCheck = widget.continuous
+                    ? _comparison.checkSequence(
+                        expectedAyahs: [
+                          for (final ayah in expectedAyahs) ayah.imlaei ?? '',
+                        ],
+                        expectedVerseKeys: [
+                          for (final ayah in expectedAyahs)
+                            '${ayah.surahNumber}:${ayah.ayahNumber}',
+                        ],
+                        spokenText: effectivePreviewText,
+                        allowWrittenOpenings: true,
+                      )
+                    : null;
+                if (liveCheck != null && liveCheck.mismatch) {
+                  final activeIdx = _activeAyahIndex < widget.ayahs.length
+                      ? _activeAyahIndex
+                      : _index;
+                  final activeKey =
+                      '${widget.ayahs[activeIdx].surahNumber}:${widget.ayahs[activeIdx].ayahNumber}';
+                  final activeMatched = _visibleWordCounts[activeKey] ?? 0;
+                  final liveMismatchWord = activeMatched + 1;
+                  if (_mismatchWord != liveMismatchWord) {
+                    _recordMistake(activeIdx, liveMismatchWord);
+                  }
+                }
+              }
               if (_viewedPageOverride != null &&
                   _liveWordCounts.length != previousWords.length) {
                 _viewedPageOverride = null;
@@ -2404,21 +2472,24 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                         child: SwitchListTile(
                           dense: true,
                           visualDensity: const VisualDensity(
-                            horizontal: -4,
+                            horizontal: 0,
                             vertical: -4,
                           ),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l10n.get(
-                              widget.localQuranLab
-                                  ? 'quran_asr_word_preview'
-                                  : 'hifz_live_preview',
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                          ),
+                          title: Opacity(
+                            opacity: 0,
+                            child: Text(
+                              l10n.get(
+                                widget.localQuranLab
+                                    ? 'quran_asr_word_preview'
+                                    : 'hifz_live_preview',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: statusTextStyle?.copyWith(fontSize: 11),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: statusTextStyle?.copyWith(fontSize: 11),
                           ),
                           value: _livePreview,
                           onChanged: (enabled) => setState(() {

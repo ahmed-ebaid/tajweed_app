@@ -225,8 +225,10 @@ final class QuranASRCapture {
     }
     guard !pcm.isEmpty else { return nil }
     // Long hypotheses can omit whole earlier ayahs; live checks use an
-    // overlapping short tail while final checks keep the full bounded buffer.
-    let audio = pcm.suffix(forPreview ? 16000 * 2 * (recoveryContextSeconds ?? 8) : maximumBytes)
+    // overlapping short 3s tail (~70-90ms on Metal GPU) while final checks
+    // use a 4s tail (~100ms) so inference stays fast from start to finish.
+    let tailSeconds = forPreview ? (recoveryContextSeconds ?? 3) : 4
+    let audio = pcm.suffix(16000 * 2 * tailSeconds)
     var wav = Data()
     func ascii(_ text: String) { wav.append(contentsOf: text.utf8) }
     func integer<T: FixedWidthInteger>(_ value: T) {

@@ -4352,6 +4352,8 @@ class SpeechComparisonService {
         }
         if (word == expected.length - 1 &&
             word > 0 &&
+            expanded.isNotEmpty &&
+            expected[word - 1].contains(expanded.last) &&
             (_matchesQalqalahPauseEnding(
                   expected[word].first,
                   spoken[offset],
@@ -4360,10 +4362,50 @@ class SpeechComparisonService {
                   expected[word].first,
                   spoken[offset],
                 ) ||
+                (offset == spoken.length - 1 &&
+                    (_foldNearMiss(spoken[offset]).length >= 3 &&
+                        (_foldNearMiss(spoken[offset]) ==
+                                _foldNearMiss(expected[word].first) ||
+                            _foldAlifMaqsuraToAlif(spoken[offset]) ==
+                                _foldAlifMaqsuraToAlif(
+                                  expected[word].first,
+                                )))) ||
+                (offset == spoken.length - 1 &&
+                    _matchesTerminalAlifElision(
+                      expected[word].first,
+                      spoken[offset],
+                      hasRightAnchor: true,
+                    )) ||
+                (offset == spoken.length - 1 &&
+                    _matchesTerminalYaInsertion(
+                      expected[word].first,
+                      spoken[offset],
+                      hasRightAnchor: true,
+                    )) ||
+                (offset == spoken.length - 1 &&
+                    expected[word].first.length >= 3 &&
+                    ((expected[word].first.endsWith('ا') &&
+                            _foldNearMiss(spoken[offset]) ==
+                                _foldNearMiss(
+                                  expected[word].first.substring(
+                                    0,
+                                    expected[word].first.length - 1,
+                                  ),
+                                )) ||
+                        (expected[word].first.endsWith('ة') &&
+                            _foldNearMiss(spoken[offset]) ==
+                                _foldNearMiss(
+                                  '${expected[word].first.substring(0, expected[word].first.length - 1)}ت',
+                                )))) ||
+                (!quranVocabulary.contains(spoken[offset]) &&
+                    expected[word].first.length >= 4 &&
+                    _isOrthographicNearMiss(
+                      expected[word].first,
+                      spoken[offset],
+                    )) ||
                 (expected[word].first.length == 3 &&
                     word >= 2 &&
                     expanded.length >= 2 &&
-                    expected[word - 1].contains(expanded.last) &&
                     expected[word - 2].contains(
                       expanded[expanded.length - 2],
                     ) &&

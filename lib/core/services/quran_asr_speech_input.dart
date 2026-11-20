@@ -14,14 +14,14 @@ import 'quran_attestation_service.dart';
 const quranAsrExperimentEnabled = bool.fromEnvironment('QURAN_ASR_EXPERIMENT');
 const quranAsrStreamingDefault = bool.fromEnvironment(
   'QURAN_ASR_STREAMING',
-  defaultValue: true,
+  defaultValue: false,
 );
 const quranAsrRetainDebugAudio =
     quranAsrExperimentEnabled &&
     bool.fromEnvironment('QURAN_ASR_RETAIN_DEBUG_AUDIO');
 const quranAsrContextRecoveryEnabled =
     quranAsrExperimentEnabled &&
-    bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY', defaultValue: true);
+    bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY', defaultValue: false);
 
 /// Lab-only rolling snapshots, not a streaming ASR model. Capture continues
 /// until stopped; each report covers at most the latest 30 seconds.
@@ -71,6 +71,19 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     } on MissingPluginException {
       debugPrint('Quran ASR diagnostics export is unavailable.');
       return const [];
+    }
+  }
+
+  static final List<String> _extraDiagnosticLines = <String>[];
+
+  static void recordExternalDiagnosticEvent(Map<String, Object?> payload) {
+    final map = <String, Object?>{
+      'ts': DateTime.now().toUtc().toIso8601String(),
+      ...payload,
+    };
+    _extraDiagnosticLines.add(jsonEncode(map));
+    if (_extraDiagnosticLines.length > 500) {
+      _extraDiagnosticLines.removeRange(0, _extraDiagnosticLines.length - 500);
     }
   }
 
@@ -126,6 +139,13 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
 
       final slots = jsonBySlot.keys.where(wavBySlot.containsKey).toList()
         ..sort();
+      if (_extraDiagnosticLines.isNotEmpty) {
+        final extraText = _extraDiagnosticLines.join('\n');
+        diagnosticsJsonl = diagnosticsJsonl.isEmpty
+            ? extraText
+            : '$diagnosticsJsonl\n$extraText';
+        _extraDiagnosticLines.clear();
+      }
       if (diagnosticsJsonl.isEmpty && slots.isEmpty) {
         return false;
       }
