@@ -42,7 +42,6 @@ class _HifzScreenState extends State<HifzScreen> {
   int _openingGeneration = 0;
   bool _loading = false;
   bool _opening = false;
-  bool _stepByStep = false;
   bool _failed = false;
 
   @override
@@ -260,7 +259,6 @@ class _HifzScreenState extends State<HifzScreen> {
                   : _content.loadPage(page, _chapters!),
               surahNameFor: _name,
               review: review,
-              continuous: !_stepByStep,
               playReference: (ayah) => _playReference(
                 ayah,
                 context.read<RecitationProvider>().selectedReciterId,
@@ -400,14 +398,7 @@ class _HifzScreenState extends State<HifzScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(_name(_selected), textDirection: TextDirection.rtl),
-                  SwitchListTile(
-                    dense: true,
-                    title: Text(l10n.get('hifz_step')),
-                    value: _stepByStep,
-                    onChanged: _opening
-                        ? null
-                        : (value) => setState(() => _stepByStep = value),
-                  ),
+                  const SizedBox(height: 8),
                   if (_opening) const LinearProgressIndicator(),
                   Wrap(
                     spacing: 8,
