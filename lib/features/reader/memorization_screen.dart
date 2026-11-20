@@ -259,7 +259,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         .split(RegExp(r'\s+'))
         .where((w) => w.isNotEmpty)
         .toList();
-    if (ayah.words.length > 1 && wordNumber >= 1 && wordNumber <= ayah.words.length) {
+    if (ayah.words.length > 1 &&
+        wordNumber >= 1 &&
+        wordNumber <= ayah.words.length) {
       return ayah.words[wordNumber - 1].arabic.trim();
     }
     if (arabicWords.isNotEmpty) {
@@ -403,29 +405,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   }) {
     if (!widget.localQuranLab) return;
     final speech = _speech;
+    if (speech is! QuranAsrSpeechInput) return;
     final visibleWords = _displayedLabWords;
-    if (speech is! QuranAsrSpeechInput) {
-      final activeIdx = _activeAyahIndex < widget.ayahs.length
-          ? _activeAyahIndex
-          : _index;
-      final activeAyah = widget.ayahs[activeIdx];
-      final activeKey = '${activeAyah.surahNumber}:${activeAyah.ayahNumber}';
-      QuranAsrSpeechInput.recordExternalDiagnosticEvent({
-        'event': 'progress',
-        'verseKey': _verseKey,
-        'activeKey': activeKey,
-        'expectedIndex': _index,
-        'activeIndex': activeIdx,
-        'activeWords': _visibleWordCounts[activeKey] ?? 0,
-        'visibleWords': visibleWords,
-        'rawWords': _comparison.recitationWords(text).length,
-        'isFinal': isFinal,
-        'contradictsPrefix': contradictsPrefix,
-        'mismatchWord': _mismatchWord,
-        'transcript': text,
-      });
-      return;
-    }
     final newVisibleWords =
         visibleWords - (alignment['displayedBefore'] ?? visibleWords);
     if (!isFinal && newVisibleWords > 0) {
@@ -790,7 +771,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         } else {
           final activeOffset = ayahs.indexWhere((ayah) {
             final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
-            final length = _comparison.recitationWords(ayah.imlaei ?? '').length;
+            final length = _comparison
+                .recitationWords(ayah.imlaei ?? '')
+                .length;
             var count = 0;
             for (final map in [
               _liveWordCounts,
@@ -886,7 +869,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 return false;
               }
             }
-            final activeHinted = _hintWordCounts[startIndex + activeOffset] ?? 0;
+            final activeHinted =
+                _hintWordCounts[startIndex + activeOffset] ?? 0;
             final effectiveActiveHint = activeHinted <= activeWords.length
                 ? activeHinted
                 : activeWords.length;
@@ -988,7 +972,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     ++_generation;
     _acceptResults = false;
     unawaited(_cancelInputs());
-    if (widget.localQuranLab && wasBusy) {
+    if (widget.localQuranLab && wasBusy && _speech is QuranAsrSpeechInput) {
       unawaited(
         QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
       );
@@ -1095,6 +1079,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 widget.localQuranLab
                     ? quranAsrRetainDebugAudio
                           ? 'quran_asr_audio_debug_warning'
+                          : quranAsrRetainDebugTranscripts
+                          ? 'quran_asr_transcript_debug_warning'
                           : 'quran_asr_live_warning'
                     : 'mem_consent',
               ),
@@ -1134,7 +1120,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       });
       _startingSpeechGeneration = generation;
       _lastPreviewText = null;
-      await _speech.start(
+      final input = _speech;
+      await input.start(
         onResult: (text, isFinal) {
           if (!mounted || generation != _generation || !_acceptResults) return;
           if (widget.localQuranLab && !isFinal && !_livePreview && !_windowed) {
@@ -1144,7 +1131,6 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             startIndex,
             text,
           );
-          final input = _speech;
           if (!contradictsPrefix &&
               _windowed &&
               input is WindowedMemorizationSpeechInput &&
@@ -1329,7 +1315,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               contradictsPrefix: contradictsPrefix,
               alignment: alignment,
             );
-            if (widget.localQuranLab) {
+            if (widget.localQuranLab && input is QuranAsrSpeechInput) {
               unawaited(
                 QuranAsrSpeechInput.uploadDiagnosticsToCloud(
                   verseKey: _verseKey,
@@ -1378,7 +1364,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             }
           });
           unawaited(_cancelInputs());
-          if (widget.localQuranLab) {
+          if (widget.localQuranLab && input is QuranAsrSpeechInput) {
             unawaited(
               QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
             );
@@ -1395,7 +1381,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _message = widget.continuous ? 'hifz_resume_message' : 'mem_error';
           });
           unawaited(_cancelInputs());
-          if (widget.localQuranLab) {
+          if (widget.localQuranLab && input is QuranAsrSpeechInput) {
             unawaited(
               QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
             );
@@ -1468,7 +1454,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         ? completedInRetained
         : ayahs.length - 1;
     final activeIndex = startIndex + activeOffset;
-    var retainedPrefixText = retained.isEmpty ? _pendingText : retained.join(' ');
+    var retainedPrefixText = retained.isEmpty
+        ? _pendingText
+        : retained.join(' ');
     final hintedOnActive = widget.continuous
         ? (_hintWordCounts[activeIndex] ?? 0)
         : 0;
@@ -1738,9 +1726,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             .fold(0, (a, b) => a + b);
         final activeSliceTotal = activeSliceCounts.fold(0, (a, b) => a + b);
         if (activeSliceTotal > fullAfterActive) {
-          return [...completedBeforeActive, activeJoined]
-              .where((part) => part.isNotEmpty)
-              .join(' ');
+          return [
+            ...completedBeforeActive,
+            activeJoined,
+          ].where((part) => part.isNotEmpty).join(' ');
         }
       }
     }
@@ -2720,8 +2709,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       displayWordCounts[entry.key] = entry.value;
                     }
                   }
-                  final cursorIdx =
-                      _activeAyahIndex < widget.ayahs.length
+                  final cursorIdx = _activeAyahIndex < widget.ayahs.length
                       ? _activeAyahIndex
                       : _index;
                   final cursorAyah = widget.ayahs[cursorIdx];
@@ -2804,9 +2792,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                     : 0,
                 maxHeight: widget.continuous && !widget.review
                     ? (landscape
-                          ? (MediaQuery.sizeOf(context).width >= 700
-                                ? 60
-                                : 64)
+                          ? (MediaQuery.sizeOf(context).width >= 700 ? 60 : 64)
                           : 68)
                     : MediaQuery.sizeOf(context).height * 0.16,
               ),
@@ -3202,9 +3188,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                           } else {
                                             if (widget.review) {
                                               _interrupt();
-                                              setState(
-                                                () => _finished = true,
-                                              );
+                                              setState(() => _finished = true);
                                               return;
                                             }
                                             final remaining = [
@@ -3219,9 +3203,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                               _select(remaining.first);
                                             } else {
                                               _interrupt();
-                                              setState(
-                                                () => _finished = true,
-                                              );
+                                              setState(() => _finished = true);
                                             }
                                           }
                                         },

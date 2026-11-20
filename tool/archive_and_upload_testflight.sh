@@ -25,6 +25,7 @@ flutter build ios --config-only --release \
   --build-name="$BUILD_NAME" \
   --build-number="$BUILD_NUMBER" \
   --dart-define=QURAN_ASR_EXPERIMENT=true \
+  --dart-define=QURAN_ASR_RETAIN_DEBUG_TRANSCRIPTS=true \
   --dart-define=QURAN_ASR_CLOUD_DIAGNOSTICS=true
 
 # 3. Archive with QURAN_ASR_TESTFLIGHT + QURAN_ASR_NATIVE + Metal GPU libraries

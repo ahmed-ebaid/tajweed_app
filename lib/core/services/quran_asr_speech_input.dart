@@ -19,9 +19,13 @@ const quranAsrStreamingDefault = bool.fromEnvironment(
 const quranAsrRetainDebugAudio =
     quranAsrExperimentEnabled &&
     bool.fromEnvironment('QURAN_ASR_RETAIN_DEBUG_AUDIO');
+const quranAsrRetainDebugTranscripts =
+    quranAsrExperimentEnabled &&
+    bool.fromEnvironment('QURAN_ASR_RETAIN_DEBUG_TRANSCRIPTS');
 const quranAsrContextRecoveryEnabled =
     quranAsrExperimentEnabled &&
     bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY', defaultValue: false);
+const _maxDiagnosticsUploadBytes = 1024 * 1024;
 
 /// Lab-only rolling snapshots, not a streaming ASR model. Capture continues
 /// until stopped; each report covers at most the latest 30 seconds.
@@ -74,23 +78,9 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     }
   }
 
-  static final List<String> _extraDiagnosticLines = <String>[];
-
-  static void recordExternalDiagnosticEvent(Map<String, Object?> payload) {
-    final map = <String, Object?>{
-      'ts': DateTime.now().toUtc().toIso8601String(),
-      ...payload,
-    };
-    _extraDiagnosticLines.add(jsonEncode(map));
-    if (_extraDiagnosticLines.length > 500) {
-      _extraDiagnosticLines.removeRange(0, _extraDiagnosticLines.length - 500);
-    }
-  }
-
   static Future<bool> uploadDiagnosticsToCloud({
     required String verseKey,
     Dio? client,
-    Future<List<String>> Function()? exportPaths,
   }) async {
     if (!quranAsrExperimentEnabled ||
         kIsWeb ||
@@ -101,50 +91,51 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     final completer = Completer<void>();
     _uploadInFlight = completer.future;
     try {
-      final paths = await (exportPaths ?? exportDiagnostics)();
-      if (paths.isEmpty) return false;
+      final bundle = await _channel.invokeMapMethod<String, Object?>(
+        'exportCloudDiagnostics',
+      );
+      if (bundle == null) return false;
+      final id = bundle['id'] as String;
+      final build = bundle['build'] as String;
+      var diagnosticsJsonl = bundle['log'] as String;
+      final paths = (bundle['snapshotPaths'] as List<Object?>).cast<String>();
 
-      var diagnosticsJsonl = '';
       final jsonBySlot = <int, String>{};
       final wavBySlot = <int, String>{};
       final slotPattern = RegExp(r'(?:quran-asr-)?snapshot-(\d+)\.(json|wav)$');
 
-      for (final path in paths) {
+      for (final path in quranAsrRetainDebugAudio ? paths : const <String>[]) {
         final file = File(path);
-        if (!file.existsSync()) continue;
-        if (path.endsWith('quran-asr-diagnostics.jsonl')) {
-          diagnosticsJsonl = await file.readAsString();
-          if (diagnosticsJsonl.length > 120 * 1024) {
-            diagnosticsJsonl = diagnosticsJsonl.substring(
-              diagnosticsJsonl.length - 120 * 1024,
-            );
-          }
-          continue;
-        }
-        if (!quranAsrRetainDebugAudio) continue;
         final match = slotPattern.firstMatch(path);
         if (match == null) continue;
         final slot = int.tryParse(match.group(1) ?? '');
         final ext = match.group(2);
         if (slot == null || slot < 0 || slot >= 6) continue;
-        if (ext == 'json') {
-          jsonBySlot[slot] = await file.readAsString();
-        } else if (ext == 'wav') {
-          final bytes = await file.readAsBytes();
-          if (bytes.isNotEmpty && bytes.length <= 1000000) {
-            wavBySlot[slot] = base64Encode(bytes);
+        try {
+          if (ext == 'json') {
+            jsonBySlot[slot] = await file.readAsString();
+          } else if (ext == 'wav') {
+            final bytes = await file.readAsBytes();
+            if (bytes.isNotEmpty && bytes.length <= 1000000) {
+              wavBySlot[slot] = base64Encode(bytes);
+            }
           }
+        } on PathNotFoundException {
+          // A new recording can remove the previous optional audio snapshots.
+          debugPrint('Quran ASR debug snapshot expired before upload.');
         }
       }
 
       final slots = jsonBySlot.keys.where(wavBySlot.containsKey).toList()
         ..sort();
-      if (_extraDiagnosticLines.isNotEmpty) {
-        final extraText = _extraDiagnosticLines.join('\n');
-        diagnosticsJsonl = diagnosticsJsonl.isEmpty
-            ? extraText
-            : '$diagnosticsJsonl\n$extraText';
-        _extraDiagnosticLines.clear();
+      final diagnosticBytes = utf8.encode(diagnosticsJsonl);
+      if (diagnosticBytes.length > _maxDiagnosticsUploadBytes) {
+        final cutoff = diagnosticBytes.length - _maxDiagnosticsUploadBytes;
+        final newline = diagnosticBytes.indexOf(10, cutoff);
+        if (newline < 0) {
+          throw const FormatException('Diagnostic record exceeds upload limit');
+        }
+        diagnosticsJsonl = utf8.decode(diagnosticBytes.sublist(newline + 1));
       }
       if (diagnosticsJsonl.isEmpty && slots.isEmpty) {
         return false;
@@ -159,7 +150,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
           },
       ];
 
-      // Capture the files before waiting for an earlier HTTP upload.
+      // Snapshot this recording before waiting for an earlier HTTP upload.
       await previousUpload;
       final origin = Uri.parse(QuranApiService.contentApiBaseUrl).origin;
       final dio =
@@ -195,8 +186,9 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
       await dio.post<Map<String, dynamic>>(
         '/v1/asr-diagnostics/upload',
         data: {
+          'id': id,
           'verse_key': verseKey,
-          'app_version': appVersion,
+          'app_version': build.isEmpty ? appVersion : '$appVersion+$build',
           'diagnostics_jsonl': diagnosticsJsonl,
           'snapshots': snapshots,
         },
@@ -335,6 +327,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
       if (generation != _generation) return;
       await _channel.invokeMethod<void>('start', {
         'retainDebugAudio': quranAsrRetainDebugAudio,
+        'retainDebugTranscripts': quranAsrRetainDebugTranscripts,
       });
       if (generation != _generation) return;
       _active = true;

@@ -466,11 +466,16 @@ The local path is opt-in and non-Release, and its native channel is registered
 only for the lab bundle identifier. Normal builds retain the existing platform
 speech path. Audio snapshots are temporary and deleted after inference; the
 bounded microphone buffer stays in memory and is discarded on finish/cancel.
-The lab keeps a bounded 64 KiB local diagnostic file at
+The lab keeps a bounded 768 KiB local diagnostic file at
 `tmp/quran-asr-diagnostics.jsonl` inside its own app container. It records
 inference request/return times, audio-window durations, numeric error codes,
-and numeric progress counters to diagnose live-versus-final stalls. It never
-records audio, recognized text, or reference text, and is not uploaded.
+and numeric progress counters to diagnose live-versus-final stalls. This file
+does not contain audio, recognized text, or reference text. When cloud
+diagnostics are enabled, uploads retain up to 1 MiB of complete log records
+from the current capture only. Each capture has its own ID, and the cloud
+listing includes the iOS build number alongside the app version;
+the backend retains recordings for up to 30 days, subject to a 1,000-recording
+limit. Debug audio retention remains separately opt-in.
 Version 2 progress records also include the recording start, displayed cursor,
 raw mismatch position, and prefix counts for cumulative and exact-tail alignment.
 Displayed totals include fully revealed ayahs, so committing a preview on Pause
@@ -568,11 +573,18 @@ capture under `tmp/quran-asr-debug/`. Starting another capture clears those
 snapshots; Hifz diagnostic uploads attach complete pairs only when debug audio
 retention is enabled. This is off by default and does not retain audio supplied
 through the standalone `checkWav` diagnostic path.
+For transcript-only diagnostics in a test build, use
+`QURAN_ASR_RETAIN_DEBUG_TRANSCRIPTS=true`. The consent dialog explains that
+each recognized preview transcript is added to the current recording's
+diagnostic log and uploaded with it; remote diagnostic reports are retained for
+up to 30 days. Audio retention remains off unless its separate flag is enabled.
+Transcript retention is off by default, and the archive/upload script enables
+it for its TestFlight diagnostic build.
 The near-silence filter is not full voice-activity detection. Human-recitation
 accuracy, false matches, omissions, repetitions, timing, heat, and battery use
 still need physical-device evaluation; text matches are not validated Hifz scores.
 
-This opt-in screen is separate from Hifz scoring: **Hifz → DEBUG: On-device Quran AI → Record → Stop and check**. It records mono PCM16 audio at 16 kHz for at most 30 seconds, transcribes locally, and deletes its temporary recording after checking or cancellation. Cancelling inference discards its result; the native computation and deletion finish on the worker queue. Backgrounding or leaving the screen cancels the attempt. No audio or transcript is uploaded or persisted by this experiment. Labels and warnings support all eight app languages.
+This opt-in screen is separate from Hifz scoring: **Hifz → DEBUG: On-device Quran AI → Record → Stop and check**. It records mono PCM16 audio at 16 kHz for at most 30 seconds, transcribes locally, and deletes its temporary recording after checking or cancellation. Cancelling inference discards its result; the native computation and deletion finish on the worker queue. Backgrounding or leaving the screen cancels the attempt. No audio is uploaded or persisted by this experiment; transcript diagnostics are separately gated by the build flag and explicit consent described above. Labels and warnings support all eight app languages.
 
 The transcript is **unverified**, not a pronunciation/Tajweed assessment or proof of correct memorization. The near-silence RMS check rejects essentially inaudible input; it is not validated voice-activity detection and cannot prevent hallucinations from noise. Real microphone capture, interruptions, thermal behavior, and accuracy still require physical-iPhone trials.
 

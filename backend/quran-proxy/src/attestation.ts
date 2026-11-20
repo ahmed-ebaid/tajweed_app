@@ -118,6 +118,17 @@ async function readObject(
 }
 
 const MAX_INTERNAL_DIAGNOSTICS_LENGTH = 8 * 1024 * 1024;
+const MAX_DIAGNOSTICS_LOG_BYTES = 1024 * 1024;
+const DIAGNOSTICS_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_DIAGNOSTICS_RECORDINGS = 1000;
+
+interface DiagnosticIndexEntry {
+  id: string;
+  verseKey: string;
+  appVersion: string;
+  createdAt: number;
+  snapshotCount: number;
+}
 
 export class AttestationState {
   private readonly ctx: DurableObjectState;
@@ -351,9 +362,16 @@ export class AttestationState {
       ? body.app_version
       : "unknown";
     const createdAt = Date.now();
-    const diagnosticsJsonl = typeof body.diagnostics_jsonl === "string" && body.diagnostics_jsonl.length <= 128 * 1024
-      ? body.diagnostics_jsonl
-      : "";
+    if (typeof body.diagnostics_jsonl !== "string" ||
+        Buffer.byteLength(body.diagnostics_jsonl, "utf8") > MAX_DIAGNOSTICS_LOG_BYTES) {
+      return internalJson({error: "Invalid or oversized diagnostics log"}, 413);
+    }
+    const diagnosticsJsonl = body.diagnostics_jsonl;
+    let index = await this.pruneDiagnostics(await this.diagnosticsIndex(), createdAt);
+    if (index.some((entry) => entry.id === id)) {
+      await this.deleteDiagnosticEntry(id);
+      index = index.filter((entry) => entry.id !== id);
+    }
     const snapshotsRaw = Array.isArray(body.snapshots) ? body.snapshots.slice(0, 6) : [];
     const snapshotMeta: Array<{slot: number; json: string; wavChunks: number; wavBytes: number}> = [];
 
@@ -386,12 +404,11 @@ export class AttestationState {
       });
     }
 
-    const index = (await this.ctx.storage.get<string[]>("diag_index")) ?? [];
-    index.unshift(id);
-    while (index.length > 25) {
+    index.unshift({id, verseKey, appVersion, createdAt, snapshotCount: snapshotMeta.length});
+    while (index.length > MAX_DIAGNOSTICS_RECORDINGS) {
       const evicted = index.pop();
       if (evicted) {
-        await this.deleteDiagnosticEntry(evicted);
+        await this.deleteDiagnosticEntry(evicted.id);
       }
     }
     await this.ctx.storage.put(`diag_meta:${id}`, {
@@ -402,8 +419,60 @@ export class AttestationState {
       diagnosticsJsonl,
       snapshots: snapshotMeta,
     });
-    await this.ctx.storage.put("diag_index", index);
+    await this.ctx.storage.put("diag_index_v2", index);
+    await this.scheduleDiagnosticsExpiry(index);
     return internalJson({status: "saved", id, snapshots: snapshotMeta.length}, 201);
+  }
+
+  private async diagnosticsIndex(): Promise<DiagnosticIndexEntry[]> {
+    const current = await this.ctx.storage.get<DiagnosticIndexEntry[]>("diag_index_v2");
+    if (current) return current;
+    const legacy = (await this.ctx.storage.get<string[]>("diag_index")) ?? [];
+    const index: DiagnosticIndexEntry[] = [];
+    for (const id of legacy) {
+      const meta = await this.ctx.storage.get<{
+        verseKey: string; appVersion: string; createdAt: number; snapshots: unknown[];
+      }>(`diag_meta:${id}`);
+      if (meta) {
+        index.push({
+          id, verseKey: meta.verseKey, appVersion: meta.appVersion,
+          createdAt: meta.createdAt, snapshotCount: meta.snapshots?.length ?? 0,
+        });
+      }
+    }
+    await this.ctx.storage.put("diag_index_v2", index);
+    await this.ctx.storage.delete("diag_index");
+    return index;
+  }
+
+  private async pruneDiagnostics(index: DiagnosticIndexEntry[], now: number): Promise<DiagnosticIndexEntry[]> {
+    const retained: DiagnosticIndexEntry[] = [];
+    for (const entry of index) {
+      if (entry.createdAt + DIAGNOSTICS_RETENTION_MS <= now) {
+        await this.deleteDiagnosticEntry(entry.id);
+      } else {
+        retained.push(entry);
+      }
+    }
+    if (retained.length !== index.length) {
+      await this.ctx.storage.put("diag_index_v2", retained);
+    }
+    return retained;
+  }
+
+  private async scheduleDiagnosticsExpiry(index: DiagnosticIndexEntry[]): Promise<void> {
+    if (index.length) {
+      await this.ctx.storage.setAlarm(
+        Math.min(...index.map((entry) => entry.createdAt)) + DIAGNOSTICS_RETENTION_MS,
+      );
+    } else {
+      await this.ctx.storage.deleteAlarm();
+    }
+  }
+
+  async alarm(): Promise<void> {
+    const index = await this.pruneDiagnostics(await this.diagnosticsIndex(), Date.now());
+    await this.scheduleDiagnosticsExpiry(index);
   }
 
   private async deleteDiagnosticEntry(id: string): Promise<void> {
@@ -419,20 +488,8 @@ export class AttestationState {
   }
 
   private async listDiagnostics(): Promise<Response> {
-    const index = (await this.ctx.storage.get<string[]>("diag_index")) ?? [];
-    const items: Array<Record<string, unknown>> = [];
-    for (const id of index) {
-      const meta = await this.ctx.storage.get<Record<string, unknown>>(`diag_meta:${id}`);
-      if (meta) {
-        items.push({
-          id: meta.id,
-          verseKey: meta.verseKey,
-          appVersion: meta.appVersion,
-          createdAt: meta.createdAt,
-          snapshotCount: Array.isArray(meta.snapshots) ? meta.snapshots.length : 0,
-        });
-      }
-    }
+    const items = await this.pruneDiagnostics(await this.diagnosticsIndex(), Date.now());
+    await this.scheduleDiagnosticsExpiry(items);
     return internalJson({items});
   }
 
@@ -446,7 +503,7 @@ export class AttestationState {
       diagnosticsJsonl: string;
       snapshots: Array<{slot: number; json: string; wavChunks: number; wavBytes: number}>;
     }>(`diag_meta:${id}`);
-    if (!meta) {
+    if (!meta || meta.createdAt + DIAGNOSTICS_RETENTION_MS <= Date.now()) {
       return internalJson({error: "Not found"}, 404);
     }
     const snapshots: Array<Record<string, unknown>> = [];

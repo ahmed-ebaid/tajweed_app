@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -472,7 +473,10 @@ void main() {
       return null;
     };
     await start();
-    expect(startArguments, {'retainDebugAudio': quranAsrRetainDebugAudio});
+    expect(startArguments, {
+      'retainDebugAudio': quranAsrRetainDebugAudio,
+      'retainDebugTranscripts': quranAsrRetainDebugTranscripts,
+    });
     await input.cancel();
   });
 
@@ -915,14 +919,20 @@ void main() {
         debugDefaultTargetPlatformOverride = null;
         await tempDir.delete(recursive: true);
       });
-      final jsonl = File('${tempDir.path}/quran-asr-diagnostics.jsonl')
-        ..writeAsStringSync('{"event":"progress"}\n');
       final snapJson = File('${tempDir.path}/snapshot-0.json')
         ..writeAsStringSync('{"slot":0,"transcript":"بسم الله"}');
       final snapWav = File('${tempDir.path}/snapshot-0.wav')
         ..writeAsBytesSync([82, 73, 70, 70, 1, 2, 3, 4]);
       final orphanWav = File('${tempDir.path}/snapshot-1.wav')
         ..writeAsBytesSync([82, 73, 70, 70]);
+      handler = (call) async => call.method == 'exportCloudDiagnostics'
+          ? {
+              'id': 'recording-1',
+              'build': '147',
+              'log': '{"event":"progress"}\n',
+              'snapshotPaths': [snapJson.path, snapWav.path, orphanWav.path],
+            }
+          : null;
 
       Map<String, dynamic>? uploadedBody;
       final dio = Dio();
@@ -944,15 +954,12 @@ void main() {
       final ok = await QuranAsrSpeechInput.uploadDiagnosticsToCloud(
         verseKey: '2:14',
         client: dio,
-        exportPaths: () async => [
-          jsonl.path,
-          snapJson.path,
-          snapWav.path,
-          orphanWav.path,
-        ],
       );
       expect(ok, isTrue);
       expect(uploadedBody?['verse_key'], '2:14');
+      expect(uploadedBody?['id'], 'recording-1');
+      expect(uploadedBody?['app_version'], endsWith('+147'));
+      expect(uploadedBody?['diagnostics_jsonl'], '{"event":"progress"}\n');
       final snapshots = uploadedBody?['snapshots'] as List?;
       if (!quranAsrRetainDebugAudio) {
         expect(snapshots, isEmpty);
@@ -963,6 +970,53 @@ void main() {
       expect(first['slot'], 0);
       expect(first['json'], '{"slot":0,"transcript":"بسم الله"}');
       expect(first['wav_base64'], isNotEmpty);
+    },
+  );
+
+  test(
+    'cloud diagnostics preserve long logs and trim at a complete record',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+      });
+      final line = '{"event":"${'a' * 1024}"}\n';
+      handler = (call) async => call.method == 'exportCloudDiagnostics'
+          ? {
+              'id': 'recording-2',
+              'build': '147',
+              'log': '${line * 1100}{"event":"last"}\n',
+              'snapshotPaths': <String>[],
+            }
+          : null;
+      String? uploaded;
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            uploaded = (options.data as Map)['diagnostics_jsonl'] as String;
+            handler.resolve(
+              Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: 201,
+                data: {'status': 'saved'},
+              ),
+            );
+          },
+        ),
+      );
+      final ok = await QuranAsrSpeechInput.uploadDiagnosticsToCloud(
+        verseKey: '55:31',
+        client: dio,
+      );
+      expect(ok, isTrue);
+      final text = uploaded!;
+      expect(utf8.encode(text).length, lessThanOrEqualTo(1024 * 1024));
+      expect(text.length, greaterThan(120 * 1024));
+      expect(text, endsWith('{"event":"last"}\n'));
+      for (final record in text.trim().split('\n')) {
+        expect(jsonDecode(record), isA<Map>());
+      }
     },
   );
 }

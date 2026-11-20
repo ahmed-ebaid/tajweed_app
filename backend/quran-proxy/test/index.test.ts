@@ -555,6 +555,8 @@ describe("Quran Foundation proxy", () => {
               store.set(key, value);
             },
             delete: async (key: string) => store.delete(key),
+            setAlarm: async () => {},
+            deleteAlarm: async () => {},
           },
         } as unknown as DurableObjectState,
         env,
@@ -634,5 +636,52 @@ describe("Quran Foundation proxy", () => {
     expect(getBody.id).toBe("test-diag-1");
     expect(getBody.diagnostics_jsonl).toBe('{"event":"transcribe"}');
     expect(getBody.snapshots[0].wav_base64).toBe(wavSample);
+  });
+
+  it("retains larger diagnostic logs beyond 25 recordings and expires them after 30 days", async () => {
+    const {AttestationState} = await import("../src/attestation");
+    const store = new Map<string, unknown>();
+    let scheduled = 0;
+    const state = new AttestationState({
+      storage: {
+        get: async (key: string) => store.get(key),
+        put: async (key: string, value: unknown) => { store.set(key, value); },
+        delete: async (key: string) => store.delete(key),
+        setAlarm: async (time: number) => { scheduled = time; },
+        deleteAlarm: async () => { scheduled = 0; },
+      },
+    } as unknown as DurableObjectState, env);
+    const now = 1_800_000_000_000;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const send = (path: string, body: object) => state.fetch(new Request(
+      `https://internal/${path}`, {method: "POST", body: JSON.stringify(body)},
+    ));
+    const log = "x".repeat(150 * 1024);
+    store.set("diag_index", ["legacy"]);
+    store.set("diag_meta:legacy", {
+      id: "legacy", verseKey: "55:31", appVersion: "1", createdAt: now - 1000,
+      diagnosticsJsonl: "legacy", snapshots: [],
+    });
+    for (let i = 0; i < 26; i++) {
+      const response = await send("diagnostics-save", {
+        id: `recording-${i}`, diagnostics_jsonl: i === 0 ? log : "",
+      });
+      expect(response.status).toBe(201);
+    }
+    const listing = await send("diagnostics-list", {});
+    expect(((await listing.json()) as {items: unknown[]}).items).toHaveLength(27);
+    const retained = await send("diagnostics-get", {id: "recording-0"});
+    expect(((await retained.json()) as {diagnostics_jsonl: string}).diagnostics_jsonl).toBe(log);
+    const oversized = await send("diagnostics-save", {
+      id: "oversized", diagnostics_jsonl: "x".repeat(1024 * 1024 + 1),
+    });
+    expect(oversized.status).toBe(413);
+    expect(store.has("diag_meta:oversized")).toBe(false);
+    expect(scheduled).toBe(now - 1000 + 30 * 24 * 60 * 60 * 1000);
+    clock.mockReturnValue(now + 30 * 24 * 60 * 60 * 1000);
+    await state.alarm();
+    expect(store.has("diag_meta:legacy")).toBe(false);
+    expect(store.has("diag_meta:recording-0")).toBe(false);
+    expect(scheduled).toBe(0);
   });
 });

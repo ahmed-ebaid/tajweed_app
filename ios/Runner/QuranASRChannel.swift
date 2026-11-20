@@ -7,7 +7,9 @@ final class QuranASRDiagnostics {
   private let fileURL: URL
   private let maximumBytes: Int
   private let lock = NSLock()
+  private var recordingID: UUID?
   private var debugCaptureID: UUID?
+  private var retainDebugTranscripts = false
   private var snapshotSequence = 0
   private var completeSlots = Set<Int>()
 
@@ -19,42 +21,67 @@ final class QuranASRDiagnostics {
   init(
     fileURL: URL = FileManager.default.temporaryDirectory
       .appendingPathComponent("quran-asr-diagnostics.jsonl"),
-    maximumBytes: Int = 65536
+    maximumBytes: Int = 768 * 1024
   ) {
     self.fileURL = fileURL
     self.maximumBytes = maximumBytes
   }
 
-  func record(_ event: String, metrics: [String: Double] = [:]) {
+  func record(
+    _ event: String, metrics: [String: Double] = [:], transcript: String? = nil
+  ) {
     lock.lock()
     defer { lock.unlock() }
     do {
-      let entry: [String: Any] = [
+      var entry: [String: Any] = [
         "time": Date().timeIntervalSince1970, "event": event, "metrics": metrics
       ]
+      if retainDebugTranscripts, recordingID != nil, let transcript {
+        entry["transcript"] = transcript
+      }
       var line = try JSONSerialization.data(withJSONObject: entry, options: [.sortedKeys])
       line.append(10)
-      var data = FileManager.default.fileExists(atPath: fileURL.path)
-        ? try Data(contentsOf: fileURL) : Data()
-      data.append(line)
-      if data.count > maximumBytes {
+      let size: Int
+      if FileManager.default.fileExists(atPath: fileURL.path) {
+        let handle = try FileHandle(forWritingTo: fileURL)
+        defer { try? handle.close() }
+        let previousSize = try handle.seekToEnd()
+        try handle.write(contentsOf: line)
+        size = Int(previousSize) + line.count
+      } else {
+        try line.write(to: fileURL, options: .atomic)
+        size = line.count
+      }
+      if size > maximumBytes {
+        var data = try Data(contentsOf: fileURL)
         let overflow = data.count - maximumBytes
         if let newline = data[overflow...].firstIndex(of: 10) {
           data.removeSubrange(...newline)
         } else {
           data.removeAll()
         }
+        try data.write(to: fileURL, options: .atomic)
       }
-      try data.write(to: fileURL, options: .atomic)
     } catch {
       NSLog("Quran ASR diagnostics could not be saved: %@", error.localizedDescription)
     }
   }
 
-  func beginCapture(retainDebugAudio: Bool) -> UUID? {
+  func beginCapture(
+    retainDebugAudio: Bool, retainDebugTranscripts: Bool = false
+  ) -> UUID? {
     lock.lock()
     defer { lock.unlock() }
-    debugCaptureID = retainDebugAudio ? UUID() : nil
+    let id = UUID()
+    do {
+      try Data().write(to: fileURL, options: .atomic)
+      recordingID = id
+    } catch {
+      recordingID = nil
+      NSLog("Quran ASR diagnostic log could not be reset: %@", error.localizedDescription)
+    }
+    debugCaptureID = retainDebugAudio ? recordingID : nil
+    self.retainDebugTranscripts = retainDebugTranscripts
     snapshotSequence = 0
     completeSlots.removeAll()
     do {
@@ -117,12 +144,27 @@ final class QuranASRDiagnostics {
   func exportedFilePaths(includeSnapshots: Bool = true) -> [String] {
     lock.lock()
     defer { lock.unlock() }
+    guard recordingID != nil else { return [] }
+    return [fileURL.path] + (includeSnapshots ? snapshotPaths() : [])
+  }
+
+  func cloudDiagnostics(includeSnapshots: Bool) throws -> [String: Any]? {
+    lock.lock()
+    defer { lock.unlock() }
+    guard let recordingID else { return nil }
+    let log = try String(contentsOf: fileURL, encoding: .utf8)
+    return [
+      "id": recordingID.uuidString.lowercased(),
+      "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "",
+      "log": log,
+      "snapshotPaths": includeSnapshots ? snapshotPaths() : []
+    ]
+  }
+
+  private func snapshotPaths() -> [String] {
+    guard let debugCaptureID else { return [] }
     var paths: [String] = []
     let fm = FileManager.default
-    if fm.fileExists(atPath: fileURL.path) {
-      paths.append(fileURL.path)
-    }
-    guard includeSnapshots, let debugCaptureID else { return paths }
     let directory = snapshotRoot.appendingPathComponent(debugCaptureID.uuidString, isDirectory: true)
     for slot in completeSlots.sorted() {
       let json = directory.appendingPathComponent("snapshot-\(slot).json").path
@@ -311,7 +353,11 @@ final class QuranASRChannel {
         result(Bundle.main.path(forResource: "quran-tiny", ofType: "bin") != nil)
       case "start":
         let arguments = call.arguments as? [String: Any]
-        start(result, retainDebugAudio: arguments?["retainDebugAudio"] as? Bool == true)
+        start(
+          result,
+          retainDebugAudio: arguments?["retainDebugAudio"] as? Bool == true,
+          retainDebugTranscripts: arguments?["retainDebugTranscripts"] as? Bool == true
+        )
       case "check":
         check(result)
       case "preview":
@@ -346,7 +392,9 @@ final class QuranASRChannel {
           result(failure(error))
         }
       case "cancel":
-        diagnostics.record("cancel")
+        if capture != nil || audioURL != nil || processing {
+          diagnostics.record("cancel")
+        }
         generation += 1
         do {
           try clearRecording()
@@ -386,6 +434,12 @@ final class QuranASRChannel {
         result(nil)
       case "exportDiagnostics":
         result(diagnostics.exportedFilePaths(includeSnapshots: engine == nil && !processing))
+      case "exportCloudDiagnostics":
+        do {
+          result(try diagnostics.cloudDiagnostics(includeSnapshots: engine == nil && !processing))
+        } catch {
+          result(FlutterError(code: "diagnostics_export_failed", message: error.localizedDescription, details: nil))
+        }
       case "checkWav":
         guard !processing, !starting, engine == nil, audioURL == nil,
               let bytes = call.arguments as? FlutterStandardTypedData,
@@ -416,7 +470,11 @@ final class QuranASRChannel {
     FlutterError(code: "quran_asr_failed", message: error.localizedDescription, details: nil)
   }
 
-  private func start(_ result: @escaping FlutterResult, retainDebugAudio: Bool) {
+  private func start(
+    _ result: @escaping FlutterResult,
+    retainDebugAudio: Bool,
+    retainDebugTranscripts: Bool
+  ) {
     guard !processing, !starting, engine == nil, audioURL == nil else {
       result(FlutterError(code: "busy", message: "Recognition is already active.", details: nil))
       return
@@ -456,7 +514,10 @@ final class QuranASRChannel {
           }
           engine.prepare()
           try engine.start()
-          self.debugCaptureID = self.diagnostics.beginCapture(retainDebugAudio: retainDebugAudio)
+          self.debugCaptureID = self.diagnostics.beginCapture(
+            retainDebugAudio: retainDebugAudio,
+            retainDebugTranscripts: retainDebugTranscripts
+          )
           self.diagnostics.record("capture_started")
           result(nil)
         } catch {
@@ -647,7 +708,7 @@ final class QuranASRChannel {
           "characters": Double((report?["transcript"] as? String)?.count ?? 0),
           "errorCode": Double(error?.code ?? 0),
           "cancelled": current != self.generation ? 1 : 0
-        ])
+        ], transcript: report?["transcript"] as? String)
         if let cleanupError {
           self.audioURL = url
           result(self.failure(cleanupError))

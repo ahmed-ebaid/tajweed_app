@@ -10,6 +10,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'quran_asr_word_preview': 'Live word preview (unverified)',
     'quran_asr_audio_debug_warning':
         'AI Lab only · Audio debugging is enabled in this build. Up to six audio snapshots from this recording (up to 30 seconds each) and their recognized text are saved locally and may be uploaded with diagnostic reports. Recite and tap Pause when finished; there is no session time limit. Live words are unverified, incorrect words block progress, and the model may miss or invent words. This is not a memorization or Tajweed assessment.',
+    'quran_asr_transcript_debug_warning':
+        'AI Lab only · Transcript debugging is enabled in this build. Text recognized in each preview is saved with timing and progress diagnostics and uploaded with the report; reports are retained for up to 30 days. No audio is saved. Recite and tap Pause when finished; live words are unverified, incorrect words block progress, and the model may miss or invent words. This is not a memorization or Tajweed assessment.',
     'quran_asr_live_warning':
         'AI Lab only · Live word preview starts on. Keep reciting and tap Pause when finished; there is no session time limit. Audio is checked in rolling windows of up to 30 seconds. Earlier matching words are retained as unverified, without match credit; unmatched words still block progress. Turn preview off to hide new words until Pause. The transcript stays hidden. The model can miss or invent words; a text match is not proof of correct memorization or Tajweed. Audio stays on this device and temporary snapshots are deleted.',
     'quran_asr_title': 'DEBUG: On-device Quran AI',
@@ -57,6 +59,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'quran_asr_word_preview': 'معاينة الكلمات أثناء التلاوة (غير مؤكدة)',
     'quran_asr_audio_debug_warning':
         'مختبر الذكاء الاصطناعي فقط · تسجيل الصوت للتشخيص مفعّل في هذه النسخة. تُحفظ محليًا حتى ست لقطات صوتية من هذا التسجيل (حتى ٣٠ ثانية لكل لقطة) مع النص المتعرّف عليه، وقد تُرفع مع تقارير التشخيص. واصل التلاوة واضغط الإيقاف المؤقت عند الانتهاء؛ لا يوجد حد زمني للجلسة. الكلمات المعروضة غير مؤكدة، والكلمات الخاطئة تمنع التقدم، وقد يفوّت النموذج كلمات أو يولّدها. هذا ليس تقييمًا للحفظ أو التجويد.',
+    'quran_asr_transcript_debug_warning':
+        'مختبر الذكاء الاصطناعي فقط · يُحفظ النص الذي يتعرّف عليه كل فحص مع بيانات الوقت والتقدم، ويُرفع مع التقرير الذي يُحتفظ به حتى ٣٠ يومًا. لا يُحفظ الصوت. واصل التلاوة واضغط الإيقاف المؤقت عند الانتهاء. الكلمات المعروضة غير مؤكدة وقد يفوّت النموذج كلمات أو يولّدها. هذا ليس تقييمًا للحفظ أو التجويد.',
     'quran_asr_live_warning':
         'مختبر الذكاء الاصطناعي فقط · معاينة الكلمات مفعّلة عند البدء. واصل التلاوة واضغط الإيقاف المؤقت عند الانتهاء؛ لا يوجد حد زمني للجلسة. يُفحص الصوت في نوافذ متحركة لا تتجاوز ٣٠ ثانية. تُحفظ الكلمات المطابقة السابقة كمعاينة غير مؤكدة ولا تُحسب كتطابق؛ وتبقى الكلمة غير المطابقة عائقًا للتقدم. عطّل المعاينة لإخفاء الكلمات الجديدة حتى الإيقاف المؤقت. يبقى النص المتعرّف عليه مخفيًا. قد يفوّت النموذج كلمات أو يولّدها؛ تطابق النص ليس إثباتًا لصحة الحفظ أو التجويد. يبقى الصوت على الجهاز وتُحذف اللقطات المؤقتة.',
     'quran_asr_title': 'DEBUG: التعرف القرآني على الجهاز',
@@ -103,6 +107,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'quran_asr_word_preview': 'الفاظ کا براہ راست پیش منظر (غیر تصدیق شدہ)',
     'quran_asr_audio_debug_warning':
         'صرف AI لیب · اس نسخے میں صوتی تشخیص فعال ہے۔ اس ریکارڈنگ کے زیادہ سے زیادہ چھ صوتی نمونے (ہر ایک ۳۰ سیکنڈ تک) اور شناخت شدہ متن اسی آلے پر محفوظ ہوتے ہیں اور تشخیصی رپورٹوں کے ساتھ اپ لوڈ ہو سکتے ہیں۔ تلاوت کریں اور آخر میں وقفہ دبائیں؛ نشست کی کوئی زمانی حد نہیں۔ دکھائے گئے الفاظ غیر تصدیق شدہ ہیں، غلط لفظ پیش رفت روکتا ہے اور ماڈل الفاظ چھوڑ یا بنا سکتا ہے۔ یہ حفظ یا تجوید کی جانچ نہیں۔',
+    'quran_asr_transcript_debug_warning':
+        'صرف AI لیب · ہر پیش منظر میں شناخت شدہ متن وقت اور پیش رفت کی معلومات کے ساتھ محفوظ اور تشخیصی رپورٹ میں اپ لوڈ ہوگا؛ رپورٹ ۳۰ دن تک رکھی جائے گی۔ آڈیو محفوظ نہیں ہوگی۔ تلاوت مکمل ہونے پر وقفہ دبائیں۔ الفاظ غیر تصدیق شدہ ہیں، اور ماڈل الفاظ چھوڑ یا بنا سکتا ہے۔ یہ حفظ یا تجوید کی جانچ نہیں۔',
     'quran_asr_live_warning':
         'صرف AI لیب · الفاظ کا براہ راست پیش منظر شروع سے فعال ہے۔ تلاوت جاری رکھیں اور ختم ہونے پر وقفہ دبائیں؛ نشست کی کوئی زمانی حد نہیں۔ آواز زیادہ سے زیادہ ۳۰ سیکنڈ کی متحرک کھڑکیوں میں جانچی جاتی ہے۔ پہلے ملنے والے الفاظ غیر تصدیق شدہ رہتے ہیں اور مطابقت میں شمار نہیں ہوتے؛ غیر مطابق لفظ آگے بڑھنے سے روکتا ہے۔ وقفے تک نئے الفاظ چھپانے کے لیے پیش منظر بند کریں۔ شناخت شدہ متن چھپا رہتا ہے۔ ماڈل الفاظ چھوڑ یا بنا سکتا ہے؛ متن کی مطابقت درست حفظ یا تجوید کا ثبوت نہیں۔ آواز آلے پر رہتی ہے اور عارضی نمونے حذف ہوتے ہیں۔',
     'quran_asr_title': 'DEBUG: آلے پر قرآنی AI',
@@ -149,6 +155,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'quran_asr_word_preview': 'Canlı kelime önizlemesi (doğrulanmamış)',
     'quran_asr_audio_debug_warning':
         'Yalnızca AI Lab · Bu sürümde sesli hata ayıklama açıktır. Bu kayıttan en fazla altı ses kesiti (her biri en fazla 30 saniye) ve tanınan metin cihazda saklanır ve tanılama raporlarıyla yüklenebilir. Okuyun ve bitirince duraklatın; oturum süresi sınırsızdır. Canlı kelimeler doğrulanmamıştır, yanlış kelimeler ilerlemeyi durdurur ve model kelime atlayabilir veya uydurabilir. Bu bir ezber veya tecvid değerlendirmesi değildir.',
+    'quran_asr_transcript_debug_warning':
+        'Yalnızca AI Lab · Her önizlemede tanınan metin, zamanlama ve ilerleme bilgileriyle kaydedilir ve tanılama raporuyla yüklenir; raporlar en fazla 30 gün saklanır. Ses kaydedilmez. Okuyun ve bitirince duraklatın. Kelimeler doğrulanmamıştır; model kelime atlayabilir veya uydurabilir. Bu bir ezber veya tecvid değerlendirmesi değildir.',
     'quran_asr_live_warning':
         'Yalnızca AI Lab · Canlı kelime önizlemesi başlangıçta açıktır. Okumaya devam edin ve bitirince duraklatın; oturum süresi sınırsızdır. Ses, en fazla 30 saniyelik kayan pencerelerde kontrol edilir. Önceki eşleşen kelimeler doğrulanmamış olarak korunur ve eşleşme sayılmaz; eşleşmeyen kelimeler ilerlemeyi durdurur. Yeni kelimeleri duraklatana kadar gizlemek için önizlemeyi kapatın. Döküm gizlidir. Model kelime atlayabilir veya uydurabilir; metin eşleşmesi doğru ezber ya da tecvid kanıtı değildir. Ses cihazda kalır ve geçici örnekler silinir.',
     'quran_asr_title': 'DEBUG: Cihazda Kur’an AI',
@@ -198,6 +206,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'quran_asr_word_preview': 'Aperçu des mots en direct (non vérifié)',
     'quran_asr_audio_debug_warning':
         'AI Lab uniquement · Le diagnostic audio est activé dans cette version. Jusqu’à six extraits de cet enregistrement (30 secondes maximum chacun) et leur transcription sont conservés localement et peuvent être envoyés avec les rapports de diagnostic. Récitez puis faites une pause ; la session n’a pas de limite de durée. Les mots affichés ne sont pas vérifiés, les mots incorrects bloquent la progression et le modèle peut omettre ou inventer des mots. Ce n’est pas une évaluation de la mémorisation ou du tajwid.',
+    'quran_asr_transcript_debug_warning':
+        'AI Lab uniquement · Le texte reconnu à chaque aperçu est enregistré avec les données de temps et de progression, puis envoyé avec le rapport, conservé jusqu’à 30 jours. Aucun audio n’est enregistré. Récitez puis faites une pause. Les mots ne sont pas vérifiés ; le modèle peut en omettre ou en inventer. Ce n’est pas une évaluation de la mémorisation ou du tajwid.',
     'quran_asr_live_warning':
         'AI Lab uniquement · L’aperçu des mots en direct est activé au départ. Continuez à réciter et faites une pause à la fin ; la session n’a pas de limite de durée. Le son est vérifié par fenêtres glissantes de 30 secondes maximum. Les mots précédents sont conservés sans vérification ni crédit de correspondance ; les mots incorrects bloquent toujours la progression. Désactivez l’aperçu pour masquer les nouveaux mots jusqu’à la pause. La transcription reste masquée. Le modèle peut omettre ou inventer des mots ; une correspondance ne prouve ni la mémorisation ni le tajwid. Le son reste sur cet appareil et les extraits temporaires sont supprimés.',
     'quran_asr_title': 'DEBUG : IA coranique sur l’appareil',
@@ -247,6 +257,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'quran_asr_word_preview': 'Pratinjau kata langsung (belum terverifikasi)',
     'quran_asr_audio_debug_warning':
         'Khusus AI Lab · Diagnostik audio aktif dalam versi ini. Hingga enam cuplikan dari rekaman ini (masing-masing hingga 30 detik) beserta transkripnya disimpan secara lokal dan dapat diunggah bersama laporan diagnostik. Bacalah dan tekan Jeda saat selesai; sesi tidak dibatasi waktu. Kata yang ditampilkan belum terverifikasi, kata salah menghalangi kemajuan, dan model dapat melewatkan atau mengarang kata. Ini bukan penilaian hafalan atau tajwid.',
+    'quran_asr_transcript_debug_warning':
+        'Khusus AI Lab · Teks yang dikenali pada setiap pratinjau disimpan bersama data waktu dan progres, lalu diunggah bersama laporan yang disimpan hingga 30 hari. Audio tidak disimpan. Bacalah dan tekan Jeda saat selesai. Kata belum terverifikasi; model dapat melewatkan atau mengarang kata. Ini bukan penilaian hafalan atau tajwid.',
     'quran_asr_live_warning':
         'Khusus AI Lab · Pratinjau kata langsung aktif sejak awal. Teruskan membaca dan tekan Jeda saat selesai; tidak ada batas waktu sesi. Audio diperiksa dalam jendela bergulir hingga 30 detik. Kata sebelumnya dipertahankan sebagai belum terverifikasi dan tidak dihitung cocok; kata yang salah tetap menghalangi kemajuan. Matikan pratinjau untuk menyembunyikan kata baru hingga Jeda. Transkrip tetap tersembunyi. Model dapat melewatkan atau mengarang kata; kecocokan teks bukan bukti hafalan atau tajwid yang benar. Audio tetap di perangkat ini dan cuplikan sementara dihapus.',
     'quran_asr_title': 'DEBUG: AI Al-Qur’an di perangkat',
@@ -295,6 +307,8 @@ const hifzTranslations = <String, Map<String, String>>{
     'quran_asr_word_preview': 'Live-Wortvorschau (ungeprüft)',
     'quran_asr_audio_debug_warning':
         'Nur AI Lab · Audio-Diagnose ist in dieser Version aktiv. Bis zu sechs Ausschnitte dieser Aufnahme (je höchstens 30 Sekunden) und die erkannten Texte werden lokal gespeichert und können mit Diagnoseberichten hochgeladen werden. Rezitieren und am Ende pausieren; die Sitzung hat kein Zeitlimit. Angezeigte Wörter sind ungeprüft, falsche Wörter blockieren den Fortschritt und das Modell kann Wörter auslassen oder erfinden. Dies ist keine Bewertung des Auswendiglernens oder Tadschwids.',
+    'quran_asr_transcript_debug_warning':
+        'Nur AI Lab · Der erkannte Text jedes Vorschaufensters wird mit Zeit- und Fortschrittsdaten gespeichert und mit dem Diagnosebericht hochgeladen; Berichte bleiben bis zu 30 Tage erhalten. Audio wird nicht gespeichert. Rezitieren und am Ende pausieren. Wörter sind ungeprüft; das Modell kann Wörter auslassen oder erfinden. Dies ist keine Bewertung des Auswendiglernens oder Tadschwids.',
     'quran_asr_live_warning':
         'Nur AI Lab · Die Live-Wortvorschau ist anfangs eingeschaltet. Weiter rezitieren und am Ende pausieren; es gibt kein Zeitlimit für die Sitzung. Audio wird in gleitenden Fenstern von höchstens 30 Sekunden geprüft. Frühere Wörter bleiben ungeprüft erhalten und zählen nicht als Treffer; falsche Wörter blockieren weiterhin den Fortschritt. Vorschau ausschalten, um neue Wörter bis zur Pause zu verbergen. Das Transkript bleibt verborgen. Das Modell kann Wörter auslassen oder erfinden; Textübereinstimmung beweist weder korrektes Auswendiglernen noch Tadschwid. Audio bleibt auf diesem Gerät und temporäre Ausschnitte werden gelöscht.',
     'quran_asr_title': 'DEBUG: Koran-KI auf dem Gerät',
@@ -344,6 +358,8 @@ const hifzTranslations = <String, Map<String, String>>{
         'Vista previa de palabras en vivo (sin verificar)',
     'quran_asr_audio_debug_warning':
         'Solo AI Lab · Esta versión tiene activado el diagnóstico de audio. Se guardan localmente hasta seis fragmentos de esta grabación (hasta 30 segundos cada uno) y sus transcripciones, y pueden subirse con los informes de diagnóstico. Recita y pausa al terminar; la sesión no tiene límite de tiempo. Las palabras mostradas no están verificadas, las incorrectas bloquean el avance y el modelo puede omitir o inventar palabras. No es una evaluación de memorización ni de taywid.',
+    'quran_asr_transcript_debug_warning':
+        'Solo AI Lab · El texto reconocido en cada vista previa se guarda con datos de tiempo y progreso, y se sube con el informe, que se conserva hasta 30 días. No se guarda audio. Recita y pausa al terminar. Las palabras no están verificadas; el modelo puede omitirlas o inventarlas. No es una evaluación de memorización ni de taywid.',
     'quran_asr_live_warning':
         'Solo AI Lab · La vista previa de palabras en vivo empieza activada. Sigue recitando y pausa al terminar; la sesión no tiene límite de tiempo. El audio se comprueba en ventanas móviles de hasta 30 segundos. Las palabras anteriores se conservan sin verificar y no cuentan como coincidencias; las palabras incorrectas siguen bloqueando el avance. Desactiva la vista previa para ocultar palabras nuevas hasta la pausa. La transcripción sigue oculta. El modelo puede omitir o inventar palabras; una coincidencia no demuestra memorización ni tajwid correctos. El audio permanece en este dispositivo y los fragmentos temporales se eliminan.',
     'quran_asr_title': 'DEBUG: IA coránica en el dispositivo',

@@ -77,6 +77,64 @@ final class QuranASRChannelTests: XCTestCase {
     XCTAssertEqual(Set(try XCTUnwrap(records.last).keys), ["time", "event", "metrics"])
   }
 
+  func testDiagnosticsKeepMoreThanThePrevious64KiBLimit() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jsonl")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let diagnostics = QuranASRDiagnostics(fileURL: url)
+    for index in 0..<1200 {
+      diagnostics.record("progress", metrics: ["visibleWords": Double(index)])
+    }
+    let data = try Data(contentsOf: url)
+    XCTAssertGreaterThan(data.count, 65536)
+    let records = try XCTUnwrap(String(data: data, encoding: .utf8)).split(separator: "\n")
+    XCTAssertEqual(records.count, 1200)
+    let first = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(records[0].utf8)) as? [String: Any])
+    XCTAssertEqual(first["metrics"] as? [String: Double], ["visibleWords": 0])
+  }
+
+  func testTranscriptDiagnosticsRequireExplicitCaptureOptIn() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jsonl")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let diagnostics = QuranASRDiagnostics(fileURL: url)
+
+    XCTAssertNil(diagnostics.beginCapture(retainDebugAudio: false))
+    diagnostics.record("inference_returned", transcript: "hidden by default")
+    let defaultLog = try String(contentsOf: url, encoding: .utf8)
+    XCTAssertFalse(defaultLog.contains("hidden by default"))
+
+    XCTAssertNil(diagnostics.beginCapture(
+      retainDebugAudio: false, retainDebugTranscripts: true
+    ))
+    diagnostics.record("inference_returned", transcript: "opted in")
+    let optedInLog = try String(contentsOf: url, encoding: .utf8)
+    XCTAssertTrue(optedInLog.contains("opted in"))
+  }
+
+  func testCloudDiagnosticsKeepOnlyTheCurrentRecordingEvenWithoutAudio() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jsonl")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let diagnostics = QuranASRDiagnostics(fileURL: url)
+    diagnostics.record("before_capture")
+    XCTAssertNil(try diagnostics.cloudDiagnostics(includeSnapshots: true))
+
+    XCTAssertNil(diagnostics.beginCapture(retainDebugAudio: false))
+    diagnostics.record("first_capture")
+    let first = try XCTUnwrap(diagnostics.cloudDiagnostics(includeSnapshots: true))
+    let firstID = try XCTUnwrap(first["id"] as? String)
+    XCTAssertNotNil(UUID(uuidString: firstID))
+    XCTAssertEqual(try diagnostics.cloudDiagnostics(includeSnapshots: true)?["id"] as? String, firstID)
+    XCTAssertEqual(first["snapshotPaths"] as? [String], [])
+
+    XCTAssertNil(diagnostics.beginCapture(retainDebugAudio: false))
+    diagnostics.record("second_capture")
+    let second = try XCTUnwrap(diagnostics.cloudDiagnostics(includeSnapshots: true))
+    XCTAssertNotEqual(second["id"] as? String, firstID)
+    let log = try XCTUnwrap(second["log"] as? String)
+    XCTAssertTrue(log.contains("second_capture"))
+    XCTAssertFalse(log.contains("first_capture"))
+    XCTAssertFalse(log.contains("before_capture"))
+  }
+
   func testDiagnosticsRejectTranscriptPayloads() {
     let channel = QuranASRChannel()
     channel.handle(FlutterMethodCall(
@@ -84,6 +142,7 @@ final class QuranASRChannelTests: XCTestCase {
     )) { value in
       XCTAssertEqual((value as? FlutterError)?.code, "invalid_diagnostics")
     }
+
     channel.handle(FlutterMethodCall(
       methodName: "traceProgress", arguments: ["unexpected": 5]
     )) { value in
