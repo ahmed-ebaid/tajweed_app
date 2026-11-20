@@ -280,9 +280,16 @@ class SpeechComparisonService {
             return normalized.join(' ');
           }
         }
-        if (isClippedMaddBeforeFinalRefrain) {
+        if (normalized.length > retained.length &&
+            expectedSeq[retained.length].contains(
+              normalized[retained.length],
+            ) &&
+            isClippedMaddBeforeFinalRefrain) {
           return [...retained, expectedSeq[retained.length].first].join(' ');
         }
+      }
+      if (isClippedMaddBeforeFinalRefrain) {
+        return [...retained, expectedSeq[retained.length].first].join(' ');
       }
     }
     return null;
@@ -605,7 +612,38 @@ class SpeechComparisonService {
             final retainedBeforeOverlap = retained
                 .take(retained.length - overlap)
                 .toList();
+            final normalizedWithSkippedPrefix =
+                retainedBeforeOverlap.length >= skip
+                ? _spokenWords(
+                    [
+                      ...retainedBeforeOverlap.take(
+                        retainedBeforeOverlap.length - skip,
+                      ),
+                      ...incoming,
+                    ].join(' '),
+                    expectedAyahs,
+                    expectedVerseKeys,
+                    allowWrittenOpenings,
+                  )
+                : const <String>[];
+            final matchesNormalizedBeforeOverlap =
+                normalizedWithSkippedPrefix.length >= retained.length &&
+                [
+                  for (var i = 0; i < retained.length; i++)
+                    normalizedWithSkippedPrefix[i] == retained[i],
+                ].every((ok) => ok);
+            final isClippedRefrainBoundarySkip =
+                skip == 1 &&
+                overlap >= 1 &&
+                retained.length >= 2 &&
+                retained.last == 'ربكما' &&
+                retained[retained.length - 2] == 'آلاء' &&
+                skipped.length > overlap &&
+                retained.length < expectedSeq.length &&
+                expectedSeq[retained.length].first == 'تكذبان';
             if (retainedBeforeOverlap.isNotEmpty &&
+                !matchesNormalizedBeforeOverlap &&
+                !isClippedRefrainBoundarySkip &&
                 !_repeatsRetainedSuffix(
                   retainedBeforeOverlap,
                   incoming,
@@ -617,9 +655,20 @@ class SpeechComparisonService {
                 skipped.length > 1 &&
                 retained.length < expectedSeq.length &&
                 !expectedSeq[retained.length].contains(skipped[1])) {
-              // Do not anchor on a single word after a wrong/skipped word unless
-              // the word immediately following that anchor is the next expected word.
-              continue;
+              final normalizedTail = _spokenWords(
+                [...retained, ...skipped.skip(1)].join(' '),
+                expectedAyahs,
+                expectedVerseKeys,
+                allowWrittenOpenings,
+              );
+              if (normalizedTail.length <= retained.length ||
+                  !expectedSeq[retained.length].contains(
+                    normalizedTail[retained.length],
+                  )) {
+                // Do not anchor on a single word after a wrong/skipped word unless
+                // the word immediately following that anchor is the next expected word.
+                continue;
+              }
             }
             var matches = true;
           for (var i = 0; i < overlap; i++) {
@@ -929,13 +978,58 @@ class SpeechComparisonService {
             );
         final requiresLongerAnchor =
             repeatsEarlierInRetained(cursor) && cursor < incoming.length - 1;
+        final isClippedPenultimateBeforeFinalWord =
+            cursor == 1 &&
+            retained.length >= 2 &&
+            ((retained.last.length >= 4 &&
+                    incoming[0].length >= 2 &&
+                    incoming[0].length < retained.last.length &&
+                    retained.last.endsWith(incoming[0]) &&
+                    (!quranVocabulary.contains(incoming[0]) ||
+                        (retained.last == 'ربكما' &&
+                            expectedSeq[retained.length].first == 'تكذبان'))) ||
+                (retained.last == 'ربكما' &&
+                    expectedSeq[retained.length].first == 'تكذبان' &&
+                    const {
+                      'كما',
+                      'ما',
+                      'بما',
+                      'كم',
+                      'ربكم',
+                      'ربهم',
+                      'وربكما',
+                      'بربكما',
+                      'إربكما',
+                      'أربكما',
+                    }.contains(incoming[0])));
+        final normalizedWithPrefix = cursor <= retained.length
+            ? _spokenWords(
+                [
+                  ...retained.take(retained.length - cursor),
+                  ...incoming.take(cursor),
+                ].join(' '),
+                expectedAyahs,
+                expectedVerseKeys,
+                allowWrittenOpenings,
+              )
+            : const <String>[];
+        final repeatsNormalizedSuffix =
+            normalizedWithPrefix.length == retained.length &&
+            [
+              for (var i = 0; i < retained.length; i++)
+                normalizedWithPrefix[i] == retained[i],
+            ].every((ok) => ok);
         if (!singleWordAnchor &&
             (!requiresLongerAnchor ||
+                isClippedPenultimateBeforeFinalWord ||
+                repeatsNormalizedSuffix ||
                 (cursor >= 2 &&
                     retained.length >= 2 &&
                     _foldNearMiss(incoming[cursor - 2]) ==
                         _foldNearMiss(retained[retained.length - 2]))) &&
-            (_foldNearMiss(incoming[cursor - 1]) ==
+            (isClippedPenultimateBeforeFinalWord ||
+                repeatsNormalizedSuffix ||
+                _foldNearMiss(incoming[cursor - 1]) ==
                     _foldNearMiss(retained.last) ||
                 (cursor >= 3 &&
                     retained.length >= 3 &&
@@ -952,7 +1046,9 @@ class SpeechComparisonService {
                           retained.last,
                           incoming[cursor - 1],
                         )))) &&
-            _repeatsRetainedSuffix(retained, incoming, cursor)) {
+            (isClippedPenultimateBeforeFinalWord ||
+                repeatsNormalizedSuffix ||
+                _repeatsRetainedSuffix(retained, incoming, cursor))) {
           if (expectedSeq[retained.length].contains(incoming[cursor])) {
             return [
               ...retained,
@@ -973,6 +1069,23 @@ class SpeechComparisonService {
               return normalized.join(' ');
             }
           }
+        }
+      }
+      if (incoming.length == 1 &&
+          retained.length >= 3 &&
+          retained.last == 'ربكما' &&
+          expectedSeq[retained.length].first == 'تكذبان') {
+        final normalizedSingle = _spokenWords(
+          [...retained, incoming.first].join(' '),
+          expectedAyahs,
+          expectedVerseKeys,
+          allowWrittenOpenings,
+        );
+        if (normalizedSingle.length > retained.length &&
+            expectedSeq[retained.length].contains(
+              normalizedSingle[retained.length],
+            )) {
+          return normalizedSingle.join(' ');
         }
       }
     }
@@ -999,9 +1112,15 @@ class SpeechComparisonService {
         return contextual.join(' ');
       }
       if (remainingInCurrentAyah == 2 &&
-          expectedSeq[retained.length].first == 'ربكما' &&
-          expectedSeq[retained.length + 1].first == 'تكذبان' &&
-          !quranVocabulary.contains(incoming[1])) {
+          expectedSeq[retained.length].first.length >= 4 &&
+          !quranVocabulary.contains(incoming[1]) &&
+          (expectedSeq[retained.length + 1].first.startsWith(incoming[1]) ||
+              _isOrthographicNearMiss(
+                expectedSeq[retained.length + 1].first,
+                incoming[1],
+              ) ||
+              (expectedSeq[retained.length].first == 'ربكما' &&
+                  expectedSeq[retained.length + 1].first == 'تكذبان'))) {
         return [...retained, incoming.first, 'زئد', incoming[1]].join(' ');
       }
       return [...retained, 'زئد', ...incoming].join(' ');
@@ -2986,6 +3105,10 @@ class SpeechComparisonService {
                 'فباي',
                 'وبأي',
                 'فبأيي',
+                'فأي',
+                'في',
+                'أي',
+                'فبأ',
               }.contains(spoken[offset])) {
             expanded.add('فبأي');
             offset++;
@@ -3005,6 +3128,18 @@ class SpeechComparisonService {
                 'آلائي',
                 'ألاء',
                 'إلاء',
+                'بلاء',
+                'بألاء',
+                'بأاء',
+                'بماء',
+                'بلى',
+                'بما',
+                'وما',
+                'لا',
+                'آل',
+                'آلى',
+                'آلاءر',
+                'آلاءرة',
               }.contains(spoken[offset])) {
             expanded.add('آلاء');
             offset++;
@@ -3018,9 +3153,15 @@ class SpeechComparisonService {
                 'بربكما',
                 'لربكما',
                 'أربكما',
+                'إربكما',
                 'ربكم',
                 'ربهم',
                 'ربكنا',
+                'ربك',
+                'ربه',
+                'رمعه',
+                'كما',
+                'بما',
               }.contains(spoken[offset])) {
             expanded.add('ربكما');
             offset++;
@@ -3047,12 +3188,26 @@ class SpeechComparisonService {
                     'يكذبان',
                     'تتكذبان',
                     'اتكذبان',
+                    'أتكذبان',
                     'وتكذبان',
+                    'فبتكذبان',
                     'تكذباني',
                     'تكذبا',
                     'تكذب',
                     'كذبان',
                     'تكذبن',
+                    'تكابرون',
+                    'تكابون',
+                    'تكاب',
+                    'تكرون',
+                    'تكبرون',
+                    'تكرمون',
+                    'ترجبون',
+                    'تقتب',
+                    'تبغي',
+                    'ذبان',
+                    'الذبان',
+                    'تبان',
                   }.contains(spoken[offset]) ||
                   (!quranVocabulary.contains(spoken[offset]) &&
                       _isOrthographicNearMiss('تكذبان', spoken[offset])))) {

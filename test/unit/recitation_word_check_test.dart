@@ -2598,6 +2598,42 @@ void main() {
         [3],
       );
 
+      // 3b) Build 142 cloud log regression: once 'فبأي آلاء ربكما' is retained
+      // (cursorWords == 3, remainingInCurrentAyah == 1), sliding 3s windows
+      // that clip 'فبأي' ('ألا ربكما تكذبان', 'بلاء ربكما تكذبان') or clip
+      // 'ربكما' ('كما تكذبان', 'ما تكذبان') or produce corpus variants of
+      // 'تكذبان' ('فبأي آلاء ربكما تكابرون', 'آلاء ربكما تكرمون') must
+      // complete word 4 ('تكذبان') immediately without waiting 2-4s.
+      for (final window in const [
+        'فبأي آلاء ربكما تكابرون',
+        'فبأي آلاء ربكما تكرمون',
+        'ألا ربكما تكذبان',
+        'بلاء ربكما تكذبان',
+        'لا ربكما تكذبا',
+        'كما تكذبان',
+        'ما تكذبان',
+        'وربكما تكذبان',
+        'ذبان',
+      ]) {
+        final joinedWord4 = comparison.joinRecitationSegment(
+          retainedPrefix: 'فبأي آلاء ربكما',
+          spokenText: window,
+          expectedAyahs: [rahman28, rahman29, rahman30],
+          expectedVerseKeys: ['55:28', '55:29', '55:30'],
+          allowWrittenOpenings: true,
+        );
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [rahman28, rahman29, rahman30],
+            expectedVerseKeys: ['55:28', '55:29', '55:30'],
+            spokenText: joinedWord4,
+            allowWrittenOpenings: true,
+          ),
+          [4, 0],
+          reason: 'Failed to complete word 4 on window: $window',
+        );
+      }
+
       // 4) Ayah 55:33: Whisper window variants around 'أن تنفذوا من أقطار السماوات والأرض فانفذوا'
       // (including 'تنفذون', 'وطار السماوات والأرض فانفذوا', 'وآوات والأرض فانفذوا').
       final joinedRahman33 = comparison.joinRecitationSegment(
