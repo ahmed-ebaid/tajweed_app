@@ -2897,10 +2897,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                             _revealed.contains(_index))
                                   ? null
                                   : _listen;
-                              final isError = _message == 'mem_mismatch';
-                              final baseColor = isError && !_acceptResults
-                                  ? const Color(0xFFD32F2F)
-                                  : const Color(0xFF1D9E75);
+                              const baseColor = Color(0xFF1D9E75);
                               return DecoratedBox(
                                 key: const ValueKey('hifz-glowing-mic-fab'),
                                 decoration: BoxDecoration(
