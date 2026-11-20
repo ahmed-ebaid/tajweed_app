@@ -2958,6 +2958,78 @@ void main() {
       },
     );
 
+    testWidgets(
+      'live hint while recording lets user either repeat hinted words or continue after them',
+      (tester) async {
+        final speech = _FakeWindowedSpeech();
+        const nuh7 =
+            'وَإِنِّي كُلَّمَا دَعَوْتُهُمْ لِتَغْفِرَ لَهُمْ جَعَلُوا أَصَابِعَهُمْ فِي آذَانِهِمْ';
+        await _open(
+          tester,
+          speech,
+          continuous: true,
+          localQuranLab: true,
+          ayahs: [_ayah(7, nuh7, surahNumber: 71)],
+        );
+        await _tap(tester, 'Start reciting');
+        await _tap(tester, 'Agree and continue');
+
+        speech.result!('وإني كلما دعوتهم', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'71:7': 3});
+
+        // Tapping Hint while recording keeps mic active and hints words 4..5
+        await _tap(tester, 'Hint');
+        expect(speech.cancellations, 0);
+        expect(page(tester).hintedWords, {'71:7': 5});
+        expect(page(tester).revealedWordCounts, {'71:7': 3});
+
+        // Case A: User repeats the hinted words ("لتغفر لهم")
+        speech.windowStartSeconds = 3;
+        speech.result!('لتغفر لهم', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'71:7': 5});
+
+        // Or Case B: If user had skipped straight to the word after the hint ("جعلوا أصابعهم"),
+        // it also bridges across the hinted words.
+        speech.windowStartSeconds = 6;
+        speech.result!('جعلوا أصابعهم في آذانهم', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'71:7': 9});
+      },
+    );
+
+    testWidgets(
+      'live hint while recording bridges directly when user continues with the word after hint',
+      (tester) async {
+        final speech = _FakeWindowedSpeech();
+        const nuh7 =
+            'وَإِنِّي كُلَّمَا دَعَوْتُهُمْ لِتَغْفِرَ لَهُمْ جَعَلُوا أَصَابِعَهُمْ فِي آذَانِهِمْ';
+        await _open(
+          tester,
+          speech,
+          continuous: true,
+          localQuranLab: true,
+          ayahs: [_ayah(7, nuh7, surahNumber: 71)],
+        );
+        await _tap(tester, 'Start reciting');
+        await _tap(tester, 'Agree and continue');
+
+        speech.result!('وإني كلما دعوتهم', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'71:7': 3});
+
+        await _tap(tester, 'Hint');
+        expect(page(tester).hintedWords, {'71:7': 5});
+
+        // User skips the 2 hinted words ("لتغفر لهم") and recites "جعلوا أصابعهم"
+        speech.windowStartSeconds = 3;
+        speech.result!('جعلوا أصابعهم', false);
+        await tester.pumpAndSettle();
+        expect(page(tester).revealedWordCounts, {'71:7': 7});
+      },
+    );
+
     testWidgets('step practice also hides interim words and raw transcript', (
       tester,
     ) async {

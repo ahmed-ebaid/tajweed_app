@@ -560,7 +560,44 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       for (final counts in [_acceptedWordCounts, _pausedWordCounts]) {
         if ((counts[key] ?? 0) > count) count = counts[key]!;
       }
-      if (count == 0 || words.isEmpty) return;
+      if (count == 0 || words.isEmpty) {
+        final hintedAtZero = _hintWordCounts[startIndex + i] ?? 0;
+        final effectiveHintAtZero = hintedAtZero <= words.length
+            ? hintedAtZero
+            : words.length;
+        if (effectiveHintAtZero > 0 && words.isNotEmpty) {
+          final fromStart = _comparison.matchingPrefixWordCounts(
+            expectedAyahs: [ayah.imlaei ?? ''],
+            expectedVerseKeys: [key],
+            spokenText: text,
+            allowWrittenOpenings: true,
+          );
+          if (fromStart.first > 0) {
+            if (i > 0) _retainRollingWords(startIndex);
+            return;
+          }
+          final hintedContinuation = _comparison.joinRecitationSegment(
+            retainedPrefix: words.take(effectiveHintAtZero).join(' '),
+            spokenText: text,
+            expectedAyahs: [ayah.imlaei ?? ''],
+            expectedVerseKeys: [key],
+            allowWrittenOpenings: true,
+          );
+          final hintedContinuedCount = _comparison
+              .matchingPrefixWordCounts(
+                expectedAyahs: [ayah.imlaei ?? ''],
+                expectedVerseKeys: [key],
+                spokenText: hintedContinuation,
+                allowWrittenOpenings: true,
+              )
+              .first;
+          if (hintedContinuedCount > effectiveHintAtZero) {
+            _retainRollingWords(startIndex);
+            _rollingWordCounts[key] = effectiveHintAtZero;
+          }
+        }
+        return;
+      }
       if (count == words.length) continue;
       if (count > words.length ||
           count <= (_acceptedWordCounts[key] ?? 0) ||
@@ -595,7 +632,35 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             allowWrittenOpenings: true,
           )
           .first;
-      if (continuedCount > count) _retainRollingWords(startIndex);
+      if (continuedCount > count) {
+        _retainRollingWords(startIndex);
+        return;
+      }
+      final hintedCount = _hintWordCounts[startIndex + i] ?? 0;
+      final effectiveHintCount = hintedCount <= words.length
+          ? hintedCount
+          : words.length;
+      if (effectiveHintCount > count) {
+        final hintedContinuation = _comparison.joinRecitationSegment(
+          retainedPrefix: words.take(effectiveHintCount).join(' '),
+          spokenText: text,
+          expectedAyahs: [ayah.imlaei ?? ''],
+          expectedVerseKeys: [key],
+          allowWrittenOpenings: true,
+        );
+        final hintedContinuedCount = _comparison
+            .matchingPrefixWordCounts(
+              expectedAyahs: [ayah.imlaei ?? ''],
+              expectedVerseKeys: [key],
+              spokenText: hintedContinuation,
+              allowWrittenOpenings: true,
+            )
+            .first;
+        if (hintedContinuedCount > effectiveHintCount) {
+          _retainRollingWords(startIndex);
+          _rollingWordCounts[key] = effectiveHintCount;
+        }
+      }
       return;
     }
   }
@@ -695,6 +760,33 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       firstWords.length)) {
             return false;
           }
+          final firstHinted = _hintWordCounts[startIndex] ?? 0;
+          final effectiveFirstHint = firstHinted <= firstWords.length
+              ? firstHinted
+              : firstWords.length;
+          if (effectiveFirstHint > firstRetainedCount) {
+            final hintedContinued = _comparison.joinRecitationSegment(
+              retainedPrefix: firstWords.take(effectiveFirstHint).join(' '),
+              spokenText: text,
+              expectedAyahs: [expected.first],
+              expectedVerseKeys: [keys.first],
+              allowWrittenOpenings: true,
+            );
+            final hintedContinuedCount = _comparison
+                .matchingPrefixWordCounts(
+                  expectedAyahs: [expected.first],
+                  expectedVerseKeys: [keys.first],
+                  spokenText: hintedContinued,
+                  allowWrittenOpenings: true,
+                )
+                .first;
+            if (hintedContinuedCount > effectiveFirstHint ||
+                (hintedContinuedCount == firstWords.length &&
+                    _comparison.recitationWords(hintedContinued).length ==
+                        firstWords.length)) {
+              return false;
+            }
+          }
         } else {
           final activeOffset = ayahs.indexWhere((ayah) {
             final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
@@ -772,6 +864,33 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               if (continuedCount > activeRetained ||
                   (continuedCount == activeWords.length &&
                       _comparison.recitationWords(continued).length ==
+                          activeWords.length)) {
+                return false;
+              }
+            }
+            final activeHinted = _hintWordCounts[startIndex + activeOffset] ?? 0;
+            final effectiveActiveHint = activeHinted <= activeWords.length
+                ? activeHinted
+                : activeWords.length;
+            if (effectiveActiveHint > activeRetained) {
+              final hintedContinued = _comparison.joinRecitationSegment(
+                retainedPrefix: activeWords.take(effectiveActiveHint).join(' '),
+                spokenText: text,
+                expectedAyahs: [activeExpected],
+                expectedVerseKeys: [activeKey],
+                allowWrittenOpenings: true,
+              );
+              final hintedContinuedCount = _comparison
+                  .matchingPrefixWordCounts(
+                    expectedAyahs: [activeExpected],
+                    expectedVerseKeys: [activeKey],
+                    spokenText: hintedContinued,
+                    allowWrittenOpenings: true,
+                  )
+                  .first;
+              if (hintedContinuedCount > effectiveActiveHint ||
+                  (hintedContinuedCount == activeWords.length &&
+                      _comparison.recitationWords(hintedContinued).length ==
                           activeWords.length)) {
                 return false;
               }
@@ -2024,6 +2143,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
           _revealed.add(targetIndex);
           _completedLiveWordCounts[targetKey] = targetWordCount;
           _liveWordCounts[targetKey] = targetWordCount;
+          _rollingWordCounts[targetKey] = targetWordCount;
           if (targetIndex + 1 < widget.ayahs.length) {
             final nextIndex = targetIndex + 1;
             _assisted.add(nextIndex);
@@ -2044,6 +2164,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               ? targetWordCount
               : nextCount;
         }
+        _mismatchWord = null;
         _message = _finished ? 'hifz_completed' : 'hifz_hint_used';
         return;
       }
