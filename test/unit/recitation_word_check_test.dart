@@ -237,6 +237,47 @@ void main() {
     );
   });
 
+  test('Surah Ar-Rahman repeated refrains join ربكما تكذبان after earlier refrains', () {
+    const ayahs = [
+      'فبأي آلاء ربكما تكذبان',
+      'خلق الإنسان من صلصال كالفخار',
+      'وخلق الجان من مارج من نار',
+      'فبأي آلاء ربكما تكذبان',
+      'رب المشرقين ورب المغربين',
+      'فبأي آلاء ربكما تكذبان',
+    ];
+    const keys = ['55:13', '55:14', '55:15', '55:16', '55:17', '55:18'];
+    final retainedUpToRefrainPrefix = [
+      ...ayahs.take(5),
+      'فبأي آلاء',
+    ].join(' ');
+
+    for (final window in [
+      'آلاء ربكما تكذبان',
+      'ربكما تكذبان',
+      'فبأي آلاء ربكما تكذبان',
+    ]) {
+      final joined = comparison.joinRecitationSegment(
+        retainedPrefix: retainedUpToRefrainPrefix,
+        spokenText: window,
+        expectedAyahs: ayahs,
+        expectedVerseKeys: keys,
+        allowWrittenOpenings: true,
+      );
+      final counts = comparison.matchingPrefixWordCounts(
+        expectedAyahs: ayahs,
+        expectedVerseKeys: keys,
+        spokenText: joined,
+        allowWrittenOpenings: true,
+      );
+      expect(
+        counts,
+        [4, 5, 6, 4, 4, 4],
+        reason: 'window "$window" should complete 55:18 refrain',
+      );
+    }
+  });
+
   test('folded or resegmented ASR spellings keep every expected letter', () {
     const tied =
         'وقالت اليهود يد الله مغلولة غلت أيديهم ولعنوا بما قالوا بل يداه مبسوطتان';

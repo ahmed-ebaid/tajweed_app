@@ -170,8 +170,10 @@ class SpeechComparisonService {
         for (var j = 0; j + 1 < retained.length - 1; j++) {
           if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
               _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
-            final laterMatchLen = retained.length - (j + 1);
-            if (laterMatchLen >= 2 && 1 + laterMatchLen <= incoming.length) {
+            final laterMatchLen = retained.length - (j + 1) < incoming.length - 1
+                ? retained.length - (j + 1)
+                : incoming.length - 1;
+            if (laterMatchLen >= 2) {
               var matchesLater = true;
               for (var k = 0; k < laterMatchLen; k++) {
                 if (_foldNearMiss(incoming[1 + k]) !=
@@ -181,8 +183,22 @@ class SpeechComparisonService {
                 }
               }
               if (matchesLater) {
-                matchesEarlierInRetained = true;
-                break;
+                var alsoMatchesCursor =
+                    retained.length + laterMatchLen <= expectedSeq.length;
+                if (alsoMatchesCursor) {
+                  for (var k = 0; k < laterMatchLen; k++) {
+                    if (!expectedSeq[retained.length + k].contains(
+                      incoming[1 + k],
+                    )) {
+                      alsoMatchesCursor = false;
+                      break;
+                    }
+                  }
+                }
+                if (!alsoMatchesCursor) {
+                  matchesEarlierInRetained = true;
+                  break;
+                }
               }
             }
           }
@@ -274,6 +290,22 @@ class SpeechComparisonService {
           expectedVerseKeys[verse],
         ),
     ];
+    final remainingExpected = expectedSeq.length - retained.length;
+    var currentAyahStart = 0;
+    var currentAyahEnd = 0;
+    for (var verse = 0; verse < expectedAyahs.length; verse++) {
+      final verseLen = _expectedRecitationWords(
+        expectedAyahs[verse],
+        expectedVerseKeys[verse],
+      ).length;
+      if (retained.length < currentAyahStart + verseLen) {
+        currentAyahEnd = currentAyahStart + verseLen;
+        break;
+      }
+      currentAyahStart += verseLen;
+      currentAyahEnd = currentAyahStart;
+    }
+    final remainingInCurrentAyah = currentAyahEnd - retained.length;
     if (allowWrittenOpenings &&
         retained.isNotEmpty &&
         retained.length == expectedSeq.length) {
@@ -319,8 +351,11 @@ class SpeechComparisonService {
           for (var j = 0; j + 1 < retained.length - 1; j++) {
             if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
                 _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
-              final laterMatchLen = retained.length - (j + 1);
-              if (laterMatchLen >= 2 && 1 + laterMatchLen <= incoming.length) {
+              final laterMatchLen =
+                  retained.length - (j + 1) < incoming.length - 1
+                  ? retained.length - (j + 1)
+                  : incoming.length - 1;
+              if (laterMatchLen >= 2) {
                 var matchesLater = true;
                 for (var k = 0; k < laterMatchLen; k++) {
                   if (_foldNearMiss(incoming[1 + k]) !=
@@ -330,8 +365,22 @@ class SpeechComparisonService {
                   }
                 }
                 if (matchesLater) {
-                  matches = false;
-                  break;
+                  var alsoMatchesCursor =
+                      retained.length + laterMatchLen <= expectedSeq.length;
+                  if (alsoMatchesCursor) {
+                    for (var k = 0; k < laterMatchLen; k++) {
+                      if (!expectedSeq[retained.length + k].contains(
+                        incoming[1 + k],
+                      )) {
+                        alsoMatchesCursor = false;
+                        break;
+                      }
+                    }
+                  }
+                  if (!alsoMatchesCursor) {
+                    matches = false;
+                    break;
+                  }
                 }
               }
             }
@@ -441,9 +490,11 @@ class SpeechComparisonService {
           for (var j = 0; j + 1 < retained.length - 1; j++) {
             if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
                 _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
-              final laterMatchLen = retained.length - (j + 1);
-              if (laterMatchLen >= 2 &&
-                  1 + laterMatchLen <= incoming.length) {
+              final laterMatchLen =
+                  retained.length - (j + 1) < incoming.length - 1
+                  ? retained.length - (j + 1)
+                  : incoming.length - 1;
+              if (laterMatchLen >= 2) {
                 var matchesLaterRetained = true;
                 for (var k = 0; k < laterMatchLen; k++) {
                   if (_foldNearMiss(incoming[1 + k]) !=
@@ -453,8 +504,22 @@ class SpeechComparisonService {
                   }
                 }
                 if (matchesLaterRetained) {
-                  matches = false;
-                  break;
+                  var alsoMatchesCursor =
+                      retained.length + laterMatchLen <= expectedSeq.length;
+                  if (alsoMatchesCursor) {
+                    for (var k = 0; k < laterMatchLen; k++) {
+                      if (!expectedSeq[retained.length + k].contains(
+                        incoming[1 + k],
+                      )) {
+                        alsoMatchesCursor = false;
+                        break;
+                      }
+                    }
+                  }
+                  if (!alsoMatchesCursor) {
+                    matches = false;
+                    break;
+                  }
                 }
               }
             }
@@ -544,8 +609,11 @@ class SpeechComparisonService {
                 if (_foldNearMiss(retained[j]) == _foldNearMiss(skipped[0]) &&
                     _foldNearMiss(retained[j + 1]) ==
                         _foldNearMiss(skipped[1])) {
-                  final laterMatchLen = retained.length - (j + 1);
-                  if (laterMatchLen >= 2 && 1 + laterMatchLen <= skipped.length) {
+                  final laterMatchLen =
+                      retained.length - (j + 1) < skipped.length - 1
+                      ? retained.length - (j + 1)
+                      : skipped.length - 1;
+                  if (laterMatchLen >= 2) {
                     var matchesLater = true;
                     for (var k = 0; k < laterMatchLen; k++) {
                       if (_foldNearMiss(skipped[1 + k]) !=
@@ -555,8 +623,22 @@ class SpeechComparisonService {
                       }
                     }
                     if (matchesLater) {
-                      matchesEarlierInRetained = true;
-                      break;
+                      var alsoMatchesCursor =
+                          retained.length + laterMatchLen <= expectedSeq.length;
+                      if (alsoMatchesCursor) {
+                        for (var k = 0; k < laterMatchLen; k++) {
+                          if (!expectedSeq[retained.length + k].contains(
+                            skipped[1 + k],
+                          )) {
+                            alsoMatchesCursor = false;
+                            break;
+                          }
+                        }
+                      }
+                      if (!alsoMatchesCursor) {
+                        matchesEarlierInRetained = true;
+                        break;
+                      }
                     }
                   }
                 }
@@ -595,35 +677,31 @@ class SpeechComparisonService {
     if (allowWrittenOpenings &&
         incoming.length >= 2 &&
         retained.length > incoming.length) {
-      for (var start = 0; start <= retained.length - incoming.length; start++) {
-        var matchesSlice = true;
+      var matchesCursorExpected =
+          retained.length + incoming.length <= expectedSeq.length;
+      if (matchesCursorExpected) {
         for (var i = 0; i < incoming.length; i++) {
-          if (retained[start + i] != incoming[i]) {
-            matchesSlice = false;
+          if (!expectedSeq[retained.length + i].contains(incoming[i])) {
+            matchesCursorExpected = false;
             break;
           }
         }
-        if (matchesSlice) {
-          return retained.join(' ');
+      }
+      if (!matchesCursorExpected) {
+        for (var start = 0; start <= retained.length - incoming.length; start++) {
+          var matchesSlice = true;
+          for (var i = 0; i < incoming.length; i++) {
+            if (retained[start + i] != incoming[i]) {
+              matchesSlice = false;
+              break;
+            }
+          }
+          if (matchesSlice) {
+            return retained.join(' ');
+          }
         }
       }
     }
-    final remainingExpected = expectedSeq.length - retained.length;
-    var currentAyahStart = 0;
-    var currentAyahEnd = 0;
-    for (var verse = 0; verse < expectedAyahs.length; verse++) {
-      final verseLen = _expectedRecitationWords(
-        expectedAyahs[verse],
-        expectedVerseKeys[verse],
-      ).length;
-      if (retained.length < currentAyahStart + verseLen) {
-        currentAyahEnd = currentAyahStart + verseLen;
-        break;
-      }
-      currentAyahStart += verseLen;
-      currentAyahEnd = currentAyahStart;
-    }
-    final remainingInCurrentAyah = currentAyahEnd - retained.length;
     if (allowWrittenOpenings && remainingExpected >= 2) {
       var endsAtAyahBoundary = false;
       var verseWordsTotal = 0;
@@ -686,8 +764,11 @@ class SpeechComparisonService {
               if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
                   _foldNearMiss(retained[j + 1]) ==
                       _foldNearMiss(incoming[1])) {
-                final laterMatchLen = retained.length - (j + 1);
-                if (laterMatchLen >= 2 && 1 + laterMatchLen <= incoming.length) {
+                final laterMatchLen =
+                    retained.length - (j + 1) < incoming.length - 1
+                    ? retained.length - (j + 1)
+                    : incoming.length - 1;
+                if (laterMatchLen >= 2) {
                   var matchesLater = true;
                   for (var k = 0; k < laterMatchLen; k++) {
                     if (_foldNearMiss(incoming[1 + k]) !=
@@ -697,8 +778,22 @@ class SpeechComparisonService {
                     }
                   }
                   if (matchesLater) {
-                    matchesEarlierInRetained = true;
-                    break;
+                    var alsoMatchesCursor =
+                        retained.length + laterMatchLen <= expectedSeq.length;
+                    if (alsoMatchesCursor) {
+                      for (var k = 0; k < laterMatchLen; k++) {
+                        if (!expectedSeq[retained.length + k].contains(
+                          incoming[1 + k],
+                        )) {
+                          alsoMatchesCursor = false;
+                          break;
+                        }
+                      }
+                    }
+                    if (!alsoMatchesCursor) {
+                      matchesEarlierInRetained = true;
+                      break;
+                    }
                   }
                 }
               }
