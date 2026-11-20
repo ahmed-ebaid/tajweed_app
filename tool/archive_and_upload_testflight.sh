@@ -49,11 +49,11 @@ cp build/ios/archive/Runner-136.xcarchive/Products/Applications/Runner.app/quran
    "$APP_BUNDLE/"
 
 # 5. Guard check: fail immediately if QuranASRChannel or whisper symbols are missing!
-if ! strings "$APP_BUNDLE/Runner" | grep -q "QuranASRChannel"; then
+if [ "$(strings "$APP_BUNDLE/Runner" | grep -c "QuranASRChannel" || true)" -eq 0 ]; then
   echo "FATAL: QuranASRChannel is missing from $APP_BUNDLE/Runner!" >&2
   exit 1
 fi
-if ! strings "$APP_BUNDLE/Runner" | grep -q "whisper_init_from_file_with_params"; then
+if [ "$(strings "$APP_BUNDLE/Runner" | grep -c "whisper_init_from_file_with_params" || true)" -eq 0 ]; then
   echo "FATAL: whisper symbols are missing from $APP_BUNDLE/Runner!" >&2
   exit 1
 fi
