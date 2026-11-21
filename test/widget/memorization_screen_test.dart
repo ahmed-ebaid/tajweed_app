@@ -1772,10 +1772,7 @@ void main() {
         expect(page(tester).revealedWordCounts, {'1:13': 19, '1:14': 11});
 
         speech.windowStartSeconds = 41.7;
-        speech.result!(
-          'وإذا خلوا إلى شياطينهم قالوا إنا معكم',
-          false,
-        );
+        speech.result!('وإذا خلوا إلى شياطينهم قالوا إنا معكم', false);
         await tester.pumpAndSettle();
         expect(page(tester).revealedWordCounts, {'1:13': 19, '1:14': 13});
       },
@@ -3977,7 +3974,8 @@ void main() {
           surahNumber: 2,
           ayahNumber: 12,
           pageNumber: 3,
-          arabic: 'أَلَا إِنَّهُمْ هُمُ الْمُفْسِدُونَ وَلَٰكِن لَّا يَشْعُرُونَ',
+          arabic:
+              'أَلَا إِنَّهُمْ هُمُ الْمُفْسِدُونَ وَلَٰكِن لَّا يَشْعُرُونَ',
           imlaei: 'ألا إنهم هم المفسدون ولكن لا يشعرون',
           translations: const {},
           words: const [
@@ -4051,12 +4049,7 @@ void main() {
     'floating controls, red mistake alert, and Mistakes review sheet work end-to-end',
     (tester) async {
       final speech = _FakeSpeech();
-      await _open(
-        tester,
-        speech,
-        continuous: true,
-        localQuranLab: true,
-      );
+      await _open(tester, speech, continuous: true, localQuranLab: true);
 
       MushafPageContent page() =>
           tester.widget<MushafPageContent>(find.byType(MushafPageContent));
@@ -4086,11 +4079,104 @@ void main() {
       expect(find.text('Mistakes (1)'), findsOneWidget);
 
       // Tapping the Mistakes pill opens the bottom sheet showing the exact missed word.
-      await tester.ensureVisible(find.byKey(const ValueKey('hifz-mistakes-pill')));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('hifz-mistakes-pill')),
+      );
       await tester.tap(find.byKey(const ValueKey('hifz-mistakes-pill')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Continue from word 3'), findsOneWidget);
       expect(find.text('الرحمن'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Fatiha repeated clear single-word mistake produces live haptic once',
+    (tester) async {
+      final haptics = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            haptics.add('${call.arguments}');
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+      final speech = _FakeWindowedSpeech();
+      await _open(
+        tester,
+        speech,
+        ayahs: [_ayah(1, 'بسم الله الرحمن الرحيم'), _ayah(2, _second)],
+        continuous: true,
+        localQuranLab: true,
+      );
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+      speech.result!('بسم الله الرحمن', false);
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 3; i++) {
+        speech.result!('بسم الله الرحمن الحليم', false);
+        await tester.pumpAndSettle();
+        if (i < 2) expect(haptics, isEmpty);
+      }
+      expect(haptics, ['HapticFeedbackType.mediumImpact']);
+      speech.result!('بسم الله الرحمن الحليم', false);
+      await tester.pumpAndSettle();
+      expect(haptics, hasLength(1));
+      expect(
+        tester
+            .widget<MushafPageContent>(find.byType(MushafPageContent))
+            .activeCursorHasError,
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets(
+    'Fatiha temporary partial pronunciation does not trigger a haptic',
+    (tester) async {
+      final haptics = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            haptics.add('${call.arguments}');
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+      final speech = _FakeWindowedSpeech();
+      await _open(
+        tester,
+        speech,
+        ayahs: [_ayah(1, 'بسم الله الرحمن الرحيم'), _ayah(2, _second)],
+        continuous: true,
+        localQuranLab: true,
+      );
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+      speech.result!('بسم الله الرحمن', false);
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 2; i++) {
+        speech.result!('بسم الله الرحمن الحليم', false);
+        await tester.pumpAndSettle();
+      }
+      speech.result!('بسم الله الرحمن الرحيم', false);
+      await tester.pumpAndSettle();
+      expect(haptics, isEmpty);
+      expect(find.text('Mistakes'), findsOneWidget);
     },
   );
 
@@ -4244,10 +4330,7 @@ void main() {
       expect(page().revealedWordCounts['55:28'], 4);
 
       speech.windowStartSeconds = 4.0;
-      speech.result!(
-        'يسأله من في السماوات والأرض كل يوم هو في شأن',
-        false,
-      );
+      speech.result!('يسأله من في السماوات والأرض كل يوم هو في شأن', false);
       await tester.pumpAndSettle();
       expect(page().revealedWordCounts['55:29'], 10);
 
@@ -4273,8 +4356,18 @@ void main() {
     (tester) async {
       final speech = _FakeWindowedSpeech();
       final fatihahAyahs = [
-        _ayah(1, 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', surahNumber: 1, pageNumber: 1),
-        _ayah(2, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ', surahNumber: 1, pageNumber: 1),
+        _ayah(
+          1,
+          'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+          surahNumber: 1,
+          pageNumber: 1,
+        ),
+        _ayah(
+          2,
+          'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+          surahNumber: 1,
+          pageNumber: 1,
+        ),
       ];
       await _open(
         tester,

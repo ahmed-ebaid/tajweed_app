@@ -84,6 +84,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   final _mistakes = <_HifzMistakeRecord>[];
   (int, int, int)? _lastHapticMistakeSite;
   (int, int, String)? _pendingLiveMistakeSite;
+  int _pendingLiveMistakeConfirmations = 0;
   final _preview = <int>{};
   final _liveWordCounts = <String, int>{};
   final _completedLiveWordCounts = <String, int>{};
@@ -1132,6 +1133,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _mismatchWord = null;
         _lastHapticMistakeSite = null;
         _pendingLiveMistakeSite = null;
+        _pendingLiveMistakeConfirmations = 0;
       });
       _startingSpeechGeneration = generation;
       _lastPreviewText = null;
@@ -1260,6 +1262,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 if (totalPreviewWords > previousPreviewWords) {
                   _lastHapticMistakeSite = null;
                   _pendingLiveMistakeSite = null;
+                  _pendingLiveMistakeConfirmations = 0;
                   _mismatchWord = null;
                 }
                 if (widget.continuous &&
@@ -1317,8 +1320,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                           rawPreviewWords[j + 2] ==
                                               rawPreviewWords[j + 5])),
                           ].any((same) => same));
-                  final isAnchoredToRetained =
-                      totalPreviewWords == 0
+                  final isAnchoredToRetained = totalPreviewWords == 0
                       ? rawPreviewWords.isNotEmpty
                       : continuousWords.length > totalPreviewWords &&
                             continuousWords.length <
@@ -1344,9 +1346,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                 retainedWords.any(
                                   (r) =>
                                       r.length >= 3 &&
-                                      (r.endsWith(
-                                            w.substring(w.length - 3),
-                                          ) ||
+                                      (r.endsWith(w.substring(w.length - 3)) ||
                                           w.endsWith(
                                             r.substring(r.length - 3),
                                           )),
@@ -1387,9 +1387,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                         ? remainingWords.first
                         : '';
                     String stemOf(String w) =>
-                        w.startsWith('ال') && w.length > 2
-                        ? w.substring(2)
-                        : w;
+                        w.startsWith('ال') && w.length > 2 ? w.substring(2) : w;
                     final mismatchStem = stemOf(firstMismatchWord);
                     final expectedStem = stemOf(expectedTargetWord);
                     final sharesStemOpening =
@@ -1412,23 +1410,31 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       liveMismatchWord,
                       firstMismatchWord,
                     );
-                    if (isArticulationPartial || firstMismatchWord.isEmpty) {
+                    if (firstMismatchWord.isEmpty) {
                       _pendingLiveMistakeSite = null;
-                    } else if (totalPreviewWords <= previousPreviewWords &&
-                        ((isAnchoredToRetained &&
-                                remainingWords.length >= 2 &&
-                                !sharesStemOpening) ||
-                            _pendingLiveMistakeSite == site)) {
+                      _pendingLiveMistakeConfirmations = 0;
+                    } else {
+                      _pendingLiveMistakeConfirmations =
+                          _pendingLiveMistakeSite == site
+                          ? _pendingLiveMistakeConfirmations + 1
+                          : 1;
                       _pendingLiveMistakeSite = site;
-                      if (_mismatchWord != liveMismatchWord) {
+                      final confirmed = isArticulationPartial
+                          ? _pendingLiveMistakeConfirmations >= 3
+                          : (isAnchoredToRetained &&
+                                    remainingWords.length >= 2 &&
+                                    !sharesStemOpening) ||
+                                _pendingLiveMistakeConfirmations >= 2;
+                      if (totalPreviewWords <= previousPreviewWords &&
+                          confirmed &&
+                          _mismatchWord != liveMismatchWord) {
                         _mismatchWord = liveMismatchWord;
                         _recordMistake(activeIdx, liveMismatchWord);
                       }
-                    } else {
-                      _pendingLiveMistakeSite = site;
                     }
                   } else {
                     _pendingLiveMistakeSite = null;
+                    _pendingLiveMistakeConfirmations = 0;
                   }
                 }
               }

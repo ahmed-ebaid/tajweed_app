@@ -503,7 +503,11 @@ final class QuranASRChannel {
           self.previousOptions = session.categoryOptions
           try session.setCategory(.record, mode: .measurement)
           if #available(iOS 13.0, *) {
-            try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+            do {
+              try session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+            } catch {
+              NSLog("Quran ASR could not enable recording haptics: %@", error.localizedDescription)
+            }
           }
           try session.setActive(true)
           let engine = AVAudioEngine()
