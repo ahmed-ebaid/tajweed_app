@@ -241,11 +241,13 @@ class _HifzScreenState extends State<HifzScreen> {
             final useNativeStreaming =
                 quranAsrStreamingDefault &&
                 !kIsWeb &&
-                defaultTargetPlatform == TargetPlatform.iOS;
+                (defaultTargetPlatform == TargetPlatform.iOS ||
+                    defaultTargetPlatform == TargetPlatform.android);
             final useLocalLabEngine =
                 quranAsrExperimentEnabled &&
                 !kIsWeb &&
-                defaultTargetPlatform == TargetPlatform.iOS;
+                (defaultTargetPlatform == TargetPlatform.iOS ||
+                    defaultTargetPlatform == TargetPlatform.android);
             return MemorizationScreen(
               localQuranLab: useNativeStreaming || useLocalLabEngine,
               speechInput: useNativeStreaming
@@ -315,7 +317,8 @@ class _HifzScreenState extends State<HifzScreen> {
           if (quranAsrExperimentEnabled &&
               !kReleaseMode &&
               !kIsWeb &&
-              defaultTargetPlatform == TargetPlatform.iOS)
+              (defaultTargetPlatform == TargetPlatform.iOS ||
+                  defaultTargetPlatform == TargetPlatform.android))
             TextButton(
               onPressed: () async {
                 await _stopReference();

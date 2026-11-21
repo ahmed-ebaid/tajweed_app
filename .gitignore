@@ -49,3 +49,5 @@ app.*.map.json
 
 # Large runtime assets (published as GitHub Release assets)
 assets/mushaf_pages/images.zip
+android/app/src/main/assets/quran-tiny.bin
+android/app/src/main/jniLibs/

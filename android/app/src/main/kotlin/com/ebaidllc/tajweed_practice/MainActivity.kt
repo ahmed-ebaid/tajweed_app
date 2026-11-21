@@ -11,8 +11,13 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var quranAsrChannel: QuranASRChannel? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        quranAsrChannel = QuranASRChannel(this).also {
+            it.register(flutterEngine.dartExecutor.binaryMessenger)
+        }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "com.ebaidllc.tajweed_practice/hijri_calendar",
@@ -42,6 +47,17 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (quranAsrChannel?.onRequestPermissionsResult(requestCode, grantResults) == true) {
+            return
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     /**

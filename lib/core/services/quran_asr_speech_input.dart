@@ -27,6 +27,10 @@ const quranAsrContextRecoveryEnabled =
     bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY', defaultValue: false);
 const _maxDiagnosticsUploadBytes = 1024 * 1024;
 
+bool get _isQuranAsrSupportedPlatform =>
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.android;
+
 /// Lab-only rolling snapshots, not a streaming ASR model. Capture continues
 /// until stopped; each report covers at most the latest 30 seconds.
 class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
@@ -60,8 +64,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   static Future<void>? _uploadInFlight;
 
   static Future<List<String>> exportDiagnostics() async {
-    if (!quranAsrExperimentEnabled ||
-        defaultTargetPlatform != TargetPlatform.iOS) {
+    if (!quranAsrExperimentEnabled || !_isQuranAsrSupportedPlatform) {
       return const [];
     }
     try {
@@ -84,7 +87,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   }) async {
     if (!quranAsrExperimentEnabled ||
         kIsWeb ||
-        defaultTargetPlatform != TargetPlatform.iOS) {
+        !_isQuranAsrSupportedPlatform) {
       return false;
     }
     final previousUpload = _uploadInFlight;
@@ -230,8 +233,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
         _initialRecoveryAttemptsWithoutWords = 0;
       }
     }
-    if (!quranAsrExperimentEnabled ||
-        defaultTargetPlatform != TargetPlatform.iOS) {
+    if (!quranAsrExperimentEnabled || !_isQuranAsrSupportedPlatform) {
       return;
     }
     try {
@@ -260,7 +262,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
   }) async {
     final requestedAt = _snapshotRequestedAtUnixMs;
     if (!quranAsrExperimentEnabled ||
-        defaultTargetPlatform != TargetPlatform.iOS ||
+        !_isQuranAsrSupportedPlatform ||
         !_active ||
         newVisibleWords <= 0 ||
         requestedAt == null) {
