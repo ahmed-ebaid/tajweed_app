@@ -103,6 +103,7 @@ class SpeechComparisonService {
       true,
     );
     var endsAtAyahBoundary = false;
+    var retainedInCurrentAyah = retained.length;
     var verseWordsTotal = 0;
     var remainingInCurrentAyah = remaining;
     for (var verse = 0; verse < expectedAyahs.length; verse++) {
@@ -111,12 +112,14 @@ class SpeechComparisonService {
         expectedVerseKeys[verse],
       ).length;
       if (retained.length < verseWordsTotal + verseLen) {
+        retainedInCurrentAyah = retained.length - verseWordsTotal;
         remainingInCurrentAyah = verseWordsTotal + verseLen - retained.length;
         break;
       }
       verseWordsTotal += verseLen;
       if (verseWordsTotal == retained.length) {
         endsAtAyahBoundary = true;
+        retainedInCurrentAyah = 0;
         if (verse + 1 < expectedAyahs.length) {
           remainingInCurrentAyah = _expectedRecitationWords(
             expectedAyahs[verse + 1],
@@ -168,6 +171,17 @@ class SpeechComparisonService {
     }
     for (var start = 0; start < incoming.length; start++) {
       if (anchoredAtStart && start > 0) break;
+      // When only the opening word of an ayah has been revealed so far, a
+      // single skipped leading Quran vocabulary word that does not repeat the
+      // retained prefix must not be dropped (preventing a reciter-inserted
+      // word after word 1, e.g. 'أيحسب الإنسان أن لن يقدر' in 90:5, from
+      // being bypassed once word 1 scrolls out of the 3s window).
+      if (start == 1 &&
+          retainedInCurrentAyah == 1 &&
+          quranVocabulary.contains(incoming[0]) &&
+          _foldNearMiss(incoming[0]) != _foldNearMiss(retained.last)) {
+        continue;
+      }
       final isClippedMaddBeforeFinalRefrain =
           start == 1 &&
           remainingInCurrentAyah == 2 &&
@@ -846,12 +860,20 @@ class SpeechComparisonService {
           break;
         }
       }
+      final retainedInCurrentAyah = retained.length - currentAyahStart;
       if (!anchoredAtStart) {
         for (
           var start = 1;
           start < incoming.length;
           start++
         ) {
+          if (start == 1 &&
+              retainedInCurrentAyah == 1 &&
+              quranVocabulary.contains(incoming[0]) &&
+              _foldNearMiss(incoming[0]) !=
+                  _foldNearMiss(retained.last)) {
+            continue;
+          }
           final isClippedMaddBeforeFinalRefrain =
               start == 1 &&
               remainingInCurrentAyah == 2 &&
@@ -3254,6 +3276,12 @@ class SpeechComparisonService {
             ((spoken.isNotEmpty && spoken.last == 'فليأتكم') ||
                 (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'منه'))) {
           spoken.add('برزق');
+          continue;
+        }
+        if (rawSpoken[i] == 'فأوا' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'إلى') {
+          spoken.add('فأووا');
           continue;
         }
         if ((rawSpoken[i] == 'وليترى' || rawSpoken[i] == 'ولترى') &&

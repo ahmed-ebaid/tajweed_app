@@ -971,12 +971,17 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   void _interrupt() {
     final wasBusy = _busy;
+    final interruptedVerseKey = _verseKey;
     ++_generation;
     _acceptResults = false;
-    unawaited(_cancelInputs());
+    final cancellation = _cancelInputs();
     if (widget.localQuranLab && wasBusy && _speech is QuranAsrSpeechInput) {
       unawaited(
-        QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
+        cancellation.whenComplete(
+          () => QuranAsrSpeechInput.uploadDiagnosticsToCloud(
+            verseKey: interruptedVerseKey,
+          ),
+        ),
       );
     }
     if (mounted) {

@@ -433,10 +433,10 @@ final class QuranASRChannel {
         diagnostics.record("preview_reveal", metrics: fields.mapValues(\.doubleValue))
         result(nil)
       case "exportDiagnostics":
-        result(diagnostics.exportedFilePaths(includeSnapshots: engine == nil && !processing))
+        result(diagnostics.exportedFilePaths(includeSnapshots: engine == nil))
       case "exportCloudDiagnostics":
         do {
-          result(try diagnostics.cloudDiagnostics(includeSnapshots: engine == nil && !processing))
+          result(try diagnostics.cloudDiagnostics(includeSnapshots: engine == nil))
         } catch {
           result(FlutterError(code: "diagnostics_export_failed", message: error.localizedDescription, details: nil))
         }

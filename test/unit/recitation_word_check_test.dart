@@ -2915,10 +2915,11 @@ void main() {
         [18],
       );
 
-      // 18:16: 'وَإِذَا اعْتَزَلْتُمُوهُمْ'
+      // 18:16: 'وَإِذَا اعْتَزَلْتُمُوهُمْ' and orthographic silent-waw 'فَأُوا إِلَى الْكَهْفِ'
       final joined16 = comparison.joinRecitationSegment(
         retainedPrefix: '',
-        spokenText: 'وَإِذَا اعْتَزَلْتُمُوهُمْ وَمَا يَعْبُدُونَ إِلَّا اللَّهَ',
+        spokenText:
+            'وَإِذَا اعْتَزَلْتُمُوهُمْ وَمَا يَعْبُدُونَ إِلَّا اللَّهَ فَأُوا إِلَى الْكَهْفِ',
         expectedAyahs: [kahf16],
         expectedVerseKeys: ['18:16'],
         allowWrittenOpenings: true,
@@ -2930,7 +2931,31 @@ void main() {
           spokenText: joined16,
           allowWrittenOpenings: true,
         ),
-        [6],
+        [9],
+      );
+
+      // 90:5 (Build 149 cloud bundle 90_1_016b5e9e): when the reciter inserts
+      // 'الْإِنْسَانُ' after 'أَيَحْسَبُ' ('أَيَحْسَبُ الْإِنْسَانُ أَنْ لَنْ يَقْدِرَ عَلَيْهِ أَحَدٌ'),
+      // and 'أَيَحْسَبُ' then scrolls out of the 3s window leaving
+      // 'إِنْسَانُ أَنْ لَنْ يَقْدِرَ عَلِيمٌ', joinRecitationSegment must NOT
+      // drop the leading Quran word 'إِنْسَانُ' and advance past the mistake.
+      const balad4 = 'لَقَدْ خَلَقْنَا الْإِنْسَانَ فِي كَبَدٍ';
+      const balad5 = 'أَيَحْسَبُ أَنْ لَنْ يَقْدِرَ عَلَيْهِ أَحَدٌ';
+      final joinedBalad5Mistake = comparison.joinRecitationSegment(
+        retainedPrefix: '$balad4 أيحسب',
+        spokenText: 'إِنْسَانُ أَنْ لَنْ يَقْدِرَ عَلِيمٌ',
+        expectedAyahs: [balad4, balad5],
+        expectedVerseKeys: ['90:4', '90:5'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [balad4, balad5],
+          expectedVerseKeys: ['90:4', '90:5'],
+          spokenText: joinedBalad5Mistake,
+          allowWrittenOpenings: true,
+        ),
+        [5, 1],
       );
 
       // 18:17: 'يُضْلَلْ' + 'وَلِيَمْ مُرْشِدَةٌ'
