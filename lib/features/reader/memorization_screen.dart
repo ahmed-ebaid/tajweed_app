@@ -83,7 +83,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   final _hintWordCounts = <int, int>{};
   final _mistakes = <_HifzMistakeRecord>[];
   (int, int, int)? _lastHapticMistakeSite;
-  (int, int)? _pendingLiveMistakeSite;
+  (int, int, String)? _pendingLiveMistakeSite;
   final _preview = <int>{};
   final _liveWordCounts = <String, int>{};
   final _completedLiveWordCounts = <String, int>{};
@@ -1260,6 +1260,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 if (totalPreviewWords > previousPreviewWords) {
                   _lastHapticMistakeSite = null;
                   _pendingLiveMistakeSite = null;
+                  _mismatchWord = null;
                 }
                 if (widget.continuous &&
                     _activeAyahIndex < widget.ayahs.length) {
@@ -1280,37 +1281,147 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   final continuousWords = _comparison.recitationWords(
                     continuousPreviewText,
                   );
+                  final isDecodeLoop =
+                      rawPreviewWords.isEmpty ||
+                      (rawPreviewWords.length == 1 &&
+                          const {
+                            'والمؤمنين',
+                            'المؤمنين',
+                            'والله',
+                            'طه',
+                            'حم',
+                            'ص',
+                            'ق',
+                            'ن',
+                          }.contains(rawPreviewWords.first)) ||
+                      rawPreviewWords.any((w) => w.length > 12) ||
+                      (rawPreviewWords.length >= 3 &&
+                          [
+                            for (var j = 0; j + 1 < rawPreviewWords.length; j++)
+                              rawPreviewWords[j] == rawPreviewWords[j + 1],
+                          ].any((same) => same)) ||
+                      (rawPreviewWords.length >= 4 &&
+                          [
+                            for (var j = 0; j + 3 < rawPreviewWords.length; j++)
+                              rawPreviewWords[j] == rawPreviewWords[j + 2] &&
+                                  rawPreviewWords[j + 1] ==
+                                      rawPreviewWords[j + 3],
+                          ].any((same) => same)) ||
+                      (rawPreviewWords.length >= 5 &&
+                          [
+                            for (var j = 0; j + 4 < rawPreviewWords.length; j++)
+                              rawPreviewWords[j] == rawPreviewWords[j + 3] &&
+                                  (rawPreviewWords[j + 1] ==
+                                          rawPreviewWords[j + 4] ||
+                                      (j + 5 < rawPreviewWords.length &&
+                                          rawPreviewWords[j + 2] ==
+                                              rawPreviewWords[j + 5])),
+                          ].any((same) => same));
                   final isAnchoredToRetained =
                       totalPreviewWords == 0
                       ? rawPreviewWords.isNotEmpty
-                      : continuousWords.length <
-                            totalPreviewWords + rawPreviewWords.length;
-                  final liveCheck = _comparison.checkSequence(
-                    expectedAyahs: [
-                      for (final ayah in expectedAyahs) ayah.imlaei ?? '',
-                    ],
-                    expectedVerseKeys: [
-                      for (final ayah in expectedAyahs)
-                        '${ayah.surahNumber}:${ayah.ayahNumber}',
-                    ],
-                    spokenText: continuousPreviewText,
-                    allowWrittenOpenings: true,
+                      : continuousWords.length > totalPreviewWords &&
+                            continuousWords.length <
+                                totalPreviewWords + rawPreviewWords.length;
+                  final activeWords = _comparison.recitationWords(
+                    activeAyah.imlaei ?? '',
                   );
-                  if (activeOffset >= 0 &&
-                      isAnchoredToRetained &&
+                  final expectedTargetWord = activeMatched < activeWords.length
+                      ? activeWords[activeMatched]
+                      : '';
+                  final retainedWords = continuousWords
+                      .take(totalPreviewWords)
+                      .toList();
+                  final isUnanchoredNewAyahMistake =
+                      !isAnchoredToRetained &&
+                      activeMatched == 0 &&
+                      rawPreviewWords.length >= 2 &&
+                      !rawPreviewWords.any(
+                        (w) =>
+                            retainedWords.contains(w) ||
+                            activeWords.contains(w) ||
+                            (w.length >= 3 &&
+                                retainedWords.any(
+                                  (r) =>
+                                      r.length >= 3 &&
+                                      (r.endsWith(
+                                            w.substring(w.length - 3),
+                                          ) ||
+                                          w.endsWith(
+                                            r.substring(r.length - 3),
+                                          )),
+                                )),
+                      );
+                  final liveCheck = isUnanchoredNewAyahMistake
+                      ? _comparison.checkSequence(
+                          expectedAyahs: [activeAyah.imlaei ?? ''],
+                          expectedVerseKeys: [activeKey],
+                          spokenText: text,
+                          allowWrittenOpenings: true,
+                        )
+                      : _comparison.checkSequence(
+                          expectedAyahs: [
+                            for (final ayah in expectedAyahs) ayah.imlaei ?? '',
+                          ],
+                          expectedVerseKeys: [
+                            for (final ayah in expectedAyahs)
+                              '${ayah.surahNumber}:${ayah.ayahNumber}',
+                          ],
+                          spokenText: continuousPreviewText,
+                          allowWrittenOpenings: true,
+                        );
+                  final expectedLiveCompletedAyahs = isUnanchoredNewAyahMistake
+                      ? 0
+                      : activeOffset;
+                  if (!isDecodeLoop &&
+                      activeOffset >= 0 &&
+                      (isAnchoredToRetained || isUnanchoredNewAyahMistake) &&
                       liveCheck.mismatch &&
-                      liveCheck.completedAyahs == activeOffset &&
+                      liveCheck.completedAyahs == expectedLiveCompletedAyahs &&
                       liveCheck.wordIndex == activeMatched) {
                     final liveMismatchWord = activeMatched + 1;
-                    final site = (activeIdx, liveMismatchWord);
-                    final remainingWords = _comparison.recitationWords(
-                      liveCheck.remainingText,
+                    final remainingWords = isUnanchoredNewAyahMistake
+                        ? rawPreviewWords
+                        : continuousWords.skip(totalPreviewWords).toList();
+                    final firstMismatchWord = remainingWords.isNotEmpty
+                        ? remainingWords.first
+                        : '';
+                    String stemOf(String w) =>
+                        w.startsWith('ال') && w.length > 2
+                        ? w.substring(2)
+                        : w;
+                    final mismatchStem = stemOf(firstMismatchWord);
+                    final expectedStem = stemOf(expectedTargetWord);
+                    final sharesStemOpening =
+                        mismatchStem.isNotEmpty &&
+                        expectedStem.isNotEmpty &&
+                        mismatchStem[0] == expectedStem[0];
+                    final isArticulationPartial =
+                        remainingWords.length == 1 &&
+                        firstMismatchWord.isNotEmpty &&
+                        expectedTargetWord.isNotEmpty &&
+                        (sharesStemOpening ||
+                            (firstMismatchWord.length >= 2 &&
+                                expectedTargetWord.endsWith(
+                                  firstMismatchWord.substring(
+                                    firstMismatchWord.length - 2,
+                                  ),
+                                )));
+                    final site = (
+                      activeIdx,
+                      liveMismatchWord,
+                      firstMismatchWord,
                     );
-                    if (totalPreviewWords <= previousPreviewWords &&
-                        (remainingWords.length >= 2 ||
+                    if (isArticulationPartial || firstMismatchWord.isEmpty) {
+                      _pendingLiveMistakeSite = null;
+                    } else if (totalPreviewWords <= previousPreviewWords &&
+                        ((isAnchoredToRetained &&
+                                remainingWords.length >= 2 &&
+                                !sharesStemOpening) ||
                             _pendingLiveMistakeSite == site)) {
                       _pendingLiveMistakeSite = site;
                       if (_mismatchWord != liveMismatchWord) {
+                        _mismatchWord = liveMismatchWord;
                         _recordMistake(activeIdx, liveMismatchWord);
                       }
                     } else {
@@ -2833,7 +2944,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                           ? (cursorKey, cursorWordIndex)
                           : null,
                       activeCursorHasError:
-                          showActiveWordCursor && _message == 'mem_mismatch',
+                          showActiveWordCursor &&
+                          (_message == 'mem_mismatch' || _mismatchWord != null),
                       highlightedWordIndices: {
                         for (final entry in displayWordCounts.entries)
                           entry.key: {

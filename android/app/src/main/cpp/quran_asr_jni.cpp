@@ -255,12 +255,6 @@ Java_com_ebaidllc_tajweed_1practice_QuranASRChannel_nativeTranscribe(
     return nullptr;
   }
   std::vector<float> samples = std::move(raw_samples);
-  if (rms >= 0.0005 && peak > 0.0f && peak < 0.08f) {
-    const float gain = std::min(6.0f, 0.16f / peak);
-    for (size_t i = 0; i < samples.size(); ++i) {
-      samples[i] = std::max(-1.0f, std::min(1.0f, samples[i] * gain));
-    }
-  }
   if (token != 0 && g_cancel_requested.load(std::memory_order_relaxed)) {
     fill_metrics(5.0, duration_seconds, 0.0, 0.0);
     return nullptr;

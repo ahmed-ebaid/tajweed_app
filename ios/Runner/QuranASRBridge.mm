@@ -96,30 +96,17 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
       buffer.frameLength != file.length) {
     return fail(@"Could not decode audio samples.");
   }
-  const float *rawSamples = buffer.floatChannelData[0];
+  const float *samples = buffer.floatChannelData[0];
   double energy = 0;
-  float peak = 0;
   for (uint32_t i = 0; i < buffer.frameLength; i++) {
-    if (!std::isfinite(rawSamples[i])) return fail(@"Invalid audio samples.");
-    energy += rawSamples[i] * rawSamples[i];
-    peak = std::max(peak, std::fabs(rawSamples[i]));
+    if (!std::isfinite(samples[i])) return fail(@"Invalid audio samples.");
+    energy += samples[i] * samples[i];
   }
   const double rms = std::sqrt(energy / buffer.frameLength);
   if (rms < 0.0001) {
     if (error) *error = [NSError errorWithDomain:@"QuranASR" code:4
                                       userInfo:@{NSLocalizedDescriptionKey: @"No audible input. Please record again."}];
     return nil;
-  }
-  std::vector<float> normalizedSamples;
-  const float *samples = rawSamples;
-  // Boost quiet distant-microphone input (common on desk/stand iPads) without clipping.
-  if (rms >= 0.0005 && peak > 0.0f && peak < 0.08f) {
-    const float gain = std::min(6.0f, 0.16f / peak);
-    normalizedSamples.resize(buffer.frameLength);
-    for (uint32_t i = 0; i < buffer.frameLength; i++) {
-      normalizedSamples[i] = std::max(-1.0f, std::min(1.0f, rawSamples[i] * gain));
-    }
-    samples = normalizedSamples.data();
   }
   auto options = whisper_context_default_params();
   std::lock_guard<std::mutex> lock(gWhisperMutex);

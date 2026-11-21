@@ -4308,4 +4308,112 @@ void main() {
       expect(page().activeCursorWord, ('1:2', 2));
     },
   );
+
+  testWidgets(
+    'Build 150 Abasa cloud sessions complete without false-positive mistake haptics and fire on real wrong ayah',
+    (tester) async {
+      final hapticCalls = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            hapticCalls.add('${call.arguments}');
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+
+      final speech = _FakeWindowedSpeech();
+      final abasaAyahs = [
+        _ayah(36, 'وَصَاحِبَتِهِ وَبَنِيهِ', surahNumber: 80, pageNumber: 585),
+        _ayah(
+          37,
+          'لِكُلِّ امْرِئٍ مِنْهُمْ يَوْمَئِذٍ شَأْنٌ يُغْنِيهِ',
+          surahNumber: 80,
+          pageNumber: 585,
+        ),
+        _ayah(
+          38,
+          'وُجُوهٌ يَوْمَئِذٍ مُسْفِرَةٌ',
+          surahNumber: 80,
+          pageNumber: 585,
+        ),
+        _ayah(39, 'ضَاحِكَةٌ مُسْتَبْشِرَةٌ', surahNumber: 80, pageNumber: 585),
+      ];
+      await _open(
+        tester,
+        speech,
+        ayahs: abasaAyahs,
+        continuous: true,
+        localQuranLab: true,
+      );
+
+      MushafPageContent page() =>
+          tester.widget<MushafPageContent>(find.byType(MushafPageContent));
+
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+
+      // 80:36-80:37 normal recitation with Whisper decode loops & phonetic splits:
+      // must advance smoothly with ZERO mistake haptics!
+      for (final (windowStart, transcript) in [
+        (0.5, 'وَاحِبَتْهُ وَبَنِي'),
+        (
+          1.2,
+          'وَبَنِي وَبَنِي وَبَنِي وَبَنِي وَبَنِي وَبَنِي وَبَنِي وَبَنِي',
+        ),
+        (2.0, 'لِكُلِّ امْرِئٍ مِنْهُمْ يُومَئِذٍ شَأْنَةٌ'),
+        (3.5, 'يَوْمَئِذٍ شَأْنِيٌّ يَغْنِي'),
+      ]) {
+        speech.windowStartSeconds = windowStart;
+        speech.result!(transcript, false);
+        await tester.pumpAndSettle();
+      }
+      expect(page().revealedWordCounts['80:36'], 2);
+      expect(page().revealedWordCounts['80:37'], 6);
+      expect(page().activeCursorWord, ('80:38', 0));
+      expect(hapticCalls, isEmpty);
+      expect(find.text('Mistakes'), findsOneWidget);
+
+      // Now at 80:38, user accidentally recites 80:33 ("فإذا جاءت الصاخة"):
+      // after 2 consecutive polls confirming "فإذا", mistake haptic fires ONCE at 80:38 word 1!
+      speech.windowStartSeconds = 12.0;
+      speech.result!('فَإِذَا جَاءَتْ', false);
+      await tester.pumpAndSettle();
+      expect(hapticCalls, isEmpty);
+
+      speech.windowStartSeconds = 12.6;
+      speech.result!('فَإِذَا جَاءَتِ الصَّالِ', false);
+      await tester.pumpAndSettle();
+      expect(hapticCalls, ['HapticFeedbackType.mediumImpact']);
+      expect(page().activeCursorHasError, isTrue);
+      expect(find.text('Mistakes (1)'), findsOneWidget);
+
+      // User corrects to 80:38 ("وجوه يومئذ مسفرة") and 80:39 ("ضاحكة مستبشرة"):
+      // single-word right-edge articulation partials ("ضاحكة مبتغتان" -> "ضاحكة محسنة")
+      // must NOT fire false-positive mistake haptics before "ضاحكة محسنة مستبشرة" completes!
+      speech.windowStartSeconds = 14.0;
+      speech.result!('وُجُوهٌ يَوْمَئِذٍ مُسْفِرَةٌ', false);
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['80:38'], 3);
+      expect(page().activeCursorWord, ('80:39', 0));
+
+      speech.windowStartSeconds = 16.0;
+      speech.result!('ضَاحِكَةٌ مُبْتِغْتَانِ', false);
+      await tester.pumpAndSettle();
+      expect(hapticCalls, hasLength(1));
+
+      speech.windowStartSeconds = 16.6;
+      speech.result!('ضَاحِكَةٌ مُحْسَنَةٌ مُسْتَبْشِرَةٌ', false);
+      await tester.pumpAndSettle();
+      expect(page().revealedWordCounts['80:39'], 2);
+      expect(hapticCalls, hasLength(1));
+    },
+  );
 }

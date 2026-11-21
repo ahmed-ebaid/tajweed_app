@@ -3063,6 +3063,93 @@ void main() {
         ),
         [2, 3, 4, 4],
       );
+
+      // Build 150 session 44b9d96f: 80:3 vocalized يدريك (fatha) + 80:4 فتنفعه الذكرى variants
+      var session44b9 = comparison.joinRecitationSegment(
+        retainedPrefix: 'عبس وتولى أن جاءه الأعمى',
+        spokenText: 'وَمَا يَدْرِيكَ لَعَلَّهُ',
+        expectedAyahs: [abasa1, abasa2, abasa3, abasa4],
+        expectedVerseKeys: ['80:1', '80:2', '80:3', '80:4'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [abasa1, abasa2, abasa3, abasa4],
+          expectedVerseKeys: ['80:1', '80:2', '80:3', '80:4'],
+          spokenText: session44b9,
+          allowWrittenOpenings: true,
+        ),
+        [2, 3, 3],
+      );
+      session44b9 = comparison.joinRecitationSegment(
+        retainedPrefix: '$session44b9 يزكى',
+        spokenText: 'أَوْ يَذَّكَّرُ كُرْفَةٌ فَاهُ الذِّكْرَىٰ',
+        expectedAyahs: [abasa1, abasa2, abasa3, abasa4],
+        expectedVerseKeys: ['80:1', '80:2', '80:3', '80:4'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [abasa1, abasa2, abasa3, abasa4],
+          expectedVerseKeys: ['80:1', '80:2', '80:3', '80:4'],
+          spokenText: session44b9,
+          allowWrittenOpenings: true,
+        ),
+        [2, 3, 4, 4],
+      );
+
+      // Build 150 session 59539b30: 80:36-80:37 vocalized يومئذ (dammah) + شأنة + يغني
+      const abasa36 = 'وَصَاحِبَتِهِ وَبَنِيهِ';
+      const abasa37 = 'لِكُلِّ امْرِئٍ مِنْهُمْ يَوْمَئِذٍ شَأْنٌ يُغْنِيهِ';
+      var session5953 = comparison.joinRecitationSegment(
+        retainedPrefix: '',
+        spokenText: 'وَاحِبَتْهُ وَبَنِي',
+        expectedAyahs: [abasa36, abasa37],
+        expectedVerseKeys: ['80:36', '80:37'],
+        allowWrittenOpenings: true,
+      );
+      session5953 = comparison.joinRecitationSegment(
+        retainedPrefix: session5953,
+        spokenText: 'لِكُلِّ امْرِئٍ مِنْهُمْ يُومَئِذٍ شَأْنَةٌ',
+        expectedAyahs: [abasa36, abasa37],
+        expectedVerseKeys: ['80:36', '80:37'],
+        allowWrittenOpenings: true,
+      );
+      session5953 = comparison.joinRecitationSegment(
+        retainedPrefix: session5953,
+        spokenText: 'يَوْمَئِذٍ شَأْنِيٌّ يَغْنِي',
+        expectedAyahs: [abasa36, abasa37],
+        expectedVerseKeys: ['80:36', '80:37'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [abasa36, abasa37],
+          expectedVerseKeys: ['80:36', '80:37'],
+          spokenText: session5953,
+          allowWrittenOpenings: true,
+        ),
+        [2, 6],
+      );
+
+      // Build 150 session fa1458b8: 80:39 ضاحكة مستبشرة variants
+      const abasa39 = 'ضَاحِكَةٌ مُسْتَبْشِرَةٌ';
+      for (final spoken in [
+        'ضَاحِكَةٌ مُحْسَنَةٌ مُسْتَبْشِرَةٌ',
+        'ضَاحِكَةٌ مَبْسَمٌ اسْتَبْشِرَةٌ',
+        'ضَاحِكَةٌ وَاسْتَبْشِرَةٌ مُسْتَبْشِرَةٌ',
+      ]) {
+        expect(
+          comparison.matchingPrefixWordCounts(
+            expectedAyahs: [abasa39],
+            expectedVerseKeys: ['80:39'],
+            spokenText: spoken,
+            allowWrittenOpenings: true,
+          ),
+          [2],
+          reason: 'Expected $spoken to match 80:39',
+        );
+      }
     },
   );
 }

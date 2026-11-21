@@ -3337,16 +3337,168 @@ class SpeechComparisonService {
           spoken.addAll(['أن', 'جاءه']);
           continue;
         }
-        if (rawSpoken[i] == 'يزريك' &&
+        if ((rawSpoken[i] == 'يزريك' || rawSpoken[i] == 'ويدريك') &&
             ((spoken.isNotEmpty && spoken.last == 'وما') ||
                 (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'لعله'))) {
           spoken.add('يدريك');
           continue;
         }
-        if (rawSpoken[i] == 'فعه' &&
+        if (rawSpoken[i] == 'وكلع' &&
+            i + 2 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'الذو' &&
+            rawSpoken[i + 2] == 'يزكى') {
+          spoken.add('لعله');
+          i++;
+          continue;
+        }
+        if (const {'كرفة', 'كربة', 'فأوف', 'فاوف'}.contains(rawSpoken[i]) &&
+            i + 2 < rawSpoken.length &&
+            const {
+              'فعه',
+              'فتنفع',
+              'تنفعه',
+              'فتنفاه',
+              'تنفاه',
+              'تنفاح',
+              'فأوفه',
+              'فاوفه',
+              'فأوفاه',
+              'فاوفاه',
+              'فأه',
+              'فاه',
+              'أخذ',
+              'اخذ',
+            }.contains(rawSpoken[i + 1]) &&
+            const {
+              'الذكرى',
+              'الذكرا',
+              'ذكرى',
+              'ذكرا',
+            }.contains(rawSpoken[i + 2])) {
+          continue;
+        }
+        if (rawSpoken[i] == 'فأمفأذكرى' || rawSpoken[i] == 'فامفاذكرى') {
+          spoken.addAll(['فتنفعه', 'الذكرى']);
+          continue;
+        }
+        if (const {
+              'فعه',
+              'فتنفع',
+              'فتنفعه',
+              'تنفعه',
+              'فتنفاه',
+              'تنفاه',
+              'تنفاح',
+              'فأوفه',
+              'فاوفه',
+              'فأوفاه',
+              'فاوفاه',
+              'فأه',
+              'فاه',
+              'أخذ',
+              'اخذ',
+            }.contains(rawSpoken[i]) &&
             i + 1 < rawSpoken.length &&
-            rawSpoken[i + 1] == 'الذكرى') {
-          spoken.add('فتنفعه');
+            const {
+              'الذكرى',
+              'الذكرا',
+              'ذكرى',
+              'ذكرا',
+            }.contains(rawSpoken[i + 1])) {
+          spoken.addAll(['فتنفعه', 'الذكرى']);
+          i++;
+          continue;
+        }
+        if ((rawSpoken[i] == 'ذكرى' || rawSpoken[i] == 'ذكرا') &&
+            keys.contains('80:4') &&
+            (spoken.isEmpty || spoken.last == 'فتنفعه')) {
+          spoken.add('الذكرى');
+          continue;
+        }
+        if (rawSpoken[i] == 'واحبته' &&
+            i + 1 < rawSpoken.length &&
+            const {'وبنيه', 'وبني', 'وبنية'}.contains(rawSpoken[i + 1])) {
+          spoken.addAll(['وصاحبته', 'وبنيه']);
+          i++;
+          continue;
+        }
+        if ((rawSpoken[i] == 'وبني' || rawSpoken[i] == 'وبنية') &&
+            keys.contains('80:36') &&
+            (spoken.isEmpty || spoken.last == 'وصاحبته')) {
+          spoken.add('وبنيه');
+          continue;
+        }
+        if (rawSpoken[i] == 'ذكل' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'امرئ') {
+          spoken.add('لكل');
+          continue;
+        }
+        if (rawSpoken[i] == 'لكل' &&
+            i + 2 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'مي' &&
+            rawSpoken[i + 2] == 'منهم') {
+          spoken.addAll(['لكل', 'امرئ', 'منهم']);
+          i += 2;
+          continue;
+        }
+        if ((rawSpoken[i] == 'يوعم' || rawSpoken[i] == 'يوم') &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'إذ') {
+          spoken.add('يومئذ');
+          i++;
+          continue;
+        }
+        if ((rawSpoken[i] == 'كمئذ' || rawSpoken[i] == 'إذ') &&
+            i + 1 < rawSpoken.length &&
+            const {
+              'شأن',
+              'شأنة',
+              'شأني',
+              'شأنيه',
+              'شأنيون',
+              'شأنيتا',
+            }.contains(rawSpoken[i + 1])) {
+          spoken.add('يومئذ');
+          continue;
+        }
+        if (const {
+              'شأنة',
+              'شأني',
+              'شأنيه',
+              'شأنيون',
+              'شأنيتا',
+              'وأن',
+            }.contains(rawSpoken[i]) &&
+            ((spoken.isNotEmpty && spoken.last == 'يومئذ') ||
+                (i + 1 < rawSpoken.length &&
+                    const {
+                      'يغنيه',
+                      'يغني',
+                      'يغنيهم',
+                      'يغنى',
+                    }.contains(rawSpoken[i + 1])))) {
+          spoken.add('شأن');
+          continue;
+        }
+        if (const {'يغني', 'يغنيهم', 'يغنى'}.contains(rawSpoken[i]) &&
+            keys.contains('80:37') &&
+            (spoken.isEmpty || spoken.last == 'شأن')) {
+          spoken.add('يغنيه');
+          continue;
+        }
+        if (rawSpoken[i] == 'محسنة' &&
+            spoken.isNotEmpty &&
+            spoken.last == 'ضاحكة' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'مستبشرة') {
+          continue;
+        }
+        if ((rawSpoken[i] == 'مبسم' || rawSpoken[i] == 'واستبشرة') &&
+            i + 1 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'استبشرة' || rawSpoken[i + 1] == 'مستبشرة')) {
+          spoken.add('مستبشرة');
+          i++;
           continue;
         }
       }
@@ -7299,7 +7451,10 @@ class SpeechComparisonService {
         skelE == 'بورقكم' ||
         skelE == 'يضلل' ||
         skelE == 'ذراعيه' ||
-        skelE == 'رعبا') {
+        skelE == 'رعبا' ||
+        skelE == 'يدريك' ||
+        skelE == 'يومئذ' ||
+        skelE == 'يغنيه') {
       return false;
     }
 
