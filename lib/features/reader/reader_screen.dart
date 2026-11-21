@@ -26,6 +26,8 @@ import '../../core/services/ayah_mapper.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/hifz_content_service.dart';
+import '../../core/services/memorization_speech_service.dart';
+import '../../core/services/quran_asr_speech_input.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/review_prompt_service.dart';
 import 'widgets/daily_lesson_focus.dart';
@@ -3687,18 +3689,36 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
-          builder: (_) => MemorizationScreen(
-            ayahs: ayahs,
-            loadPage: (page) => page == ayahs.first.pageNumber
-                ? Future.value(firstPage)
-                : hifzContent.loadPage(page, chapters),
-            surahNameFor: _surahArabicName,
-            playReference: _playAyah,
-            stopReference: () async {
-              ++_playRequestToken;
-              await _audio.stop();
-            },
-          ),
+          builder: (_) {
+            final useNativeStreaming =
+                quranAsrStreamingDefault &&
+                !kIsWeb &&
+                (defaultTargetPlatform == TargetPlatform.iOS ||
+                    defaultTargetPlatform == TargetPlatform.android);
+            final useLocalLabEngine =
+                quranAsrExperimentEnabled &&
+                !kIsWeb &&
+                (defaultTargetPlatform == TargetPlatform.iOS ||
+                    defaultTargetPlatform == TargetPlatform.android);
+            return MemorizationScreen(
+              localQuranLab: useNativeStreaming || useLocalLabEngine,
+              speechInput: useNativeStreaming
+                  ? MemorizationSpeechService.instance
+                  : useLocalLabEngine
+                  ? QuranAsrSpeechInput()
+                  : null,
+              ayahs: ayahs,
+              loadPage: (page) => page == ayahs.first.pageNumber
+                  ? Future.value(firstPage)
+                  : hifzContent.loadPage(page, chapters),
+              surahNameFor: _surahArabicName,
+              playReference: _playAyah,
+              stopReference: () async {
+                ++_playRequestToken;
+                await _audio.stop();
+              },
+            );
+          },
         ),
       );
       if (mounted) _stopAudio();

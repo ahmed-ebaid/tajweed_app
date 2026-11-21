@@ -3316,6 +3316,40 @@ class SpeechComparisonService {
           continue;
         }
       }
+      if (allowAsrCorrections && keys.any((k) => k.startsWith('80:'))) {
+        if ((rawSpoken[i] == 'أنجاه' || rawSpoken[i] == 'انجاه') &&
+            ((spoken.isNotEmpty && spoken.last == 'وتولى') ||
+                (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'الأعمى'))) {
+          spoken.addAll(['أن', 'جاءه']);
+          continue;
+        }
+        if ((rawSpoken[i] == 'أو' || rawSpoken[i] == 'و') &&
+            i + 2 < rawSpoken.length &&
+            (rawSpoken[i + 1] == 'جاءه' || rawSpoken[i + 1] == 'جاءهم') &&
+            rawSpoken[i + 2] == 'الأعمى') {
+          spoken.addAll(['أن', 'جاءه']);
+          i++;
+          continue;
+        }
+        if (rawSpoken[i] == 'وجاءه' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'الأعمى') {
+          spoken.addAll(['أن', 'جاءه']);
+          continue;
+        }
+        if (rawSpoken[i] == 'يزريك' &&
+            ((spoken.isNotEmpty && spoken.last == 'وما') ||
+                (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'لعله'))) {
+          spoken.add('يدريك');
+          continue;
+        }
+        if (rawSpoken[i] == 'فعه' &&
+            i + 1 < rawSpoken.length &&
+            rawSpoken[i + 1] == 'الذكرى') {
+          spoken.add('فتنفعه');
+          continue;
+        }
+      }
       spoken.add(rawSpoken[i]);
     }
     if (allowAsrCorrections) {

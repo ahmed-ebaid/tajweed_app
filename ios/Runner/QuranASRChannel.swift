@@ -502,6 +502,9 @@ final class QuranASRChannel {
           self.previousMode = session.mode
           self.previousOptions = session.categoryOptions
           try session.setCategory(.record, mode: .measurement)
+          if #available(iOS 13.0, *) {
+            try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+          }
           try session.setActive(true)
           let engine = AVAudioEngine()
           let input = engine.inputNode

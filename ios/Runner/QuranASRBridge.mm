@@ -2,8 +2,10 @@
 
 #if QURAN_ASR_NATIVE && (DEBUG || QURAN_ASR_PROFILE || QURAN_ASR_TESTFLIGHT)
 #import <AVFoundation/AVFoundation.h>
+#import <Metal/Metal.h>
 #import <TargetConditionals.h>
 #include "whisper.h"
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <mutex>
@@ -15,6 +17,20 @@ std::mutex gWhisperMutex;
 whisper_context *gWhisperContext = nullptr;
 std::string gWhisperModelPath;
 bool gWhisperUseGpu = false;
+bool gWhisperForceCpu = false;
+
+bool SupportsFastMetalWhisper() {
+#if QURAN_ASR_USE_METAL && !TARGET_OS_SIMULATOR
+  id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+  if (!device) return false;
+  if (@available(iOS 14.0, *)) {
+    // ggml-metal requires MTLGPUFamilyApple7 (A14/M1+) for simdgroup reduction
+    // and matrix multiplication; older GPUs ping-pong ops between CPU and GPU.
+    return [device supportsFamily:MTLGPUFamilyApple7];
+  }
+#endif
+  return false;
+}
 
 whisper_context * SharedWhisperContext(NSString *modelPath,
                                        whisper_context_params options) {
@@ -80,26 +96,41 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
       buffer.frameLength != file.length) {
     return fail(@"Could not decode audio samples.");
   }
-  const float *samples = buffer.floatChannelData[0];
+  const float *rawSamples = buffer.floatChannelData[0];
   double energy = 0;
+  float peak = 0;
   for (uint32_t i = 0; i < buffer.frameLength; i++) {
-    if (!std::isfinite(samples[i])) return fail(@"Invalid audio samples.");
-    energy += samples[i] * samples[i];
+    if (!std::isfinite(rawSamples[i])) return fail(@"Invalid audio samples.");
+    energy += rawSamples[i] * rawSamples[i];
+    peak = std::max(peak, std::fabs(rawSamples[i]));
   }
-  if (std::sqrt(energy / buffer.frameLength) < 0.0001) {
+  const double rms = std::sqrt(energy / buffer.frameLength);
+  if (rms < 0.0001) {
     if (error) *error = [NSError errorWithDomain:@"QuranASR" code:4
                                       userInfo:@{NSLocalizedDescriptionKey: @"No audible input. Please record again."}];
     return nil;
   }
+  std::vector<float> normalizedSamples;
+  const float *samples = rawSamples;
+  // Boost quiet distant-microphone input (common on desk/stand iPads) without clipping.
+  if (rms >= 0.0005 && peak > 0.0f && peak < 0.08f) {
+    const float gain = std::min(6.0f, 0.16f / peak);
+    normalizedSamples.resize(buffer.frameLength);
+    for (uint32_t i = 0; i < buffer.frameLength; i++) {
+      normalizedSamples[i] = std::max(-1.0f, std::min(1.0f, rawSamples[i] * gain));
+    }
+    samples = normalizedSamples.data();
+  }
   auto options = whisper_context_default_params();
-#if QURAN_ASR_USE_METAL && !TARGET_OS_SIMULATOR
-  options.use_gpu = true;
-#else
-  options.use_gpu = false;
-#endif
   std::lock_guard<std::mutex> lock(gWhisperMutex);
+  options.use_gpu = !gWhisperForceCpu && SupportsFastMetalWhisper();
   if (cancellation.isCancelled) return fail(@"Recognition was cancelled.", 5);
   whisper_context *ctx = SharedWhisperContext(modelPath, options);
+  if (!ctx && options.use_gpu) {
+    gWhisperForceCpu = true;
+    options.use_gpu = false;
+    ctx = SharedWhisperContext(modelPath, options);
+  }
   if (!ctx) return fail(@"Could not load the experimental Quran model.");
   auto params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
   params.greedy.best_of = 1;
@@ -166,12 +197,18 @@ NSDictionary *QuranASRTranscribeCancellable(NSString *modelPath, NSString *audio
     gWhisperModelPath.clear();
     return fail(@"Experimental recognition failed.");
   }
+  const double inferenceSeconds = [NSDate timeIntervalSinceReferenceDate] - started;
+  if (gWhisperUseGpu && durationSec <= 3.5 && inferenceSeconds > 1.5) {
+    NSLog(@"QuranASR: Metal GPU inference took %.2fs for %.2fs audio; switching to CPU.",
+          inferenceSeconds, durationSec);
+    gWhisperForceCpu = true;
+  }
   NSString *transcript = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
   if (transcript.length == 0) return fail(@"No words recognized. Please record again.");
   return @{
     @"transcript": transcript,
     @"durationSeconds": @(buffer.frameLength / 16000.0),
-    @"inferenceSeconds": @([NSDate timeIntervalSinceReferenceDate] - started),
+    @"inferenceSeconds": @(inferenceSeconds),
     @"invalidTextRetries": @(invalidTextRetries)
   };
 }

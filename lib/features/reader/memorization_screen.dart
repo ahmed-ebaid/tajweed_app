@@ -82,6 +82,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   final _assisted = <int>{};
   final _hintWordCounts = <int, int>{};
   final _mistakes = <_HifzMistakeRecord>[];
+  (int, int, int)? _lastHapticMistakeSite;
+  (int, int)? _pendingLiveMistakeSite;
   final _preview = <int>{};
   final _liveWordCounts = <String, int>{};
   final _completedLiveWordCounts = <String, int>{};
@@ -300,7 +302,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     } else {
       _mistakes.add(record);
     }
-    unawaited(HapticFeedback.mediumImpact());
+    final hapticSite = (ayah.surahNumber, ayah.ayahNumber, clampedWordNumber);
+    if (_lastHapticMistakeSite != hapticSite) {
+      _lastHapticMistakeSite = hapticSite;
+      unawaited(HapticFeedback.mediumImpact());
+    }
   }
 
   void _showMistakesSheet() {
@@ -1124,6 +1130,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _transcript = '';
         _message = 'mem_wait';
         _mismatchWord = null;
+        _lastHapticMistakeSite = null;
+        _pendingLiveMistakeSite = null;
       });
       _startingSpeechGeneration = generation;
       _lastPreviewText = null;
@@ -1241,14 +1249,42 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               }
               _liveWordCounts.addAll(_completedLiveWordCounts);
               if (widget.localQuranLab) {
-                final totalPreviewWords = wordCounts.fold(0, (a, b) => a + b);
+                final totalPreviewWords = _liveWordCounts.values.fold(
+                  0,
+                  (a, b) => a + b,
+                );
                 final previousPreviewWords = previousWords.values.fold(
                   0,
                   (a, b) => a + b,
                 );
+                if (totalPreviewWords > previousPreviewWords) {
+                  _lastHapticMistakeSite = null;
+                  _pendingLiveMistakeSite = null;
+                }
                 if (widget.continuous &&
-                    totalPreviewWords <= previousPreviewWords &&
                     _activeAyahIndex < widget.ayahs.length) {
+                  final activeIdx = _activeAyahIndex;
+                  final activeAyah = widget.ayahs[activeIdx];
+                  final activeOffset = expectedAyahs.indexWhere(
+                    (ayah) =>
+                        ayah.surahNumber == activeAyah.surahNumber &&
+                        ayah.ayahNumber == activeAyah.ayahNumber,
+                  );
+                  final activeKey =
+                      '${activeAyah.surahNumber}:${activeAyah.ayahNumber}';
+                  final activeMatched = _visibleWordCounts[activeKey] ?? 0;
+                  final continuousPreviewText = contradictsPrefix
+                      ? _continuousText(startIndex, text)
+                      : effectivePreviewText;
+                  final rawPreviewWords = _comparison.recitationWords(text);
+                  final continuousWords = _comparison.recitationWords(
+                    continuousPreviewText,
+                  );
+                  final isAnchoredToRetained =
+                      totalPreviewWords == 0
+                      ? rawPreviewWords.isNotEmpty
+                      : continuousWords.length <
+                            totalPreviewWords + rawPreviewWords.length;
                   final liveCheck = _comparison.checkSequence(
                     expectedAyahs: [
                       for (final ayah in expectedAyahs) ayah.imlaei ?? '',
@@ -1257,18 +1293,31 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       for (final ayah in expectedAyahs)
                         '${ayah.surahNumber}:${ayah.ayahNumber}',
                     ],
-                    spokenText: effectivePreviewText,
+                    spokenText: continuousPreviewText,
                     allowWrittenOpenings: true,
                   );
-                  if (liveCheck.mismatch) {
-                    final activeIdx = _activeAyahIndex;
-                    final activeKey =
-                        '${widget.ayahs[activeIdx].surahNumber}:${widget.ayahs[activeIdx].ayahNumber}';
-                    final activeMatched = _visibleWordCounts[activeKey] ?? 0;
+                  if (activeOffset >= 0 &&
+                      isAnchoredToRetained &&
+                      liveCheck.mismatch &&
+                      liveCheck.completedAyahs == activeOffset &&
+                      liveCheck.wordIndex == activeMatched) {
                     final liveMismatchWord = activeMatched + 1;
-                    if (_mismatchWord != liveMismatchWord) {
-                      _recordMistake(activeIdx, liveMismatchWord);
+                    final site = (activeIdx, liveMismatchWord);
+                    final remainingWords = _comparison.recitationWords(
+                      liveCheck.remainingText,
+                    );
+                    if (totalPreviewWords <= previousPreviewWords &&
+                        (remainingWords.length >= 2 ||
+                            _pendingLiveMistakeSite == site)) {
+                      _pendingLiveMistakeSite = site;
+                      if (_mismatchWord != liveMismatchWord) {
+                        _recordMistake(activeIdx, liveMismatchWord);
+                      }
+                    } else {
+                      _pendingLiveMistakeSite = site;
                     }
+                  } else {
+                    _pendingLiveMistakeSite = null;
                   }
                 }
               }

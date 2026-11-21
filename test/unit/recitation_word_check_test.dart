@@ -3034,6 +3034,35 @@ void main() {
         ),
         [38],
       );
+
+      // Surah 'Abasa 80:1-80:4 (Build 150 cloud recordings b3fbf58c / 743867c8 / 26b7b7d3):
+      const abasa1 = 'عَبَسَ وَتَوَلَّىٰ';
+      const abasa2 = 'أَنْ جَاءَهُ الْأَعْمَىٰ';
+      const abasa3 = 'وَمَا يُدْرِيكَ لَعَلَّهُ يَزَّكَّىٰ';
+      const abasa4 = 'أَوْ يَذَّكَّرُ فَتَنْفَعَهُ الذِّكْرَىٰ';
+      var joinedAbasa = comparison.joinRecitationSegment(
+        retainedPrefix: 'عبس وتولى',
+        spokenText: 'أَوْ جَاءَهُ الْأَعْمَىٰ وَمَا يُزْرِيكَ لَعَلَّهُ يَزَّكَّىٰ',
+        expectedAyahs: [abasa1, abasa2, abasa3, abasa4],
+        expectedVerseKeys: ['80:1', '80:2', '80:3', '80:4'],
+        allowWrittenOpenings: true,
+      );
+      joinedAbasa = comparison.joinRecitationSegment(
+        retainedPrefix: joinedAbasa,
+        spokenText: 'أَوْ يَذَّكَّرُ فَعَهُ الذِّكْرَىٰ',
+        expectedAyahs: [abasa1, abasa2, abasa3, abasa4],
+        expectedVerseKeys: ['80:1', '80:2', '80:3', '80:4'],
+        allowWrittenOpenings: true,
+      );
+      expect(
+        comparison.matchingPrefixWordCounts(
+          expectedAyahs: [abasa1, abasa2, abasa3, abasa4],
+          expectedVerseKeys: ['80:1', '80:2', '80:3', '80:4'],
+          spokenText: joinedAbasa,
+          allowWrittenOpenings: true,
+        ),
+        [2, 3, 4, 4],
+      );
     },
   );
 }

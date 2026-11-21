@@ -95,39 +95,19 @@ bool ReadMono16kWav(const std::string &path, std::vector<float> *samples) {
   return true;
 }
 
-std::vector<float> TrimSilence(const std::vector<float> &samples, bool *has_speech) {
-  constexpr float kThreshold = 0.008f;
-  constexpr size_t kPaddingSamples = 1600;  // 100 ms at 16 kHz.
-  size_t first = samples.size();
-  size_t last = 0;
-  float peak = 0.0f;
-  size_t voiced = 0;
-  for (size_t i = 0; i < samples.size(); ++i) {
-    const float level = std::fabs(samples[i]);
-    peak = std::max(peak, level);
-    if (level >= kThreshold) {
-      first = std::min(first, i);
-      last = i;
-      voiced += 1;
-    }
-  }
-  *has_speech = first < samples.size() && peak >= 0.015f && voiced >= 1200;
-  if (!*has_speech) {
-    return {};
-  }
-  const size_t start = first > kPaddingSamples ? first - kPaddingSamples : 0;
-  const size_t end = std::min(samples.size(), last + kPaddingSamples + 1);
-  return std::vector<float>(samples.begin() + start, samples.begin() + end);
-}
-
 struct SharedWhisperContext {
   std::mutex mutex;
   std::string model_path;
   whisper_context *ctx = nullptr;
   bool using_gpu = false;
+  bool force_cpu_sticky = false;
 
   whisper_context *get(const std::string &path, bool force_cpu = false) {
-    if (ctx != nullptr && model_path == path && (!force_cpu || !using_gpu)) {
+    if (force_cpu) {
+      force_cpu_sticky = true;
+    }
+    const bool use_cpu = force_cpu || force_cpu_sticky;
+    if (ctx != nullptr && model_path == path && (!use_cpu || !using_gpu)) {
       return ctx;
     }
     if (ctx != nullptr) {
@@ -137,7 +117,7 @@ struct SharedWhisperContext {
       using_gpu = false;
     }
     whisper_context *loaded = nullptr;
-    if (!force_cpu) {
+    if (!use_cpu) {
       try {
         whisper_context_params options = whisper_context_default_params();
         options.use_gpu = true;
@@ -251,11 +231,35 @@ Java_com_ebaidllc_tajweed_1practice_QuranASRChannel_nativeTranscribe(
   const double duration_seconds =
       static_cast<double>(raw_samples.size()) / 16000.0;
 
-  bool has_speech = false;
-  std::vector<float> samples = TrimSilence(raw_samples, &has_speech);
+  double energy = 0.0;
+  float peak = 0.0f;
+  size_t voiced = 0;
+  for (size_t i = 0; i < raw_samples.size(); ++i) {
+    const float s = raw_samples[i];
+    if (!std::isfinite(s)) {
+      fill_metrics(2.0, duration_seconds, 0.0, 0.0);
+      return nullptr;
+    }
+    energy += static_cast<double>(s) * static_cast<double>(s);
+    const float level = std::fabs(s);
+    peak = std::max(peak, level);
+    if (level >= 0.008f) {
+      voiced += 1;
+    }
+  }
+  const double rms = std::sqrt(energy / static_cast<double>(raw_samples.size()));
+  const bool has_speech =
+      rms >= 0.0005 && peak >= 0.012f && voiced >= 800;
   if (!has_speech) {
     fill_metrics(4.0, duration_seconds, 0.0, 0.0);
     return nullptr;
+  }
+  std::vector<float> samples = std::move(raw_samples);
+  if (rms >= 0.0005 && peak > 0.0f && peak < 0.08f) {
+    const float gain = std::min(6.0f, 0.16f / peak);
+    for (size_t i = 0; i < samples.size(); ++i) {
+      samples[i] = std::max(-1.0f, std::min(1.0f, samples[i] * gain));
+    }
   }
   if (token != 0 && g_cancel_requested.load(std::memory_order_relaxed)) {
     fill_metrics(5.0, duration_seconds, 0.0, 0.0);
@@ -275,30 +279,26 @@ Java_com_ebaidllc_tajweed_1practice_QuranASRChannel_nativeTranscribe(
     return nullptr;
   }
 
-  whisper_full_params params = whisper_full_default_params(
-      provisional ? WHISPER_SAMPLING_GREEDY : WHISPER_SAMPLING_BEAM_SEARCH);
+  whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
   const long cores = sysconf(_SC_NPROCESSORS_ONLN);
   const int processor_count = cores > 1 ? static_cast<int>(cores) - 1 : 2;
   params.n_threads = std::max(2, std::min(4, processor_count));
   params.language = "ar";
   params.translate = false;
   params.no_context = true;
+  params.no_timestamps = true;
   params.single_segment = true;
   params.print_special = false;
   params.print_progress = false;
   params.print_realtime = false;
   params.print_timestamps = false;
-  if (provisional) {
-    const int trimmed_seconds = static_cast<int>(
-        std::ceil(static_cast<double>(samples.size()) / 16000.0));
-    const int raw_ctx = std::max(384, trimmed_seconds * 50);
-    params.audio_ctx = std::min(1500, ((raw_ctx + 63) / 64) * 64);
-  }
-  params.max_tokens = provisional ? 48 : 96;
+  const int duration_tokens =
+      static_cast<int>(std::ceil(duration_seconds * 14.0)) + 12;
+  params.max_tokens = std::max(36, std::min(192, duration_tokens));
   params.greedy.best_of = 1;
-  params.beam_search.beam_size = provisional ? 1 : 2;
+  params.beam_search.beam_size = 1;
   params.temperature = 0.0f;
-  params.temperature_inc = provisional ? 0.0f : 0.2f;
+  params.temperature_inc = 0.0f;
 
   AbortCallbackState abort_state{token};
   if (token != 0) {
@@ -335,6 +335,15 @@ Java_com_ebaidllc_tajweed_1practice_QuranASRChannel_nativeTranscribe(
   const auto finished = std::chrono::steady_clock::now();
   const double inference_seconds =
       std::chrono::duration<double>(finished - started).count();
+
+  if (shared.using_gpu && duration_seconds <= 3.5 && inference_seconds > 1.5 &&
+      !(token != 0 && g_cancel_requested.load(std::memory_order_relaxed))) {
+    __android_log_print(
+        ANDROID_LOG_WARN, kLogTag,
+        "Vulkan GPU inference took %.2fs for %.2fs audio; switching to CPU.",
+        inference_seconds, duration_seconds);
+    shared.force_cpu_sticky = true;
+  }
 
   if (token != 0 && g_cancel_requested.load(std::memory_order_relaxed)) {
     fill_metrics(5.0, duration_seconds, inference_seconds,
