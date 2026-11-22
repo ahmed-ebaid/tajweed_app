@@ -420,6 +420,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'Recognized words match the full ayah.',
     'mem_mismatch':
         'The recognized words do not match. Recognition can mishear; retry or use a hint. Check word',
+    'mem_mic_denied':
+        'Microphone access is off. Turn it on in your phone\'s Settings for Tajweed, then try again.',
     'mem_error':
         'Arabic speech recognition failed or is unavailable. Check microphone/speech permissions and connectivity, then retry. Hints remain available.',
     'mem_missing':
@@ -451,6 +453,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'تطابقت الكلمات المتعرّف عليها مع الآية كاملة.',
     'mem_mismatch':
         'لم تتطابق الكلمات المتعرّف عليها. قد تخطئ خدمة التعرف؛ أعد المحاولة أو استخدم تلميحًا. راجع الكلمة',
+    'mem_mic_denied':
+        'الوصول إلى الميكروفون متوقف. فعّله من إعدادات الهاتف لتطبيق تجويد، ثم حاول مرة أخرى.',
     'mem_error':
         'تعذر التعرف على الكلام بالعربية. تحقق من أذونات الميكروفون والكلام والاتصال ثم أعد المحاولة. التلميحات متاحة.',
     'mem_missing':
@@ -481,6 +485,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'پہچانے گئے الفاظ پوری آیت سے ملتے ہیں۔',
     'mem_mismatch':
         'پہچانے گئے الفاظ نہیں ملے۔ سروس غلط سن سکتی ہے؛ دوبارہ کوشش کریں یا اشارہ لیں۔ یہ لفظ دیکھیں',
+    'mem_mic_denied':
+        'مائیکروفون کی اجازت بند ہے۔ فون کی سیٹنگز میں Tajweed کے لیے اسے آن کریں، پھر دوبارہ کوشش کریں۔',
     'mem_error':
         'عربی آواز کی پہچان ناکام یا دستیاب نہیں۔ مائیک، آواز کی اجازت اور انٹرنیٹ دیکھ کر دوبارہ کوشش کریں۔ اشارے دستیاب ہیں۔',
     'mem_missing':
@@ -511,6 +517,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'Tanınan kelimeler ayetin tamamıyla eşleşiyor.',
     'mem_mismatch':
         'Tanınan kelimeler eşleşmiyor. Tanıma hatası olabilir; tekrar deneyin veya ipucu kullanın. Şu kelimeyi kontrol edin',
+    'mem_mic_denied':
+        'Mikrofon erişimi kapalı. Telefonunuzun Ayarlar bölümünden Tajweed için açın, sonra tekrar deneyin.',
     'mem_error':
         'Arapça konuşma tanıma başarısız veya kullanılamıyor. Mikrofon/konuşma izinlerini ve bağlantıyı kontrol edip tekrar deneyin. İpuçları kullanılabilir.',
     'mem_missing':
@@ -541,6 +549,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'Les mots reconnus correspondent au verset entier.',
     'mem_mismatch':
         'Les mots reconnus ne correspondent pas. La reconnaissance peut se tromper ; réessayez ou utilisez un indice. Vérifiez le mot',
+    'mem_mic_denied':
+        'L\'accès au micro est désactivé. Activez-le pour Tajweed dans les Réglages du téléphone, puis réessayez.',
     'mem_error':
         'Reconnaissance arabe indisponible ou en échec. Vérifiez les autorisations micro/vocales et la connexion, puis réessayez. Les indices restent disponibles.',
     'mem_missing':
@@ -572,6 +582,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'Kata yang dikenali cocok dengan seluruh ayat.',
     'mem_mismatch':
         'Kata yang dikenali tidak cocok. Pengenalan dapat salah dengar; coba lagi atau gunakan petunjuk. Periksa kata',
+    'mem_mic_denied':
+        'Akses mikrofon nonaktif. Aktifkan untuk Tajweed di Pengaturan ponsel, lalu coba lagi.',
     'mem_error':
         'Pengenalan ucapan Arab gagal atau tidak tersedia. Periksa izin mikrofon/ucapan dan koneksi, lalu coba lagi. Petunjuk tetap tersedia.',
     'mem_missing':
@@ -603,6 +615,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'Die erkannten Wörter stimmen mit dem ganzen Vers überein.',
     'mem_mismatch':
         'Die erkannten Wörter stimmen nicht überein. Die Erkennung kann sich irren; versuche es erneut oder nutze einen Hinweis. Prüfe Wort',
+    'mem_mic_denied':
+        'Der Mikrofonzugriff ist aus. Aktiviere ihn für Tajweed in den Einstellungen des Telefons und versuche es erneut.',
     'mem_error':
         'Arabische Spracherkennung fehlgeschlagen oder nicht verfügbar. Prüfe Mikrofon-/Sprachberechtigungen und Verbindung und versuche es erneut. Hinweise bleiben verfügbar.',
     'mem_missing':
@@ -635,6 +649,8 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_match': 'Las palabras reconocidas coinciden con toda la aleya.',
     'mem_mismatch':
         'Las palabras reconocidas no coinciden. El reconocimiento puede equivocarse; reintenta o usa una pista. Revisa la palabra',
+    'mem_mic_denied':
+        'El acceso al micrófono está desactivado. Actívalo para Tajweed en los Ajustes del teléfono y vuelve a intentarlo.',
     'mem_error':
         'El reconocimiento en árabe falló o no está disponible. Revisa los permisos de micrófono/voz y la conexión, y reintenta. Las pistas siguen disponibles.',
     'mem_missing':

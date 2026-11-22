@@ -3844,7 +3844,7 @@ void main() {
       final speech = _FakeSpeech();
       await _open(tester, speech);
       await _start(tester);
-      speech.error!('permission_denied');
+      speech.error!('quran_asr_failed');
       await tester.pumpAndSettle();
       expect(_hidden(tester), {'1:1', '1:2'});
       expect(
@@ -3855,6 +3855,23 @@ void main() {
       expect(speech.starts, 2);
     },
   );
+
+  for (final code in ['permission_denied', 'tajweedformer_microphone_denied']) {
+    testWidgets('$code tells the learner to turn the microphone on', (
+      tester,
+    ) async {
+      final speech = _FakeSpeech();
+      await _open(tester, speech);
+      await _start(tester);
+      speech.error!(code);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Microphone access is off'), findsOneWidget);
+      expect(
+        find.textContaining('Arabic speech recognition failed'),
+        findsNothing,
+      );
+    });
+  }
 
   for (final locale in AppLocalizations.supportedLocales) {
     testWidgets(

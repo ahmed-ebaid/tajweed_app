@@ -1612,7 +1612,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _acceptResults = false;
             _preview.clear();
             _clearLiveWords();
-            _message = 'mem_error';
+            _message = _isMicrophoneDenied(code)
+                ? 'mem_mic_denied'
+                : 'mem_error';
           });
           unawaited(_cancelInputs());
         },
@@ -2321,9 +2323,12 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       _acceptResults = false;
       _preview.clear();
       _clearLiveWords();
-      _message = 'mem_error';
+      _message = _isMicrophoneDenied(code) ? 'mem_mic_denied' : 'mem_error';
     });
   }
+
+  static bool _isMicrophoneDenied(String code) =>
+      code == 'permission_denied' || code.endsWith('microphone_denied');
 
   Future<void> _stop() async {
     if (_stopInProgress) return;
