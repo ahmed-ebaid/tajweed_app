@@ -58,6 +58,24 @@ void main() {
     expect(aligner.align(flat(heard), isFinal: true), 'مالكا يوم الدين');
   });
 
+  test('a short vowel inside a word is not judged by its quality', () {
+    final aligner = TajweedRecitationAligner([
+      TajweedExpectedAyah(
+        referenceWords: [u('ء a ں ذ i ر'), u('ق a و م a ك a')],
+        textWords: ['أنذر', 'قومك'],
+      ),
+    ]);
+    final heard = [u('ء a ں ذ a ر a'), u('ق a و م a ك a')];
+    expect(aligner.align(flat(heard), isFinal: true), 'أنذر قومك');
+  });
+
+  test('extra words between ayahs do not spoil the words before', () {
+    final heard = [..._hamd, u('ي a س ء a ل u'), ..._rahman];
+    final text = _aligner().align(flat(heard), isFinal: true);
+    expect(text, startsWith('الحمد لله رب العالمين '));
+    expect(text, isNot(contains('الحمد لله رب العالمين الرحمن')));
+  });
+
   test('resuming mid-ayah starts at the recited word', () {
     expect(
       _aligner().align(flat([_hamd[2], _hamd[3]]), isFinal: true),

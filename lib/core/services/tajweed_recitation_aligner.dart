@@ -274,7 +274,9 @@ class TajweedRecitationAligner {
       back[row] = _insert;
       for (var j = 1; j <= m; j++) {
         final r = _ref[base + j - 1];
-        var best = cost[up + j - 1] + _substitute(h, r);
+        var best =
+            cost[up + j - 1] +
+            _substitute(h, r, strict: _strictVowel(h, base + j - 1));
         var move = _match;
         final ins = cost[up + j] + insert;
         if (ins < best) {
@@ -361,7 +363,17 @@ class TajweedRecitationAligner {
         continue;
       }
       final pass = passes.last;
-      final column = move == _insert ? math.max(j, 1) : j;
+      // Extra sounds between two words belong to the word that should have
+      // come next, not to the finished word before them.
+      final column =
+          move == _insert &&
+              j > 0 &&
+              j < m &&
+              _wordStart[_wordOfUnit[base + j]] == base + j
+          ? j + 1
+          : move == _insert
+          ? math.max(j, 1)
+          : j;
       final word = column == 0
           ? _committedWord
           : _wordOfUnit[base + column - 1];
@@ -369,7 +381,9 @@ class TajweedRecitationAligner {
           cost[(move == _delete ? i : i - 1) * width +
               (move == _insert ? j : j - 1)];
       var step = cost[i * width + j] - before;
-      if (move == _match && _wrongVowel(heard[i - 1], _ref[base + j - 1])) {
+      if (move == _match &&
+          _strictVowel(heard[i - 1], base + j - 1) &&
+          _wrongVowel(heard[i - 1], _ref[base + j - 1])) {
         step += _wrongVowelPenalty;
         pass.wrongVowels.add(i - 1);
       }
@@ -481,13 +495,22 @@ class TajweedRecitationAligner {
   /// vowel.
   static const _wrongVowelPenalty = 2.0;
 
+  /// Long vowels and a word's final vowel (its case ending) are heard
+  /// reliably enough to judge; short vowels inside a word are not (أنذِرْ
+  /// is often heard as أنذَرَ), so those cost only a slip.
+  bool _strictVowel(int heard, int r) {
+    final ref = _ref[r];
+    if (!_isVowel(heard) || !_isVowel(ref)) return false;
+    return heard >= 34 || ref >= 34 || r + 1 == _wordEnd[_wordOfUnit[r]];
+  }
+
   static bool _wrongVowel(int heard, int ref) =>
       _isVowel(heard) && _isVowel(ref) && (heard - 31) % 3 != (ref - 31) % 3;
 
-  static double _substitute(int a, int b) {
+  static double _substitute(int a, int b, {bool strict = true}) {
     if (a == b) return 0;
     if (_isVowel(a) && _isVowel(b)) {
-      return _wrongVowel(a, b) ? 0.9 : 0.25;
+      return strict && _wrongVowel(a, b) ? 0.9 : 0.25;
     }
     if ((a == nasal && b == nun) || (a == nun && b == nasal)) return 0.25;
     return math.max(_gap(a), _gap(b));
