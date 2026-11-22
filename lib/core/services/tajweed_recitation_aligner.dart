@@ -64,6 +64,7 @@ class TajweedRecitationAligner {
 
   static const _resumeSkipCost = 0.02;
   static const _restartCost = 0.5;
+  static const _restartCostPerUnit = 0.04;
   static const _openingTolerance = 0.2;
   static const _commitKeepUnits = 80;
   static const _forcedCommitUnits = 400;
@@ -73,6 +74,8 @@ class TajweedRecitationAligner {
   final List<int> _wordStart = [];
   final List<int> _wordEnd = [];
   final List<int> _wordOfUnit = [];
+  final List<int> _ayahOfUnit = [];
+  final List<int> _ayahStart = [];
   final List<int> _consonants = [];
   final List<List<String>> _spelling = [];
 
@@ -91,6 +94,7 @@ class TajweedRecitationAligner {
     this.openings = const [isti3adha],
   }) {
     for (final ayah in ayahs) {
+      _ayahStart.add(_ref.length);
       final refCount = ayah.referenceWords.length;
       final textCount = ayah.textWords.length;
       for (var k = 0; k < refCount; k++) {
@@ -100,6 +104,7 @@ class TajweedRecitationAligner {
         for (final unit in word) {
           _ref.add(unit);
           _wordOfUnit.add(index);
+          _ayahOfUnit.add(_ayahStart.length - 1);
         }
         _wordEnd.add(_ref.length);
         _consonants.add(word.where((u) => !_isLight(u)).length);
@@ -284,17 +289,39 @@ class TajweedRecitationAligner {
         cost[row + j] = best;
         back[row + j] = move;
       }
-      // A reciter may go back to an earlier word and repeat from there.
+      // A reciter may go back to an earlier word of the same ayah, or to the
+      // start of an earlier ayah, and repeat from there. Words that recur
+      // (الرحمن الرحيم in the basmala and 1:3) are so matched where the
+      // reciter is, not in the middle of an earlier ayah.
       var later = double.infinity;
       var laterJ = 0;
+      var inAyah = double.infinity;
+      var inAyahJ = 0;
+      var ayahOfLater = -1;
       for (var j = m; j >= 0; j--) {
+        later += _restartCostPerUnit;
+        inAyah += _restartCostPerUnit;
         final here = cost[row + j];
-        final atWordStart =
-            j < m && _wordStart[_wordOfUnit[base + j]] == base + j;
-        if (atWordStart && later + _restartCost < here) {
-          cost[row + j] = later + _restartCost;
-          back[row + j] = _restart;
-          restartFrom[row + j] = laterJ;
+        if (j < m && _wordStart[_wordOfUnit[base + j]] == base + j) {
+          final ayahStart = _ayahStart[_ayahOfUnit[base + j]] == base + j;
+          final anyAyah = ayahStart && later < inAyah;
+          final from = anyAyah ? later : inAyah;
+          if (from + _restartCost < here) {
+            cost[row + j] = from + _restartCost;
+            back[row + j] = _restart;
+            restartFrom[row + j] = anyAyah ? laterJ : inAyahJ;
+          }
+        }
+        if (j > 0) {
+          final ayah = _ayahOfUnit[base + j - 1];
+          if (ayah != ayahOfLater) {
+            ayahOfLater = ayah;
+            inAyah = double.infinity;
+          }
+          if (here < inAyah) {
+            inAyah = here;
+            inAyahJ = j;
+          }
         }
         if (here < later) {
           later = here;
@@ -342,8 +369,9 @@ class TajweedRecitationAligner {
           cost[(move == _delete ? i : i - 1) * width +
               (move == _insert ? j : j - 1)];
       var step = cost[i * width + j] - before;
-      if (move == _match && _wrongLongVowel(heard[i - 1], _ref[base + j - 1])) {
+      if (move == _match && _wrongVowel(heard[i - 1], _ref[base + j - 1])) {
         step += _wrongVowelPenalty;
+        pass.wrongVowels.add(i - 1);
       }
       pass.cost[word] = (pass.cost[word] ?? 0) + step;
       if (move != _delete) {
@@ -408,7 +436,15 @@ class TajweedRecitationAligner {
       } else if (start != null &&
           end != null &&
           heard.sublist(start, end).any(_isConsonant)) {
-        words.add(spell(heard.sublist(start, end)));
+        words.add(
+          spell(
+            heard.sublist(start, end),
+            shown: {
+              for (final k in judgment.pass.wrongVowels)
+                if (k >= start && k < end) k - start,
+            },
+          ),
+        );
       }
       heardDone = math.max(heardDone, heardEnd[w] ?? 0);
       judged.add(_JudgedWord(w, heardDone, words.length));
@@ -440,35 +476,38 @@ class TajweedRecitationAligner {
 
   static double _gap(int unit) => _isLight(unit) ? 0.5 : 1.0;
 
-  /// A long vowel recited with another quality (المفلحين for المفلحون)
-  /// changes the word, unlike a vowel's length or a dropped stop vowel.
+  /// A vowel recited with another quality (المفلحين for المفلحون, مالكَ
+  /// for مالكِ) changes the word, unlike a vowel's length or a dropped stop
+  /// vowel.
   static const _wrongVowelPenalty = 2.0;
 
-  static bool _wrongLongVowel(int heard, int ref) =>
-      ref >= 34 &&
-      ref <= 36 &&
-      _isVowel(heard) &&
-      (heard - 31) % 3 != (ref - 31) % 3;
+  static bool _wrongVowel(int heard, int ref) =>
+      _isVowel(heard) && _isVowel(ref) && (heard - 31) % 3 != (ref - 31) % 3;
 
   static double _substitute(int a, int b) {
     if (a == b) return 0;
     if (_isVowel(a) && _isVowel(b)) {
-      if (_wrongLongVowel(a, b)) return 0.9;
-      return (a - 31) % 3 == (b - 31) % 3 ? 0.25 : 0.5;
+      return _wrongVowel(a, b) ? 0.9 : 0.25;
     }
     if ((a == nasal && b == nun) || (a == nun && b == nasal)) return 0.25;
     return math.max(_gap(a), _gap(b));
   }
 
-  /// Heard units written with their own consonants and long vowels.
-  static String spell(List<int> units) {
+  /// Heard units written with their own consonants and long vowels. Short
+  /// vowels at [shown] (recited with the wrong quality) are written as their
+  /// letter, so a word differing only in a vowel (مالكا for مالكِ) shows.
+  static String spell(List<int> units, {Set<int> shown = const {}}) {
     final buffer = StringBuffer();
-    for (final unit in units) {
+    for (var k = 0; k < units.length; k++) {
+      final unit = units[k];
       buffer.write(switch (unit) {
         nasal => 'ن',
         34 => 'ا',
         35 => 'ي',
         36 => 'و',
+        31 when shown.contains(k) => 'ا',
+        32 when shown.contains(k) => 'ي',
+        33 when shown.contains(k) => 'و',
         >= 2 && <= 29 => tj3Names[unit],
         _ => '',
       });
@@ -489,6 +528,7 @@ class _Pass {
   /// How far into the reference this pass went (a column of the alignment).
   final int reach;
   final cost = <int, double>{};
+  final wrongVowels = <int>{};
   final heardFirst = <int, int>{};
   final heardEnd = <int, int>{};
 

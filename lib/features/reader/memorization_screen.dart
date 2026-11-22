@@ -1150,7 +1150,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _preview.clear();
         _clearLiveWords();
         _transcript = '';
-        _message = 'mem_wait';
+        _message = 'mem_preparing';
         _mismatchWord = null;
         _lastHapticMistakeSite = null;
         _pendingLiveMistakeSite = null;
@@ -1606,6 +1606,14 @@ class _MemorizationScreenState extends State<MemorizationScreen>
           unawaited(_cancelInputs());
         },
       );
+      // start() returns once the microphone is open; until then the
+      // first take's model load and reference download would lose audio.
+      if (mounted &&
+          generation == _generation &&
+          _acceptResults &&
+          _message == 'mem_preparing') {
+        setState(() => _message = 'mem_wait');
+      }
     } on MemorizationSpeechException catch (error) {
       _inputFailed(generation, error.code);
     } on PlatformException catch (error) {

@@ -436,6 +436,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'Revealed as a hint, not a voice match.',
     'mem_heard': 'Recognized words',
     'mem_wait': 'Listening or checking…',
+    'mem_preparing': 'Getting ready — wait before reciting…',
     'mem_audio_error': 'Reference audio could not be played. Try again.',
   },
   'ar': {
@@ -473,6 +474,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'أُظهرت كتلميح، وليس كتطابق صوتي.',
     'mem_heard': 'الكلمات المتعرّف عليها',
     'mem_wait': 'جارٍ الاستماع أو المقارنة…',
+    'mem_preparing': 'جارٍ التجهيز — انتظر قبل التلاوة…',
     'mem_audio_error': 'تعذر تشغيل التلاوة المرجعية. أعد المحاولة.',
   },
   'ur': {
@@ -510,6 +512,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'اشارے کے طور پر دکھایا گیا، صوتی مطابقت نہیں۔',
     'mem_heard': 'پہچانے گئے الفاظ',
     'mem_wait': 'سن رہا ہے یا جانچ رہا ہے…',
+    'mem_preparing': 'تیاری ہو رہی ہے — تلاوت سے پہلے انتظار کریں…',
     'mem_audio_error': 'نمونہ تلاوت نہیں چل سکی۔ دوبارہ کوشش کریں۔',
   },
   'tr': {
@@ -547,6 +550,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'İpucu olarak gösterildi; sesli eşleşme değil.',
     'mem_heard': 'Tanınan kelimeler',
     'mem_wait': 'Dinleniyor veya kontrol ediliyor…',
+    'mem_preparing': 'Hazırlanıyor — okumadan önce bekleyin…',
     'mem_audio_error': 'Örnek okuyuş çalınamadı. Tekrar deneyin.',
   },
   'fr': {
@@ -585,6 +589,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'Révélé comme indice, pas comme correspondance vocale.',
     'mem_heard': 'Mots reconnus',
     'mem_wait': 'Écoute ou vérification…',
+    'mem_preparing': 'Préparation — attendez avant de réciter…',
     'mem_audio_error': 'Impossible de lire la référence audio. Réessayez.',
   },
   'id': {
@@ -623,6 +628,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'Ditampilkan sebagai petunjuk, bukan kecocokan suara.',
     'mem_heard': 'Kata yang dikenali',
     'mem_wait': 'Mendengarkan atau memeriksa…',
+    'mem_preparing': 'Menyiapkan — tunggu sebelum membaca…',
     'mem_audio_error': 'Audio contoh tidak dapat diputar. Coba lagi.',
   },
   'de': {
@@ -661,6 +667,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'Als Hinweis gezeigt, nicht als Sprachübereinstimmung.',
     'mem_heard': 'Erkannte Wörter',
     'mem_wait': 'Wird angehört oder geprüft…',
+    'mem_preparing': 'Wird vorbereitet — vor dem Rezitieren warten…',
     'mem_audio_error':
         'Referenzaudio konnte nicht abgespielt werden. Versuche es erneut.',
   },
@@ -700,6 +707,7 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_hint_used': 'Mostrada como pista, no como coincidencia de voz.',
     'mem_heard': 'Palabras reconocidas',
     'mem_wait': 'Escuchando o comprobando…',
+    'mem_preparing': 'Preparando — espera antes de recitar…',
     'mem_audio_error':
         'No se pudo reproducir el audio de referencia. Reintenta.',
   },

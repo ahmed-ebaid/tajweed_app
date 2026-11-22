@@ -46,6 +46,18 @@ void main() {
     );
   });
 
+  test('a short vowel with another quality is a mistake', () {
+    final malik = u('م aa ل i ك i');
+    final aligner = TajweedRecitationAligner([
+      TajweedExpectedAyah(
+        referenceWords: [malik, u('ي a و م i'), u('د ii ن')],
+        textWords: ['مالك', 'يوم', 'الدين'],
+      ),
+    ]);
+    final heard = [u('م aa ل i ك a'), u('ي a و م i'), u('د ii ن')];
+    expect(aligner.align(flat(heard), isFinal: true), 'مالكا يوم الدين');
+  });
+
   test('resuming mid-ayah starts at the recited word', () {
     expect(
       _aligner().align(flat([_hamd[2], _hamd[3]]), isFinal: true),
@@ -99,6 +111,54 @@ void main() {
       everyElement(startsWith('بسم الله')),
     );
     expect(aligner.align(heard, isFinal: true), 'بسم الله الرحمن الرحيم');
+  });
+
+  test('words that recur are matched in the ayah being recited', () {
+    // Units of 1:1 to 1:3 as served by the TajweedFormer reference.
+    final rahman = u('ر a ح م aa ن i');
+    final rahim = u('ر a ح ii م');
+    final aligner = TajweedRecitationAligner([
+      TajweedExpectedAyah(
+        referenceWords: [u('ب i س م i'), u('ل aa ه i'), rahman, rahim],
+        textWords: ['بسم', 'الله', 'الرحمن', 'الرحيم'],
+      ),
+      TajweedExpectedAyah(
+        referenceWords: [
+          u('ء a ل ح a م د u'),
+          u('ل i ل aa ه i'),
+          u('ر a ب i'),
+          u('ل ع aa ل a م ii ن'),
+        ],
+        textWords: ['الحمد', 'لله', 'رب', 'العالمين'],
+      ),
+      TajweedExpectedAyah(
+        referenceWords: [u('ء a ر a ح م aa ن i'), rahim],
+        textWords: ['الرحمن', 'الرحيم'],
+      ),
+    ]);
+    // A wrong attempt at 1:3, then repeats without the opening hamza.
+    final heard = flat([
+      u('ب i س م i'),
+      u('ل aa ه i'),
+      rahman,
+      rahim,
+      u('a ل ح a م د u'),
+      u('ل i ل aa ه i'),
+      u('ر a ب i'),
+      u('ل ع aa ل a م ii ن'),
+      u('a م ن i'),
+      rahim,
+      rahman,
+      rahim,
+      u('ء a ر a ح م aa ن i'),
+      rahim,
+      rahman,
+      rahim,
+    ]);
+    expect(
+      aligner.align(heard, isFinal: true),
+      'بسم الله الرحمن الرحيم الحمد لله رب العالمين الرحمن الرحيم',
+    );
   });
 
   test('unequal word counts map reference words proportionally', () {

@@ -54,7 +54,9 @@ class TajweedFormerSpeechInput
   static const _comparison = SpeechComparisonService();
 
   TajweedFormerSpeechInput() {
-    unawaited(loadModel().then<void>((_) {}, onError: (_) {}));
+    unawaited(
+      loadModel().then<void>(_fetchReference).catchError((Object _) {}),
+    );
   }
 
   /// Downloads the model ahead of the first take; safe at every launch.
@@ -330,6 +332,18 @@ class TajweedFormerSpeechInput
     );
   }
 
+  static Future<void> _fetchReference(TajweedModel model) {
+    final reference = model.reference;
+    if (reference == null) return Future.value();
+    return _referenceReady ??= reference.fetch().catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      _referenceReady = null;
+      Error.throwWithStackTrace(error, stackTrace);
+    });
+  }
+
   @visibleForTesting
   static Future<TajweedRecitationAligner> alignerFor(
     TajweedModel model,
@@ -339,13 +353,7 @@ class TajweedFormerSpeechInput
     if (reference == null) {
       throw const MemorizationSpeechException('tajweedformer_no_reference');
     }
-    await (_referenceReady ??= reference.fetch().catchError((
-      Object error,
-      StackTrace stackTrace,
-    ) {
-      _referenceReady = null;
-      Error.throwWithStackTrace(error, stackTrace);
-    }));
+    await _fetchReference(model);
     final wordBar = model.tokens.wordBar ?? TajweedRecitationAligner.wordBar;
     final expected = await Future.wait([
       for (final ayah in ayahs)
