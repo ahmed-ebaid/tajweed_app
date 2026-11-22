@@ -116,6 +116,10 @@ class TajweedFormerSpeechInput
   var _takeBytes = 0;
   var _droppedBytes = 0;
   _SharedTake? _lastTake;
+  final _starting = Stopwatch();
+  int? _readyMs;
+  String? _failure;
+  Future<void>? _keeping;
 
   @override
   double get windowStartSeconds => 0;
@@ -153,6 +157,11 @@ class TajweedFormerSpeechInput
     _lastDecoded = null;
     _lastText = null;
     _finalEmitted = false;
+    _failure = null;
+    _readyMs = null;
+    _starting
+      ..reset()
+      ..start();
     try {
       final model = await loadModel();
       final aligner = await alignerFor(model, _expected);
@@ -168,6 +177,7 @@ class TajweedFormerSpeechInput
         return;
       }
       _session = session;
+      _readyMs = _starting.elapsedMilliseconds;
       _aligner = aligner;
       _chunks = session.chunks.listen(
         (chunk) => _onChunk(generation, chunk.decoded),
@@ -300,6 +310,8 @@ class TajweedFormerSpeechInput
       ],
       text: text ?? '',
       tokens: decoded?.tokens ?? const [],
+      readyMs: _readyMs,
+      error: _failure,
     );
     _take.clear();
     _takeBytes = 0;
@@ -321,6 +333,7 @@ class TajweedFormerSpeechInput
   /// Sends the last take the tester agreed to share; false when there is
   /// none or the upload failed.
   Future<bool> uploadSharedTake({required String verseKey}) async {
+    await _keeping;
     final take = _lastTake;
     _lastTake = null;
     if (take == null || takeSharing != true) return false;
@@ -429,6 +442,7 @@ class TajweedFormerSpeechInput
   void _fail(int generation, String code) {
     if (generation != _generation || _finalEmitted) return;
     _finalEmitted = true;
+    _failure = code;
     _onError?.call('tajweedformer_$code');
     unawaited(cancel());
   }
@@ -475,8 +489,11 @@ class TajweedFormerSpeechInput
     _generation++;
     final session = _session;
     final recorded = _recorder != null;
-    await _stopRecorder();
-    if (recorded && _lastTake == null) _keepTake(_lastDecoded, _lastText);
+    final stopping = _stopRecorder().then((_) {
+      if (recorded && _lastTake == null) _keepTake(_lastDecoded, _lastText);
+    });
+    if (recorded) _keeping = stopping;
+    await stopping;
     _release();
     if (session != null) {
       try {
@@ -505,6 +522,8 @@ class _SharedTake {
     required this.expected,
     required this.text,
     required this.tokens,
+    this.readyMs,
+    this.error,
   }) : id = _uuid();
 
   final String id;
@@ -513,6 +532,8 @@ class _SharedTake {
   final List<String> expected;
   final String text;
   final List<TajweedToken> tokens;
+  final int? readyMs;
+  final String? error;
 
   static String _uuid() {
     final random = Random.secure();
@@ -533,6 +554,8 @@ class _SharedTake {
         'startSeconds': startSeconds,
         'durationSeconds': seconds,
         'text': text,
+        'readyMs': ?readyMs,
+        'error': ?error,
         'units': tokens.map((t) => t.name).join(' '),
         'tokens': [
           for (final t in tokens) {'id': t.id, 'name': t.name, 'firstMs': t.firstMs, 'lastMs': t.lastMs},

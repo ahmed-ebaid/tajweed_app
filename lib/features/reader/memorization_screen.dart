@@ -1603,7 +1603,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                 ? 'mem_mic_denied'
                 : 'mem_error';
           });
-          unawaited(_cancelInputs());
+          unawaited(
+            _cancelInputs().whenComplete(
+              () => _uploadLabTake(input, _verseKey),
+            ),
+          );
         },
       );
       // start() returns once the microphone is open; until then the
