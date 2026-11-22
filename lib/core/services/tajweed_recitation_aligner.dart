@@ -341,7 +341,11 @@ class TajweedRecitationAligner {
       final before =
           cost[(move == _delete ? i : i - 1) * width +
               (move == _insert ? j : j - 1)];
-      pass.cost[word] = (pass.cost[word] ?? 0) + cost[i * width + j] - before;
+      var step = cost[i * width + j] - before;
+      if (move == _match && _wrongLongVowel(heard[i - 1], _ref[base + j - 1])) {
+        step += _wrongVowelPenalty;
+      }
+      pass.cost[word] = (pass.cost[word] ?? 0) + step;
       if (move != _delete) {
         pass.heardFirst[word] = i - 1;
         pass.heardEnd.putIfAbsent(word, () => i);
@@ -436,9 +440,20 @@ class TajweedRecitationAligner {
 
   static double _gap(int unit) => _isLight(unit) ? 0.5 : 1.0;
 
+  /// A long vowel recited with another quality (المفلحين for المفلحون)
+  /// changes the word, unlike a vowel's length or a dropped stop vowel.
+  static const _wrongVowelPenalty = 2.0;
+
+  static bool _wrongLongVowel(int heard, int ref) =>
+      ref >= 34 &&
+      ref <= 36 &&
+      _isVowel(heard) &&
+      (heard - 31) % 3 != (ref - 31) % 3;
+
   static double _substitute(int a, int b) {
     if (a == b) return 0;
     if (_isVowel(a) && _isVowel(b)) {
+      if (_wrongLongVowel(a, b)) return 0.9;
       return (a - 31) % 3 == (b - 31) % 3 ? 0.25 : 0.5;
     }
     if ((a == nasal && b == nun) || (a == nun && b == nasal)) return 0.25;

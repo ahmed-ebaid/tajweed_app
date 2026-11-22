@@ -38,6 +38,14 @@ void main() {
     expect(_aligner().align(flat(heard), isFinal: true), 'الحمد لله رب');
   });
 
+  test('a long vowel with another quality is a mistake', () {
+    final heard = [..._hamd.sublist(0, 3), u('ل ع aa ل a م uu ن')];
+    expect(
+      _aligner().align(flat(heard), isFinal: true),
+      'الحمد لله رب لعالمون',
+    );
+  });
+
   test('resuming mid-ayah starts at the recited word', () {
     expect(
       _aligner().align(flat([_hamd[2], _hamd[3]]), isFinal: true),
