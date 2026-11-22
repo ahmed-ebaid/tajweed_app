@@ -690,7 +690,7 @@ class QuranASRChannel(private val activity: Activity) : MethodChannel.MethodCall
                         retainDebugAudio = retainDebugAudio,
                         retainDebugTranscripts = retainDebugTranscripts
                     )
-                    diagnostics.record("capture_started")
+                    diagnostics.record("capture_started", metrics = mapOf("platform" to 2.0))
                     result.success(null)
                 } catch (e: Throwable) {
                     clearRecording()

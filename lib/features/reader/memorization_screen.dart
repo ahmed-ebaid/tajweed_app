@@ -85,6 +85,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   (int, int, int)? _lastHapticMistakeSite;
   (int, int, String)? _pendingLiveMistakeSite;
   int _pendingLiveMistakeConfirmations = 0;
+  int _hapticRequests = 0;
+  int _hapticRequestFailures = 0;
   final _preview = <int>{};
   final _liveWordCounts = <String, int>{};
   final _completedLiveWordCounts = <String, int>{};
@@ -306,7 +308,20 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     final hapticSite = (ayah.surahNumber, ayah.ayahNumber, clampedWordNumber);
     if (_lastHapticMistakeSite != hapticSite) {
       _lastHapticMistakeSite = hapticSite;
-      unawaited(HapticFeedback.mediumImpact());
+      _hapticRequests++;
+      unawaited(_sendMistakeHaptic());
+    }
+  }
+
+  Future<void> _sendMistakeHaptic() async {
+    try {
+      await HapticFeedback.mediumImpact();
+    } on PlatformException catch (error) {
+      _hapticRequestFailures++;
+      debugPrint('Mistake haptic failed: ${error.code}');
+    } on MissingPluginException catch (error) {
+      _hapticRequestFailures++;
+      debugPrint('Mistake haptic unavailable: $error');
     }
   }
 
@@ -432,7 +447,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         visibleWords: visibleWords,
         isFinal: isFinal,
         contradictsPrefix: contradictsPrefix,
-        alignment: alignment,
+        alignment: {
+          ...alignment,
+          'hapticRequests': _hapticRequests,
+          'hapticRequestFailures': _hapticRequestFailures,
+        },
       ),
     );
   }
@@ -1134,6 +1153,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _lastHapticMistakeSite = null;
         _pendingLiveMistakeSite = null;
         _pendingLiveMistakeConfirmations = 0;
+        _hapticRequests = 0;
+        _hapticRequestFailures = 0;
       });
       _startingSpeechGeneration = generation;
       _lastPreviewText = null;
@@ -1334,31 +1355,50 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   final retainedWords = continuousWords
                       .take(totalPreviewWords)
                       .toList();
-                  final isUnanchoredNewAyahMistake =
+                  final activeRawCheck =
                       !isAnchoredToRetained &&
-                      activeMatched == 0 &&
-                      rawPreviewWords.length >= 2 &&
-                      !rawPreviewWords.any(
-                        (w) =>
-                            retainedWords.contains(w) ||
-                            activeWords.contains(w) ||
-                            (w.length >= 3 &&
-                                retainedWords.any(
-                                  (r) =>
-                                      r.length >= 3 &&
-                                      (r.endsWith(w.substring(w.length - 3)) ||
-                                          w.endsWith(
-                                            r.substring(r.length - 3),
-                                          )),
-                                )),
-                      );
-                  final liveCheck = isUnanchoredNewAyahMistake
+                          activeMatched == 0 &&
+                          rawPreviewWords.length >= 2 &&
+                          rawPreviewWords.first == expectedTargetWord
                       ? _comparison.checkSequence(
                           expectedAyahs: [activeAyah.imlaei ?? ''],
                           expectedVerseKeys: [activeKey],
                           spokenText: text,
                           allowWrittenOpenings: true,
                         )
+                      : null;
+                  final isUnanchoredNewAyahMistake =
+                      !isAnchoredToRetained &&
+                      activeMatched == 0 &&
+                      rawPreviewWords.length >= 2 &&
+                      (activeRawCheck != null &&
+                              activeRawCheck.mismatch &&
+                              activeRawCheck.completedAyahs == 0 &&
+                              activeRawCheck.wordIndex == 0 ||
+                          !rawPreviewWords.any(
+                            (w) =>
+                                retainedWords.contains(w) ||
+                                activeWords.contains(w) ||
+                                (w.length >= 3 &&
+                                    retainedWords.any(
+                                      (r) =>
+                                          r.length >= 3 &&
+                                          (r.endsWith(
+                                                w.substring(w.length - 3),
+                                              ) ||
+                                              w.endsWith(
+                                                r.substring(r.length - 3),
+                                              )),
+                                    )),
+                          ));
+                  final liveCheck = isUnanchoredNewAyahMistake
+                      ? activeRawCheck ??
+                            _comparison.checkSequence(
+                              expectedAyahs: [activeAyah.imlaei ?? ''],
+                              expectedVerseKeys: [activeKey],
+                              spokenText: text,
+                              allowWrittenOpenings: true,
+                            )
                       : _comparison.checkSequence(
                           expectedAyahs: [
                             for (final ayah in expectedAyahs) ayah.imlaei ?? '',

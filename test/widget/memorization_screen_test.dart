@@ -4089,6 +4089,136 @@ void main() {
     },
   );
 
+  testWidgets('Fatiha repeated words do not trigger a haptic when vowels match', (
+    tester,
+  ) async {
+    final haptics = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add('${call.arguments}');
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+    final speech = _FakeWindowedSpeech();
+    await _open(
+      tester,
+      speech,
+      ayahs: [
+        _ayah(1, 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
+        _ayah(2, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ'),
+        _ayah(3, 'الرَّحْمَٰنِ الرَّحِيمِ'),
+      ],
+      continuous: true,
+      localQuranLab: true,
+    );
+    await _tap(tester, 'Start reciting');
+    await _tap(tester, 'Agree and continue');
+    speech.result!(
+      'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+      false,
+    );
+    await tester.pumpAndSettle();
+    for (final start in [8.68, 8.99, 9.40]) {
+      speech.windowStartSeconds = start;
+      speech.result!('الرَّحْمَنِ الرَّحِيمِ', false);
+      await tester.pumpAndSettle();
+    }
+    expect(haptics, isEmpty);
+  });
+
+  testWidgets('Build 153 Fatiha signals vowel mismatch after prior ayahs', (
+    tester,
+  ) async {
+    final haptics = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add('${call.arguments}');
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+    final speech = _FakeWindowedSpeech();
+    await _open(
+      tester,
+      speech,
+      ayahs: [
+        _ayah(1, 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'),
+        _ayah(2, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ'),
+        _ayah(3, 'الرَّحْمَٰنِ الرَّحِيمِ'),
+      ],
+      continuous: true,
+      localQuranLab: true,
+    );
+    await _tap(tester, 'Start reciting');
+    await _tap(tester, 'Agree and continue');
+    speech.result!(
+      'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+      false,
+    );
+    await tester.pumpAndSettle();
+    for (final start in [8.68, 8.99, 9.40]) {
+      speech.windowStartSeconds = start;
+      speech.result!('الرَّحْمَنُ الرَّحِيمُ', false);
+      await tester.pumpAndSettle();
+    }
+    expect(haptics, ['HapticFeedbackType.mediumImpact']);
+  });
+
+  testWidgets(
+    'Build 153 Fatiha vowel mismatch signals after repeated snapshots',
+    (tester) async {
+      final haptics = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            haptics.add('${call.arguments}');
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+      final speech = _FakeWindowedSpeech();
+      await _open(
+        tester,
+        speech,
+        ayahs: [_ayah(3, 'الرَّحْمَٰنِ الرَّحِيمِ')],
+        continuous: true,
+        localQuranLab: true,
+      );
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+      for (final start in [8.68, 8.99, 9.40]) {
+        speech.windowStartSeconds = start;
+        speech.result!('الرَّحْمَنُ الرَّحِيمُ', false);
+        await tester.pumpAndSettle();
+      }
+      expect(haptics, ['HapticFeedbackType.mediumImpact']);
+    },
+  );
+
   testWidgets(
     'Fatiha repeated clear single-word mistake produces live haptic once',
     (tester) async {

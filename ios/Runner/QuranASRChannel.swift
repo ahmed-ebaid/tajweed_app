@@ -502,9 +502,11 @@ final class QuranASRChannel {
           self.previousMode = session.mode
           self.previousOptions = session.categoryOptions
           try session.setCategory(.record, mode: .measurement)
+          var hapticsEnabled = false
           if #available(iOS 13.0, *) {
             do {
               try session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+              hapticsEnabled = true
             } catch {
               NSLog("Quran ASR could not enable recording haptics: %@", error.localizedDescription)
             }
@@ -525,7 +527,10 @@ final class QuranASRChannel {
             retainDebugAudio: retainDebugAudio,
             retainDebugTranscripts: retainDebugTranscripts
           )
-          self.diagnostics.record("capture_started")
+          self.diagnostics.record("capture_started", metrics: ["platform": 1])
+          self.diagnostics.record(
+            hapticsEnabled ? "recording_haptics_enabled" : "recording_haptics_enable_failed"
+          )
           result(nil)
         } catch {
           let original = error
