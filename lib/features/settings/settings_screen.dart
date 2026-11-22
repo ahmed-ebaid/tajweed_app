@@ -16,6 +16,7 @@ import '../../core/services/audio_cache_service.dart';
 import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
+import '../../core/services/quranlab_sdk.dart';
 import '../../core/services/onboarding_service.dart';
 import '../../core/services/seasonal_icon_service.dart';
 import '../onboarding/onboarding_screen.dart';
@@ -163,10 +164,27 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const Divider(height: 0.5, indent: 16),
+          ListTile(
+            leading: const Icon(Icons.mic_none_rounded),
+            title: Text(s.text('recording_sharing')),
+            subtitle: Text(s.text('recording_sharing_subtitle')),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+            onTap: () => _openRecordingSharing(context),
+          ),
+          const Divider(height: 0.5, indent: 16),
           const _AboutSourcesTile(),
         ],
       ),
     );
+  }
+
+  Future<void> _openRecordingSharing(BuildContext context) async {
+    try {
+      await QuranLabSdk.openSharingSettings();
+    } catch (error) {
+      debugPrint('Could not open recording sharing settings: $error');
+      if (context.mounted) _showLinkError(context);
+    }
   }
 
   Future<void> _openStoreListing(BuildContext context) async {
@@ -471,7 +489,7 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
               title: Text(s.text('downloading_recitation')),
               content: ValueListenableBuilder<Map<String, int>>(
                 valueListenable: progress,
-                builder: (_, value, __) {
+                builder: (_, value, _) {
                   final done = value['done'] ?? 0;
                   final total = (value['total'] ?? 1).clamp(1, 99999);
                   final ratio = (done / total).clamp(0.0, 1.0);
@@ -632,7 +650,7 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
           ),
         ) ??
         false;
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
     final reciterId = context.read<RecitationProvider>().selectedReciterId;
     _cancelBulkRecitation = false;
@@ -654,7 +672,7 @@ class _RecitationDownloadTileState extends State<_RecitationDownloadTile> {
             title: Text(s.text('downloading_all_recitations')),
             content: ValueListenableBuilder<Map<String, int>>(
               valueListenable: progress,
-              builder: (_, value, __) {
+              builder: (_, value, _) {
                 final done = value['surahDone'] ?? 0;
                 final total = value['surahTotal'] ?? 114;
                 final currentSurah = value['currentSurah'] ?? 1;
@@ -946,7 +964,7 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
     if (_busy) return;
     final s = _SettingsStrings.of(context);
     final surahNumber = await _askSurahNumber();
-    if (surahNumber == null) return;
+    if (surahNumber == null || !mounted) return;
 
     final tafseerProvider = context.read<TafseerProvider>();
     final tafsirId = tafseerProvider.selectedTafsirId;
@@ -974,7 +992,7 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
             title: Text(s.text('downloading_tafseer')),
             content: ValueListenableBuilder<Map<String, int>>(
               valueListenable: progress,
-              builder: (_, value, __) {
+              builder: (_, value, _) {
                 final done = value['done'] ?? 0;
                 final total = (value['total'] ?? 1).clamp(1, 99999);
                 final ratio = (done / total).clamp(0.0, 1.0);
@@ -1130,7 +1148,7 @@ class _TafseerDownloadTileState extends State<_TafseerDownloadTile> {
             title: Text(s.text('downloading_all_tafseer')),
             content: ValueListenableBuilder<Map<String, int>>(
               valueListenable: progress,
-              builder: (_, value, __) {
+              builder: (_, value, _) {
                 final done = value['surahDone'] ?? 0;
                 final total = value['surahTotal'] ?? 114;
                 final currentSurah = value['currentSurah'] ?? 1;
@@ -1997,7 +2015,7 @@ class _AsyncPickerSheetState<T> extends State<_AsyncPickerSheet<T>> {
                 : ListView.separated(
                     controller: controller,
                     itemCount: _items!.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         const Divider(height: 0.5, indent: 16),
                     itemBuilder: (_, i) {
                       final item = _items![i];
@@ -2040,6 +2058,9 @@ class _SettingsStrings {
       'quran_data_section': 'Quran Data',
       'mushaf_pages_section': 'Mushaf Pages',
       'about_section': 'About',
+      'recording_sharing': 'Recording sharing',
+      'recording_sharing_subtitle':
+          'Optional, with Quran Lab. Turn it off or delete what you shared at any time.',
       'version': 'Version',
       'id_value': 'ID: {value}',
       'select_reciter': 'Select Reciter',
@@ -2154,6 +2175,9 @@ class _SettingsStrings {
       'quran_data_section': 'بيانات القرآن',
       'mushaf_pages_section': 'صفحات المصحف',
       'about_section': 'حول',
+      'recording_sharing': 'مشاركة التسجيلات',
+      'recording_sharing_subtitle':
+          'اختيارية مع Quran Lab. يمكنك إيقافها أو حذف ما شاركته في أي وقت.',
       'version': 'الإصدار',
       'id_value': 'المعرف: {value}',
       'select_reciter': 'اختر القارئ',
@@ -2267,6 +2291,9 @@ class _SettingsStrings {
       'quran_data_section': 'قرآن کا ڈیٹا',
       'mushaf_pages_section': 'مصحف کے صفحات',
       'about_section': 'تعارف',
+      'recording_sharing': 'ریکارڈنگ کا اشتراک',
+      'recording_sharing_subtitle':
+          'Quran Lab کے ساتھ اختیاری۔ آپ کسی بھی وقت اسے بند کر سکتے ہیں یا شیئر کی گئی ریکارڈنگ حذف کر سکتے ہیں۔',
       'version': 'ورژن',
       'id_value': 'آئی ڈی: {value}',
       'select_reciter': 'قاری منتخب کریں',
@@ -2381,6 +2408,9 @@ class _SettingsStrings {
       'quran_data_section': "Kur'an Verisi",
       'mushaf_pages_section': 'Mushaf Sayfaları',
       'about_section': 'Hakkında',
+      'recording_sharing': 'Kayıt paylaşımı',
+      'recording_sharing_subtitle':
+          'İsteğe bağlı, Quran Lab ile. İstediğiniz zaman kapatabilir veya paylaştıklarınızı silebilirsiniz.',
       'version': 'Sürüm',
       'id_value': 'Kimlik: {value}',
       'select_reciter': 'Kari Seç',
@@ -2493,6 +2523,9 @@ class _SettingsStrings {
       'quran_data_section': 'Données du Coran',
       'mushaf_pages_section': 'Pages du mushaf',
       'about_section': 'À propos',
+      'recording_sharing': 'Partage des enregistrements',
+      'recording_sharing_subtitle':
+          'Facultatif, avec Quran Lab. Désactivez-le ou supprimez ce que vous avez partagé à tout moment.',
       'version': 'Version',
       'id_value': 'ID : {value}',
       'select_reciter': 'Choisir un récitateur',
@@ -2623,6 +2656,9 @@ class _SettingsStrings {
       'quran_data_section': 'Data Al-Quran',
       'mushaf_pages_section': 'Halaman Mushaf',
       'about_section': 'Tentang',
+      'recording_sharing': 'Berbagi rekaman',
+      'recording_sharing_subtitle':
+          'Opsional, dengan Quran Lab. Matikan atau hapus yang telah Anda bagikan kapan saja.',
       'version': 'Versi',
       'id_value': 'ID: {value}',
       'select_reciter': 'Pilih qari',
@@ -2740,6 +2776,9 @@ class _SettingsStrings {
       'quran_data_section': 'Koran-Daten',
       'mushaf_pages_section': 'Mushaf-Seiten',
       'about_section': 'Über',
+      'recording_sharing': 'Aufnahmen teilen',
+      'recording_sharing_subtitle':
+          'Freiwillig, mit Quran Lab. Jederzeit ausschalten oder Geteiltes löschen.',
       'version': 'Version',
       'id_value': 'ID: {value}',
       'select_reciter': 'Rezitator auswählen',
@@ -2864,6 +2903,9 @@ class _SettingsStrings {
       'quran_data_section': 'Datos del Corán',
       'mushaf_pages_section': 'Páginas del mushaf',
       'about_section': 'Acerca de',
+      'recording_sharing': 'Compartir grabaciones',
+      'recording_sharing_subtitle':
+          'Opcional, con Quran Lab. Desactívalo o elimina lo que compartiste en cualquier momento.',
       'version': 'Versión',
       'id_value': 'ID: {value}',
       'select_reciter': 'Seleccionar recitador',
