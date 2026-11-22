@@ -685,3 +685,60 @@ describe("Quran Foundation proxy", () => {
     expect(scheduled).toBe(0);
   });
 });
+
+describe("Quran Lab key config", () => {
+  const keyUrl = "https://proxy.example/v1/config/quranlab-key";
+  const devKey = "qlk_v1_devkeyid_secretpart";
+
+  it("serves the configured key to an attested install", async () => {
+    const response = await handleRequest(contentRequest(keyUrl), {
+      ...env,
+      tajweed_practice_development_hifz_key: devKey,
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(await response.json()).toEqual({key: devKey});
+  });
+
+  it("prefers QURANLAB_KEY when both are set", async () => {
+    const response = await handleRequest(contentRequest(keyUrl), {
+      ...env,
+      QURANLAB_KEY: "qlk_v1_prodkeyid_secretpart",
+      tajweed_practice_development_hifz_key: devKey,
+    });
+    expect(await response.json()).toEqual({
+      key: "qlk_v1_prodkeyid_secretpart",
+    });
+  });
+
+  it("prefers the production key secret over the development one", async () => {
+    const response = await handleRequest(contentRequest(keyUrl), {
+      ...env,
+      tajweed_practice_production_hifz_key: "qlk_v1_prodkeyid_secretpart",
+      tajweed_practice_development_hifz_key: devKey,
+    });
+    expect(await response.json()).toEqual({
+      key: "qlk_v1_prodkeyid_secretpart",
+    });
+  });
+
+  it("rejects requests without an access token", async () => {
+    const response = await handleRequest(new Request(keyUrl), {
+      ...env,
+      tajweed_practice_development_hifz_key: devKey,
+    });
+    expect(response.status).toBe(401);
+    expect(await response.text()).not.toContain(devKey);
+  });
+
+  it("reports unavailable when no valid key is configured", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const missing = await handleRequest(contentRequest(keyUrl), env);
+    expect(missing.status).toBe(503);
+    const malformed = await handleRequest(contentRequest(keyUrl), {
+      ...env,
+      tajweed_practice_development_hifz_key: "not-a-key",
+    });
+    expect(malformed.status).toBe(503);
+  });
+});

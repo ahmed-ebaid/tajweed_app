@@ -20,6 +20,7 @@ npx wrangler secret put QF_CLIENT_ID --env=""
 npx wrangler secret put QF_CLIENT_SECRET --env=""
 npx wrangler secret put ATT_TOKEN_SECRET --env=""
 npx wrangler secret put SIMULATOR_TEST_TOKEN --env=""
+npx wrangler secret put tajweed_practice_development_hifz_key --env=""
 ```
 
 Configure the independent production Worker with the production credentials:
@@ -28,6 +29,7 @@ Configure the independent production Worker with the production credentials:
 npx wrangler secret put QF_CLIENT_ID --env production
 npx wrangler secret put QF_CLIENT_SECRET --env production
 npx wrangler secret put ATT_TOKEN_SECRET --env production
+npx wrangler secret put tajweed_practice_production_hifz_key --env production
 npm run deploy:production
 ```
 
@@ -46,6 +48,7 @@ The deployments and credentials remain isolated:
 - `POST /v1/attest/challenge`
 - `POST /v1/attest/register`
 - `POST /v1/attest/token`
+- `GET /v1/config/quranlab-key` (attested installs only)
 - `GET /v2/content/<allowlisted Content API path>`
 - `GET /v2/content/resources/sync`
 - `GET /v2/content/resources/snapshots/{translations|tafsirs|recitations}/{id}`
@@ -66,6 +69,13 @@ The prelive Worker can also accept `x-simulator-test-token` for simulator-only
 integration tests when `SIMULATOR_TEST_TOKEN` is configured. This bypass is
 disabled in production regardless of whether a secret is present, and release
 Flutter builds never send the header.
+
+`GET /v1/config/quranlab-key` returns the Quran Lab TajweedFormer app key to
+installs holding an attestation bearer token (or, on prelive only, the simulator
+test token). It reads `QURANLAB_KEY`, then `tajweed_practice_production_hifz_key`, then
+`tajweed_practice_development_hifz_key`; use a development Quran Lab key on
+prelive and a separate production key on the production Worker. App builds
+that pass `QURANLAB_KEY` with `--dart-define-from-file` skip this route.
 
 `ATT_TOKEN_SECRET` must be an independent random value of at least 32
 characters in each environment. Rotating it immediately invalidates all

@@ -177,6 +177,8 @@ void main() {
             'accepted_text_matches': 0,
             'unaided_text_matches': 0,
             'decoder_error_recordings': 0,
+            'recordings_with_live_haptic': 0,
+            'recordings_with_final_haptic': 0,
             'stalled_verse_keys': <String>[],
           },
         );
@@ -184,6 +186,16 @@ void main() {
         if (outcome['decoder_error_recording'] == true) {
           stats['decoder_error_recordings'] =
               (stats['decoder_error_recordings'] as int) + 1;
+        }
+        final haptics = (outcome['haptic_requests'] as List)
+            .cast<Map<String, dynamic>>();
+        if (haptics.any((event) => event['final'] == false)) {
+          stats['recordings_with_live_haptic'] =
+              (stats['recordings_with_live_haptic'] as int) + 1;
+        }
+        if (haptics.any((event) => event['final'] == true)) {
+          stats['recordings_with_final_haptic'] =
+              (stats['recordings_with_final_haptic'] as int) + 1;
         }
         if (outcome['hifz_completed'] == true) {
           stats['hifz_completed'] = (stats['hifz_completed'] as int) + 1;
@@ -221,7 +233,8 @@ void main() {
               'Word visibility, accepted text-match credit, and UI session ending '
               'are measured separately in isolated-ayah Hifz widget replay. '
               'Not WER, pronunciation accuracy, natural-error detection, microphone trials, '
-              'or evidence of reliable between-ayah transitions.',
+              'or evidence of reliable between-ayah transitions. Haptic requests on '
+              'reference recitations are candidates for review, not confirmed false alerts.',
         }),
       );
     });
@@ -242,6 +255,28 @@ void main() {
         final key = row['verse_key'] as String;
         final parts = key.split(':').map(int.parse).toList();
         final speech = _FakeWindowedSpeech();
+        final hapticRequests = <Map<String, dynamic>>[];
+        Map<String, dynamic>? currentSnapshot;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'HapticFeedback.vibrate' &&
+                currentSnapshot != null) {
+              hapticRequests.add({
+                'final': currentSnapshot!['final'],
+                'audio_end_seconds': currentSnapshot!['end_seconds'],
+                'type': call.arguments,
+              });
+            }
+            return null;
+          },
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
         await _open(
           tester,
           speech,
@@ -280,6 +315,7 @@ void main() {
         var initialRecoveryAttemptsWithoutWords = 0;
         var maxVisibleWords = 0;
         Future<void> deliver(Map<String, dynamic> snapshot) async {
+          currentSnapshot = snapshot;
           speech.windowStartSeconds = (snapshot['start_seconds'] as num)
               .toDouble();
           if (snapshot['decoder_error'] != null &&
@@ -379,6 +415,7 @@ void main() {
           'accepted_text_match': unaided || assisted,
           'unaided_text_match': unaided,
           'decoder_error_recording': row['status'] == 'decoder_error',
+          'haptic_requests': hapticRequests,
           if (recordRevealTiming) 'preview_reveal_timing': revealTiming,
           'revealed_word_counts': tester
               .widget<MushafPageContent>(find.byType(MushafPageContent))

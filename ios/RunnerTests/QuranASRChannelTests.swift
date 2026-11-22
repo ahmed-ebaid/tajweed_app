@@ -153,7 +153,8 @@ final class QuranASRChannelTests: XCTestCase {
         "schemaVersion": 2, "recordingIndex": 0, "cursorIndex": 2,
         "cursorWords": 1, "displayedBefore": 9, "rawCompleted": 0,
         "rawWordIndex": 0, "rawMismatch": 1, "combinedPrefix": 10,
-        "cursorRawPrefix": 0, "cursorTailPrefix": 2
+        "cursorRawPrefix": 0, "cursorTailPrefix": 2,
+        "hapticRequests": 1, "hapticRequestFailures": 0
       ]
     )) { value in
       XCTAssertNil(value)

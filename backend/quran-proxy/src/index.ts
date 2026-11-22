@@ -14,6 +14,9 @@ export interface Env extends AttestationEnv {
   QF_CLIENT_SECRET: string;
   QF_ENV: "prelive" | "production";
   SIMULATOR_TEST_TOKEN?: string;
+  QURANLAB_KEY?: string;
+  tajweed_practice_production_hifz_key?: string;
+  tajweed_practice_development_hifz_key?: string;
 }
 
 interface AccessToken {
@@ -34,6 +37,8 @@ export type Fetcher = (
 const CONTENT_PREFIX = "/v2/content/";
 const ATTESTATION_PREFIX = "/v1/attest/";
 const DIAGNOSTICS_PREFIX = "/v1/asr-diagnostics/";
+const QURANLAB_KEY_PATH = "/v1/config/quranlab-key";
+const QURANLAB_KEY_PATTERN = /^qlk_v1_[A-Za-z0-9_-]+$/;
 const DIAGNOSTICS_DO_KEY = `${"D".repeat(43)}=`;
 const MAX_DIAGNOSTICS_BODY_LENGTH = 10 * 1024 * 1024;
 const TOKEN_SAFETY_WINDOW_MS = 60_000;
@@ -566,6 +571,41 @@ async function handleDiagnosticsRequest(
   return json(internalBody, internal.status, requestId);
 }
 
+// The Quran Lab app key is a client key bound to the app's identifiers; it is
+// served only to attested installs so it stays out of the repository.
+async function handleQuranLabKeyRequest(
+  request: Request,
+  env: Env,
+  requestId: string,
+): Promise<Response> {
+  if (request.method !== "GET") {
+    return json({error: "Method not allowed"}, 405, requestId, {
+      allow: "GET",
+    });
+  }
+  const configurationError = validateAttestationConfiguration(env);
+  if (configurationError) {
+    console.error(`[${requestId}] ${configurationError}`);
+    return json({error: "Service unavailable"}, 503, requestId);
+  }
+  if (
+    !isSimulatorTestAuthorized(request, env) &&
+    !await verifyAccessToken(request.headers.get("authorization"), env)
+  ) {
+    return json({error: "Unauthorized"}, 401, requestId);
+  }
+  const key = (
+    env.QURANLAB_KEY ??
+    env.tajweed_practice_production_hifz_key ??
+    env.tajweed_practice_development_hifz_key
+  )?.trim();
+  if (!key || !QURANLAB_KEY_PATTERN.test(key)) {
+    console.error(`[${requestId}] Quran Lab key is not configured`);
+    return json({error: "Service unavailable"}, 503, requestId);
+  }
+  return json({key}, 200, requestId, {"cache-control": "private, no-store"});
+}
+
 export async function handleRequest(
   request: Request,
   env: Env,
@@ -610,6 +650,9 @@ export async function handleRequest(
   }
   if (url.pathname.startsWith(DIAGNOSTICS_PREFIX)) {
     return handleDiagnosticsRequest(request, url, env, requestId);
+  }
+  if (url.pathname === QURANLAB_KEY_PATH) {
+    return handleQuranLabKeyRequest(request, env, requestId);
   }
   if (!url.pathname.startsWith(CONTENT_PREFIX)) {
     return json({error: "Not found"}, 404, requestId);

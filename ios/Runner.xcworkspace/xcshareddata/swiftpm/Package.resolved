@@ -8,6 +8,15 @@
         "revision" : "07b2ba21d361c223e25e3c1e924288742923f08c",
         "version" : "2.2.1"
       }
+    },
+    {
+      "identity" : "tajweedformer-apple",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Quran-Lab/tajweedformer-apple",
+      "state" : {
+        "revision" : "db5d5cc0d8b7baeb62056641628f3e7f8fec7697",
+        "version" : "4.0.2"
+      }
     }
   ],
   "version" : 2

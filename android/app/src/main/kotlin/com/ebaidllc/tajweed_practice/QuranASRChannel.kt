@@ -532,7 +532,7 @@ class QuranASRChannel(private val activity: Activity) : MethodChannel.MethodCall
                     "generation", "active", "stopping", "schemaVersion", "recordingIndex",
                     "cursorIndex", "cursorWords", "displayedBefore", "rawCompleted",
                     "rawWordIndex", "rawMismatch", "combinedPrefix", "cursorRawPrefix",
-                    "cursorTailPrefix"
+                    "cursorTailPrefix", "hapticRequests", "hapticRequestFailures"
                 )
                 val rawMap = call.arguments as? Map<*, *>
                 if (rawMap == null) {

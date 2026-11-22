@@ -1,7 +1,7 @@
 name: tajweed_practice
 description: A multilingual Quran tajweed practice application
 publish_to: none
-version: 1.1.26+154
+version: 1.1.26+155
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -44,6 +44,7 @@ dependencies:
   app_attest: ^0.2.1
   in_app_review: ^2.0.10       # Native App Store / Google Play review prompt
   url_launcher: ^6.3.2         # Open the support email composer
+  quranlab_tajweedformer: ^4.0.2
 
 dev_dependencies:
   flutter_test:

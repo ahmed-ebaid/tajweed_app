@@ -844,6 +844,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.0"
+  quranlab_tajweedformer:
+    dependency: "direct main"
+    description:
+      name: quranlab_tajweedformer
+      sha256: bf4b2522e8736c800d335560be8a79b5908cb7e9431900a07d52de3ca3c6686b
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.2"
   record_use:
     dependency: transitive
     description:

@@ -51,3 +51,7 @@ app.*.map.json
 assets/mushaf_pages/images.zip
 android/app/src/main/assets/quran-tiny.bin
 android/app/src/main/jniLibs/
+
+# Quran Lab SDK app key (passed with --dart-define-from-file=quranlab.json)
+quranlab.json
+.github/skills/quranlab-sdk/quranlab-sdk.checked

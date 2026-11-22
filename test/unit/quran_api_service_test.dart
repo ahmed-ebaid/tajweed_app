@@ -37,6 +37,26 @@ class _RecordingAdapter implements HttpClientAdapter {
 
 void main() {
   group('QuranApiService routing', () {
+    test('fetches the Quran Lab key from the proxy config route', () async {
+      final adapter = _RecordingAdapter();
+      final contentClient = Dio(
+        BaseOptions(baseUrl: QuranApiService.contentApiBaseUrl),
+      )..httpClientAdapter = adapter;
+      final service = QuranApiService(contentClient: contentClient);
+      const url =
+          'https://tajweed-quran-proxy-production.ebaidllc.workers.dev/v1/config/quranlab-key';
+      adapter.responseBodies[url] = {'key': 'qlk_v1_test_key'};
+
+      expect(await service.fetchQuranLabKey(), 'qlk_v1_test_key');
+      expect(adapter.requests.single.uri.toString(), url);
+
+      adapter.responseBodies[url] = {'key': 'not-a-key'};
+      await expectLater(
+        service.fetchQuranLabKey(),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
     test('uses the app-owned proxy for Content API requests', () async {
       final contentAdapter = _RecordingAdapter();
       final contentClient = Dio(

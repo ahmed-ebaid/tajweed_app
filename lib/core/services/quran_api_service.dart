@@ -200,6 +200,21 @@ class QuranApiService {
     }
   }
 
+  // ─── Quran Lab key ────────────────────────────────────────────────────────
+
+  /// The Quran Lab app key the proxy serves to attested installs.
+  Future<String> fetchQuranLabKey() async {
+    final response = await _contentDio.getUri<Object?>(
+      Uri.parse(contentApiBaseUrl).resolve('/v1/config/quranlab-key'),
+    );
+    final data = response.data;
+    final key = data is Map ? data['key'] : null;
+    if (key is! String || !key.startsWith('qlk_v1_')) {
+      throw const FormatException('Invalid Quran Lab key response');
+    }
+    return key;
+  }
+
   // ─── Surahs ───────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> fetchSurahList({

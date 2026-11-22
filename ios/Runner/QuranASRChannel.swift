@@ -408,7 +408,7 @@ final class QuranASRChannel {
           "generation", "active", "stopping", "schemaVersion", "recordingIndex",
           "cursorIndex", "cursorWords", "displayedBefore", "rawCompleted",
           "rawWordIndex", "rawMismatch", "combinedPrefix", "cursorRawPrefix",
-          "cursorTailPrefix"
+          "cursorTailPrefix", "hapticRequests", "hapticRequestFailures"
         ]
         guard let fields = call.arguments as? [String: NSNumber],
               fields.keys.allSatisfy({ allowed.contains($0) }),
