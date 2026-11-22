@@ -110,6 +110,7 @@ class TajweedFormerSpeechInput
   AudioRecorder? _recorder;
   StreamSubscription<Uint8List>? _audio;
   Completer<void>? _audioDone;
+  Timer? _audioWatch;
   Future<void> _pushing = Future.value();
   int? _carry;
   final _take = <Uint8List>[];
@@ -178,6 +179,7 @@ class TajweedFormerSpeechInput
       }
       _session = session;
       _readyMs = _starting.elapsedMilliseconds;
+      if (keepTake) _watchForAudio(generation);
       _aligner = aligner;
       _chunks = session.chunks.listen(
         (chunk) => _onChunk(generation, chunk.decoded),
@@ -248,6 +250,17 @@ class TajweedFormerSpeechInput
     return session;
   }
 
+  /// A microphone that opens but never delivers samples (a stale audio
+  /// session after a call, say) would otherwise leave the take silent.
+  void _watchForAudio(int generation) {
+    _audioWatch?.cancel();
+    _audioWatch = Timer(const Duration(seconds: 3), () {
+      if (generation == _generation && _takeBytes == 0 && _droppedBytes == 0) {
+        _fail(generation, 'no_audio');
+      }
+    });
+  }
+
   void _onAudio(TajweedSession session, int generation, Uint8List bytes) {
     if (generation != _generation) return;
     final carry = _carry;
@@ -278,6 +291,8 @@ class TajweedFormerSpeechInput
   /// Stops the app's microphone and waits until every sample reached the SDK.
   Future<void> _stopRecorder() async {
     final recorder = _recorder;
+    _audioWatch?.cancel();
+    _audioWatch = null;
     if (recorder == null) return;
     _recorder = null;
     try {

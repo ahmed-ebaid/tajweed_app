@@ -88,6 +88,10 @@ class TajweedRecitationAligner {
   int _committedHeard = 0;
   int _committedWord = 0;
 
+  /// Words that were once shown correct in this take. A later pass over
+  /// them, even a wrong one, never takes that back.
+  final Set<int> _shownCorrect = {};
+
   /// Each judged word's alignment cost on the last [align], for diagnostics.
   final List<double> lastWordCosts = [];
 
@@ -468,9 +472,10 @@ class TajweedRecitationAligner {
       lastWordCosts.add(d);
       final similar = d <= _allowed(w);
       if (!similar && w == lastWord && !isFinal) break;
+      if (similar) _shownCorrect.add(w);
       final start = judgment.pass.heardFirst[w];
       final end = judgment.pass.heardEnd[w];
-      if (similar) {
+      if (similar || _shownCorrect.contains(w)) {
         words.addAll(_spelling[w]);
       } else if (_split[w]) {
         // A part of a word recited in parts (الم): its heard units would
