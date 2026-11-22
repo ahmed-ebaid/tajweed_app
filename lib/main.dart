@@ -15,6 +15,8 @@ import 'core/providers/reader_navigation_provider.dart';
 import 'core/providers/streak_provider.dart';
 import 'core/providers/recitation_provider.dart';
 import 'core/providers/tafseer_provider.dart';
+import 'core/services/quran_asr_speech_input.dart';
+import 'core/services/tajweedformer_speech_input.dart';
 import 'core/theme/app_theme.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'root_scaffold.dart';
@@ -95,6 +97,13 @@ void main() {
           child: const TajweedApp(),
         ),
       );
+      if (quranAsrExperimentEnabled &&
+          quranAsrUsesTajweedFormer &&
+          !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.android)) {
+        unawaited(TajweedFormerSpeechInput.prefetch());
+      }
     },
     (error, stack) {
       runApp(_ErrorApp(message: 'Uncaught error:\n$error'));

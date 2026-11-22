@@ -14,6 +14,7 @@ import '../../core/services/memorization_speech_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/quran_asr_speech_input.dart';
+import '../../core/services/tajweedformer_speech_input.dart';
 import '../reader/memorization_screen.dart';
 import 'quran_asr_experiment_screen.dart';
 
@@ -253,7 +254,9 @@ class _HifzScreenState extends State<HifzScreen> {
               speechInput: useNativeStreaming
                   ? MemorizationSpeechService.instance
                   : useLocalLabEngine
-                  ? QuranAsrSpeechInput()
+                  ? quranAsrUsesTajweedFormer
+                        ? TajweedFormerSpeechInput()
+                        : QuranAsrSpeechInput()
                   : null,
               ayahs: ayahs,
               loadPage: (page) => page == ayahs.first.pageNumber

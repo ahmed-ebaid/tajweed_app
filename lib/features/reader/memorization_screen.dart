@@ -9,6 +9,7 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/models/tajweed_models.dart';
 import '../../core/services/memorization_speech_service.dart';
 import '../../core/services/quran_asr_speech_input.dart';
+import '../../core/services/tajweedformer_speech_input.dart';
 import '../../core/services/hifz_content_service.dart';
 import '../../core/services/speech_comparison_service.dart';
 import 'mushaf_page_view.dart';
@@ -1159,6 +1160,9 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       _startingSpeechGeneration = generation;
       _lastPreviewText = null;
       final input = _speech;
+      if (input is ExpectedRecitationSpeechInput) {
+        input.expect(widget.ayahs.sublist(startIndex));
+      }
       await input.start(
         onResult: (text, isFinal) {
           if (!mounted || generation != _generation || !_acceptResults) return;

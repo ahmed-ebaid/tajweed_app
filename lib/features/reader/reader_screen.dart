@@ -28,6 +28,7 @@ import '../../core/services/quran_api_service.dart';
 import '../../core/services/hifz_content_service.dart';
 import '../../core/services/memorization_speech_service.dart';
 import '../../core/services/quran_asr_speech_input.dart';
+import '../../core/services/tajweedformer_speech_input.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/review_prompt_service.dart';
 import 'widgets/daily_lesson_focus.dart';
@@ -3705,7 +3706,9 @@ class _ReaderScreenState extends State<ReaderScreen>
               speechInput: useNativeStreaming
                   ? MemorizationSpeechService.instance
                   : useLocalLabEngine
-                  ? QuranAsrSpeechInput()
+                  ? quranAsrUsesTajweedFormer
+                        ? TajweedFormerSpeechInput()
+                        : QuranAsrSpeechInput()
                   : null,
               ayahs: ayahs,
               loadPage: (page) => page == ayahs.first.pageNumber
