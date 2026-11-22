@@ -84,6 +84,21 @@ void main() {
     );
   });
 
+  test('an unfinished الم shows no stray letter', () {
+    final aligner = TajweedRecitationAligner([
+      TajweedExpectedAyah(
+        referenceWords: [u('ء a ل i ف'), u('ل aa م'), u('م ii م')],
+        textWords: const ['الم'],
+      ),
+    ]);
+    expect(aligner.align(u('ء a ل i ف ل aa م'), isFinal: true), '');
+  });
+
+  test('sound before a resumed word does not spoil it', () {
+    final heard = [u('ء ii'), _hamd[2], _hamd[3]];
+    expect(_aligner().align(flat(heard), isFinal: true), 'رب العالمين');
+  });
+
   test('resuming mid-ayah starts at the recited word', () {
     expect(
       _aligner().align(flat([_hamd[2], _hamd[3]]), isFinal: true),

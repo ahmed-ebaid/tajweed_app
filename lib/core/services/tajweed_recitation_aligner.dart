@@ -79,6 +79,7 @@ class TajweedRecitationAligner {
   final List<int> _ayahStart = [];
   final List<int> _consonants = [];
   final List<List<String>> _spelling = [];
+  final List<bool> _split = [];
 
   /// Recited before the ayahs and not judged (isti'adha by default).
   final List<List<int>> openings;
@@ -114,6 +115,7 @@ class TajweedRecitationAligner {
             ? k + 1
             : (k + 1) * textCount ~/ refCount;
         _spelling.add(ayah.textWords.sublist(from, to));
+        _split.add(refCount > textCount);
       }
     }
   }
@@ -250,6 +252,7 @@ class TajweedRecitationAligner {
     final cost = Float64List((n + 1) * width);
     final back = Uint8List((n + 1) * width);
     final restartFrom = Int32List((n + 1) * width);
+    final noiseCell = Uint8List((n + 1) * width);
     for (var j = 1; j <= m; j++) {
       final r = base + j - 1;
       final delete = cost[j - 1] + _gap(_ref[r]);
@@ -278,14 +281,21 @@ class TajweedRecitationAligner {
       final noise = !_started && i <= leadingRows + 1;
       cost[row] = cost[up] + (noise ? _leadingNoiseCost : insert);
       back[row] = _insert;
-      if (noise) leadingRows = i;
+      if (noise) {
+        leadingRows = i;
+        noiseCell[row] = 1;
+      }
       for (var j = 1; j <= m; j++) {
         final r = _ref[base + j - 1];
         var best =
             cost[up + j - 1] +
             _substitute(h, r, strict: _strictVowel(h, base + j - 1));
         var move = _match;
-        final ins = cost[up + j] + insert;
+        // Noise may also come ahead of the word a take resumes from.
+        final resumeNoise =
+            noise && (i == 1 ? back[j] == _skip : noiseCell[up + j] == 1);
+        final ins =
+            cost[up + j] + (resumeNoise ? _leadingNoiseCost : insert);
         if (ins < best) {
           best = ins;
           move = _insert;
@@ -297,6 +307,7 @@ class TajweedRecitationAligner {
         }
         cost[row + j] = best;
         back[row + j] = move;
+        if (move == _insert && resumeNoise) noiseCell[row + j] = 1;
       }
       // A reciter may go back to an earlier word of the same ayah, or to the
       // start of an earlier ayah, and repeat from there. Words that recur
@@ -318,6 +329,7 @@ class TajweedRecitationAligner {
           if (from + _restartCost < here) {
             cost[row + j] = from + _restartCost;
             back[row + j] = _restart;
+            noiseCell[row + j] = 0;
             restartFrom[row + j] = anyAyah ? laterJ : inAyahJ;
             if (j == 0 && leadingRows == i) leadingRows = i - 1;
           }
@@ -343,6 +355,7 @@ class TajweedRecitationAligner {
         if (del < cost[row + j]) {
           cost[row + j] = del;
           back[row + j] = _delete;
+          noiseCell[row + j] = 0;
         }
       }
     }
@@ -371,7 +384,7 @@ class TajweedRecitationAligner {
         continue;
       }
       final pass = passes.last;
-      if (move == _insert && j == 0 && i <= leadingRows) {
+      if (move == _insert && noiseCell[i * width + j] == 1) {
         i--;
         continue;
       }
@@ -459,6 +472,9 @@ class TajweedRecitationAligner {
       final end = judgment.pass.heardEnd[w];
       if (similar) {
         words.addAll(_spelling[w]);
+      } else if (_split[w]) {
+        // A part of a word recited in parts (الم): its heard units would
+        // show as a stray letter, so the word is left out instead.
       } else if (start != null &&
           end != null &&
           heard.sublist(start, end).any(_isConsonant)) {
