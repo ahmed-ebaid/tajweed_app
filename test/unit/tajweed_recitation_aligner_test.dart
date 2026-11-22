@@ -76,6 +76,14 @@ void main() {
     expect(text, isNot(contains('الحمد لله رب العالمين الرحمن')));
   });
 
+  test('sound before the first word does not spoil it', () {
+    final heard = [u('ت i ش ح a ر'), ..._hamd];
+    expect(
+      _aligner().align(flat(heard), isFinal: true),
+      'الحمد لله رب العالمين',
+    );
+  });
+
   test('resuming mid-ayah starts at the recited word', () {
     expect(
       _aligner().align(flat([_hamd[2], _hamd[3]]), isFinal: true),

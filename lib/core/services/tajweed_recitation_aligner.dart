@@ -63,6 +63,7 @@ class TajweedRecitationAligner {
   ];
 
   static const _resumeSkipCost = 0.02;
+  static const _leadingNoiseCost = 0.1;
   static const _restartCost = 0.5;
   static const _restartCostPerUnit = 0.04;
   static const _openingTolerance = 0.2;
@@ -265,13 +266,19 @@ class TajweedRecitationAligner {
         }
       }
     }
+    // Rows whose start column is reached only through leading noise.
+    var leadingRows = 0;
     for (var i = 1; i <= n; i++) {
       final h = heard[i - 1];
       final insert = _gap(h);
       final row = i * width;
       final up = row - width;
-      cost[row] = cost[up] + insert;
+      // Before the take has started, sound ahead of the first word (a cough,
+      // a breath, a mumbled start) is noise, not part of that word.
+      final noise = !_started && i <= leadingRows + 1;
+      cost[row] = cost[up] + (noise ? _leadingNoiseCost : insert);
       back[row] = _insert;
+      if (noise) leadingRows = i;
       for (var j = 1; j <= m; j++) {
         final r = _ref[base + j - 1];
         var best =
@@ -312,6 +319,7 @@ class TajweedRecitationAligner {
             cost[row + j] = from + _restartCost;
             back[row + j] = _restart;
             restartFrom[row + j] = anyAyah ? laterJ : inAyahJ;
+            if (j == 0 && leadingRows == i) leadingRows = i - 1;
           }
         }
         if (j > 0) {
@@ -363,6 +371,10 @@ class TajweedRecitationAligner {
         continue;
       }
       final pass = passes.last;
+      if (move == _insert && j == 0 && i <= leadingRows) {
+        i--;
+        continue;
+      }
       // Extra sounds between two words belong to the word that should have
       // come next, not to the finished word before them.
       final column =
