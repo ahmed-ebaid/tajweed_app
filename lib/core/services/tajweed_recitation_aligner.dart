@@ -315,12 +315,11 @@ class TajweedRecitationAligner {
       if (cost[last + j] < cost[last + endJ]) endJ = j;
     }
 
-    final firstWord = _wordStart.length;
-    final wordCost = <int, double>{};
-    final heardFirst = <int, int>{};
-    final heardEnd = <int, int>{};
+    // Each pass is a stretch recited without going back; the last pass
+    // comes first. A word recited in several passes is judged by its best
+    // complete attempt, so repeating corrects a word but never spoils one.
+    final passes = <_Pass>[_Pass(endJ)];
     var startJ = 0;
-    var abandonFrom = firstWord;
     var i = n;
     var j = endJ;
     while (i > 0 || j > 0) {
@@ -330,11 +329,11 @@ class TajweedRecitationAligner {
         break;
       }
       if (move == _restart) {
-        // Words from here on were recited again later; judge the later pass.
-        abandonFrom = math.min(abandonFrom, _wordOfUnit[base + j]);
         j = restartFrom[i * width + j];
+        passes.add(_Pass(j));
         continue;
       }
+      final pass = passes.last;
       final column = move == _insert ? math.max(j, 1) : j;
       final word = column == 0
           ? _committedWord
@@ -342,12 +341,10 @@ class TajweedRecitationAligner {
       final before =
           cost[(move == _delete ? i : i - 1) * width +
               (move == _insert ? j : j - 1)];
-      if (word < abandonFrom) {
-        wordCost[word] = (wordCost[word] ?? 0) + cost[i * width + j] - before;
-        if (move != _delete) {
-          heardFirst[word] = i - 1;
-          heardEnd.putIfAbsent(word, () => i);
-        }
+      pass.cost[word] = (pass.cost[word] ?? 0) + cost[i * width + j] - before;
+      if (move != _delete) {
+        pass.heardFirst[word] = i - 1;
+        pass.heardEnd.putIfAbsent(word, () => i);
       }
       switch (move) {
         case _match:
@@ -359,29 +356,49 @@ class TajweedRecitationAligner {
           j--;
       }
     }
-    if (endJ == startJ) {
+    if (endJ == startJ && passes.length == 1) {
       return _TailResult(isFinal ? [spell(heard)] : const [], const []);
     }
     final first = _wordOfUnit[base + startJ];
-    final lastWord = _wordOfUnit[base + endJ - 1];
+    var lastWord = endJ > 0 ? _wordOfUnit[base + endJ - 1] : first;
+    final best = <int, ({double cost, _Pass pass, bool partial})>{};
+    final heardEnd = <int, int>{};
+    for (var p = 0; p < passes.length; p++) {
+      final pass = passes[p];
+      for (final MapEntry(key: w, value: c) in pass.cost.entries) {
+        final end = pass.heardEnd[w];
+        if (end != null) {
+          heardEnd[w] = math.max(heardEnd[w] ?? 0, end);
+        }
+        final reachedEnd = base + pass.reach >= _wordEnd[w];
+        if (p > 0 && !reachedEnd) continue;
+        var d = c;
+        final partial = p == 0 && w == lastWord && !reachedEnd;
+        if (partial) {
+          for (var r = base + endJ; r < _wordEnd[w]; r++) {
+            d += _gap(_ref[r]);
+          }
+        }
+        final current = best[w];
+        if (current == null || d < current.cost) {
+          best[w] = (cost: d, pass: pass, partial: partial);
+        }
+        if (p > 0) lastWord = math.max(lastWord, w);
+      }
+    }
     final words = <String>[];
     final judged = <_JudgedWord>[];
     var heardDone = 0;
-    for (var w = math.min(first, firstWord); w <= lastWord; w++) {
-      if (w < first) continue;
-      final partial = w == lastWord && base + endJ < _wordEnd[w];
-      if (partial && !isFinal) break;
-      var d = wordCost[w] ?? 0;
-      if (partial) {
-        for (var r = base + endJ; r < _wordEnd[w]; r++) {
-          d += _gap(_ref[r]);
-        }
-      }
+    for (var w = first; w <= lastWord; w++) {
+      final judgment = best[w];
+      if (judgment == null) continue;
+      if (judgment.partial && !isFinal) break;
+      final d = judgment.cost;
       lastWordCosts.add(d);
       final similar = d <= _allowed(w);
       if (!similar && w == lastWord && !isFinal) break;
-      final start = heardFirst[w];
-      final end = heardEnd[w];
+      final start = judgment.pass.heardFirst[w];
+      final end = judgment.pass.heardEnd[w];
       if (similar) {
         words.addAll(_spelling[w]);
       } else if (start != null &&
@@ -389,7 +406,7 @@ class TajweedRecitationAligner {
           heard.sublist(start, end).any(_isConsonant)) {
         words.add(spell(heard.sublist(start, end)));
       }
-      if (end != null) heardDone = end;
+      heardDone = math.max(heardDone, heardEnd[w] ?? 0);
       judged.add(_JudgedWord(w, heardDone, words.length));
     }
     return _TailResult(words, judged);
@@ -451,6 +468,16 @@ class _JudgedWord {
   final int outputEnd;
 
   const _JudgedWord(this.word, this.heardEnd, this.outputEnd);
+}
+
+class _Pass {
+  /// How far into the reference this pass went (a column of the alignment).
+  final int reach;
+  final cost = <int, double>{};
+  final heardFirst = <int, int>{};
+  final heardEnd = <int, int>{};
+
+  _Pass(this.reach);
 }
 
 class _TailResult {

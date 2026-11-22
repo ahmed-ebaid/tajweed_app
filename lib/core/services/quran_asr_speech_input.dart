@@ -155,47 +155,13 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
 
       // Snapshot this recording before waiting for an earlier HTTP upload.
       await previousUpload;
-      final origin = Uri.parse(QuranApiService.contentApiBaseUrl).origin;
-      final dio =
-          client ??
-          Dio(
-            BaseOptions(
-              baseUrl: origin,
-              connectTimeout: const Duration(seconds: 15),
-              receiveTimeout: const Duration(seconds: 30),
-              sendTimeout: const Duration(seconds: 30),
-              contentType: Headers.jsonContentType,
-            ),
-          );
-
-      final headers = <String, String>{};
-      if (QuranAttestationService.appAttestBypassEnabled) {
-        final proxyTestToken = QuranAttestationService.proxyTestToken;
-        if (proxyTestToken != null) {
-          headers['x-simulator-test-token'] = proxyTestToken;
-        }
-      } else if (client == null) {
-        try {
-          final attestation = QuranAttestationService.forContentApi(
-            QuranApiService.contentApiBaseUrl,
-          );
-          headers['authorization'] =
-              'Bearer ${await attestation.accessToken()}';
-        } catch (error) {
-          debugPrint('Quran ASR diagnostics token skipped: $error');
-        }
-      }
-
-      await dio.post<Map<String, dynamic>>(
-        '/v1/asr-diagnostics/upload',
-        data: {
-          'id': id,
-          'verse_key': verseKey,
-          'app_version': build.isEmpty ? appVersion : '$appVersion+$build',
-          'diagnostics_jsonl': diagnosticsJsonl,
-          'snapshots': snapshots,
-        },
-        options: Options(headers: headers),
+      await _postCloudDiagnostics(
+        id: id,
+        verseKey: verseKey,
+        build: build,
+        diagnosticsJsonl: diagnosticsJsonl,
+        snapshots: snapshots,
+        client: client,
       );
       return true;
     } catch (error) {
@@ -208,6 +174,111 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
         _uploadInFlight = null;
       }
     }
+  }
+
+  /// The installed build number ("159"), or empty when the platform has no
+  /// lab channel.
+  static Future<String> appBuild() async {
+    if (kIsWeb || !_isQuranAsrSupportedPlatform) return '';
+    try {
+      return await _channel.invokeMethod<String>('appBuild') ?? '';
+    } on PlatformException {
+      return '';
+    } on MissingPluginException {
+      return '';
+    }
+  }
+
+  /// Uploads a diagnostics bundle another lab engine assembled in memory:
+  /// up to six snapshots of `{slot, json, wav_base64}`.
+  static Future<bool> uploadBundleToCloud({
+    required String id,
+    required String verseKey,
+    required String diagnosticsJsonl,
+    required List<Map<String, Object>> snapshots,
+    Dio? client,
+  }) async {
+    if (!quranAsrExperimentEnabled ||
+        kIsWeb ||
+        !_isQuranAsrSupportedPlatform) {
+      return false;
+    }
+    final previousUpload = _uploadInFlight;
+    final completer = Completer<void>();
+    _uploadInFlight = completer.future;
+    try {
+      final build = await appBuild();
+      await previousUpload;
+      await _postCloudDiagnostics(
+        id: id,
+        verseKey: verseKey,
+        build: build,
+        diagnosticsJsonl: diagnosticsJsonl,
+        snapshots: snapshots,
+        client: client,
+      );
+      return true;
+    } catch (error) {
+      debugPrint('Lab cloud diagnostics upload skipped: $error');
+      return false;
+    } finally {
+      await previousUpload;
+      completer.complete();
+      if (identical(_uploadInFlight, completer.future)) {
+        _uploadInFlight = null;
+      }
+    }
+  }
+
+  static Future<void> _postCloudDiagnostics({
+    required String id,
+    required String verseKey,
+    required String build,
+    required String diagnosticsJsonl,
+    required List<Map<String, Object>> snapshots,
+    Dio? client,
+  }) async {
+    final origin = Uri.parse(QuranApiService.contentApiBaseUrl).origin;
+    final dio =
+        client ??
+        Dio(
+          BaseOptions(
+            baseUrl: origin,
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 30),
+            sendTimeout: const Duration(seconds: 60),
+            contentType: Headers.jsonContentType,
+          ),
+        );
+
+    final headers = <String, String>{};
+    if (QuranAttestationService.appAttestBypassEnabled) {
+      final proxyTestToken = QuranAttestationService.proxyTestToken;
+      if (proxyTestToken != null) {
+        headers['x-simulator-test-token'] = proxyTestToken;
+      }
+    } else if (client == null) {
+      try {
+        final attestation = QuranAttestationService.forContentApi(
+          QuranApiService.contentApiBaseUrl,
+        );
+        headers['authorization'] = 'Bearer ${await attestation.accessToken()}';
+      } catch (error) {
+        debugPrint('Quran ASR diagnostics token skipped: $error');
+      }
+    }
+
+    await dio.post<Map<String, dynamic>>(
+      '/v1/asr-diagnostics/upload',
+      data: {
+        'id': id,
+        'verse_key': verseKey,
+        'app_version': build.isEmpty ? appVersion : '$appVersion+$build',
+        'diagnostics_jsonl': diagnosticsJsonl,
+        'snapshots': snapshots,
+      },
+      options: Options(headers: headers),
+    );
   }
 
   Future<void> recordProgress({

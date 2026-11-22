@@ -411,6 +411,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'Your voice and recitation can reveal sensitive religious information. The phone’s speech service may send audio to Apple, Google, or your configured recognition provider. Their processing and retention rules apply. This app does not save recordings or transcripts or send them to Ebaid LLC or Quran.Foundation. Arabic recognition and offline support vary by device. Continue only if you agree; hints and reference audio work without voice access.',
     'mem_agree': 'Agree and continue',
+    'mem_share_takes_title': 'Share recordings?',
+    'mem_share_takes_body':
+        'Help improve recognition: send the recordings of your practice and what the app heard to the Tajweed team (Ebaid LLC). They are used only to test recognition and are deleted after 30 days. If you choose Don’t share, nothing is sent and the app works the same.',
+    'mem_share_takes_yes': 'Share',
+    'mem_share_takes_no': 'Don’t share',
     'mem_listen': 'Recite ayah',
     'mem_stop': 'Stop and check',
     'mem_hint': 'Reveal as a hint',
@@ -444,6 +449,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'قد يكشف صوتك وتلاوتك معلومات دينية حساسة. قد ترسل خدمة التعرف على الكلام في الهاتف الصوت إلى Apple أو Google أو مزود التعرف الذي اخترته، وتسري قواعدهم للمعالجة والاحتفاظ. لا يحفظ التطبيق التسجيلات أو النصوص المتعرّف عليها ولا يرسلها إلى Ebaid LLC أو Quran.Foundation. يختلف دعم العربية والعمل دون اتصال حسب الجهاز. تابع فقط إذا وافقت؛ يمكن استخدام التلميحات والتلاوة المرجعية دون إذن صوتي.',
     'mem_agree': 'أوافق وأتابع',
+    'mem_share_takes_title': 'مشاركة التسجيلات؟',
+    'mem_share_takes_body':
+        'ساعد في تحسين التعرّف على التلاوة: أرسل تسجيلات تدريبك وما سمعه التطبيق إلى فريق تطبيق تجويد (Ebaid LLC). تُستخدم فقط لاختبار التعرّف وتُحذف بعد 30 يومًا. إذا اخترت «عدم المشاركة» فلن يُرسل شيء ويعمل التطبيق كالمعتاد.',
+    'mem_share_takes_yes': 'مشاركة',
+    'mem_share_takes_no': 'عدم المشاركة',
     'mem_listen': 'تلاوة الآية',
     'mem_stop': 'إيقاف ومقارنة',
     'mem_hint': 'إظهار كتلميح',
@@ -476,6 +486,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'آپ کی آواز اور تلاوت حساس مذہبی معلومات ظاہر کر سکتی ہیں۔ فون کی آواز پہچاننے والی سروس آڈیو Apple، Google یا آپ کے منتخب فراہم کنندہ کو بھیج سکتی ہے۔ ان کی پراسیسنگ اور محفوظ رکھنے کی شرائط لاگو ہوتی ہیں۔ یہ ایپ ریکارڈنگ یا پہچانا گیا متن محفوظ نہیں کرتی اور Ebaid LLC یا Quran.Foundation کو نہیں بھیجتی۔ عربی اور آف لائن سہولت آلے کے مطابق مختلف ہے۔ صرف رضامندی پر آگے بڑھیں؛ اشارے اور نمونہ تلاوت بغیر صوتی اجازت دستیاب ہیں۔',
     'mem_agree': 'متفق ہوں، آگے بڑھیں',
+    'mem_share_takes_title': 'ریکارڈنگز شیئر کریں؟',
+    'mem_share_takes_body':
+        'تلاوت کی شناخت بہتر بنانے میں مدد کریں: اپنی مشق کی ریکارڈنگز اور ایپ نے جو سنا وہ تجوید ٹیم (Ebaid LLC) کو بھیجیں۔ یہ صرف شناخت کی جانچ کے لیے استعمال ہوتی ہیں اور 30 دن بعد حذف کر دی جاتی ہیں۔ اگر آپ «شیئر نہ کریں» منتخب کریں تو کچھ نہیں بھیجا جائے گا اور ایپ ویسے ہی کام کرے گی۔',
+    'mem_share_takes_yes': 'شیئر کریں',
+    'mem_share_takes_no': 'شیئر نہ کریں',
     'mem_listen': 'آیت سنائیں',
     'mem_stop': 'روکیں اور جانچیں',
     'mem_hint': 'اشارے کے طور پر دکھائیں',
@@ -508,6 +523,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'Sesiniz ve okuyuşunuz hassas dinî bilgiler içerebilir. Telefonun konuşma hizmeti sesi Apple, Google veya seçtiğiniz sağlayıcıya gönderebilir. Onların işleme ve saklama kuralları geçerlidir. Uygulama kayıtları veya metinleri saklamaz, Ebaid LLC ya da Quran.Foundation’a göndermez. Arapça ve çevrimdışı destek cihaza göre değişir. Yalnızca kabul ediyorsanız devam edin; ipuçları ve örnek okuyuş ses izni olmadan kullanılabilir.',
     'mem_agree': 'Kabul et ve devam et',
+    'mem_share_takes_title': 'Kayıtlar paylaşılsın mı?',
+    'mem_share_takes_body':
+        'Tanımayı geliştirmeye yardım edin: alıştırma kayıtlarınızı ve uygulamanın duyduklarını Tajweed ekibine (Ebaid LLC) gönderin. Yalnızca tanımayı test etmek için kullanılır ve 30 gün sonra silinir. Paylaşma\'yı seçerseniz hiçbir şey gönderilmez ve uygulama aynı şekilde çalışır.',
+    'mem_share_takes_yes': 'Paylaş',
+    'mem_share_takes_no': 'Paylaşma',
     'mem_listen': 'Ayeti oku',
     'mem_stop': 'Durdur ve kontrol et',
     'mem_hint': 'İpucu olarak göster',
@@ -540,6 +560,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'Votre voix et votre récitation peuvent révéler des informations religieuses sensibles. Le service vocal du téléphone peut envoyer le son à Apple, Google ou au fournisseur choisi. Leurs règles de traitement et de conservation s’appliquent. L’application ne conserve ni enregistrements ni transcriptions et ne les envoie pas à Ebaid LLC ou Quran.Foundation. L’arabe et le mode hors ligne dépendent de l’appareil. Continuez uniquement si vous acceptez ; les indices et la récitation de référence fonctionnent sans autorisation vocale.',
     'mem_agree': 'Accepter et continuer',
+    'mem_share_takes_title': 'Partager les enregistrements ?',
+    'mem_share_takes_body':
+        'Aidez à améliorer la reconnaissance : envoyez les enregistrements de votre entraînement et ce que l’app a entendu à l’équipe Tajweed (Ebaid LLC). Ils servent uniquement à tester la reconnaissance et sont supprimés après 30 jours. Si vous choisissez Ne pas partager, rien n’est envoyé et l’app fonctionne de la même façon.',
+    'mem_share_takes_yes': 'Partager',
+    'mem_share_takes_no': 'Ne pas partager',
     'mem_listen': 'Réciter le verset',
     'mem_stop': 'Arrêter et vérifier',
     'mem_hint': 'Révéler comme indice',
@@ -573,6 +598,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'Suara dan bacaan Anda dapat mengungkap informasi agama yang sensitif. Layanan ucapan ponsel dapat mengirim audio ke Apple, Google, atau penyedia yang Anda pilih. Aturan pemrosesan dan penyimpanan mereka berlaku. Aplikasi tidak menyimpan rekaman atau transkrip maupun mengirimkannya ke Ebaid LLC atau Quran.Foundation. Dukungan bahasa Arab dan luring berbeda menurut perangkat. Lanjutkan hanya jika setuju; petunjuk dan audio contoh tersedia tanpa izin suara.',
     'mem_agree': 'Setuju dan lanjutkan',
+    'mem_share_takes_title': 'Bagikan rekaman?',
+    'mem_share_takes_body':
+        'Bantu tingkatkan pengenalan: kirim rekaman latihan Anda dan apa yang didengar aplikasi ke tim Tajweed (Ebaid LLC). Rekaman hanya dipakai untuk menguji pengenalan dan dihapus setelah 30 hari. Jika Anda memilih Jangan bagikan, tidak ada yang dikirim dan aplikasi tetap berfungsi sama.',
+    'mem_share_takes_yes': 'Bagikan',
+    'mem_share_takes_no': 'Jangan bagikan',
     'mem_listen': 'Bacakan ayat',
     'mem_stop': 'Hentikan dan periksa',
     'mem_hint': 'Tampilkan sebagai petunjuk',
@@ -606,6 +636,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'Deine Stimme und Rezitation können sensible religiöse Informationen offenbaren. Der Sprachdienst des Telefons kann Audio an Apple, Google oder deinen gewählten Anbieter senden. Deren Verarbeitungs- und Aufbewahrungsregeln gelten. Die App speichert keine Aufnahmen oder Transkripte und sendet sie nicht an Ebaid LLC oder Quran.Foundation. Arabisch- und Offline-Unterstützung hängen vom Gerät ab. Fahre nur mit Zustimmung fort; Hinweise und Referenzaudio funktionieren ohne Sprachfreigabe.',
     'mem_agree': 'Zustimmen und fortfahren',
+    'mem_share_takes_title': 'Aufnahmen teilen?',
+    'mem_share_takes_body':
+        'Hilf, die Erkennung zu verbessern: Sende die Aufnahmen deiner Übung und das, was die App gehört hat, an das Tajweed-Team (Ebaid LLC). Sie werden nur zum Testen der Erkennung verwendet und nach 30 Tagen gelöscht. Wenn du „Nicht teilen“ wählst, wird nichts gesendet und die App funktioniert genauso.',
+    'mem_share_takes_yes': 'Teilen',
+    'mem_share_takes_no': 'Nicht teilen',
     'mem_listen': 'Vers rezitieren',
     'mem_stop': 'Stoppen und prüfen',
     'mem_hint': 'Als Hinweis zeigen',
@@ -640,6 +675,11 @@ const memorizationTranslations = <String, Map<String, String>>{
     'mem_consent':
         'Tu voz y recitación pueden revelar información religiosa sensible. El servicio de voz del teléfono puede enviar audio a Apple, Google o tu proveedor elegido. Se aplican sus normas de procesamiento y conservación. La app no guarda grabaciones ni transcripciones ni las envía a Ebaid LLC o Quran.Foundation. El soporte de árabe y sin conexión depende del dispositivo. Continúa solo si aceptas; las pistas y el audio de referencia funcionan sin permiso de voz.',
     'mem_agree': 'Aceptar y continuar',
+    'mem_share_takes_title': '¿Compartir grabaciones?',
+    'mem_share_takes_body':
+        'Ayuda a mejorar el reconocimiento: envía las grabaciones de tu práctica y lo que oyó la app al equipo de Tajweed (Ebaid LLC). Solo se usan para probar el reconocimiento y se eliminan a los 30 días. Si eliges No compartir, no se envía nada y la app funciona igual.',
+    'mem_share_takes_yes': 'Compartir',
+    'mem_share_takes_no': 'No compartir',
     'mem_listen': 'Recitar la aleya',
     'mem_stop': 'Detener y comprobar',
     'mem_hint': 'Mostrar como pista',

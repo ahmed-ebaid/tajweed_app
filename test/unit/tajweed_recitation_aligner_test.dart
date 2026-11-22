@@ -72,6 +72,27 @@ void main() {
     expect(_aligner().align(heard, isFinal: true), 'الحمد لله رب العالمين');
   });
 
+  test('a wrong attempt repeated correctly passes and keeps earlier words', () {
+    final basmala = [u('ب i س م i'), u('ل ل aa ه i'), ..._rahman];
+    final aligner = TajweedRecitationAligner([
+      TajweedExpectedAyah(
+        referenceWords: basmala,
+        textWords: ['بسم', 'الله', 'الرحمن', 'الرحيم'],
+      ),
+    ]);
+    final wrong = [u('ء a ر ر a ه م aa ل i'), u('ر a ه ii ل')];
+    final heard = flat([...basmala.sublist(0, 2), ...wrong, ..._rahman]);
+    final live = [
+      for (var n = 1; n <= heard.length; n++)
+        aligner.align(heard.sublist(0, n), isFinal: false),
+    ];
+    expect(
+      live.skipWhile((t) => !t.startsWith('بسم الله')),
+      everyElement(startsWith('بسم الله')),
+    );
+    expect(aligner.align(heard, isFinal: true), 'بسم الله الرحمن الرحيم');
+  });
+
   test('unequal word counts map reference words proportionally', () {
     final aligner = TajweedRecitationAligner([
       TajweedExpectedAyah(

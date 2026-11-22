@@ -434,6 +434,8 @@ final class QuranASRChannel {
         result(nil)
       case "exportDiagnostics":
         result(diagnostics.exportedFilePaths(includeSnapshots: engine == nil))
+      case "appBuild":
+        result(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "")
       case "exportCloudDiagnostics":
         do {
           result(try diagnostics.cloudDiagnostics(includeSnapshots: engine == nil))

@@ -1002,12 +1002,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     ++_generation;
     _acceptResults = false;
     final cancellation = _cancelInputs();
-    if (widget.localQuranLab && wasBusy && _speech is QuranAsrSpeechInput) {
+    final interruptedInput = _speech;
+    if (widget.localQuranLab && wasBusy) {
       unawaited(
         cancellation.whenComplete(
-          () => QuranAsrSpeechInput.uploadDiagnosticsToCloud(
-            verseKey: interruptedVerseKey,
-          ),
+          () => _uploadLabTake(interruptedInput, interruptedVerseKey),
         ),
       );
     }
@@ -1139,6 +1138,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       }
       _consented = true;
     }
+    await _askTakeSharing();
+    if (!mounted || generation != _generation) return;
     try {
       await widget.stopReference();
       if (!mounted || generation != _generation) return;
@@ -1531,13 +1532,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
               contradictsPrefix: contradictsPrefix,
               alignment: alignment,
             );
-            if (widget.localQuranLab && input is QuranAsrSpeechInput) {
-              unawaited(
-                QuranAsrSpeechInput.uploadDiagnosticsToCloud(
-                  verseKey: _verseKey,
-                ),
-              );
-            }
+            _uploadLabTake(input, _verseKey);
             return;
           }
           final check = _comparison.checkEntireAyah(
@@ -1580,11 +1575,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             }
           });
           unawaited(_cancelInputs());
-          if (widget.localQuranLab && input is QuranAsrSpeechInput) {
-            unawaited(
-              QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
-            );
-          }
+          _uploadLabTake(input, _verseKey);
         },
         onDone: () {
           if (!mounted || generation != _generation || !_acceptResults) return;
@@ -1597,11 +1588,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
             _message = widget.continuous ? 'hifz_resume_message' : 'mem_error';
           });
           unawaited(_cancelInputs());
-          if (widget.localQuranLab && input is QuranAsrSpeechInput) {
-            unawaited(
-              QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: _verseKey),
-            );
-          }
+          _uploadLabTake(input, _verseKey);
         },
         onError: (code) {
           if (!mounted || generation != _generation || !_acceptResults) return;
@@ -2325,6 +2312,52 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       _clearLiveWords();
       _message = _isMicrophoneDenied(code) ? 'mem_mic_denied' : 'mem_error';
     });
+  }
+
+  /// Sends the lab take for review: Whisper's snapshots, or a TajweedFormer
+  /// take the tester agreed to share.
+  void _uploadLabTake(MemorizationSpeechInput input, String verseKey) {
+    if (!widget.localQuranLab) return;
+    if (input is QuranAsrSpeechInput) {
+      unawaited(
+        QuranAsrSpeechInput.uploadDiagnosticsToCloud(verseKey: verseKey),
+      );
+    } else if (input is TajweedFormerSpeechInput) {
+      unawaited(input.uploadSharedTake(verseKey: verseKey));
+    }
+  }
+
+  /// Asks once whether TajweedFormer takes may be sent for review. Either
+  /// answer lets the learner recite; only "Share" records takes for upload.
+  Future<void> _askTakeSharing() async {
+    if (!widget.localQuranLab ||
+        !tajweedFormerTakeSharingAvailable ||
+        _speech is! TajweedFormerSpeechInput ||
+        TajweedFormerSpeechInput.takeSharing != null) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final share = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.get('mem_share_takes_title')),
+        content: SingleChildScrollView(
+          child: Text(l10n.get('mem_share_takes_body')),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.get('mem_share_takes_no')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.get('mem_share_takes_yes')),
+          ),
+        ],
+      ),
+    );
+    await TajweedFormerSpeechInput.setTakeSharing(share == true);
   }
 
   static bool _isMicrophoneDenied(String code) =>

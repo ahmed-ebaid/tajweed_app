@@ -39,7 +39,7 @@ private class QuranASRDiagnostics(private val context: Context) {
     private var snapshotSequence = 0
     private val completeSlots = mutableSetOf<Int>()
 
-    private val buildVersionString: String by lazy {
+    val buildVersionString: String by lazy {
         try {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -581,6 +581,7 @@ class QuranASRChannel(private val activity: Activity) : MethodChannel.MethodCall
             "exportDiagnostics" -> {
                 result.success(diagnostics.exportedFilePaths(includeSnapshots = !isRecording))
             }
+            "appBuild" -> result.success(diagnostics.buildVersionString)
             "exportCloudDiagnostics" -> {
                 try {
                     result.success(diagnostics.cloudDiagnostics(includeSnapshots = !isRecording))

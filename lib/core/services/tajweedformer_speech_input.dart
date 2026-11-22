@@ -1,10 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:quranlab_tajweedformer/quranlab_tajweedformer.dart';
+import 'package:record/record.dart';
 
 import '../models/tajweed_models.dart';
 import 'memorization_speech_service.dart';
+import 'quran_asr_speech_input.dart';
 import 'quranlab_sdk.dart';
 import 'speech_comparison_service.dart';
 import 'tajweed_recitation_aligner.dart';
@@ -17,6 +23,11 @@ const quranAsrEngine = String.fromEnvironment(
   defaultValue: 'tajweedformer',
 );
 const quranAsrUsesTajweedFormer = quranAsrEngine != 'whisper';
+
+/// Test builds (`QURAN_ASR_RETAIN_DEBUG_AUDIO`) may upload TajweedFormer
+/// takes, but only after the tester agrees in the sharing prompt.
+const tajweedFormerTakeSharingAvailable =
+    quranAsrUsesTajweedFormer && quranAsrRetainDebugAudio;
 
 /// A speech input that needs the ayahs the learner is expected to recite.
 abstract interface class ExpectedRecitationSpeechInput
@@ -31,6 +42,11 @@ class TajweedFormerSpeechInput
     implements WindowedMemorizationSpeechInput, ExpectedRecitationSpeechInput {
   static const _maxExpectedAyahs = 40;
   static const _maxExpectedWords = 900;
+  static const _sampleRate = 16000;
+  static const _slotBytes = _sampleRate * 2 * 28;
+  static const _maxSlots = 6;
+  static const _settingsBox = 'settings';
+  static const _sharingKey = 'tajweedformer_take_sharing';
 
   static Future<TajweedModel>? _model;
   static Future<void>? _referenceReady;
@@ -49,6 +65,20 @@ class TajweedFormerSpeechInput
     } catch (error) {
       debugPrint('TajweedFormer prefetch skipped: $error');
     }
+  }
+
+  /// The tester's answer to the sharing prompt; null before they answer.
+  static bool? get takeSharing {
+    if (!tajweedFormerTakeSharingAvailable || !Hive.isBoxOpen(_settingsBox)) {
+      return null;
+    }
+    final value = Hive.box(_settingsBox).get(_sharingKey);
+    return value is bool ? value : null;
+  }
+
+  static Future<void> setTakeSharing(bool share) async {
+    if (!Hive.isBoxOpen(_settingsBox)) return;
+    await Hive.box(_settingsBox).put(_sharingKey, share);
   }
 
   @visibleForTesting
@@ -75,6 +105,15 @@ class TajweedFormerSpeechInput
   String? _lastText;
   bool _finalEmitted = false;
   var _generation = 0;
+  AudioRecorder? _recorder;
+  StreamSubscription<Uint8List>? _audio;
+  Completer<void>? _audioDone;
+  Future<void> _pushing = Future.value();
+  int? _carry;
+  final _take = <Uint8List>[];
+  var _takeBytes = 0;
+  var _droppedBytes = 0;
+  _SharedTake? _lastTake;
 
   @override
   double get windowStartSeconds => 0;
@@ -116,9 +155,14 @@ class TajweedFormerSpeechInput
       final model = await loadModel();
       final aligner = await alignerFor(model, _expected);
       if (generation != _generation) return;
-      final session = await model.listen();
+      final keepTake = takeSharing == true;
+      final session = keepTake
+          ? await _openRecordedSession(model, generation)
+          : await model.listen();
+      if (session == null) return;
       if (generation != _generation) {
         unawaited(session.cancel().catchError((_) {}));
+        unawaited(_stopRecorder());
         return;
       }
       _session = session;
@@ -135,11 +179,155 @@ class TajweedFormerSpeechInput
       debugPrint('TajweedFormer start failed: ${error.code} ${error.message}');
       throw MemorizationSpeechException('tajweedformer_${error.code}');
     } on MemorizationSpeechException {
+      unawaited(_stopRecorder());
       rethrow;
     } catch (error) {
+      unawaited(_stopRecorder());
       debugPrint('TajweedFormer start failed: $error');
       throw const MemorizationSpeechException('tajweedformer_unavailable');
     }
+  }
+
+  /// A take the app records itself so it can be shared: the microphone's
+  /// 16 kHz samples go to an SDK push session and into the kept take.
+  Future<TajweedSession?> _openRecordedSession(
+    TajweedModel model,
+    int generation,
+  ) async {
+    final recorder = AudioRecorder();
+    _recorder = recorder;
+    _take.clear();
+    _takeBytes = 0;
+    _droppedBytes = 0;
+    _carry = null;
+    _pushing = Future.value();
+    _lastTake = null;
+    if (!await recorder.hasPermission()) {
+      throw const MemorizationSpeechException(
+        'tajweedformer_microphone_denied',
+      );
+    }
+    if (generation != _generation) {
+      await _stopRecorder();
+      return null;
+    }
+    final session = await model.session();
+    final stream = await recorder.startStream(
+      const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: _sampleRate,
+        numChannels: 1,
+        androidConfig: AndroidRecordConfig(
+          audioSource: AndroidAudioSource.voiceRecognition,
+        ),
+        iosConfig: IosRecordConfig(
+          allowHapticsAndSystemSoundsDuringRecording: true,
+        ),
+      ),
+    );
+    final done = _audioDone = Completer<void>();
+    _audio = stream.listen(
+      (bytes) => _onAudio(session, generation, bytes),
+      onError: (Object error) => debugPrint('TajweedFormer audio: $error'),
+      onDone: () {
+        if (!done.isCompleted) done.complete();
+      },
+    );
+    return session;
+  }
+
+  void _onAudio(TajweedSession session, int generation, Uint8List bytes) {
+    if (generation != _generation) return;
+    final carry = _carry;
+    final data = carry == null
+        ? bytes
+        : (Uint8List(bytes.length + 1)
+            ..[0] = carry
+            ..setRange(1, bytes.length + 1, bytes));
+    final even = data.length & ~1;
+    _carry = even < data.length ? data[even] : null;
+    if (even == 0) return;
+    final pcm = Uint8List.sublistView(data, 0, even).sublist(0);
+    _take.add(pcm);
+    _takeBytes += pcm.length;
+    while (_takeBytes > _slotBytes * _maxSlots && _take.length > 1) {
+      final dropped = _take.removeAt(0);
+      _takeBytes -= dropped.length;
+      _droppedBytes += dropped.length;
+    }
+    final samples = pcm.buffer.asInt16List(0, pcm.length ~/ 2);
+    _pushing = _pushing.then((_) => session.pushInt16(samples)).catchError((
+      Object error,
+    ) {
+      debugPrint('TajweedFormer push: $error');
+    });
+  }
+
+  /// Stops the app's microphone and waits until every sample reached the SDK.
+  Future<void> _stopRecorder() async {
+    final recorder = _recorder;
+    if (recorder == null) return;
+    _recorder = null;
+    try {
+      await recorder.stop();
+    } catch (error) {
+      debugPrint('TajweedFormer recorder stop: $error');
+    }
+    await _audioDone?.future.timeout(
+      const Duration(seconds: 1),
+      onTimeout: () {},
+    );
+    await _audio?.cancel();
+    _audio = null;
+    _audioDone = null;
+    await _pushing;
+    unawaited(recorder.dispose().catchError((_) {}));
+  }
+
+  void _keepTake(TajweedDecoded? decoded, String? text) {
+    if (_take.isEmpty) return;
+    final pcm = BytesBuilder(copy: false);
+    for (final chunk in _take) {
+      pcm.add(chunk);
+    }
+    _lastTake = _SharedTake(
+      pcm: pcm.takeBytes(),
+      startSeconds: _droppedBytes / (_sampleRate * 2),
+      expected: [
+        for (final ayah in _expected) '${ayah.surahNumber}:${ayah.ayahNumber}',
+      ],
+      text: text ?? '',
+      tokens: decoded?.tokens ?? const [],
+    );
+    _take.clear();
+    _takeBytes = 0;
+  }
+
+  @visibleForTesting
+  static List<Map<String, Object>> takeSnapshots(
+    Uint8List pcm, {
+    double startSeconds = 0,
+    String text = '',
+  }) => _SharedTake(
+    pcm: pcm,
+    startSeconds: startSeconds,
+    expected: const [],
+    text: text,
+    tokens: const [],
+  ).snapshots();
+
+  /// Sends the last take the tester agreed to share; false when there is
+  /// none or the upload failed.
+  Future<bool> uploadSharedTake({required String verseKey}) async {
+    final take = _lastTake;
+    _lastTake = null;
+    if (take == null || takeSharing != true) return false;
+    return QuranAsrSpeechInput.uploadBundleToCloud(
+      id: take.id,
+      verseKey: verseKey,
+      diagnosticsJsonl: take.diagnosticsJsonl,
+      snapshots: take.snapshots(),
+    );
   }
 
   @visibleForTesting
@@ -187,6 +375,7 @@ class TajweedFormerSpeechInput
     if (generation != _generation || _finalEmitted) return;
     _lastDecoded = decoded;
     if (decoded.isFinal) {
+      if (!_finalEmitted) _keepTake(decoded, _align(decoded, isFinal: true));
       _emitFinal(decoded);
       return;
     }
@@ -244,6 +433,7 @@ class TajweedFormerSpeechInput
     final generation = _generation;
     return _finishing = () async {
       try {
+        await _stopRecorder();
         final heads = await session.finish();
         if (generation != _generation) return;
         TajweedDecoded? decoded;
@@ -253,6 +443,7 @@ class TajweedFormerSpeechInput
           decoded = _lastDecoded;
         }
         if (decoded != null) {
+          _keepTake(decoded, _align(decoded, isFinal: true));
           _emitFinal(decoded);
         } else if (!_finalEmitted) {
           _finalEmitted = true;
@@ -260,6 +451,7 @@ class TajweedFormerSpeechInput
         }
       } on TajweedError catch (error) {
         if (_lastDecoded != null && generation == _generation) {
+          _keepTake(_lastDecoded, _lastText);
           _emitFinal(_lastDecoded!);
         } else {
           _fail(generation, error.code);
@@ -274,6 +466,9 @@ class TajweedFormerSpeechInput
   Future<void> cancel() async {
     _generation++;
     final session = _session;
+    final recorded = _recorder != null;
+    await _stopRecorder();
+    if (recorded && _lastTake == null) _keepTake(_lastDecoded, _lastText);
     _release();
     if (session != null) {
       try {
@@ -291,5 +486,104 @@ class TajweedFormerSpeechInput
     _events = null;
     _session = null;
     _aligner = null;
+  }
+}
+
+/// A take kept for sharing: the last 168 s at most, as six 28 s WAV slots.
+class _SharedTake {
+  _SharedTake({
+    required this.pcm,
+    required this.startSeconds,
+    required this.expected,
+    required this.text,
+    required this.tokens,
+  }) : id = _uuid();
+
+  final String id;
+  final Uint8List pcm;
+  final double startSeconds;
+  final List<String> expected;
+  final String text;
+  final List<TajweedToken> tokens;
+
+  static String _uuid() {
+    final random = Random.secure();
+    final b = List<int>.generate(16, (_) => random.nextInt(256));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    final hex = b.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+  }
+
+  double get seconds => pcm.length / 32000;
+
+  String get diagnosticsJsonl =>
+      '${jsonEncode({
+        'event': 'tajweedformer_take',
+        'expected': expected,
+        'startSeconds': startSeconds,
+        'durationSeconds': seconds,
+        'text': text,
+        'units': tokens.map((t) => t.name).join(' '),
+        'tokens': [
+          for (final t in tokens) {'id': t.id, 'name': t.name, 'firstMs': t.firstMs, 'lastMs': t.lastMs},
+        ],
+      })}\n';
+
+  List<Map<String, Object>> snapshots() {
+    const slotBytes = 16000 * 2 * 28;
+    final result = <Map<String, Object>>[];
+    for (var slot = 0; slot * slotBytes < pcm.length && slot < 6; slot++) {
+      final start = slot * slotBytes;
+      final end = min(start + slotBytes, pcm.length);
+      final windowStart = startSeconds + start / 32000;
+      final windowEnd = startSeconds + end / 32000;
+      final heard = [
+        for (final t in tokens)
+          if (t.firstMs >= windowStart * 1000 && t.firstMs < windowEnd * 1000)
+            t.name,
+      ];
+      result.add({
+        'slot': slot,
+        'json': jsonEncode({
+          'engine': 'tajweedformer',
+          'windowStart': windowStart,
+          'durationSeconds': (end - start) / 32000,
+          'report': {'transcript': text, 'units': heard.join(' ')},
+        }),
+        'wav_base64': base64Encode(
+          _wav(Uint8List.sublistView(pcm, start, end)),
+        ),
+      });
+    }
+    return result;
+  }
+
+  static Uint8List _wav(Uint8List pcm) {
+    final header = ByteData(44);
+    void ascii(int offset, String s) {
+      for (var i = 0; i < s.length; i++) {
+        header.setUint8(offset + i, s.codeUnitAt(i));
+      }
+    }
+
+    ascii(0, 'RIFF');
+    header.setUint32(4, 36 + pcm.length, Endian.little);
+    ascii(8, 'WAVE');
+    ascii(12, 'fmt ');
+    header.setUint32(16, 16, Endian.little);
+    header.setUint16(20, 1, Endian.little);
+    header.setUint16(22, 1, Endian.little);
+    header.setUint32(24, 16000, Endian.little);
+    header.setUint32(28, 32000, Endian.little);
+    header.setUint16(32, 2, Endian.little);
+    header.setUint16(34, 16, Endian.little);
+    ascii(36, 'data');
+    header.setUint32(40, pcm.length, Endian.little);
+    return (BytesBuilder()
+          ..add(header.buffer.asUint8List())
+          ..add(pcm))
+        .takeBytes();
   }
 }
