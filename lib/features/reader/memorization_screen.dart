@@ -203,6 +203,17 @@ class _MemorizationScreenState extends State<MemorizationScreen>
 
   int get _visiblePageNumber => _viewedPageOverride ?? _activePageNumber;
 
+  int? _repeatCursorIndex(Ayah ayah, int displayed) {
+    // Test builds only until it has been tried on devices.
+    final heard = _lastPreviewText;
+    if (!quranAsrRetainDebugAudio || !_busy || heard == null) return null;
+    return repeatCursorIndex(
+      spoken: _comparison.recitationWords(heard),
+      words: _comparison.recitationWords(ayah.imlaei ?? ''),
+      displayed: displayed,
+    );
+  }
+
   void _clearLiveWords({bool keepRolling = false}) {
     _liveWordCounts.clear();
     _completedLiveWordCounts.clear();
@@ -3017,7 +3028,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   final cursorKey =
                       '${cursorAyah.surahNumber}:${cursorAyah.ayahNumber}';
                   final displayed = displayWordCounts[cursorKey] ?? 0;
-                  final cursorWordIndex = displayed;
+                  final cursorWordIndex =
+                      _repeatCursorIndex(cursorAyah, displayed) ?? displayed;
                   final cursorWordTotal = cursorAyah.imlaei != null
                       ? _comparison.recitationWords(cursorAyah.imlaei!).length
                       : cursorAyah.words.length;
@@ -3614,4 +3626,29 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       ),
     );
   }
+}
+
+/// Where the learner is in an ayah when they go back and repeat words they
+/// already passed: the word after the last 3 (or 2) [spoken] words, found
+/// among the first [displayed] [words]. Null when they are moving forward.
+@visibleForTesting
+int? repeatCursorIndex({
+  required List<String> spoken,
+  required List<String> words,
+  required int displayed,
+}) {
+  final limit = displayed < words.length ? displayed : words.length;
+  if (limit < 2) return null;
+  for (final size in [3, 2]) {
+    if (spoken.length < size) continue;
+    final tail = spoken.sublist(spoken.length - size);
+    for (var end = limit - 1; end >= size - 1; end--) {
+      var match = true;
+      for (var k = 0; k < size && match; k++) {
+        match = words[end - size + 1 + k] == tail[k];
+      }
+      if (match) return end + 1 < limit ? end + 1 : null;
+    }
+  }
+  return null;
 }
