@@ -2315,6 +2315,10 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   void _inputFailed(int generation, String code) {
     debugPrint('Memorization input failed: $code');
     if (!mounted || generation != _generation) return;
+    final speech = _speech;
+    if (widget.localQuranLab && speech is TajweedFormerSpeechInput) {
+      unawaited(speech.uploadFailure(verseKey: _verseKey, code: code));
+    }
     unawaited(_cancelInputs());
     setState(() {
       _checkpointLiveWords();

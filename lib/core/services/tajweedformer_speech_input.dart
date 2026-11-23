@@ -391,6 +391,22 @@ class TajweedFormerSpeechInput
     );
   }
 
+  /// Reports why an attempt failed before it produced a take, for testers
+  /// who agreed to share takes.
+  Future<void> uploadFailure({
+    required String verseKey,
+    required String code,
+  }) async {
+    if (takeSharing != true) return;
+    await QuranAsrSpeechInput.uploadBundleToCloud(
+      id: _SharedTake._uuid(),
+      verseKey: verseKey,
+      diagnosticsJsonl:
+          '${jsonEncode({'event': 'tajweedformer_failure', 'code': code, 'readyMs': _readyMs, 'elapsedMs': _starting.elapsedMilliseconds, 'audioBytes': _takeBytes + _droppedBytes})}\n',
+      snapshots: const [],
+    );
+  }
+
   static Future<void> _fetchReference(TajweedModel model) {
     final reference = model.reference;
     if (reference == null) return Future.value();
