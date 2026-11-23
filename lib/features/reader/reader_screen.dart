@@ -4972,12 +4972,16 @@ class _MushafTextPage extends StatelessWidget {
       highlightEnabled: highlightEnabled,
       maskColor: hidden
           ? (isActiveCursorWord
-                ? cursorColor.withValues(alpha: activeCursorHasError ? 0.36 : 0.30)
+                ? cursorColor.withValues(
+                    alpha: activeCursorHasError ? 0.36 : 0.30,
+                  )
                 : _MushafColors.of(context).gold.withValues(alpha: 0.15))
           : null,
       highlightBackground: !hidden
           ? (isActiveCursorWord
-                ? cursorColor.withValues(alpha: activeCursorHasError ? 0.34 : 0.28)
+                ? cursorColor.withValues(
+                    alpha: activeCursorHasError ? 0.34 : 0.28,
+                  )
                 : isUnspokenHintWord
                 ? _MushafColors.of(context).gold.withValues(alpha: 0.22)
                 : (highlightedWordIndices[key]?.contains(wordIndex) ?? false)

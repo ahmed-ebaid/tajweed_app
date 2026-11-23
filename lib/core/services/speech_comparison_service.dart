@@ -149,6 +149,7 @@ class SpeechComparisonService {
       }
       return remaining < 3 ? remaining : 3;
     }
+
     // If the incoming window begins with an exact suffix of the retained
     // prefix, it is already anchored and must not skip past an immediate
     // wrong word after that suffix.
@@ -212,7 +213,8 @@ class SpeechComparisonService {
         for (var j = 0; j + 1 < retained.length - 1; j++) {
           if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
               _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
-            final laterMatchLen = retained.length - (j + 1) < incoming.length - 1
+            final laterMatchLen =
+                retained.length - (j + 1) < incoming.length - 1
                 ? retained.length - (j + 1)
                 : incoming.length - 1;
             if (laterMatchLen >= 2) {
@@ -539,162 +541,158 @@ class SpeechComparisonService {
           }
         }
       }
-        if (matches &&
-            allowWrittenOpenings &&
-            overlap == 1 &&
-            incoming.length >= 3 &&
-            retained.length >= 2) {
-          for (var j = 0; j + 1 < retained.length - 1; j++) {
-            if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
-                _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
-              final laterMatchLen =
-                  retained.length - (j + 1) < incoming.length - 1
-                  ? retained.length - (j + 1)
-                  : incoming.length - 1;
-              if (laterMatchLen >= 2) {
-                var matchesLaterRetained = true;
-                for (var k = 0; k < laterMatchLen; k++) {
-                  if (_foldNearMiss(incoming[1 + k]) !=
-                      _foldNearMiss(retained[j + 1 + k])) {
-                    matchesLaterRetained = false;
-                    break;
-                  }
+      if (matches &&
+          allowWrittenOpenings &&
+          overlap == 1 &&
+          incoming.length >= 3 &&
+          retained.length >= 2) {
+        for (var j = 0; j + 1 < retained.length - 1; j++) {
+          if (_foldNearMiss(retained[j]) == _foldNearMiss(incoming[0]) &&
+              _foldNearMiss(retained[j + 1]) == _foldNearMiss(incoming[1])) {
+            final laterMatchLen =
+                retained.length - (j + 1) < incoming.length - 1
+                ? retained.length - (j + 1)
+                : incoming.length - 1;
+            if (laterMatchLen >= 2) {
+              var matchesLaterRetained = true;
+              for (var k = 0; k < laterMatchLen; k++) {
+                if (_foldNearMiss(incoming[1 + k]) !=
+                    _foldNearMiss(retained[j + 1 + k])) {
+                  matchesLaterRetained = false;
+                  break;
                 }
-                if (matchesLaterRetained) {
-                  var alsoMatchesCursor =
-                      retained.length + laterMatchLen <= expectedSeq.length;
-                  if (alsoMatchesCursor) {
-                    for (var k = 0; k < laterMatchLen; k++) {
-                      if (!expectedSeq[retained.length + k].contains(
-                        incoming[1 + k],
-                      )) {
-                        alsoMatchesCursor = false;
-                        break;
-                      }
+              }
+              if (matchesLaterRetained) {
+                var alsoMatchesCursor =
+                    retained.length + laterMatchLen <= expectedSeq.length;
+                if (alsoMatchesCursor) {
+                  for (var k = 0; k < laterMatchLen; k++) {
+                    if (!expectedSeq[retained.length + k].contains(
+                      incoming[1 + k],
+                    )) {
+                      alsoMatchesCursor = false;
+                      break;
                     }
                   }
-                  if (!alsoMatchesCursor) {
-                    matches = false;
-                    break;
-                  }
+                }
+                if (!alsoMatchesCursor) {
+                  matches = false;
+                  break;
                 }
               }
             }
-          }
-        }
-        if (matches) {
-          final isMidAyahAnchor =
-              overlap <= 2 &&
-              _isRepeatedAyahPrefixAnchor(
-                retainedLength: retained.length,
-                overlap: overlap,
-                expectedAyahs: expectedAyahs,
-                expectedVerseKeys: expectedVerseKeys,
-              );
-          if (!isMidAyahAnchor) {
-            if (expandedCandidate != null) {
-              return [
-                ...retained,
-                ...expandedCandidate.skip(retained.length),
-              ].join(' ');
-            }
-            var rest = incoming.skip(overlap).toList();
-            if (allowWrittenOpenings &&
-                overlap >= 2 &&
-                rest.length >= 2 &&
-                retained.length < expectedSeq.length &&
-                _foldNearMiss(rest.first) == _foldNearMiss(retained.last) &&
-                !expectedSeq[retained.length].contains(rest.first) &&
-                expectedSeq[retained.length].contains(rest[1])) {
-              rest = rest.skip(1).toList();
-            }
-            final joined = [...retained, ...rest].join(' ');
-            return allowWrittenOpenings
-                ? _spokenWords(
-                    joined,
-                    expectedAyahs,
-                    expectedVerseKeys,
-                    allowWrittenOpenings,
-                  ).join(' ')
-                : joined;
           }
         }
       }
-      if (allowWrittenOpenings && incoming.length >= 2 && retained.isNotEmpty) {
-        final maxBoundarySkip = incoming.length - 1 < 6 ? incoming.length - 1 : 6;
-        for (var skip = 1; skip <= maxBoundarySkip; skip++) {
-          final skipped = incoming.skip(skip).toList();
-          final maxSkippedOverlap = retained.length < skipped.length
-              ? retained.length
-              : skipped.length;
-          final minOverlap = skip == 1 ? 1 : (skip <= 4 ? 2 : 3);
-          for (
-            var overlap = maxSkippedOverlap;
-            overlap >= minOverlap;
-            overlap--
-          ) {
-            final retainedBeforeOverlap = retained
-                .take(retained.length - overlap)
-                .toList();
-            final normalizedWithSkippedPrefix =
-                retainedBeforeOverlap.length >= skip
-                ? _spokenWords(
-                    [
-                      ...retainedBeforeOverlap.take(
-                        retainedBeforeOverlap.length - skip,
-                      ),
-                      ...incoming,
-                    ].join(' '),
-                    expectedAyahs,
-                    expectedVerseKeys,
-                    allowWrittenOpenings,
-                  )
-                : const <String>[];
-            final matchesNormalizedBeforeOverlap =
-                normalizedWithSkippedPrefix.length >= retained.length &&
-                [
-                  for (var i = 0; i < retained.length; i++)
-                    normalizedWithSkippedPrefix[i] == retained[i],
-                ].every((ok) => ok);
-            final isClippedRefrainBoundarySkip =
-                skip == 1 &&
-                overlap >= 1 &&
-                retained.length >= 2 &&
-                retained.last == 'ربكما' &&
-                retained[retained.length - 2] == 'آلاء' &&
-                skipped.length > overlap &&
-                retained.length < expectedSeq.length &&
-                expectedSeq[retained.length].first == 'تكذبان';
-            if (retainedBeforeOverlap.isNotEmpty &&
-                !matchesNormalizedBeforeOverlap &&
-                !isClippedRefrainBoundarySkip &&
-                !_repeatsRetainedSuffix(
-                  retainedBeforeOverlap,
-                  incoming,
-                  skip,
+      if (matches) {
+        final isMidAyahAnchor =
+            overlap <= 2 &&
+            _isRepeatedAyahPrefixAnchor(
+              retainedLength: retained.length,
+              overlap: overlap,
+              expectedAyahs: expectedAyahs,
+              expectedVerseKeys: expectedVerseKeys,
+            );
+        if (!isMidAyahAnchor) {
+          if (expandedCandidate != null) {
+            return [
+              ...retained,
+              ...expandedCandidate.skip(retained.length),
+            ].join(' ');
+          }
+          var rest = incoming.skip(overlap).toList();
+          if (allowWrittenOpenings &&
+              overlap >= 2 &&
+              rest.length >= 2 &&
+              retained.length < expectedSeq.length &&
+              _foldNearMiss(rest.first) == _foldNearMiss(retained.last) &&
+              !expectedSeq[retained.length].contains(rest.first) &&
+              expectedSeq[retained.length].contains(rest[1])) {
+            rest = rest.skip(1).toList();
+          }
+          final joined = [...retained, ...rest].join(' ');
+          return allowWrittenOpenings
+              ? _spokenWords(
+                  joined,
+                  expectedAyahs,
+                  expectedVerseKeys,
+                  allowWrittenOpenings,
+                ).join(' ')
+              : joined;
+        }
+      }
+    }
+    if (allowWrittenOpenings && incoming.length >= 2 && retained.isNotEmpty) {
+      final maxBoundarySkip = incoming.length - 1 < 6 ? incoming.length - 1 : 6;
+      for (var skip = 1; skip <= maxBoundarySkip; skip++) {
+        final skipped = incoming.skip(skip).toList();
+        final maxSkippedOverlap = retained.length < skipped.length
+            ? retained.length
+            : skipped.length;
+        final minOverlap = skip == 1 ? 1 : (skip <= 4 ? 2 : 3);
+        for (
+          var overlap = maxSkippedOverlap;
+          overlap >= minOverlap;
+          overlap--
+        ) {
+          final retainedBeforeOverlap = retained
+              .take(retained.length - overlap)
+              .toList();
+          final normalizedWithSkippedPrefix =
+              retainedBeforeOverlap.length >= skip
+              ? _spokenWords(
+                  [
+                    ...retainedBeforeOverlap.take(
+                      retainedBeforeOverlap.length - skip,
+                    ),
+                    ...incoming,
+                  ].join(' '),
+                  expectedAyahs,
+                  expectedVerseKeys,
+                  allowWrittenOpenings,
+                )
+              : const <String>[];
+          final matchesNormalizedBeforeOverlap =
+              normalizedWithSkippedPrefix.length >= retained.length &&
+              [
+                for (var i = 0; i < retained.length; i++)
+                  normalizedWithSkippedPrefix[i] == retained[i],
+              ].every((ok) => ok);
+          final isClippedRefrainBoundarySkip =
+              skip == 1 &&
+              overlap >= 1 &&
+              retained.length >= 2 &&
+              retained.last == 'ربكما' &&
+              retained[retained.length - 2] == 'آلاء' &&
+              skipped.length > overlap &&
+              retained.length < expectedSeq.length &&
+              expectedSeq[retained.length].first == 'تكذبان';
+          if (retainedBeforeOverlap.isNotEmpty &&
+              !matchesNormalizedBeforeOverlap &&
+              !isClippedRefrainBoundarySkip &&
+              !_repeatsRetainedSuffix(retainedBeforeOverlap, incoming, skip)) {
+            continue;
+          }
+          if (overlap == 1 &&
+              skipped.length > 1 &&
+              retained.length < expectedSeq.length &&
+              !expectedSeq[retained.length].contains(skipped[1])) {
+            final normalizedTail = _spokenWords(
+              [...retained, ...skipped.skip(1)].join(' '),
+              expectedAyahs,
+              expectedVerseKeys,
+              allowWrittenOpenings,
+            );
+            if (normalizedTail.length <= retained.length ||
+                !expectedSeq[retained.length].contains(
+                  normalizedTail[retained.length],
                 )) {
+              // Do not anchor on a single word after a wrong/skipped word unless
+              // the word immediately following that anchor is the next expected word.
               continue;
             }
-            if (overlap == 1 &&
-                skipped.length > 1 &&
-                retained.length < expectedSeq.length &&
-                !expectedSeq[retained.length].contains(skipped[1])) {
-              final normalizedTail = _spokenWords(
-                [...retained, ...skipped.skip(1)].join(' '),
-                expectedAyahs,
-                expectedVerseKeys,
-                allowWrittenOpenings,
-              );
-              if (normalizedTail.length <= retained.length ||
-                  !expectedSeq[retained.length].contains(
-                    normalizedTail[retained.length],
-                  )) {
-                // Do not anchor on a single word after a wrong/skipped word unless
-                // the word immediately following that anchor is the next expected word.
-                continue;
-              }
-            }
-            var matches = true;
+          }
+          var matches = true;
           for (var i = 0; i < overlap; i++) {
             final rWord = retained[retained.length - overlap + i];
             final sWord = skipped[i];
@@ -756,12 +754,12 @@ class SpeechComparisonService {
             final isMidAyahAnchor =
                 matchesEarlierInRetained ||
                 (overlap <= 2 &&
-                _isRepeatedAyahPrefixAnchor(
-                  retainedLength: retained.length,
-                  overlap: overlap,
-                  expectedAyahs: expectedAyahs,
-                  expectedVerseKeys: expectedVerseKeys,
-                ));
+                    _isRepeatedAyahPrefixAnchor(
+                      retainedLength: retained.length,
+                      overlap: overlap,
+                      expectedAyahs: expectedAyahs,
+                      expectedVerseKeys: expectedVerseKeys,
+                    ));
             if (!isMidAyahAnchor) {
               var rest = skipped.skip(overlap).toList();
               if (overlap >= 2 &&
@@ -797,7 +795,11 @@ class SpeechComparisonService {
         }
       }
       if (!matchesCursorExpected) {
-        for (var start = 0; start <= retained.length - incoming.length; start++) {
+        for (
+          var start = 0;
+          start <= retained.length - incoming.length;
+          start++
+        ) {
           var matchesSlice = true;
           for (var i = 0; i < incoming.length; i++) {
             if (retained[start + i] != incoming[i]) {
@@ -843,6 +845,7 @@ class SpeechComparisonService {
         }
         return remainingExpected < 3 ? remainingExpected : 3;
       }
+
       var anchoredAtStart = false;
       final maxStartOverlap = retained.length < incoming.length
           ? retained.length
@@ -862,16 +865,11 @@ class SpeechComparisonService {
       }
       final retainedInCurrentAyah = retained.length - currentAyahStart;
       if (!anchoredAtStart) {
-        for (
-          var start = 1;
-          start < incoming.length;
-          start++
-        ) {
+        for (var start = 1; start < incoming.length; start++) {
           if (start == 1 &&
               retainedInCurrentAyah == 1 &&
               quranVocabulary.contains(incoming[0]) &&
-              _foldNearMiss(incoming[0]) !=
-                  _foldNearMiss(retained.last)) {
+              _foldNearMiss(incoming[0]) != _foldNearMiss(retained.last)) {
             continue;
           }
           final isClippedMaddBeforeFinalRefrain =
@@ -1084,10 +1082,7 @@ class SpeechComparisonService {
                 repeatsNormalizedSuffix ||
                 _repeatsRetainedSuffix(retained, incoming, cursor))) {
           if (expectedSeq[retained.length].contains(incoming[cursor])) {
-            return [
-              ...retained,
-              ...incoming.skip(cursor),
-            ].join(' ');
+            return [...retained, ...incoming.skip(cursor)].join(' ');
           }
           if (cursor == incoming.length - 1) {
             final normalized = _spokenWords(
@@ -2277,8 +2272,7 @@ class SpeechComparisonService {
       if (allowAsrCorrections &&
           (rawSpoken[i] == 'وللرسول' || rawSpoken[i] == 'والرسول') &&
           i + 1 < rawSpoken.length &&
-          (rawSpoken[i + 1] == 'ولللقربى' ||
-              rawSpoken[i + 1] == 'وللللقربى')) {
+          (rawSpoken[i + 1] == 'ولللقربى' || rawSpoken[i + 1] == 'وللللقربى')) {
         if (i == 0) {
           spoken.add('فلله');
         }
@@ -2535,8 +2529,7 @@ class SpeechComparisonService {
         i++;
         continue;
       }
-      if (allowAsrCorrections &&
-          rawSpoken[i] == 'سألتموا') {
+      if (allowAsrCorrections && rawSpoken[i] == 'سألتموا') {
         spoken.add('سألتم');
         continue;
       }
@@ -2951,8 +2944,7 @@ class SpeechComparisonService {
         spoken.add('منها');
         continue;
       }
-      if (allowAsrCorrections &&
-          rawSpoken[i] == 'أيه' ||
+      if (allowAsrCorrections && rawSpoken[i] == 'أيه' ||
           (allowAsrCorrections &&
               rawSpoken[i] == 'أيها' &&
               i + 1 < rawSpoken.length &&
@@ -2978,8 +2970,7 @@ class SpeechComparisonService {
         spoken.add('لمؤمن');
         continue;
       }
-      if (allowAsrCorrections &&
-          keys.any((key) => key.startsWith('18:'))) {
+      if (allowAsrCorrections && keys.any((key) => key.startsWith('18:'))) {
         if ((rawSpoken[i] == 'رحما' || rawSpoken[i] == 'كرحمة') &&
             spoken.isNotEmpty &&
             spoken.last == 'لدنك') {
@@ -3154,9 +3145,12 @@ class SpeechComparisonService {
           i++;
           continue;
         }
-        if (const {'غيقاضا', 'غيقاظا', 'عقاظا', 'أيقاظ'}.contains(
-              rawSpoken[i],
-            ) &&
+        if (const {
+              'غيقاضا',
+              'غيقاظا',
+              'عقاظا',
+              'أيقاظ',
+            }.contains(rawSpoken[i]) &&
             ((spoken.isNotEmpty && spoken.last == 'وتحسبهم') ||
                 (i + 1 < rawSpoken.length && rawSpoken[i + 1] == 'وهم'))) {
           spoken.add('أيقاظا');
@@ -3625,7 +3619,9 @@ class SpeechComparisonService {
           continue;
         }
         if (offset + 1 < spoken.length &&
-            (expected[word].contains('${spoken[offset]}${spoken[offset + 1]}') ||
+            (expected[word].contains(
+                  '${spoken[offset]}${spoken[offset + 1]}',
+                ) ||
                 (expected[word].contains('ألا') &&
                     spoken[offset] == 'أن' &&
                     spoken[offset + 1] == 'لا') ||
@@ -3858,9 +3854,13 @@ class SpeechComparisonService {
                         (spoken[offset + 1] == 'تنفذوا' ||
                             spoken[offset + 1] == 'تنفذون' ||
                             spoken[offset + 1] == 'من'))) &&
-                const {'لن', 'إن', 'ألا', 'فأن', 'وأن'}.contains(
-                  spoken[offset],
-                )) {
+                const {
+                  'لن',
+                  'إن',
+                  'ألا',
+                  'فأن',
+                  'وأن',
+                }.contains(spoken[offset])) {
               expanded.add('أن');
               offset++;
               word++;
@@ -3907,9 +3907,13 @@ class SpeechComparisonService {
             }
             if (expected[word].first == 'من' &&
                 (hasLeft || hasRight) &&
-                const {'ومن', 'فمن', 'بمن', 'عمن', 'إن'}.contains(
-                  spoken[offset],
-                )) {
+                const {
+                  'ومن',
+                  'فمن',
+                  'بمن',
+                  'عمن',
+                  'إن',
+                }.contains(spoken[offset])) {
               expanded.add('من');
               offset++;
               word++;
@@ -4283,31 +4287,31 @@ class SpeechComparisonService {
           continue;
         }
         if (word + 2 < expected.length &&
-            offset + 1 < spoken.length &&
-            ((expected[word].first == 'علم' &&
-                    expected[word + 1].first == 'كل' &&
-                    expected[word + 2].first == 'أناس' &&
-                    spoken[offset] == 'علمكم' &&
-                    _foldNearMiss(spoken[offset + 1]) == 'نوناس') ||
-                (expected[word].first == 'وأتوا' &&
-                    expected[word + 1].first == 'به' &&
-                    expected[word + 2].first == 'متشابها' &&
-                    _foldNearMiss(spoken[offset]) == 'واتوبهم' &&
-                    (spoken[offset + 1] == 'تشابها' ||
-                        _foldNearMiss(spoken[offset + 1]) == 'تشابها')) ||
-                (expected[word].first == 'ما' &&
-                    expected[word + 1].first == 'الله' &&
-                    expected[word + 2].first == 'مبديه' &&
-                    spoken[offset] == 'مرضاه' &&
-                    spoken[offset + 1] == 'مبديه') ||
-                (expected[word].first == 'أوسط' &&
-                    expected[word + 1].first == 'ما' &&
-                    expected[word + 2].first == 'تطعمون' &&
-                    spoken[offset] == 'سطمات' &&
-                    spoken[offset + 1] == 'تعمون') ||
-                (expected[word].first == 'فإن' &&
-                    expected[word + 1].first == 'أحسرتم' &&
-                    expected[word + 2].first == 'فما')) ||
+                offset + 1 < spoken.length &&
+                ((expected[word].first == 'علم' &&
+                        expected[word + 1].first == 'كل' &&
+                        expected[word + 2].first == 'أناس' &&
+                        spoken[offset] == 'علمكم' &&
+                        _foldNearMiss(spoken[offset + 1]) == 'نوناس') ||
+                    (expected[word].first == 'وأتوا' &&
+                        expected[word + 1].first == 'به' &&
+                        expected[word + 2].first == 'متشابها' &&
+                        _foldNearMiss(spoken[offset]) == 'واتوبهم' &&
+                        (spoken[offset + 1] == 'تشابها' ||
+                            _foldNearMiss(spoken[offset + 1]) == 'تشابها')) ||
+                    (expected[word].first == 'ما' &&
+                        expected[word + 1].first == 'الله' &&
+                        expected[word + 2].first == 'مبديه' &&
+                        spoken[offset] == 'مرضاه' &&
+                        spoken[offset + 1] == 'مبديه') ||
+                    (expected[word].first == 'أوسط' &&
+                        expected[word + 1].first == 'ما' &&
+                        expected[word + 2].first == 'تطعمون' &&
+                        spoken[offset] == 'سطمات' &&
+                        spoken[offset + 1] == 'تعمون') ||
+                    (expected[word].first == 'فإن' &&
+                        expected[word + 1].first == 'أحسرتم' &&
+                        expected[word + 2].first == 'فما')) ||
             (word + 2 < expected.length &&
                 offset + 1 < spoken.length &&
                 expected[word].first == 'بلغوا' &&
@@ -4579,8 +4583,7 @@ class SpeechComparisonService {
             expanded.addAll(['يضار', 'كاتب']);
             if (spoken[offset] == 'يضاء') {
               offset += 3;
-            } else if (spoken[offset] == 'يضارك' ||
-                spoken[offset] == 'يضارى') {
+            } else if (spoken[offset] == 'يضارك' || spoken[offset] == 'يضارى') {
               offset += 2;
             } else {
               offset += 1;
@@ -4805,17 +4808,14 @@ class SpeechComparisonService {
           continue;
         }
         if (hasLeftAnchor &&
-            ((expected[word].first == 'يؤمن' &&
-                    spoken[offset] == 'يؤمنون') ||
-                (expected[word].first == 'مثواه' &&
-                    spoken[offset] == 'مثوى') ||
+            ((expected[word].first == 'يؤمن' && spoken[offset] == 'يؤمنون') ||
+                (expected[word].first == 'مثواه' && spoken[offset] == 'مثوى') ||
                 (expected[word].first == 'الغائط' &&
                     (spoken[offset] == 'الغائظ' ||
                         spoken[offset] == 'الغائق')) ||
                 (expected[word].first == 'فاتقون' &&
                     spoken[offset] == 'الفتقون') ||
-                (expected[word].first == 'دري' &&
-                    spoken[offset] == 'ذري') ||
+                (expected[word].first == 'دري' && spoken[offset] == 'ذري') ||
                 (expected[word].first == 'فيميلون' &&
                     (spoken[offset] == 'فيمينون' ||
                         spoken[offset] == 'فيميدون')) ||
@@ -4964,15 +4964,13 @@ class SpeechComparisonService {
                     (spoken[offset] == 'تفتارة' ||
                         spoken[offset] == 'كالتارة')) ||
                 (expected[word].first == 'حلفتم' &&
-                    (spoken[offset] == 'حلقتم' ||
-                        spoken[offset] == 'حلقم')) ||
+                    (spoken[offset] == 'حلقتم' || spoken[offset] == 'حلقم')) ||
                 (expected[word].first == 'يشقق' &&
                     (spoken[offset] == 'يشرقق' ||
                         spoken[offset] == 'يشرقه' ||
                         spoken[offset] == 'يشرتقب')) ||
                 (expected[word].first == 'فيخرج' &&
-                    (spoken[offset] == 'فيقرج' ||
-                        spoken[offset] == 'فيقر')) ||
+                    (spoken[offset] == 'فيقرج' || spoken[offset] == 'فيقر')) ||
                 (expected[word].first == 'يهبط' &&
                     (spoken[offset] == 'يهدط' ||
                         _foldNearMiss(spoken[offset]) == 'ياخط' ||
@@ -4983,8 +4981,7 @@ class SpeechComparisonService {
                 (expected[word].first == 'فتيمموا' &&
                     spoken[offset] == 'فتيمن' &&
                     hasRightAnchor) ||
-                (expected[word].first == 'آزر' &&
-                    spoken[offset] == 'مئزر') ||
+                (expected[word].first == 'آزر' && spoken[offset] == 'مئزر') ||
                 (expected[word].first == 'الزراع' &&
                     (spoken[offset] == 'الصراط' ||
                         spoken[offset] == 'الصراح')) ||
@@ -4996,8 +4993,7 @@ class SpeechComparisonService {
                 (expected[word].first == 'حل' &&
                     spoken[offset] == 'محل' &&
                     hasRightAnchor) ||
-                (expected[word].first == 'لهن' &&
-                    spoken[offset] == 'لهم') ||
+                (expected[word].first == 'لهن' && spoken[offset] == 'لهم') ||
                 (expected[word].first == 'فواحش' &&
                     spoken[offset] == 'تواحش') ||
                 (expected[word].first == 'الإثم' &&
@@ -5007,8 +5003,7 @@ class SpeechComparisonService {
                 (expected[word].first == 'بها' &&
                     spoken[offset] == 'فيها' &&
                     hasRightAnchor) ||
-                (expected[word].first == 'خطبة' &&
-                    spoken[offset] == 'فيقبة') ||
+                (expected[word].first == 'خطبة' && spoken[offset] == 'فيقبة') ||
                 (expected[word].first == 'النساء' &&
                     spoken[offset] == 'نستاء') ||
                 (expected[word].first == 'علم' &&
@@ -5034,10 +5029,8 @@ class SpeechComparisonService {
                 (expected[word].first == 'بعضهم' &&
                     spoken[offset] == 'بعضكم' &&
                     hasRightAnchor) ||
-                (expected[word].first == 'بعض' &&
-                    spoken[offset] == 'بعضا') ||
-                (expected[word].first == 'حبطت' &&
-                    spoken[offset] == 'حافضت') ||
+                (expected[word].first == 'بعض' && spoken[offset] == 'بعضا') ||
+                (expected[word].first == 'حبطت' && spoken[offset] == 'حافضت') ||
                 (expected[word].first == 'مأواهم' &&
                     _foldNearMiss(spoken[offset]) == 'ماواكم') ||
                 (expected[word].first == 'فردوا' &&
@@ -5100,8 +5093,7 @@ class SpeechComparisonService {
                         _foldNearMiss(spoken[offset]) == 'السلوي')) ||
                 (expected[word].first == 'ظلمونا' &&
                     spoken[offset] == 'ظلعونا') ||
-                (expected[word].first == 'ولكن' &&
-                    spoken[offset] == 'ولاكن') ||
+                (expected[word].first == 'ولكن' && spoken[offset] == 'ولاكن') ||
                 (expected[word].first == 'أنفسهم' &&
                     spoken[offset] == 'منفسهم') ||
                 (expected[word].first == 'بعض' &&
@@ -5160,7 +5152,8 @@ class SpeechComparisonService {
                     (_foldNearMiss(spoken[offset]) == 'وقسفايها' ||
                         _foldNearMiss(spoken[offset]) == 'وقفايها')) ||
                 (expected[word].first == 'وفومها' &&
-                    (spoken[offset] == 'وفهمها' || spoken[offset] == 'وقومها')) ||
+                    (spoken[offset] == 'وفهمها' ||
+                        spoken[offset] == 'وقومها')) ||
                 (expected[word].first == 'وبصلها' &&
                     (spoken[offset] == 'وبصرها' || spoken[offset] == 'وصرها') &&
                     hasRightAnchor) ||
@@ -5243,8 +5236,7 @@ class SpeechComparisonService {
                 (expected[word].first == 'ادع' &&
                     keys[ayah] == '2:68' &&
                     spoken[offset] == 'يعلو') ||
-                (expected[word].first == 'الاسم' &&
-                    spoken[offset] == 'للسم') ||
+                (expected[word].first == 'الاسم' && spoken[offset] == 'للسم') ||
                 (expected[word].first == 'وسعى' &&
                     nextExpectedSet.first == 'لها' &&
                     spoken[offset] == 'وتعالى') ||
@@ -5466,18 +5458,18 @@ class SpeechComparisonService {
             continue;
           }
         }
-          // A non-Quran ASR spelling close to the expected word, followed by the
-          // next two expected words, is a misrecognition rather than a skip.
-          // However, if the expected word ends with 'ى' (alif maqsura) and the
-          // spoken word ends with 'ي' (ya), it is a vowel/haraka mistake
-          // (kasra/ya instead of fatha/alif maqsura, e.g. استوي for استوى) and
-          // must not be auto-corrected.
-          if (word + 2 < expected.length &&
-              offset + 2 < spoken.length &&
-              !(expected[word].first.endsWith('ى') &&
-                  spoken[offset].endsWith('ي')) &&
-              expected[word + 1].contains(spoken[offset + 1]) &&
-              expected[word + 2].contains(spoken[offset + 2]) &&
+        // A non-Quran ASR spelling close to the expected word, followed by the
+        // next two expected words, is a misrecognition rather than a skip.
+        // However, if the expected word ends with 'ى' (alif maqsura) and the
+        // spoken word ends with 'ي' (ya), it is a vowel/haraka mistake
+        // (kasra/ya instead of fatha/alif maqsura, e.g. استوي for استوى) and
+        // must not be auto-corrected.
+        if (word + 2 < expected.length &&
+            offset + 2 < spoken.length &&
+            !(expected[word].first.endsWith('ى') &&
+                spoken[offset].endsWith('ي')) &&
+            expected[word + 1].contains(spoken[offset + 1]) &&
+            expected[word + 2].contains(spoken[offset + 2]) &&
             ((!quranVocabulary.contains(spoken[offset]) &&
                     _isOrthographicNearMiss(
                       expected[word].first,
@@ -5664,8 +5656,7 @@ class SpeechComparisonService {
     if (retained.isEmpty) return false;
     final lastFolded = _foldAlifMaqsuraToAlif(retained.last);
     if (_foldAlifMaqsuraToAlif(incoming[start - 1]) == lastFolded) {
-      if (start == 2 &&
-          _foldAlifMaqsuraToAlif(incoming[0]) == lastFolded) {
+      if (start == 2 && _foldAlifMaqsuraToAlif(incoming[0]) == lastFolded) {
         return true;
       }
       if (start >= 3 &&
@@ -5739,7 +5730,9 @@ class SpeechComparisonService {
       return true;
     }
     if (start >= 2 &&
-        (_foldAlifMaqsuraToAlif('${incoming[start - 2]}${incoming[start - 1]}') ==
+        (_foldAlifMaqsuraToAlif(
+                  '${incoming[start - 2]}${incoming[start - 1]}',
+                ) ==
                 lastFolded ||
             _matchesSplitBoundaryWord(
               retained.last,
@@ -5924,26 +5917,17 @@ class SpeechComparisonService {
           if (joinedHeard == rFold ||
               '${heard[i]}${heard[i + 1]}' == '${retained[j]}ء' ||
               _isOrthographicNearMiss(rFold, joinedHeard) ||
-              _matchesSplitBoundaryWord(
-                retained[j],
-                heard[i],
-                heard[i + 1],
-              ) ||
+              _matchesSplitBoundaryWord(retained[j], heard[i], heard[i + 1]) ||
               (i + 2 == heard.length &&
                   heard.length >= 7 &&
-                  (_foldAlifMaqsuraToAlif(
-                            '${heard[i]}${heard[i + 1]}',
-                          ) ==
+                  (_foldAlifMaqsuraToAlif('${heard[i]}${heard[i + 1]}') ==
                           _foldAlifMaqsuraToAlif(retained[j]) ||
                       (retained[j].length >= 3 &&
                           _foldAlifMaqsuraToAlif(
                             '${heard[i]}${heard[i + 1]}',
                           ).startsWith(
                             _foldAlifMaqsuraToAlif(
-                              retained[j].substring(
-                                0,
-                                retained[j].length - 1,
-                              ),
+                              retained[j].substring(0, retained[j].length - 1),
                             ),
                           ))))) {
             i += 2;
@@ -5957,9 +5941,9 @@ class SpeechComparisonService {
             j + 1 < retained.length &&
             heard[i].length >= 4 &&
             retained[j].length >= 3 &&
-            _foldNearMiss(heard[i]).startsWith(
-              _foldNearMiss(retained[j]).substring(0, 2),
-            ) &&
+            _foldNearMiss(
+              heard[i],
+            ).startsWith(_foldNearMiss(retained[j]).substring(0, 2)) &&
             _foldNearMiss(heard[i + 1]) == _foldNearMiss(retained[j]) &&
             _foldNearMiss(heard[i + 2]) == _foldNearMiss(retained[j + 1])) {
           i++;
@@ -5970,7 +5954,8 @@ class SpeechComparisonService {
         if (j > at &&
             i < heard.length &&
             j + 1 < retained.length &&
-            _foldNearMiss(retained[j]) == 'و${_foldNearMiss(retained[j - 1])}' &&
+            _foldNearMiss(retained[j]) ==
+                'و${_foldNearMiss(retained[j - 1])}' &&
             wordMatchesRetained(
               heard[i],
               retained[j + 1],
@@ -6035,9 +6020,7 @@ class SpeechComparisonService {
     final maxSkip = incoming.length > 4 ? 4 : incoming.length - 1;
     for (var skip = 0; skip <= maxSkip; skip++) {
       final run = incoming.skip(skip).toList();
-      final rawRun = skip < baseRaw.length
-          ? baseRaw.skip(skip).toList()
-          : run;
+      final rawRun = skip < baseRaw.length ? baseRaw.skip(skip).toList() : run;
       if (run.isEmpty) continue;
       if (skip == 1 && run.length < 3) continue;
       if (skip >= 2 &&
@@ -6047,7 +6030,8 @@ class SpeechComparisonService {
               run.length == retained.length)) {
         continue;
       }
-      final minAt = (skip > 0 &&
+      final minAt =
+          (skip > 0 &&
               !(run.length >= 6 &&
                   retained.length >= 6 &&
                   run.length == retained.length))
@@ -6252,10 +6236,10 @@ class SpeechComparisonService {
     final longest = a.length > b.length ? a.length : b.length;
     final allowed =
         (longest >= 8 &&
-                a.length >= 7 &&
-                b.length >= 7 &&
-                a.substring(0, 3) == b.substring(0, 3) &&
-                a.substring(a.length - 2) == b.substring(b.length - 2))
+            a.length >= 7 &&
+            b.length >= 7 &&
+            a.substring(0, 3) == b.substring(0, 3) &&
+            a.substring(a.length - 2) == b.substring(b.length - 2))
         ? 2
         : (longest >= 4 ? 1 : 0);
     if ((a.length - b.length).abs() > allowed) return false;
@@ -6389,9 +6373,7 @@ class SpeechComparisonService {
         (secondSpoken == 'أن' || secondSpoken == 'ان')) {
       return true;
     }
-    if (expectedWord == 'غلت' &&
-        firstSpoken == 'قل' &&
-        secondSpoken == 'لت') {
+    if (expectedWord == 'غلت' && firstSpoken == 'قل' && secondSpoken == 'لت') {
       return true;
     }
     if (expectedWord.length < 4) return false;
@@ -6452,8 +6434,7 @@ class SpeechComparisonService {
         secondSpoken == 'علكم') {
       return true;
     }
-    if (expectedWord == 'اقترفتموها' &&
-        firstSpoken == 'وترفتموها') {
+    if (expectedWord == 'اقترفتموها' && firstSpoken == 'وترفتموها') {
       return false;
     }
     if (expectedWord == 'سلمتم' &&
@@ -6466,8 +6447,7 @@ class SpeechComparisonService {
         _foldNearMiss(secondSpoken) == 'اها') {
       return true;
     }
-    if (expectedWord == 'وعربي' &&
-        firstSpoken == 'أهحجمي') {
+    if (expectedWord == 'وعربي' && firstSpoken == 'أهحجمي') {
       return false;
     }
     if (expectedWord.length >= 5 &&
@@ -6506,8 +6486,7 @@ class SpeechComparisonService {
     final foldedFirst = _foldAlifMaqsuraToAlif(firstSpoken);
     final foldedSecond = _foldAlifMaqsuraToAlif(secondSpoken);
     final foldedExpected = _foldAlifMaqsuraToAlif(expectedWord);
-    final strippedFirst =
-        foldedFirst.length >= 2 && foldedFirst.endsWith('ا')
+    final strippedFirst = foldedFirst.length >= 2 && foldedFirst.endsWith('ا')
         ? foldedFirst.substring(0, foldedFirst.length - 1)
         : (foldedFirst.length >= 2 &&
                   foldedFirst.endsWith('ل') &&
@@ -6736,8 +6715,7 @@ class SpeechComparisonService {
         ((_foldNearMiss(firstSpoken) == 'ابوض' ||
                     _foldNearMiss(firstSpoken) == 'ابوح') &&
                 secondSpoken == 'لله' ||
-            (_foldNearMiss(firstSpoken) == 'انهم' &&
-                secondSpoken == 'الله'))) {
+            (_foldNearMiss(firstSpoken) == 'انهم' && secondSpoken == 'الله'))) {
       return true;
     }
     if (expectedWord == 'أرسلت' &&
@@ -6857,8 +6835,7 @@ class SpeechComparisonService {
               nextExpectedWord.startsWith('اثن') &&
               normalizedFirst ==
                   expectedWord.substring(0, expectedWord.length - 2) &&
-              normalizedSecondForIthn ==
-                  'ت${nextExpectedWord.substring(1)}') ||
+              normalizedSecondForIthn == 'ت${nextExpectedWord.substring(1)}') ||
           (expectedStem.length == 3 &&
               normalizedFirst.length == 3 &&
               expectedStem[0] == normalizedFirst[0] &&
@@ -6932,7 +6909,10 @@ class SpeechComparisonService {
           nextExpectedWord.startsWith('ل') &&
           !nextExpectedWord.startsWith('ال') &&
           _foldAlifMaqsuraToAlif(firstSpoken) ==
-              _foldAlifMaqsuraToAlif('$expectedWord' 'ن') &&
+              _foldAlifMaqsuraToAlif(
+                '$expectedWord'
+                'ن',
+              ) &&
           _foldAlifMaqsuraToAlif(secondSpoken) ==
               _foldAlifMaqsuraToAlif(nextRemainder)) {
         return true;
@@ -6940,7 +6920,10 @@ class SpeechComparisonService {
       if (nextExpectedWord.length >= 4 &&
           nextExpectedWord.startsWith('لل') &&
           _foldAlifMaqsuraToAlif(firstSpoken) ==
-              _foldAlifMaqsuraToAlif('$expectedWord' 'ل') &&
+              _foldAlifMaqsuraToAlif(
+                '$expectedWord'
+                'ل',
+              ) &&
           _foldAlifMaqsuraToAlif(secondSpoken) ==
               _foldAlifMaqsuraToAlif('ا$nextRemainder')) {
         return true;
@@ -6954,7 +6937,9 @@ class SpeechComparisonService {
         return true;
       }
       if (nextExpectedWord.length >= 4 && nextExpectedWord.startsWith('ال')) {
-        if (firstSpoken == '$expectedWord' 'ا' &&
+        if (firstSpoken ==
+                '$expectedWord'
+                    'ا' &&
             _foldNearMiss(secondSpoken) ==
                 _foldNearMiss(nextExpectedWord.substring(2))) {
           return true;
@@ -7332,7 +7317,9 @@ class SpeechComparisonService {
         final c = spokenWord[i];
         if (c != 'و' &&
             c != 'ا' &&
-            !(c == 'ي' && spokenWord[i - 1] != 'ي' && spokenWord[i + 1] != 'ي')) {
+            !(c == 'ي' &&
+                spokenWord[i - 1] != 'ي' &&
+                spokenWord[i + 1] != 'ي')) {
           continue;
         }
         final withoutInserted =
@@ -7344,9 +7331,7 @@ class SpeechComparisonService {
   }
 
   static final RegExp _harakat = RegExp(r'[\u064B-\u065F\u0670]');
-  static final RegExp _shortVowelMarks = RegExp(
-    r'[\u064B-\u0650\u0670]',
-  );
+  static final RegExp _shortVowelMarks = RegExp(r'[\u064B-\u0650\u0670]');
 
   List<String> _vocalizedWords(String text) {
     final cleaned = text
@@ -7458,7 +7443,7 @@ class SpeechComparisonService {
       return false;
     }
 
-      for (var i = 0; i < el.length; i++) {
+    for (var i = 0; i < el.length; i++) {
       if (_vowelsConflict(el[i].$2, fl[i].$2)) {
         // Whisper frequently hallucinates final-letter case vowels or tanween
         // on longer nouns/particles, especially on taa marbuta ('ة' -> 'ه') or
@@ -7467,8 +7452,7 @@ class SpeechComparisonService {
         final isTanweenFathaEnding =
             expectedVocalized.endsWith('ًا') ||
             expectedVocalized.endsWith('اً');
-        if (i == el.length - 1 &&
-            (el[i].$1 == 'ه' || isTanweenFathaEnding)) {
+        if (i == el.length - 1 && (el[i].$1 == 'ه' || isTanweenFathaEnding)) {
           continue;
         }
         // Guard against Whisper labial vowel harmony before attached '-هُم'
@@ -7498,13 +7482,16 @@ class SpeechComparisonService {
         !rawVocalized.any(_shortVowelMarks.hasMatch)) {
       return rawSpoken;
     }
-    final entries = <({
-      String written,
-      String folded,
-      String vocalized,
-      String? prevFolded,
-      String? nextFolded,
-    })>[];
+    final entries =
+        <
+          ({
+            String written,
+            String folded,
+            String vocalized,
+            String? prevFolded,
+            String? nextFolded,
+          })
+        >[];
     final allWritten = <String>[];
     final allVocalized = <String>[];
     for (final ayahText in expectedAyahs) {

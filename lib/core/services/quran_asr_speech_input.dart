@@ -85,9 +85,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     required String verseKey,
     Dio? client,
   }) async {
-    if (!quranAsrExperimentEnabled ||
-        kIsWeb ||
-        !_isQuranAsrSupportedPlatform) {
+    if (!quranAsrExperimentEnabled || kIsWeb || !_isQuranAsrSupportedPlatform) {
       return false;
     }
     final previousUpload = _uploadInFlight;
@@ -198,9 +196,7 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     required List<Map<String, Object>> snapshots,
     Dio? client,
   }) async {
-    if (!quranAsrExperimentEnabled ||
-        kIsWeb ||
-        !_isQuranAsrSupportedPlatform) {
+    if (!quranAsrExperimentEnabled || kIsWeb || !_isQuranAsrSupportedPlatform) {
       return false;
     }
     final previousUpload = _uploadInFlight;

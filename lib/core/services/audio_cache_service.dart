@@ -54,7 +54,11 @@ class AudioCacheService {
       final partial = File('$filePath.part');
       if (partial.existsSync()) await partial.delete();
       try {
-        await _dio.download(resolvedUrl, partial.path, cancelToken: cancelToken);
+        await _dio.download(
+          resolvedUrl,
+          partial.path,
+          cancelToken: cancelToken,
+        );
         if (!partial.existsSync() || partial.lengthSync() == 0) {
           throw StateError(
             'Downloaded audio is empty for $surahNumber:$ayahNumber.',
@@ -67,10 +71,9 @@ class AudioCacheService {
       }
     }
 
-    await Hive.box(_boxKey).put(
-      _ayahKey(reciterId, surahNumber, ayahNumber),
-      filePath,
-    );
+    await Hive.box(
+      _boxKey,
+    ).put(_ayahKey(reciterId, surahNumber, ayahNumber), filePath);
     return filePath;
   }
 

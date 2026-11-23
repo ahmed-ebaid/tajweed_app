@@ -15,19 +15,30 @@ import 'quranlab_sdk.dart';
 import 'speech_comparison_service.dart';
 import 'tajweed_recitation_aligner.dart';
 
-/// The on-device recognizer for memorization. `tajweedformer` (default) uses
-/// Quran Lab's TajweedFormer; `whisper` reverts to the Whisper lab engine:
-/// `--dart-define=QURAN_ASR_ENGINE=whisper`.
+/// The on-device recognizer for memorization. Whisper (default) runs the
+/// Whisper lab engine; Quran Lab's TajweedFormer runs when a tester turns it
+/// on in Settings, or in a build with
+/// `--dart-define=QURAN_ASR_ENGINE=tajweedformer`.
 const quranAsrEngine = String.fromEnvironment(
   'QURAN_ASR_ENGINE',
-  defaultValue: 'tajweedformer',
+  defaultValue: 'whisper',
 );
-const quranAsrUsesTajweedFormer = quranAsrEngine != 'whisper';
+const _tajweedFormerKey = 'lab_use_tajweedformer';
+
+bool get quranAsrUsesTajweedFormer {
+  if (quranAsrEngine == 'tajweedformer') return true;
+  if (!quranAsrRetainDebugAudio || !Hive.isBoxOpen('settings')) return false;
+  return Hive.box('settings').get(_tajweedFormerKey) == true;
+}
+
+Future<void> setQuranAsrUsesTajweedFormer(bool value) async {
+  if (!Hive.isBoxOpen('settings')) return;
+  await Hive.box('settings').put(_tajweedFormerKey, value);
+}
 
 /// Test builds (`QURAN_ASR_RETAIN_DEBUG_AUDIO`) may upload TajweedFormer
 /// takes, but only after the tester agrees in the sharing prompt.
-const tajweedFormerTakeSharingAvailable =
-    quranAsrUsesTajweedFormer && quranAsrRetainDebugAudio;
+const tajweedFormerTakeSharingAvailable = quranAsrRetainDebugAudio;
 
 /// A speech input that needs the ayahs the learner is expected to recite.
 abstract interface class ExpectedRecitationSpeechInput

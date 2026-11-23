@@ -298,8 +298,7 @@ class TajweedRecitationAligner {
         // Noise may also come ahead of the word a take resumes from.
         final resumeNoise =
             noise && (i == 1 ? back[j] == _skip : noiseCell[up + j] == 1);
-        final ins =
-            cost[up + j] + (resumeNoise ? _leadingNoiseCost : insert);
+        final ins = cost[up + j] + (resumeNoise ? _leadingNoiseCost : insert);
         if (ins < best) {
           best = ins;
           move = _insert;

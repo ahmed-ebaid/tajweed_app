@@ -414,8 +414,7 @@ class TajweedText extends StatelessWidget {
                   isSajdah: run.markerRule == TajweedRule.sajdah,
                 )
               : bodyStyle,
-          semanticsLabel:
-              maskColor != null && (!run.isMarker || isHiddenMarker)
+          semanticsLabel: maskColor != null && (!run.isMarker || isHiddenMarker)
               ? ''
               : null,
           recognizer: onTap != null

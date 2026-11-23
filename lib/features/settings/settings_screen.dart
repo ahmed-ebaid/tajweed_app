@@ -17,6 +17,13 @@ import '../../core/services/quran_offline_sync_service.dart';
 import '../../core/services/quran_api_service.dart';
 import '../../core/services/quran_content_sync_service.dart';
 import '../../core/services/quranlab_sdk.dart';
+import '../../core/services/quran_asr_speech_input.dart'
+    show quranAsrExperimentEnabled, quranAsrRetainDebugAudio;
+import '../../core/services/tajweedformer_speech_input.dart'
+    show
+        quranAsrEngine,
+        quranAsrUsesTajweedFormer,
+        setQuranAsrUsesTajweedFormer;
 import '../../core/services/onboarding_service.dart';
 import '../../core/services/seasonal_icon_service.dart';
 import '../onboarding/onboarding_screen.dart';
@@ -139,6 +146,7 @@ class SettingsScreen extends StatelessWidget {
           const _QuranDataTile(),
           const Divider(height: 0.5, indent: 16),
           const _SeasonalIconTile(),
+          const _RecognizerSwitch(),
           _SectionLabel(label: l10n.get('feedback_section')),
           ListTile(
             leading: const Icon(Icons.star_outline_rounded),
@@ -3046,6 +3054,44 @@ class _SectionLabel extends StatelessWidget {
           letterSpacing: 0.04,
         ),
       ),
+    );
+  }
+}
+
+/// Test builds only: switches Hifz recitation between Whisper and
+/// TajweedFormer.
+class _RecognizerSwitch extends StatefulWidget {
+  const _RecognizerSwitch();
+
+  @override
+  State<_RecognizerSwitch> createState() => _RecognizerSwitchState();
+}
+
+class _RecognizerSwitchState extends State<_RecognizerSwitch> {
+  late bool _enabled = quranAsrUsesTajweedFormer;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!quranAsrExperimentEnabled ||
+        !quranAsrRetainDebugAudio ||
+        quranAsrEngine == 'tajweedformer') {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.graphic_eq),
+          title: const Text('TajweedFormer recognition (test)'),
+          subtitle: const Text('Off uses Whisper. Reopen Hifz after changing.'),
+          value: _enabled,
+          onChanged: (value) async {
+            setState(() => _enabled = value);
+            await setQuranAsrUsesTajweedFormer(value);
+          },
+        ),
+        const Divider(height: 0.5, indent: 16),
+      ],
     );
   }
 }
