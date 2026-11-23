@@ -13,9 +13,10 @@ class SpeechComparisonService {
   /// Recitation words without Quranic pause marks or Arabic diacritics.
   List<String> recitationWords(String text) => _recitationWords(text);
 
-  /// Whether [spokenText] says word [wordIndex] of [expectedAyah] itself,
-  /// allowing spelling variants but not the near-miss corrections used for
-  /// clipped or misspelled ASR words.
+  /// Whether [spokenText] says word [wordIndex] of [expectedAyah] itself.
+  /// Spellings that differ only by alif (سموات for سماوات) count; changed
+  /// consonants (ورتين for كرتين) do not, unlike the near-miss corrections
+  /// used for clipped ASR words.
   bool saysExpectedWord({
     required String expectedAyah,
     required String verseKey,
@@ -24,12 +25,18 @@ class SpeechComparisonService {
   }) {
     final expected = _expectedRecitationWords(expectedAyah, verseKey);
     if (wordIndex < 0 || wordIndex >= expected.length) return true;
+    String skeleton(String w) => w.replaceAll('ا', '');
     final forms = {
       for (final f in expected[wordIndex]) _foldAlifMaqsuraToAlif(f),
     };
-    return _recitationWords(
-      spokenText,
-    ).any((w) => forms.contains(_foldAlifMaqsuraToAlif(w)));
+    final skeletons = {
+      for (final f in forms)
+        if (skeleton(f).length >= 2) skeleton(f),
+    };
+    return _recitationWords(spokenText).any((w) {
+      final folded = _foldAlifMaqsuraToAlif(w);
+      return forms.contains(folded) || skeletons.contains(skeleton(folded));
+    });
   }
 
   /// Recitation words preserving Arabic vowel diacritics (harakat).

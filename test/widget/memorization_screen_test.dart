@@ -4754,6 +4754,68 @@ void main() {
     expect(visible(), greaterThan(3));
   });
 
+  testWidgets(
+    'Mulk 67:4 real take: مرتين heard with Whisper junk is confirmed and held',
+    (tester) async {
+      final haptics = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            haptics.add('${call.arguments}');
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+      final speech = _FakeWindowedSpeech();
+      await _open(
+        tester,
+        speech,
+        ayahs: [
+          _ayah(
+            4,
+            'ثم ارجع البصر كرتين ينقلب إليك البصر خاسئا وهو حسير',
+            surahNumber: 67,
+          ),
+        ],
+        continuous: true,
+        localQuranLab: true,
+      );
+      await _tap(tester, 'Start reciting');
+      await _tap(tester, 'Agree and continue');
+      int visible() =>
+          tester
+              .widget<MushafPageContent>(find.byType(MushafPageContent))
+              .revealedWordCounts['67:4'] ??
+          0;
+      // Window transcripts from a real Whisper take of the slip.
+      var start = 0.0;
+      for (final window in [
+        'ثُمَّ ارْجِعِ الْبَصَرَ',
+        'ثُمَّ ارْجِعِ الْبَصَرَ مَرَّتَيْنِ',
+        'مَرْجِعِ الْبَصَرَ مَرَّتَيْنِيًا',
+        'وَارْجِعِ الْبَصَرَ مَرَّتَيْنِيًا',
+        'عِلْبَصَرَ مَرَّتَيْنِيًا',
+      ]) {
+        speech.windowStartSeconds = start;
+        start += 0.4;
+        speech.result!(window, false);
+        await tester.pumpAndSettle();
+      }
+      expect(haptics, hasLength(1));
+      speech.windowStartSeconds = start;
+      speech.result!('وَرَّتَيْنِ يَنْقَلِبُ إِلَيْكَ الْبَصْرُ', false);
+      await tester.pumpAndSettle();
+      expect(visible(), 3);
+    },
+  );
+
   testWidgets('Mulk 67:4 Hint releases a held مرتين mistake', (tester) async {
     final speech = _FakeWindowedSpeech();
     await _open(

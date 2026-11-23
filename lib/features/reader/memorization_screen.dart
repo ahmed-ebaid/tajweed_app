@@ -1496,11 +1496,30 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       _pendingLiveMistakeSite = null;
                       _pendingLiveMistakeConfirmations = 0;
                     } else {
-                      _pendingLiveMistakeConfirmations =
-                          _pendingLiveMistakeSite == site
+                      final pending = _pendingLiveMistakeSite;
+                      // Whisper often tacks junk onto a held word
+                      // ("مرتين" then "مرتينيا"); that is the same hearing.
+                      final sameSite =
+                          pending != null &&
+                          pending.$1 == site.$1 &&
+                          pending.$2 == site.$2 &&
+                          (pending.$3 == site.$3 ||
+                              pending.$3.length >= 4 &&
+                                  site.$3.length >= 4 &&
+                                  (pending.$3.startsWith(site.$3) ||
+                                      site.$3.startsWith(pending.$3)));
+                      _pendingLiveMistakeConfirmations = sameSite
                           ? _pendingLiveMistakeConfirmations + 1
                           : 1;
-                      _pendingLiveMistakeSite = site;
+                      _pendingLiveMistakeSite = sameSite
+                          ? (
+                              site.$1,
+                              site.$2,
+                              pending.$3.length <= site.$3.length
+                                  ? pending.$3
+                                  : site.$3,
+                            )
+                          : site;
                       final confirmed = isArticulationPartial
                           ? _pendingLiveMistakeConfirmations >= 3
                           : (isAnchoredToRetained &&
@@ -1516,8 +1535,41 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       }
                     }
                   } else {
-                    _pendingLiveMistakeSite = null;
-                    _pendingLiveMistakeConfirmations = 0;
+                    final pending = _pendingLiveMistakeSite;
+                    // A window that still carries the pending wrong word
+                    // does not clear it; one that hears it right after the
+                    // last correct word ("البصر مرتين") is another hearing.
+                    final stillHeard =
+                        pending != null &&
+                        pending.$1 == activeIdx &&
+                        pending.$2 == activeMatched + 1 &&
+                        pending.$3.length >= 4 &&
+                        rawPreviewWords.any((w) => w.startsWith(pending.$3));
+                    final heardAfterPrevious =
+                        stillHeard &&
+                        activeMatched >= 1 &&
+                        activeMatched <= activeWords.length &&
+                        [
+                          for (var j = 0; j + 1 < rawPreviewWords.length; j++)
+                            rawPreviewWords[j] ==
+                                    activeWords[activeMatched - 1] &&
+                                rawPreviewWords[j + 1].startsWith(pending.$3),
+                        ].any((hit) => hit);
+                    if (!stillHeard) {
+                      _pendingLiveMistakeSite = null;
+                      _pendingLiveMistakeConfirmations = 0;
+                    } else if (heardAfterPrevious) {
+                      _pendingLiveMistakeConfirmations++;
+                      final liveMismatchWord = activeMatched + 1;
+                      if (!isDecodeLoop &&
+                          totalPreviewWords <= previousPreviewWords &&
+                          _pendingLiveMistakeConfirmations >= 3 &&
+                          _mismatchWord != liveMismatchWord) {
+                        _mismatchWord = liveMismatchWord;
+                        _heldMistake = (activeKey, liveMismatchWord - 1);
+                        _recordMistake(activeIdx, liveMismatchWord);
+                      }
+                    }
                   }
                 }
               }
