@@ -2580,6 +2580,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     var stopAfterFinishing = false;
     setState(() {
       _viewedPageOverride = null;
+      _heldMistake = null;
       if (keepRecording) {
         final targetIndex = activeIndex < widget.ayahs.length
             ? activeIndex
@@ -2683,6 +2684,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
     _interrupt();
     setState(() {
       _viewedPageOverride = null;
+      _heldMistake = null;
       if (widget.localQuranLab &&
           widget.continuous &&
           activeIndex > _index &&

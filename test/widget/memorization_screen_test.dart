@@ -4753,4 +4753,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(visible(), greaterThan(3));
   });
+
+  testWidgets('Mulk 67:4 Hint releases a held مرتين mistake', (tester) async {
+    final speech = _FakeWindowedSpeech();
+    await _open(
+      tester,
+      speech,
+      ayahs: [
+        _ayah(
+          4,
+          'ثم ارجع البصر كرتين ينقلب إليك البصر خاسئا وهو حسير',
+          surahNumber: 67,
+        ),
+      ],
+      continuous: true,
+      localQuranLab: true,
+    );
+    await _tap(tester, 'Start reciting');
+    await _tap(tester, 'Agree and continue');
+    int visible() =>
+        tester
+            .widget<MushafPageContent>(find.byType(MushafPageContent))
+            .revealedWordCounts['67:4'] ??
+        0;
+    speech.result!('ثُمَّ ارْجِعِ الْبَصَرَ', false);
+    await tester.pumpAndSettle();
+    for (final start in [0.5, 1.0, 1.5]) {
+      speech.windowStartSeconds = start;
+      speech.result!('ارْجِعِ الْبَصَرَ مَرَّتَيْنِ يَنْقَلِبْ', false);
+      await tester.pumpAndSettle();
+    }
+    expect(visible(), 3);
+    await _tap(tester, 'Need a hint?');
+    final hinted = visible();
+    for (final start in [3.0, 3.5]) {
+      speech.windowStartSeconds = start;
+      speech.result!('يَنْقَلِبُ إِلَيْكَ الْبَصَرُ خَاسِئًا وَهُوَ', false);
+      await tester.pumpAndSettle();
+    }
+    expect(visible(), greaterThan(hinted));
+  });
 }
