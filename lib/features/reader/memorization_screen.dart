@@ -85,6 +85,11 @@ class _MemorizationScreenState extends State<MemorizationScreen>
   final _mistakes = <_HifzMistakeRecord>[];
   (int, int, int)? _lastHapticMistakeSite;
   (int, int, String)? _pendingLiveMistakeSite;
+
+  /// A confirmed live mistake: (ayah key, word index). Only hearing that
+  /// word itself moves past it, so a clipped wrong word cannot be corrected
+  /// into the expected one.
+  (String, int)? _heldMistake;
   int _pendingLiveMistakeConfirmations = 0;
   int _hapticRequests = 0;
   int _hapticRequestFailures = 0;
@@ -1163,6 +1168,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
         _transcript = '';
         _message = 'mem_preparing';
         _mismatchWord = null;
+        _heldMistake = null;
         _lastHapticMistakeSite = null;
         _pendingLiveMistakeSite = null;
         _pendingLiveMistakeConfirmations = 0;
@@ -1268,10 +1274,30 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   !contradictsPrefix && wordCounts.first == 0) {
                 _liveWordCounts.addAll(previousWords);
               }
+              final held = _heldMistake;
+              var heldBack = false;
               for (var i = 0; i < wordCounts.length; i++) {
+                if (heldBack) break;
                 if (wordCounts[i] == 0) continue;
                 final ayah = expectedAyahs[i];
                 final key = '${ayah.surahNumber}:${ayah.ayahNumber}';
+                if (widget.localQuranLab &&
+                    held != null &&
+                    held.$1 == key &&
+                    wordCounts[i] > held.$2) {
+                  if (_comparison.saysExpectedWord(
+                    expectedAyah: ayah.imlaei ?? '',
+                    verseKey: key,
+                    wordIndex: held.$2,
+                    spokenText: text,
+                  )) {
+                    _heldMistake = null;
+                  } else {
+                    wordCounts = [...wordCounts]..[i] = held.$2;
+                    heldBack = true;
+                    if (wordCounts[i] == 0) continue;
+                  }
+                }
                 if (!widget.localQuranLab ||
                     !widget.continuous ||
                     wordCounts[i] > (_liveWordCounts[key] ?? 0)) {
@@ -1485,6 +1511,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                           confirmed &&
                           _mismatchWord != liveMismatchWord) {
                         _mismatchWord = liveMismatchWord;
+                        _heldMistake = (activeKey, liveMismatchWord - 1);
                         _recordMistake(activeIdx, liveMismatchWord);
                       }
                     }

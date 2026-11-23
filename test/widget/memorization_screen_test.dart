@@ -4693,4 +4693,64 @@ void main() {
       expect(hapticCalls, hasLength(1));
     },
   );
+
+  testWidgets('Mulk 67:4 clipped ورتين cannot pass a confirmed مرتين', (
+    tester,
+  ) async {
+    final haptics = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add('${call.arguments}');
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+    final speech = _FakeWindowedSpeech();
+    await _open(
+      tester,
+      speech,
+      ayahs: [
+        _ayah(
+          4,
+          'ثم ارجع البصر كرتين ينقلب إليك البصر خاسئا وهو حسير',
+          surahNumber: 67,
+        ),
+      ],
+      continuous: true,
+      localQuranLab: true,
+    );
+    await _tap(tester, 'Start reciting');
+    await _tap(tester, 'Agree and continue');
+    int visible() =>
+        tester
+            .widget<MushafPageContent>(find.byType(MushafPageContent))
+            .revealedWordCounts['67:4'] ??
+        0;
+    speech.result!('ثُمَّ ارْجِعِ الْبَصَرَ', false);
+    await tester.pumpAndSettle();
+    expect(visible(), 3);
+    for (final start in [0.5, 1.0, 1.5]) {
+      speech.windowStartSeconds = start;
+      speech.result!('ارْجِعِ الْبَصَرَ مَرَّتَيْنِ يَنْقَلِبْ', false);
+      await tester.pumpAndSettle();
+    }
+    expect(haptics, isNotEmpty);
+    expect(visible(), 3);
+    speech.windowStartSeconds = 3;
+    speech.result!('وَرَّتَيْنِ يَنْقَلِبُ إِلَيْكَ الْبَصْرُ', false);
+    await tester.pumpAndSettle();
+    expect(visible(), 3);
+    speech.windowStartSeconds = 4;
+    speech.result!('الْبَصَرَ كَرَّتَيْنِ يَنْقَلِبْ إِلَيْكَ', false);
+    await tester.pumpAndSettle();
+    expect(visible(), greaterThan(3));
+  });
 }
