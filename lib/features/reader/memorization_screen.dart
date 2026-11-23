@@ -1527,11 +1527,16 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                                     !sharesStemOpening) ||
                                 _pendingLiveMistakeConfirmations >= 2;
                       if (totalPreviewWords <= previousPreviewWords &&
-                          confirmed &&
-                          _mismatchWord != liveMismatchWord) {
-                        _mismatchWord = liveMismatchWord;
-                        _heldMistake = (activeKey, liveMismatchWord - 1);
-                        _recordMistake(activeIdx, liveMismatchWord);
+                          confirmed) {
+                        // Only a slip heard again and again holds the word;
+                        // a one-off mishearing would otherwise stick.
+                        if (_pendingLiveMistakeConfirmations >= 3) {
+                          _heldMistake = (activeKey, liveMismatchWord - 1);
+                        }
+                        if (_mismatchWord != liveMismatchWord) {
+                          _mismatchWord = liveMismatchWord;
+                          _recordMistake(activeIdx, liveMismatchWord);
+                        }
                       }
                     }
                   } else {
@@ -1563,11 +1568,12 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       final liveMismatchWord = activeMatched + 1;
                       if (!isDecodeLoop &&
                           totalPreviewWords <= previousPreviewWords &&
-                          _pendingLiveMistakeConfirmations >= 3 &&
-                          _mismatchWord != liveMismatchWord) {
-                        _mismatchWord = liveMismatchWord;
+                          _pendingLiveMistakeConfirmations >= 3) {
                         _heldMistake = (activeKey, liveMismatchWord - 1);
-                        _recordMistake(activeIdx, liveMismatchWord);
+                        if (_mismatchWord != liveMismatchWord) {
+                          _mismatchWord = liveMismatchWord;
+                          _recordMistake(activeIdx, liveMismatchWord);
+                        }
                       }
                     }
                   }
