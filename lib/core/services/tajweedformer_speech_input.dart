@@ -138,6 +138,13 @@ class TajweedFormerSpeechInput
       words += ayah.words.length;
     }
     _expected = expected;
+    // Fetch the words' reference units now (cached per ayah), so Recite
+    // does not wait on one request per ayah.
+    unawaited(
+      loadModel()
+          .then((model) => alignerFor(model, expected))
+          .then<void>((_) {}, onError: (Object _) {}),
+    );
   }
 
   @override
