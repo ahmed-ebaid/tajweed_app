@@ -226,6 +226,15 @@ class TajweedFormerSpeechInput
       return null;
     }
     final session = await model.session();
+    await _startMic(recorder, session, generation);
+    return session;
+  }
+
+  Future<void> _startMic(
+    AudioRecorder recorder,
+    TajweedSession session,
+    int generation,
+  ) async {
     final stream = await recorder.startStream(
       const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -247,18 +256,40 @@ class TajweedFormerSpeechInput
         if (!done.isCompleted) done.complete();
       },
     );
-    return session;
   }
 
   /// A microphone that opens but never delivers samples (a stale audio
   /// session after a call, say) would otherwise leave the take silent.
-  void _watchForAudio(int generation) {
+  void _watchForAudio(int generation, {bool retried = false}) {
     _audioWatch?.cancel();
-    _audioWatch = Timer(const Duration(seconds: 3), () {
-      if (generation == _generation && _takeBytes == 0 && _droppedBytes == 0) {
-        _fail(generation, 'no_audio');
-      }
-    });
+    _audioWatch = Timer(
+      Duration(milliseconds: retried ? 2500 : 1200),
+      () async {
+        if (generation != _generation ||
+            _takeBytes != 0 ||
+            _droppedBytes != 0) {
+          return;
+        }
+        final session = _session;
+        if (retried || session == null) {
+          _fail(generation, 'no_audio');
+          return;
+        }
+        // Restart the microphone once before giving up, so the learner does
+        // not have to tap again.
+        try {
+          await _stopRecorder();
+          if (generation != _generation) return;
+          final recorder = AudioRecorder();
+          _recorder = recorder;
+          await _startMic(recorder, session, generation);
+          _watchForAudio(generation, retried: true);
+        } catch (error) {
+          debugPrint('TajweedFormer mic restart: $error');
+          _fail(generation, 'no_audio');
+        }
+      },
+    );
   }
 
   void _onAudio(TajweedSession session, int generation, Uint8List bytes) {
