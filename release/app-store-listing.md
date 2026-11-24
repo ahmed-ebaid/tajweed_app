@@ -604,11 +604,10 @@ and is not an official Quran.Foundation, Quran.com, or QuranReflect app.
 
 ## What's New
 
-Quran-style small-head sukoon in learning and quiz examples. Corrected noon
-and meem articulation points and clarified that the nasal cavity is the outlet
-of ghunnah only. Clearer steps for starting with hamzat al-wasl, including
-temporary-damma exceptions. Added an example for each of the five degrees
-of Tafkhim.
+New: Hifz tab. Recite a surah from memory and the words appear on the Mushaf
+page as you say them. Use Hint, Reveal or Listen when you get stuck.
+Recognition runs entirely on your device — your recordings are never saved or
+shared. Also includes the updated Mushaf page and small fixes.
 
 ## Previous improvements retained
 
@@ -676,6 +675,12 @@ The build 82 refresh uses 1320×2868 iPhone captures and 2064×2752 iPad capture
 The Spanish iPad set had an eleventh image, an identical duplicate of
 `08-settings.png`; the extra copy was backed up and removed to satisfy Apple's
 ten-image limit. All other existing screenshots are retained.
+
+The 1.1.26 refresh (iOS build 169, Android build 170) replaces Home and
+Mushaf in every language, adds a Hifz capture
+(`integration_test/memorization_preview_test.dart`, page 562) as the third
+image, and removes Offline settings on iOS and Ghunnah detail on Google Play.
+Android captures use the `tajweed_play` emulator at 1080×1920.
 
 ## App Review notes
 

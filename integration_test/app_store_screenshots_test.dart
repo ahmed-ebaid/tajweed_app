@@ -185,7 +185,7 @@ void main() {
 
     await _captureScreenshot(tester, binding, '01-home');
 
-    await tester.tap(find.byIcon(Icons.menu_book_rounded));
+    await tester.tap(find.byIcon(Icons.menu_book_outlined));
     await _waitForReaderContent(tester);
     await _captureScreenshot(tester, binding, '02-ayah-reader');
     await _captureOnboardingAsset(tester, binding, '01-tajweed-rules');
@@ -634,9 +634,10 @@ Future<void> _initializeFixtureStorage(String languageCode) async {
       'translated_name': {'name': _localizedAlBaqarahName(languageCode)},
     },
   ]);
-  await Hive.box(
-    'verse_cache',
-  ).put('quran_ar_surah_1', _localizedAlFatihahFixture(languageCode));
+  await Hive.box('verse_cache').put(
+    'quran_ar_surah_1',
+    await _withMushafPageOneLines(_localizedAlFatihahFixture(languageCode)),
+  );
   await Hive.box(
     'verse_cache',
   ).put('quran_tajweed_surah_1', <String, String>{});
@@ -777,6 +778,48 @@ Future<void> _seedOnboardingBookmarks() async {
       'timestamp': now - 86400000,
     },
   ]);
+}
+
+/// Adds the printed-page word and line data the Mushaf view needs.
+///
+/// The Mushaf refuses to draw a page without line metadata, and the hand-made
+/// Al-Fatihah fixture has none, so the store's Mushaf screenshot showed the
+/// "Unable to load this Quran page" state. Real page-1 data is merged in while
+/// the fixture's localized translations are kept for the ayah reader shots.
+Future<List<Map<String, dynamic>>> _withMushafPageOneLines(
+  List<Map<String, dynamic>> fixture,
+) async {
+  final response = await Dio().get<Map<String, dynamic>>(
+    'https://api.quran.com/api/v4/verses/by_page/1',
+    queryParameters: {
+      'mushaf': 2,
+      'language': 'ar',
+      'words': 'true',
+      'fields':
+          'text_uthmani,text_imlaei,page_number,verse_key,juz_number,'
+          'hizb_number,rub_el_hizb_number,sajdah_number',
+      'word_fields':
+          'text_uthmani,text_imlaei,text_uthmani_tajweed,tajweed,'
+          'char_type_name,line_number,page_number',
+      'per_page': 50,
+    },
+  );
+  final pageVerses = {
+    for (final verse in List<Map<String, dynamic>>.from(
+      response.data?['verses'] as List<dynamic>? ?? const [],
+    ))
+      verse['verse_key']: verse,
+  };
+  if (pageVerses.length != fixture.length) {
+    throw StateError('Quran page 1 returned ${pageVerses.length} verses');
+  }
+  return [
+    for (final verse in fixture)
+      {
+        ...pageVerses[verse['verse_key']]!,
+        'translations': verse['translations'],
+      },
+  ];
 }
 
 Future<void> _seedPageFiveFixture() async {

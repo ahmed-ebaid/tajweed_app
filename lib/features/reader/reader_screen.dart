@@ -5680,7 +5680,8 @@ class _MushafJustifiedLine extends StatelessWidget {
                 math.max(1.0, width - 3) /
                     math.max(metrics.width, minRequiredWidth),
               )
-            : scale;
+            // Parents may give a line less width than the page scale assumed.
+            : math.min(scale, math.max(1.0, width - 1) / metrics.width);
         final effectiveVerticalScale =
             verticalGlyphScale > 1 && effectiveScale > 0
             ? verticalGlyphScale * (scale / effectiveScale)

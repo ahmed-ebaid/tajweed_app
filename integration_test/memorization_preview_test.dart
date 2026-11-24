@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -171,6 +173,10 @@ void main() {
     }
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
+    if (Platform.isAndroid) {
+      await binding.convertFlutterSurfaceToImage();
+      await tester.pumpAndSettle();
+    }
     await binding.takeScreenshot('hifz-follow-along');
   });
 }
