@@ -26,6 +26,10 @@ class MemorizationScreen extends StatefulWidget {
   final bool review;
   final bool localQuranLab;
 
+  /// Live mistake marking, buzz and hold. Too many are Whisper mishearings
+  /// for store builds, so only test builds turn them on.
+  final bool mistakeAlerts;
+
   const MemorizationScreen({
     super.key,
     required this.ayahs,
@@ -38,6 +42,7 @@ class MemorizationScreen extends StatefulWidget {
     this.continuous = true,
     this.review = false,
     this.localQuranLab = false,
+    this.mistakeAlerts = quranAsrRetainDebugAudio,
   }) : assert(ayahs.length > 0);
 
   static bool isCompleteSurah(
@@ -312,7 +317,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
       _mistakes.add(record);
     }
     final hapticSite = (ayah.surahNumber, ayah.ayahNumber, clampedWordNumber);
-    if (_lastHapticMistakeSite != hapticSite) {
+    if (widget.mistakeAlerts && _lastHapticMistakeSite != hapticSite) {
       _lastHapticMistakeSite = hapticSite;
       _hapticRequests++;
       unawaited(_sendMistakeHaptic());
@@ -1317,7 +1322,8 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                   _pendingLiveMistakeConfirmations = 0;
                   _mismatchWord = null;
                 }
-                if (widget.continuous &&
+                if (widget.mistakeAlerts &&
+                    widget.continuous &&
                     _activeAyahIndex < widget.ayahs.length) {
                   final activeIdx = _activeAyahIndex;
                   final activeAyah = widget.ayahs[activeIdx];
