@@ -21,9 +21,11 @@ test -f "$GPU_LIBS/src/libwhisper.a"
 test -f "$GPU_LIBS/ggml/src/ggml-metal/libggml-metal.a"
 
 # 2. Configure Flutter iOS Release with Quran ASR flags. STORE_BUILD=1 drops
-# the test-only flags (TajweedFormer, take sharing, audio retention and Hifz
-# mistake alerts) for a binary that can go to the App Store.
+# the test-only flags (TajweedFormer, take sharing, audio retention, cloud
+# take uploads and Hifz mistake alerts) for a binary that can go to the App
+# Store.
 TEST_DEFINES=(
+  --dart-define=QURAN_ASR_CLOUD_DIAGNOSTICS=true
   --dart-define=QURAN_ASR_RETAIN_DEBUG_AUDIO=true
   --dart-define=QURAN_ASR_RETAIN_DEBUG_TRANSCRIPTS=true
 )
@@ -34,7 +36,6 @@ flutter build ios --config-only --release \
   --build-name="$BUILD_NAME" \
   --build-number="$BUILD_NUMBER" \
   --dart-define=QURAN_ASR_EXPERIMENT=true \
-  --dart-define=QURAN_ASR_CLOUD_DIAGNOSTICS=true \
   ${TEST_DEFINES[@]+"${TEST_DEFINES[@]}"}
 
 # 3. Archive with QURAN_ASR_TESTFLIGHT + QURAN_ASR_NATIVE + Metal GPU libraries
@@ -73,6 +74,11 @@ test -s "$APP_BUNDLE/ggml-tensor.metallib"
 if [ "${STORE_BUILD:-0}" = "1" ] &&
   strings "$APP_BUNDLE/Frameworks/App.framework/App" | grep -q "TajweedFormer recognition (test)"; then
   echo "FATAL: store build still contains the TajweedFormer test switch!" >&2
+  exit 1
+fi
+if [ "${STORE_BUILD:-0}" = "1" ] &&
+  strings "$APP_BUNDLE/Frameworks/App.framework/App" | grep -q "asr-diagnostics/upload"; then
+  echo "FATAL: store build can still upload recitation takes!" >&2
   exit 1
 fi
 echo "Verified QuranASRChannel, whisper symbols, quran-tiny.bin, and Metal shaders in $APP_BUNDLE"

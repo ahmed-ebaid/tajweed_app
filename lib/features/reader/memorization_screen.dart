@@ -3033,7 +3033,7 @@ class _MemorizationScreenState extends State<MemorizationScreen>
                       ),
                     ),
                     actions: [
-                      if (widget.localQuranLab)
+                      if (widget.localQuranLab && quranAsrCloudDiagnosticsEnabled)
                         Builder(
                           builder: (buttonContext) => TextButton.icon(
                             onPressed: () => _shareDiagnostics(buttonContext),

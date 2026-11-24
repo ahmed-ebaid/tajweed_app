@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Locales that ship a localized onboarding screenshot set.
 const _locales = <String>['en', 'ar', 'ur', 'tr', 'fr', 'id', 'de', 'es'];
 
-/// The six onboarding guide pages, in display order.
+/// The seven onboarding guide pages, in display order.
 const _files = <String>[
   '01-tajweed-rules.png',
   '02-tafseer.png',
@@ -13,11 +13,12 @@ const _files = <String>[
   '04-bookmark-ayah.png',
   '05-hizb-boundary.png',
   '06-mushaf-bookmark.png',
+  '07-hifz.png',
 ];
 
 void main() {
   group('onboarding screenshot assets', () {
-    test('every locale ships all six guide images', () {
+    test('every locale ships all seven guide images', () {
       final missing = <String>[];
       for (final locale in _locales) {
         for (final file in _files) {

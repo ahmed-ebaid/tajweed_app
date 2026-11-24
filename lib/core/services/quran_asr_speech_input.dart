@@ -22,6 +22,8 @@ const quranAsrRetainDebugAudio =
 const quranAsrRetainDebugTranscripts =
     quranAsrExperimentEnabled &&
     bool.fromEnvironment('QURAN_ASR_RETAIN_DEBUG_TRANSCRIPTS');
+/// Test builds only: store builds never send takes, logs or audio anywhere.
+const quranAsrCloudDiagnosticsEnabled = quranAsrRetainDebugAudio;
 const quranAsrContextRecoveryEnabled =
     quranAsrExperimentEnabled &&
     bool.fromEnvironment('QURAN_ASR_CONTEXT_RECOVERY', defaultValue: false);
@@ -85,7 +87,9 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     required String verseKey,
     Dio? client,
   }) async {
-    if (!quranAsrExperimentEnabled || kIsWeb || !_isQuranAsrSupportedPlatform) {
+    if (!quranAsrCloudDiagnosticsEnabled ||
+        kIsWeb ||
+        !_isQuranAsrSupportedPlatform) {
       return false;
     }
     final previousUpload = _uploadInFlight;
@@ -196,7 +200,9 @@ class QuranAsrSpeechInput implements WindowedMemorizationSpeechInput {
     required List<Map<String, Object>> snapshots,
     Dio? client,
   }) async {
-    if (!quranAsrExperimentEnabled || kIsWeb || !_isQuranAsrSupportedPlatform) {
+    if (!quranAsrCloudDiagnosticsEnabled ||
+        kIsWeb ||
+        !_isQuranAsrSupportedPlatform) {
       return false;
     }
     final previousUpload = _uploadInFlight;

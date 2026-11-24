@@ -72,7 +72,7 @@ void main() {
     expect(find.text('Quick guide'), findsNothing);
   });
 
-  testWidgets('paging exposes six guides and Back Next Done controls', (
+  testWidgets('paging exposes seven guides and Back Next Done controls', (
     tester,
   ) async {
     final service = OnboardingService(settingsBox: settingsBox);
@@ -91,6 +91,7 @@ void main() {
       'Bookmark an ayah',
       'Explore Hizb boundaries',
       'Bookmark a Mushaf page',
+      'Memorize with Hifz',
     ];
     for (final title in titles) {
       await tester.tap(find.byKey(const Key('onboarding_next')));
@@ -217,7 +218,7 @@ void main() {
         tester.element(find.byType(OnboardingScreen)),
       );
 
-      for (var page = 0; page < 6; page++) {
+      for (var page = 0; page < 7; page++) {
         if (page > 0) {
           await tester.tap(find.byKey(const Key('onboarding_next')));
           await tester.pumpAndSettle();

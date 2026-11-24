@@ -955,6 +955,11 @@ void main() {
         verseKey: '2:14',
         client: dio,
       );
+      if (!quranAsrCloudDiagnosticsEnabled) {
+        expect(ok, isFalse);
+        expect(uploadedBody, isNull);
+        return;
+      }
       expect(ok, isTrue);
       expect(uploadedBody?['verse_key'], '2:14');
       expect(uploadedBody?['id'], 'recording-1');
@@ -1009,6 +1014,11 @@ void main() {
         verseKey: '55:31',
         client: dio,
       );
+      if (!quranAsrCloudDiagnosticsEnabled) {
+        expect(ok, isFalse);
+        expect(uploaded, isNull);
+        return;
+      }
       expect(ok, isTrue);
       final text = uploaded!;
       expect(utf8.encode(text).length, lessThanOrEqualTo(1024 * 1024));

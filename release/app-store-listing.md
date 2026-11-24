@@ -534,6 +534,18 @@ the device to compare portrait and landscape alignment. Green Hizb markers in
 the page margin are tappable and announce the numbered Hizb boundary. Ayah
 markers follow the QCF V2 printed-line metadata.
 
+### Hifz tab — 1.1.26 store builds (169+)
+
+The fifth tab, **Hifz**, lets users recite a surah from memory while the
+Mushaf page reveals each recognized word. The microphone is requested only
+after a localized consent screen. Recognition runs on device with a bundled
+Quran-tuned Whisper Base model (whisper-base-ar-quran); where it is unavailable, the device speech service is used.
+Released builds do not save, upload, or share recordings, transcripts, or
+mistakes: audio segments are temporary files deleted right after recognition,
+and the cloud diagnostics upload is compiled out (the archive script fails if
+it is present). To review, open Hifz, choose a surah, tap Recite, accept the
+consent, and recite; tap Pause to stop.
+
 ### Experimental memorization — build 106, not publicly released
 
 Build 106 adds opt-in Arabic voice word checking to full-surah Mushaf practice,

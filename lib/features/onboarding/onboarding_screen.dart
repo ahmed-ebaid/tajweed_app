@@ -52,7 +52,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  static const _pageCount = 6;
+  static const _pageCount = 7;
 
   final PageController _controller = PageController();
   late final bool _initialDismissal;
@@ -309,6 +309,7 @@ const _onboardingScreenshotFiles = <String>[
   '04-bookmark-ayah.png',
   '05-hizb-boundary.png',
   '06-mushaf-bookmark.png',
+  '07-hifz.png',
 ];
 
 /// Displays a real captured app screenshot inside a phone-like frame, with
@@ -377,7 +378,8 @@ Alignment _screenshotAlignment(int page) => switch (page) {
   2 => Alignment.bottomCenter, // Audio player bar.
   3 => Alignment.bottomCenter, // Saved bookmarks sheet.
   4 => Alignment.center, // Hizb marker sits mid-page.
-  _ => Alignment.topCenter, // Mushaf page view.
+  5 => Alignment.topCenter, // Mushaf page view.
+  _ => Alignment.topCenter, // Hifz reveals words from the top of the page.
 };
 
 class _InteractionOverlay extends StatelessWidget {
@@ -399,7 +401,8 @@ class _InteractionOverlay extends StatelessWidget {
       1 => (const Alignment(0.88, -0.89), Icons.lightbulb_rounded),
       2 => (const Alignment(0.18, -0.10), Icons.graphic_eq_rounded),
       3 => (const Alignment(-0.60, 0.40), Icons.bookmark_add_rounded),
-      _ => (const Alignment(0.0, 0.82), Icons.bookmark_rounded),
+      5 => (const Alignment(0.0, 0.82), Icons.bookmark_rounded),
+      _ => (const Alignment(0.0, 0.55), Icons.mic_rounded),
     };
 
     return LayoutBuilder(

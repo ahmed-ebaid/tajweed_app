@@ -47,6 +47,7 @@ readonly ASSET_NAMES=(
   onboarding-04-bookmark-ayah.png
   onboarding-05-hizb-boundary.png
   onboarding-06-mushaf-bookmark.png
+  onboarding-07-hifz.png
 )
 
 cd "$REPO_ROOT"
@@ -109,6 +110,21 @@ for locale in "${locales[@]}"; do
     failed_locales+=("$locale")
     continue
   fi
+
+  # The Hifz page comes from the memorization harness, which replays a
+  # scripted recitation over a real Mushaf page instead of using the mic.
+  if ! SCREENSHOT_OUTPUT_DIR="$out_dir" flutter drive \
+    --driver=test_driver/app_store_screenshots_driver.dart \
+    --target=integration_test/memorization_preview_test.dart \
+    -d "$SIMULATOR" \
+    --dart-define="SCREENSHOT_LOCALE=$locale" \
+    > "$out_dir/hifz-capture.log" 2>&1; then
+    echo "    Hifz capture FAILED (see $out_dir/hifz-capture.log)" >&2
+    failed_locales+=("$locale")
+    continue
+  fi
+  [[ -f "$out_dir/hifz-follow-along.png" ]] &&
+    mv "$out_dir/hifz-follow-along.png" "$out_dir/onboarding-07-hifz.png"
 
   # The harness asserts its way through each screen, so a missing file means a
   # screen silently changed shape. Fail loudly rather than shipping five images.

@@ -31,6 +31,10 @@ const onboardingTranslationKeys = <String>[
   'onboarding_mockup_callout_4',
   'onboarding_mockup_callout_5',
   'onboarding_mockup_callout_6',
+  'onboarding_7_title',
+  'onboarding_7_caption',
+  'onboarding_mockup_semantics_7',
+  'onboarding_mockup_callout_7',
 ];
 
 const _translations = <String, List<String>>{
@@ -67,6 +71,10 @@ const _translations = <String, List<String>>{
     'Bookmarked',
     'Tap this marker',
     'Page saved',
+    'Memorize with Hifz',
+    'Open the Hifz tab, tap Recite, and recite from memory. Each word appears on the Mushaf page as you say it.',
+    'Hifz screen revealing words on a Mushaf page while reciting',
+    'Recite from memory',
   ],
   'ar': [
     'كيفية استخدام التطبيق',
@@ -101,6 +109,10 @@ const _translations = <String, List<String>>{
     'تم الحفظ',
     'اضغط على هذه العلامة',
     'حُفظت الصفحة',
+    'احفظ مع الحفظ',
+    'افتح تبويب الحفظ، واضغط رتّل، ثم اقرأ من حفظك. تظهر كل كلمة على صفحة المصحف عند نطقها.',
+    'شاشة الحفظ تُظهر الكلمات على صفحة المصحف أثناء التلاوة',
+    'اقرأ من حفظك',
   ],
   'ur': [
     'ایپ استعمال کرنے کا طریقہ',
@@ -135,6 +147,10 @@ const _translations = <String, List<String>>{
     'محفوظ شدہ',
     'اس علامت پر ٹیپ کریں',
     'صفحہ محفوظ',
+    'حفظ کے ساتھ یاد کریں',
+    'حفظ ٹیب کھولیں، تلاوت پر ٹیپ کریں اور زبانی پڑھیں۔ ہر لفظ پڑھتے ہی مصحف کے صفحے پر ظاہر ہوتا ہے۔',
+    'حفظ اسکرین تلاوت کے دوران مصحف کے صفحے پر الفاظ ظاہر کر رہی ہے',
+    'زبانی تلاوت کریں',
   ],
   'tr': [
     'Uygulama nasıl kullanılır',
@@ -169,6 +185,10 @@ const _translations = <String, List<String>>{
     'Kaydedildi',
     'Bu işarete dokunun',
     'Sayfa kaydedildi',
+    'Hıfz ile ezberle',
+    'Hıfz sekmesini açın, Oku’ya dokunun ve ezberden okuyun. Her kelime söylediğinizde Mushaf sayfasında görünür.',
+    'Okurken Mushaf sayfasında kelimeleri gösteren Hıfz ekranı',
+    'Ezberden oku',
   ],
   'fr': [
     'Comment utiliser l’application',
@@ -203,6 +223,10 @@ const _translations = <String, List<String>>{
     'Ajoutée',
     'Touchez ce repère',
     'Page enregistrée',
+    'Mémorisez avec Hifz',
+    'Ouvrez l’onglet Hifz, touchez Réciter et récitez de mémoire. Chaque mot apparaît sur la page du Mushaf dès que vous le prononcez.',
+    'Écran Hifz révélant les mots sur une page du Mushaf pendant la récitation',
+    'Récitez de mémoire',
   ],
   'id': [
     'Cara menggunakan aplikasi',
@@ -237,6 +261,10 @@ const _translations = <String, List<String>>{
     'Ditandai',
     'Ketuk penanda ini',
     'Halaman disimpan',
+    'Menghafal dengan Hafalan',
+    'Buka tab Hafalan, ketuk Baca, lalu baca dari hafalan. Setiap kata muncul di halaman Mushaf saat Anda mengucapkannya.',
+    'Layar Hafalan menampilkan kata di halaman Mushaf saat membaca',
+    'Baca dari hafalan',
   ],
   'de': [
     'So verwendest du die App',
@@ -271,6 +299,10 @@ const _translations = <String, List<String>>{
     'Gespeichert',
     'Tippe auf diese Markierung',
     'Seite gespeichert',
+    'Auswendig lernen mit Hifz',
+    'Öffne den Tab Hifz, tippe auf Rezitieren und rezitiere auswendig. Jedes Wort erscheint auf der Mushaf-Seite, sobald du es sprichst.',
+    'Hifz-Bildschirm zeigt beim Rezitieren Wörter auf einer Mushaf-Seite',
+    'Auswendig rezitieren',
   ],
   'es': [
     'Cómo usar la aplicación',
@@ -305,6 +337,10 @@ const _translations = <String, List<String>>{
     'Guardada',
     'Toca este marcador',
     'Página guardada',
+    'Memoriza con Hifz',
+    'Abre la pestaña Hifz, toca Recitar y recita de memoria. Cada palabra aparece en la página del Mushaf al pronunciarla.',
+    'Pantalla de Hifz mostrando palabras en una página del Mushaf al recitar',
+    'Recita de memoria',
   ],
 };
 

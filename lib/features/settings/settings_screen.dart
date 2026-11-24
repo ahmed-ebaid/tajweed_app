@@ -171,14 +171,19 @@ class SettingsScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
-          const Divider(height: 0.5, indent: 16),
-          ListTile(
-            leading: const Icon(Icons.mic_none_rounded),
-            title: Text(s.text('recording_sharing')),
-            subtitle: Text(s.text('recording_sharing_subtitle')),
-            trailing: const Icon(Icons.chevron_right_rounded, size: 18),
-            onTap: () => _openRecordingSharing(context),
-          ),
+          // Released builds never share recordings, so only test builds
+          // offer Quran Lab's sharing controls.
+          if (quranAsrRetainDebugAudio) ...[
+            const Divider(height: 0.5, indent: 16),
+            ListTile(
+              key: const Key('settings_recording_sharing'),
+              leading: const Icon(Icons.mic_none_rounded),
+              title: Text(s.text('recording_sharing')),
+              subtitle: Text(s.text('recording_sharing_subtitle')),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+              onTap: () => _openRecordingSharing(context),
+            ),
+          ],
           const Divider(height: 0.5, indent: 16),
           const _AboutSourcesTile(),
         ],
