@@ -10,7 +10,7 @@ import 'package:tajweed_practice/features/reader/mushaf_page_view.dart';
 /// used by the app, then captures screenshots for printed-page comparison.
 const _configuredPages = String.fromEnvironment('MUSHAF_TEST_PAGES');
 final _pages = _configuredPages.isEmpty
-    ? <int>[1, 2, 251, 255, 300, 528, 600, 604]
+    ? <int>[1, 2, 22, 251, 255, 300, 528, 593, 600, 604]
     : _configuredPages.split(',').map(int.parse).toList(growable: false);
 
 void main() {
@@ -85,15 +85,29 @@ void main() {
           final contentRect = tester.getRect(
             find.byKey(const ValueKey('mushaf-content-region')),
           );
-          final lastLine = find.byKey(const ValueKey('mushaf-line-15'));
-          await tester.ensureVisible(lastLine);
-          await tester.pumpAndSettle();
+          final lastLineNumber = ayahs
+              .expand(
+                (ayah) => [
+                  for (final word in ayah.words) word.lineNumber!,
+                  ayah.endLineNumber!,
+                ],
+              )
+              .reduce((a, b) => a > b ? a : b);
+          final lastLine = find.byKey(ValueKey('mushaf-line-$lastLineNumber'));
           final lastLineRect = tester.getRect(lastLine);
+          expect(
+            tester
+                .state<ScrollableState>(find.byType(Scrollable).first)
+                .position
+                .maxScrollExtent,
+            closeTo(0, 0.01),
+            reason: 'page $page ${orientation.name} must fit without scrolling',
+          );
           expect(
             lastLineRect.bottom,
             lessThanOrEqualTo(contentRect.bottom + 0.5),
             reason:
-                'page $page ${orientation.name} cannot scroll to Mushaf line 15',
+                'page $page ${orientation.name} hides its final printed line',
           );
 
           await binding.takeScreenshot(

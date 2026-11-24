@@ -1,4 +1,160 @@
-# App Store listing — Tajweed 1.1.24
+# App Store listing — Tajweed 1.1.26
+
+## Production submission — 1.1.25 (115)
+
+- **Scope:** Larger Quran lettering and vertical scrolling in landscape;
+  portrait retains the complete fitted page without scrolling. Printed line
+  assignments, Tajweed colors, surah metadata and pinch zoom are preserved.
+- **Apple:** Submitted on 2026-11-10 using the existing TestFlight build 115.
+  Verified `WAITING_FOR_REVIEW` and `AFTER_APPROVAL`; build 115 is `VALID`
+  and attached. Eight localized release notes and 160 unchanged inherited
+  screenshots were verified. Public availability is not yet established.
+- **Google Play:** Signed bundle 115 committed to production with status
+  `completed`; the version code, bundle hash, eight localized notes, other
+  tracks and screenshots were re-read. Review approval, managed-publishing
+  state and public availability have not been independently established.
+- **Android safeguards:** Built using
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680 release/build_android_release.sh appbundle`.
+  The expected upload certificate, signature, packaged identity, permissions,
+  bundled font and production project configuration were checked.
+- **Validation:** 82 targeted version, attestation, reader-state and Mushaf
+  layout/localization tests passed. No authorized Android device was
+  connected; physical-device checks of this build remain unverified.
+- **Apple version ID:** `d442b681-1931-49c8-881b-e316250c085b`.
+- **Apple build ID:** `96c70c09-c2fa-45f6-b214-68c75288ff5e`.
+- **Apple submission ID:** `4de9fa93-4f3f-4496-8727-64dbbda2642e`.
+- **Artifacts (SHA-256):** Android bundle
+  `79841751785ce254350fc6f229f4ae0087d4d0f9ad096c265de7c4173f867855`;
+  iOS IPA
+  `dac8ecd0795cf96b7f7ddf309126970cea449a500e046fb8daf450fe352b9a76`.
+
+## Landscape Mushaf review — 1.1.25 (115)
+
+Landscape pages now use the available width for larger Quran lettering and
+vertical scrolling. Portrait still fits the complete page without scrolling.
+Printed line assignments, Tajweed colors, surah metadata, natural glyph
+proportions and pinch zoom are preserved. Returning to portrait restores the
+fitted page and clamps the scroll offset.
+
+Signed IPA uploaded on 2026-11-10 for internal TestFlight review only.
+Apple processing is `VALID`, internal testing is `IN_BETA_TESTING`, and
+membership in **Tajweed Testers** was verified. All eight localized testing
+notes were re-read and verified. At that time, no public App Review submission
+or Google Play changes were made; the subsequent production submission is
+recorded above.
+
+- **Apple build ID:** `96c70c09-c2fa-45f6-b214-68c75288ff5e`.
+- **IPA SHA-256:**
+  `dac8ecd0795cf96b7f7ddf309126970cea449a500e046fb8daf450fe352b9a76`.
+
+## Production submission — 1.1.24 (114)
+
+- **Scope:** Full-page Mushaf fitting, natural Quran proportions, heavier
+  Amiri lettering with the cross-platform paint-only ink fix, larger bold
+  surah names, and localized surah numbers and total ayah counts. The existing
+  604-page V1 context, printed word/marker line assignments and Tajweed colors
+  are preserved. No replacement fonts, Hifz, Quran ASR, or speech permissions.
+- **Apple:** Submitted on 2026-11-09; verified `WAITING_FOR_REVIEW` with
+  automatic release after approval (`AFTER_APPROVAL`). Build 114 is attached
+  and `VALID`, with internal TestFlight state `IN_BETA_TESTING`. All eight
+  localized release notes and 160 unchanged inherited screenshots were verified.
+  Public availability is not yet established.
+- **Google Play:** Signed bundle 114 uploaded to production with status
+  `completed`. VersionCode, bundle SHA-256, eight localized release notes,
+  unchanged other tracks and unchanged listing screenshots were re-read after
+  commit. This API status does not establish review approval or public availability;
+  managed publishing was not changed or independently verified.
+- **Android safeguards:** Built using
+  `PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=312770688680 release/build_android_release.sh appbundle`.
+  The embedded default and guarded project number, packaged version and
+  permissions, original Amiri font, bundle signature and expected upload
+  certificate were checked.
+- **Validation:** 109 targeted reader, localization, version, attestation,
+  reader-state and review-scheduling tests passed. Both signed artifacts built.
+  Static analysis reports existing diagnostics (58; no errors). The ink fix
+  was previously compared in the iOS simulator on pages 597, 602 and 604 with
+  identical before/after geometry. Physical-device checks of this build remain
+  unverified; no authorized Android device was connected.
+- **Apple version ID:** `ab9f82cb-3375-4bd5-8146-1eff2564afd9`.
+- **Apple build/delivery ID:** `0b75fe74-853c-44b6-8c36-89a54522292f`.
+- **Apple submission ID:** `709a22f6-8eb1-468e-99e2-17c8877e52ff`.
+- **Artifacts (SHA-256):** Android bundle
+  `9943d588d2b1534507acf6aea1734ba96f52913936c49f7e0d2a3f53c96f475f`;
+  iOS IPA
+  `ef7130fe4c32fd1e7478b7705986f3f33324099a3e8b45d2a55ffa2815d9b393`.
+
+## Final Mushaf typography review — 1.1.24 (113)
+
+Heavier Amiri Quran lettering, larger bold surah names inside the existing
+cartouches, and localized surah numbers (right circle) and total ayah counts
+(left circle). Counts are bundled for all 114 surahs. The additional spacing
+refinement recovers modest lettering size without changing the existing
+604-page V1 context, printed line endings, natural proportions, Tajweed colors,
+basmalas, header row heights, or immersive controls.
+
+Uploaded on 2026-11-09 for internal TestFlight review only. Apple processing is
+`VALID`, internal testing is `IN_BETA_TESTING`, and membership in **Tajweed
+Testers** plus all eight localized testing notes were re-read and verified.
+No public App Review submission, replacement font, Hifz, Quran ASR,
+microphone/speech permissions, or Google Play changes.
+
+- **Apple build/delivery ID:** `2eb453ca-0f3c-4b4c-845b-4f42a16a9f1a`.
+- **IPA SHA-256:**
+  `2877ef8fb8621fc9ecb386f8784394280d6334e932cd4bca736f88fafcc1fa21`.
+
+## Natural Mushaf typography — 1.1.24 (112)
+
+Larger, naturally proportioned Quran lettering and a calligraphic basmala
+refine the shared reader while preserving the existing 604-page Madinah
+QCF V1 context, printed word/ayah-marker line assignments, Tajweed colors,
+localized labels, and reserved Hizb margins. Ordinary lines align at both
+margins; verified printed exceptions remain centered. Landscape pages keep
+proportional page width rather than spreading words across the whole screen.
+The floating exit-full-screen button is removed; tapping the page or pressing
+Back restores the toolbars, which still automatically hide after six seconds.
+
+Internal TestFlight only; no public App Review submission. Hifz, Quran ASR,
+microphone/speech permissions, and Google Play are unchanged. Uploaded on
+2026-11-09; Apple processing is `VALID` and internal testing is
+`IN_BETA_TESTING`. Membership in **Tajweed Testers** and all eight localized
+testing notes were re-read and verified.
+
+- **Apple build/delivery ID:** `fdae9757-fe58-4ddb-8453-272940d99246`.
+- **IPA SHA-256:**
+  `d1040653d29d7a017cebf92ea35c69966d2c87e1c452ec5e383fa31a3e9be230`.
+
+## Reader-only TestFlight upload — 1.1.24 (108)
+
+Complete Quran pages fit the available screen without vertical scrolling.
+Words stay on their original printed lines, with ayah-marker positions and
+Hizb marks preserved. Compact page metadata and fixed-line spacing work in
+portrait and landscape, with light/dark themes, Tajweed colors, and pinch zoom.
+Missing line metadata shows an explicit retry state instead of reflowing text.
+
+This build excludes the experimental Hifz tab, memorization shortcut, speech
+plugin, native Quran ASR, model assets, and microphone/speech permissions.
+Hifz development is preserved separately on `aebaid-hifz-asr-lab`; it is not
+part of this release candidate. Production endpoints and attestation remain
+unchanged; no prelive, test-token, or ASR defines are used.
+
+The signed IPA is version 1.1.24, build 108, with bundle identifier
+`com.ebaidllc.tajweedpractice`. Uploaded on 2026-11-09; Apple processing is
+`VALID` and internal testing is `IN_BETA_TESTING`. Membership in the existing
+**Tajweed Testers** internal group and all eight localized testing notes were
+re-read and verified. This is internal TestFlight testing only, not an App Store
+review submission or public release. Production 1.1.23 remains `READY_FOR_SALE`;
+Google Play is unchanged.
+
+- **Apple build/delivery ID:** `c58180e0-1836-49b3-a8ed-4837190e1529`.
+- **IPA SHA-256:**
+  `b687c9485192bad864bbca0726ea981ca9e57a60e7c3e9765c34f830fe30c9a0`.
+- **Validation:** 78 targeted layout, theme/localization, navigation, review,
+  attestation, API, and audio regressions pass. Two additional actual-page
+  checks cover pages 1, 2, 22, 255, 300, 528, 593, 600, and 604, including
+  small portrait/landscape, printed word/marker order, and page 22's Hizb.
+  The signed archive and packaged IPA were inspected for identity, production
+  defines, and absence of Hifz/speech/ASR artifacts. Physical-device visual
+  evaluation remains the purpose of this TestFlight build.
 
 ## Unuploaded disconnected-letter recognition fix
 
