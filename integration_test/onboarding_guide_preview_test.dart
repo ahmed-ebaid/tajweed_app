@@ -51,7 +51,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    for (var page = 1; page <= 6; page++) {
+    for (var page = 1; page <= 7; page++) {
       if (page > 1) {
         await tester.tap(find.byKey(const Key('onboarding_next')));
         await tester.pumpAndSettle();
