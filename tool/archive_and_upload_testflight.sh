@@ -15,6 +15,8 @@ ARCHIVE_PATH="build/ios/archive/Runner-${BUILD_NUMBER}.xcarchive"
 IPA_DIR="build/ios/ipa${BUILD_NUMBER}"
 EXPORT_PLIST="build/ios/ipa136/ExportOptions.plist"
 
+tool/check_app_version.sh "$BUILD_NAME"
+
 # 1. Verify native Whisper headers and static libraries exist
 test -f "$WHISPER_SRC/include/whisper.h"
 test -f "$GPU_LIBS/src/libwhisper.a"

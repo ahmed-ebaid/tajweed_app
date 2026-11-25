@@ -33,5 +33,6 @@ if [[
 fi
 
 cd "$REPO_ROOT"
+tool/check_app_version.sh
 flutter build "$BUILD_TARGET" --release \
   "--dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
