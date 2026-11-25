@@ -379,7 +379,8 @@ Alignment _screenshotAlignment(int page) => switch (page) {
   3 => Alignment.bottomCenter, // Saved bookmarks sheet.
   4 => Alignment.center, // Hizb marker sits mid-page.
   5 => Alignment.topCenter, // Mushaf page view.
-  _ => Alignment.topCenter, // Hifz reveals words from the top of the page.
+  // Hifz: skip the blank status-bar strip and start at the Hifz title bar.
+  _ => const Alignment(0.0, -0.68),
 };
 
 class _InteractionOverlay extends StatelessWidget {
@@ -402,7 +403,8 @@ class _InteractionOverlay extends StatelessWidget {
       2 => (const Alignment(0.18, -0.10), Icons.graphic_eq_rounded),
       3 => (const Alignment(-0.60, 0.40), Icons.bookmark_add_rounded),
       5 => (const Alignment(0.0, 0.82), Icons.bookmark_rounded),
-      _ => (const Alignment(0.0, 0.55), Icons.mic_rounded),
+      // Below the revealed lines, over the still-hidden words.
+      _ => (const Alignment(0.0, 0.66), Icons.mic_rounded),
     };
 
     return LayoutBuilder(
