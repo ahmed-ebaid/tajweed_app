@@ -7,7 +7,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 BUILD_NUMBER="$1"
-BUILD_NAME="${2:-1.1.26}"
+BUILD_NAME="${2:-1.1.27}"
 SESSION_FILES="/Users/ahmedebaid/.copilot/session-state/c789e607-eec9-413e-8c79-2a1e67bd0c85/files"
 WHISPER_SRC="$SESSION_FILES/whisper.cpp-1.9.5"
 GPU_LIBS="$SESSION_FILES/gpu-preview-device/native-cancellable-metal-precompiled-iphoneos"
