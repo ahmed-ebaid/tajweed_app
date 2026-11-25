@@ -78,7 +78,7 @@ jobs:
       - name: Reject invalid Play Integrity configuration outside the wrapper
         shell: bash
         run: |
-          if flutter build apk --release --no-pub \
+          if flutter build apk --release \
             --dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=0 > invalid-integrity-build.log 2>&1; then
             echo "Release build unexpectedly accepted an invalid project number."
             exit 1
