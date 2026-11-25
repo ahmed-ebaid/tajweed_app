@@ -1,4 +1,4 @@
-# App Store listing — Tajweed 1.1.26
+# App Store listing — Tajweed 1.1.27
 
 ## Production submission — 1.1.25 (115)
 
@@ -681,6 +681,10 @@ Mushaf in every language, adds a Hifz capture
 (`integration_test/memorization_preview_test.dart`, page 562) as the third
 image, and removes Offline settings on iOS and Ghunnah detail on Google Play.
 Android captures use the `tajweed_play` emulator at 1080×1920.
+
+1.1.27 (iOS and Android build 171) keeps the 1.1.26 screenshots and rewords
+the Hifz onboarding page in all eight languages. Android went straight from
+1.1.25 to 1.1.27, so its release notes repeat the 1.1.26 Hifz notes.
 
 ## App Review notes
 
