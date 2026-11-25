@@ -91,7 +91,7 @@ void main() {
       'Bookmark an ayah',
       'Explore Hizb boundaries',
       'Bookmark a Mushaf page',
-      'Memorize with Hifz',
+      'Test your memorization',
     ];
     for (final title in titles) {
       await tester.tap(find.byKey(const Key('onboarding_next')));
